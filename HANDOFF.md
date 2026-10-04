@@ -53,7 +53,10 @@
 
 | 事实 | 怎么验证的 |
 |---|---|
-| 飞书逐字稿有**两条可取路径** | 妙记权限正常时走 `minutes +detail`；**妙记无权限时走智能纪要的 `verbatim_doc_token`**（`docs +fetch`）。实测「ABC周二测试」妙记无权限但智能纪要逐字稿可读 |
+| 飞书逐字稿有**两条可取路径** | ① 妙记：`minutes +detail --minute-tokens <t> --transcript --output-dir /tmp/...` → 从返回的 `artifacts.transcript_file` 读文件；② 智能纪要：`note +detail` 拿 `verbatim_doc_token` → `docs +fetch` 取 HTML 再转换。**两条都要保留**：实测 15 场会里 8 场只有妙记、2 场只有智能纪要 |
+| **妙记路径的三个必要条件**（少一个就整个走不通） | ① flag 是 `--minute-tokens`（**复数**，单数会报 unknown flag）；② 必须显式传 `--transcript`，否则只返回基本信息；③ `--output-dir` 只允许 **cwd / `/tmp` / `~/files`**——macOS 的 `os.tmpdir()` 返回 `/var/folders/...`，**会被拒绝** |
+| 真实会议取数成功率 | 实测 15 场：**10 场能取到逐字稿**，5 场失败（都是没有录制/妙记的会，属正常）。妙记路径 8 场、智能纪要路径 2 场 |
+| 有会议**逐字稿很短** | 实测最短 3 行。`src/analysis.mjs` 有 `transcript_too_short`（<50 字）拦截，但 10 余行的会仍会跑，产出会很薄——产品上要考虑是否加更严的门槛 |
 | 逐字稿格式是 HTML，且 `<title>` 必须剥掉 | 不剥会粘到第一条发言上污染发言人姓名。**这是测试抓出来的真 bug** |
 | 引擎认 `姓名 MM:SS 发言` 这个形状 | 见 `src/engine-src/lib/analysis/transcript.ts` 的 `matchSpeakerLine` |
 | 引擎可脱离 Next.js 独立编译运行 | 10 个文件、零 Next.js 依赖，外部只用 `node:crypto` |

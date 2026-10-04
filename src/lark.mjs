@@ -9,7 +9,9 @@
  * 约定：所有函数失败时抛 Error（消息面向用户），不返回裸错误对象。
  */
 import { execFileSync } from 'node:child_process';
-import { dirname } from 'node:path';
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';   // 仅作为 /tmp 不可用时的兜底
+import { dirname, join } from 'node:path';
 
 const LARK = process.env.LARK_CLI || 'lark-cli';
 
@@ -23,15 +25,16 @@ const LARK = process.env.LARK_CLI || 'lark-cli';
  *
  * 做法：把 node 自己所在目录和常见的用户 bin 目录前置到 PATH。
  */
-const SPAWN_ENV = (() => {
+function spawnEnv() {
   const extra = [
     dirname(process.execPath),   // node 所在目录，保证 `#!/usr/bin/env node` 能找到
     '/usr/local/bin',
     '/opt/homebrew/bin',
   ];
   const cur = (process.env.PATH || '').split(':').filter(Boolean);
+  // 每次调用时读取：既覆盖宿主注入的环境变量，也便于测试替换
   return { ...process.env, PATH: [...new Set([...extra, ...cur])].join(':') };
-})();
+}
 
 export class LarkError extends Error {
   constructor(message, { kind = 'unknown', raw = '' } = {}) {
@@ -50,7 +53,7 @@ export function larkJson(args, { allowFail = false } = {}) {
       encoding: 'utf8',
       maxBuffer: 64 * 1024 * 1024,
       stdio: ['ignore', 'pipe', 'pipe'],
-      env: SPAWN_ENV,
+      env: spawnEnv(),
     });
   } catch (e) {
     if (allowFail) return null;
@@ -144,15 +147,24 @@ export function meetingDetail(meetingId) {
  * 两条都取不到就抛错——不要用 AI 摘要替代，那会丢掉全部原始发言。
  */
 export function fetchTranscript({ noteId, minuteToken, topic = '这场会' }) {
+  const failures = [];
+
   if (minuteToken) {
-    const out = larkJson(['minutes', '+detail', '--minute-token', minuteToken, '--as', 'user', '--format', 'json'],
-      { allowFail: true });
-    const t = pickTranscript(out);
-    if (t) return t;
+    try {
+      const t = fetchMinuteTranscript(minuteToken);
+      if (t) return t;
+      failures.push('妙记导出没有产出逐字稿文件');
+    } catch (e) {
+      failures.push(`妙记路径失败：${e.message.split('\n')[0]}`);
+    }
+  } else {
+    failures.push('这场会没有妙记 token');
   }
+
   if (!noteId) {
     throw new LarkError(
-      `${topic} 没有可用的妙记，也没有智能纪要逐字稿。\n`
+      `${topic} 取不到逐字稿。\n`
+      + failures.map((f) => `  · ${f}`).join('\n') + '\n'
       + '  团队动力分析需要成员原始发言，AI 摘要无法替代。请换一场有逐字稿的会议。',
       { kind: 'no_transcript' },
     );
@@ -172,13 +184,36 @@ export function fetchTranscript({ noteId, minuteToken, topic = '这场会' }) {
   return htmlToTranscript(html);
 }
 
-function pickTranscript(out) {
-  const d = out?.data;
-  if (!d) return null;
-  for (const k of ['transcript', 'content', 'text']) {
-    if (typeof d[k] === 'string' && d[k].trim()) return d[k].trim();
+/**
+ * 从妙记导出逐字稿。
+ *
+ * 关键点（曾经写错导致妙记路径完全走不通）：
+ * - flag 是 `--minute-tokens`（复数），不是 `--minute-token`
+ * - 必须显式传 `--transcript`，否则只返回基本信息、不导出文字稿
+ * - 文字稿落在 `--output-dir` 下的文件里，路径在返回的 artifacts.transcript_file
+ * - 导出格式恰好就是引擎能直接解析的 `姓名 MM:SS.mmm` + 内容，**不需要转换**
+ */
+function fetchMinuteTranscript(minuteToken) {
+  // lark-cli 的 --output-dir 只允许 cwd、/tmp、~/files。
+  // macOS 的 os.tmpdir() 返回 /var/folders/...（不在允许列表里），所以显式用 /tmp。
+  const base = existsSync('/tmp') ? '/tmp' : tmpdir();
+  const dir = mkdtempSync(join(base, 'teaming-minute-'));
+  try {
+    const res = larkJson([
+      'minutes', '+detail', '--minute-tokens', minuteToken,
+      '--transcript', '--output-dir', dir,
+      '--as', 'user', '--format', 'json',
+    ]);
+    const file = res?.data?.minutes?.[0]?.artifacts?.transcript_file;
+    if (!file || !existsSync(file)) {
+      throw new LarkError('妙记导出未返回逐字稿文件路径。', { kind: 'minute_no_file' });
+    }
+    const text = readFileSync(file, 'utf8').trim();
+    if (!text) throw new LarkError('妙记导出的逐字稿为空。', { kind: 'minute_empty' });
+    return text;
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
   }
-  return null;
 }
 
 /**
@@ -239,7 +274,7 @@ export function larkReadiness() {
   const problems = [];
   let version = '';
   try {
-    version = execFileSync(LARK, ['--version'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], env: SPAWN_ENV }).trim();
+    version = execFileSync(LARK, ['--version'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], env: spawnEnv() }).trim();
   } catch {
     problems.push(
       `找不到 lark-cli（当前按 "${LARK}" 查找）。\n`
@@ -251,7 +286,7 @@ export function larkReadiness() {
 
   let userName = null; let scopes = '';
   try {
-    const s = JSON.parse(execFileSync(LARK, ['auth', 'status'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], env: SPAWN_ENV }));
+    const s = JSON.parse(execFileSync(LARK, ['auth', 'status'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], env: spawnEnv() }));
     const u = s?.identities?.user;
     if (u?.status === 'ready') { userName = u.userName || null; scopes = u.scope || ''; }
     else problems.push('飞书未授权。下一步：lark-cli auth login --recommend');
