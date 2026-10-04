@@ -20,11 +20,17 @@ console.log = (...a) => process.stderr.write(`${a.map(String).join(' ')}\n`);
 console.info = console.log; console.warn = console.log; console.debug = console.log;
 
 import { readFileSync } from 'node:fs';
+import { spawn } from 'node:child_process';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import { analysisReadiness } from './analysis.mjs';
 import { searchMeetings, larkReadiness } from './lark.mjs';
 import { reportDigest } from './render.mjs';
-import { analyzeMeeting, readReport } from './pipeline.mjs';
+import { readReport } from './pipeline.mjs';
+import { newJobId, writeJob, readJob, waitForJob, pruneJobs } from './jobs.mjs';
+
+const CLI = process.env.TEAMING_CLI || join(dirname(fileURLToPath(import.meta.url)), 'cli.mjs');
 
 const SERVER_INFO = { name: 'teaming', version: '0.1.0' };
 const SUPPORTED = ['2024-11-05', '2025-03-26', '2025-06-18', '2025-11-25'];
@@ -73,15 +79,33 @@ const TOOLS = [
     description:
       '对一场会议做团队动力分析，产出四部分报告（团队状态定位／互动概览／未完成的对话与非共识／给领导者的建议）。'
       + '什么时候用：用户明确要求「分析这场会」「看看团队氛围」。'
-      + '注意：单次分析通常 60~120 秒，可能超过宿主的工具调用超时；'
-      + '若返回超时，请按 fallback_command 在终端执行。',
+      + '已分析过的会议会直接复用已有报告，不重复消耗（要重跑传 force=true）。'
+      + '分析在后台进程执行：如果 wait_seconds 内没跑完，会返回 status=running 与 job_id，'
+      + '此时用 teaming_job_status 查结果——**任务不会因为等待超时而丢失**。',
     inputSchema: {
       type: 'object',
-      properties: { meeting_id: { type: 'string', description: '会议 ID' } },
+      properties: {
+        meeting_id: { type: 'string', description: '会议 ID' },
+        wait_seconds: { type: 'integer', minimum: 0, maximum: 600, description: '最多内联等待多少秒，默认 45；填 0 则立即返回 job_id' },
+        force: { type: 'boolean', description: '已有报告时是否强制重跑，默认 false' },
+      },
       required: ['meeting_id'],
       additionalProperties: false,
     },
     annotations: { readOnlyHint: false },
+  },
+  {
+    name: 'teaming_job_status',
+    description:
+      '查询一次分析任务的状态：running（后台仍在跑）／done（完成，含报告摘要）／failed（失败，含原因）。'
+      + '什么时候用：teaming_analyze_meeting 返回 status=running 时，隔一会儿用本工具取结果。',
+    inputSchema: {
+      type: 'object',
+      properties: { job_id: { type: 'string', description: 'teaming_analyze_meeting 返回的 job_id' } },
+      required: ['job_id'],
+      additionalProperties: false,
+    },
+    annotations: { readOnlyHint: true },
   },
 ];
 
@@ -91,6 +115,7 @@ async function callTool(name, args) {
   if (name === 'teaming_doctor') {
     const engine = analysisReadiness();
     const lark = larkReadiness();
+    pruneJobs();
     const problems = [...lark.problems, ...engine.problems];
     return {
       ready: problems.length === 0,
@@ -131,27 +156,63 @@ async function callTool(name, args) {
   }
 
   if (name === 'teaming_analyze_meeting') {
-    try {
-      const r = await analyzeMeeting(args.meeting_id);
+    const meetingId = args.meeting_id;
+
+    // 已有报告直接复用，避免重复消耗与重复推送
+    if (!args.force) {
+      const existing = readReport(meetingId);
+      if (existing) {
+        return {
+          status: 'done', reused: true, meeting_id: meetingId,
+          report_path: existing.path, ...reportDigest(existing.report),
+          hint: '该会议已有报告，直接复用。需要重跑请传 force=true。',
+        };
+      }
+    }
+
+    const jobId = newJobId();
+    writeJob(jobId, { status: 'running', meetingId, startedAt: new Date().toISOString() });
+    // 分离子进程：即使宿主断开、工具调用超时，分析也会跑完并落账本
+    const child = spawn(process.execPath, [CLI, 'analyze', meetingId, '--job-id', jobId], {
+      detached: true, stdio: 'ignore', env: process.env,
+    });
+    child.unref();
+
+    const waitMs = Math.max(0, Math.min(600, Number.isFinite(args.wait_seconds) ? args.wait_seconds : 45)) * 1000;
+    const job = await waitForJob(jobId, waitMs);
+
+    if (job?.status === 'done') {
+      const found = readReport(meetingId);
       return {
-        ok: true,
-        meeting_id: r.meetingId,
-        topic: r.topic,
-        report_path: r.reportPath,
-        transcript_path: r.transcriptPath,
-        ...reportDigest(r.report),
-        hint: '报告已落盘。需要在消息里呈现时，先读 report_path 再取舍，不要把全文塞回上下文。',
-      };
-    } catch (e) {
-      return {
-        ok: false,
-        error: clean(e.message),
-        fallback_command: `node ${process.argv[1]} --cli-analyze ${args.meeting_id}`,
-        hint: e.kind === 'transcript_too_short' || e.kind === 'no_transcript'
-          ? '这场会议缺少可用的逐字稿，换一场有逐字稿的会议。'
-          : '若为工具调用超时，请在终端用 CLI 执行同一分析（终端没有工具超时限制）。',
+        status: 'done', job_id: jobId, meeting_id: meetingId,
+        report_path: job.reportPath, zone: job.zone,
+        ...(found ? reportDigest(found.report) : {}),
+        hint: '需要在消息里呈现时，先读 report_path 再取舍，不要把全文塞回上下文。',
       };
     }
+    if (job?.status === 'failed') {
+      return {
+        status: 'failed', job_id: jobId, error: clean(job.error),
+        hint: job.kind === 'transcript_too_short' || job.kind === 'no_transcript'
+          ? '这场会议缺少可用的逐字稿，换一场有逐字稿的会议。'
+          : '可在终端执行 `teaming analyze <meetingId>` 看完整报错。',
+      };
+    }
+    return {
+      status: 'running', job_id: jobId, meeting_id: meetingId,
+      hint: `分析在后台继续跑（通常 60~120 秒），不会因等待超时而丢失。`
+        + `请稍后用 teaming_job_status 查 job_id=${jobId}。`,
+    };
+  }
+
+  if (name === 'teaming_job_status') {
+    const j = readJob(args.job_id);
+    if (!j) return { found: false, hint: `没有这个 job_id：${args.job_id}` };
+    if (j.status === 'done') {
+      const found = readReport(j.meetingId);
+      return { found: true, ...j, ...(found ? reportDigest(found.report) : {}) };
+    }
+    return { found: true, ...j };
   }
 
   throw new Error(`未知工具：${name}`);

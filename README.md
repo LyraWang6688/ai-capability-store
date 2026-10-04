@@ -89,12 +89,24 @@ node src/cli.mjs doctor
 
 | 工具 | 副作用 | 用途 |
 |---|---|---|
-| `teaming_doctor` | 无 | 体检：飞书授权、分析凭证、引擎是否就绪 |
+| `teaming_doctor` | 无 | 体检：lark-cli、飞书授权与 scope、分析凭证、引擎 |
 | `teaming_list_meetings` | 无 | 列出近期会议，标注哪场有逐字稿 |
 | `teaming_read_report` | 无 | 读已生成报告的摘要 |
-| `teaming_analyze_meeting` | 有 | 分析一场会（60~120 秒） |
+| `teaming_analyze_meeting` | 有 | 分析一场会；已有报告会复用 |
+| `teaming_job_status` | 无 | 查分析任务进度 |
 
-**关于超时**：单次分析要一两分钟，可能超过宿主的工具调用超时。超时时工具会返回 `fallback_command`，在终端执行即可（终端没有工具超时限制）。
+### 关于工具调用超时
+
+单次分析要 60~120 秒，而宿主的 `tools/call` 有总超时（豆包工作的 MCP 客户端里明确有 `TOOL_CALL_TIMEOUT`）。
+
+**所以分析一律在后台进程执行**：
+
+```
+teaming_analyze_meeting → 立刻返回 status=running + job_id
+teaming_job_status      → 轮询取结果
+```
+
+这样即使宿主等不及、工具调用超时，**分析也会跑完并落账本**，随时能取回——不会白烧一次模型调用。
 
 ---
 

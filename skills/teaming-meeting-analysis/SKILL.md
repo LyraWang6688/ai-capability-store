@@ -15,14 +15,15 @@ visibility: "public"
 
 **这是观察工具，不是考核工具。**
 
-本技能依赖 `teaming-mcp` 连接器（本地 stdio MCP），它提供 4 个工具：
+本技能依赖 `teaming-mcp` 连接器（本地 stdio MCP），它提供 5 个工具：
 
 | 工具 | 用途 | 副作用 |
 |---|---|---|
 | `teaming_doctor` | 体检：飞书授权、分析凭证、引擎是否就绪 | 无 |
 | `teaming_list_meetings` | 列出近期会议，并标注哪场有逐字稿 | 无 |
 | `teaming_read_report` | 读某场会已生成的报告摘要 | 无 |
-| `teaming_analyze_meeting` | 对一场会做分析，产出报告 | 有（落盘 + 可选推送） |
+| `teaming_analyze_meeting` | 对一场会做分析，产出报告 | 有（落盘） |
+| `teaming_job_status` | 查分析任务进度 | 无 |
 
 ---
 
@@ -53,9 +54,15 @@ visibility: "public"
 
 ### 第 3 步：没有报告才分析
 
-调 `teaming_analyze_meeting(meeting_id)`。
+调 `teaming_analyze_meeting(meeting_id)`。它会自动复用已有报告，不会重复消耗。
 
-**如果返回超时或失败**，按返回的 `fallback_command` 在**终端**执行（终端没有工具调用超时限制）。不要反复重试同一个工具调用。
+**返回 `status="running"` 时不要重试分析**——分析已经在后台跑了，重试只会再起一个。
+
+按返回的 `job_id` 调 `teaming_job_status` 取结果。间隔大约 30 秒查一次，通常 1~3 次就有结果。
+
+> 为什么要这样设计：单次分析要 60~120 秒，可能超过宿主的工具调用超时。
+> 分析放在后台进程执行，**等待超时不会让这一分钟算力白费**，结果随时能取。
+> 用户问"还要多久"时，如实说"通常一两分钟"。
 
 ### 第 4 步：呈现结果
 
@@ -117,7 +124,8 @@ node <项目>/src/cli.mjs push <report_path> --chat <chat_id>
 |---|---|
 | `teaming_doctor` 报飞书未授权 | 让用户在终端执行 `lark-cli auth login --recommend` 后重试 |
 | 会议 `analyzable=false` | 说明该会议没有逐字稿，AI 纪要无法替代原始发言，换一场 |
-| 分析返回超时 | 给用户 `fallback_command`，让他在终端跑 |
+| 分析返回 `status=running` | 正常。用 `teaming_job_status` 轮询，**不要重新发起分析** |
+| 分析返回 `status=failed` | 按返回的 `error` 说明原因；逐字稿缺失的换一场会 |
 | 逐字稿过短 | 说明证据不足以支撑判断，可以给有限观察但不下区域结论 |
 | 用户要求评价某个人 | 说明本技能只观察会议中的行为与互动，不评价个人 |
 

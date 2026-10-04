@@ -18,6 +18,7 @@ import { searchMeetings, meetingDetail, fetchTranscript, findSelfChatId, LarkErr
 import { analysisReadiness } from './analysis.mjs';
 import { renderReportMarkdown } from './render.mjs';
 import { analyzeMeeting, pushReport, handleMinuteEvent } from './pipeline.mjs';
+import { writeJob } from './jobs.mjs';
 
 const argv = process.argv.slice(2);
 const cmd = argv[0];
@@ -104,18 +105,36 @@ function cmdTranscript() {
 }
 
 async function cmdAnalyze() {
-  const id = positional[0] || die('用法：teaming analyze <meetingId> [--json]');
-  const r = await analyzeMeeting(id, {
-    onProgress: (e) => {
-      if (e.step === 'detail') log(`[2/4] ${e.detail.topic}（${e.detail.startTime}）`);
-      else if (e.step === 'note') log(`      ${e.message}`);
-      else if (e.step === 'transcript') log(`[3/4] 逐字稿 ${e.turns} 条发言`);
-      else if (e.step === 'analyzed') log(`[4/4] 分析完成（${e.seconds} 秒）`);
-    },
-  });
-  const zone = r.report.teamState?.zoneLabel || r.report.teamState?.zone || '未定位';
-  log(`\n区域定位：${zone}\n报告：${r.reportPath}\n逐字稿：${r.transcriptPath}`);
-  if (flags.json) out(JSON.stringify({ reportPath: r.reportPath, transcriptPath: r.transcriptPath, zone, topic: r.topic, meetingId: r.meetingId }));
+  const id = positional[0] || die('用法：teaming analyze <meetingId> [--json] [--job-id <id>]');
+  const jobId = flags['job-id'];
+  if (jobId) writeJob(jobId, { status: 'running', meetingId: id, startedAt: new Date().toISOString(), pid: process.pid });
+  try {
+    const r = await analyzeMeeting(id, {
+      onProgress: (e) => {
+        if (e.step === 'detail') log(`[2/4] ${e.detail.topic}（${e.detail.startTime}）`);
+        else if (e.step === 'note') log(`      ${e.message}`);
+        else if (e.step === 'transcript') log(`[3/4] 逐字稿 ${e.turns} 条发言`);
+        else if (e.step === 'analyzed') log(`[4/4] 分析完成（${e.seconds} 秒）`);
+      },
+    });
+    const zone = r.report.teamState?.zoneLabel || r.report.teamState?.zone || '未定位';
+    if (jobId) {
+      writeJob(jobId, {
+        status: 'done', finishedAt: new Date().toISOString(),
+        reportPath: r.reportPath, transcriptPath: r.transcriptPath, topic: r.topic, zone,
+      });
+    }
+    log(`\n区域定位：${zone}\n报告：${r.reportPath}\n逐字稿：${r.transcriptPath}`);
+    if (flags.json) out(JSON.stringify({ reportPath: r.reportPath, transcriptPath: r.transcriptPath, zone, topic: r.topic, meetingId: r.meetingId }));
+  } catch (e) {
+    if (jobId) {
+      writeJob(jobId, {
+        status: 'failed', finishedAt: new Date().toISOString(),
+        error: String(e?.message || e).slice(0, 500), kind: e?.kind || null,
+      });
+    }
+    throw e;
+  }
 }
 
 function cmdPush() {
