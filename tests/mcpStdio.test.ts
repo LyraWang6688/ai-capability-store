@@ -13,7 +13,16 @@ import { StdioMcpClient, assertStdoutPristine, nodeEnv, srcFile } from "./helper
 import { makeTempDir, writeBundle, type TempDir } from "./helpers/fixtures.js";
 
 const SERVER = srcFile("mcpServer.js");
-const TOOL_NAMES = ["get_wechat_draft", "inspect_wechat_article", "upload_wechat_draft", "wechat_draft_status"];
+const TOOL_NAMES = [
+  "delete_wechat_draft",
+  "delete_wechat_material",
+  "delete_wechat_published",
+  "get_wechat_draft",
+  "inspect_wechat_article",
+  "update_wechat_draft",
+  "upload_wechat_draft",
+  "wechat_draft_status"
+].sort();
 const PACKAGE_VERSION = (
   JSON.parse(
     await readFile(fileURLToPath(new URL("../../package.json", import.meta.url)), "utf8")
@@ -45,7 +54,7 @@ describe("mcpServer：stdio 协议", () => {
     await temp.cleanup();
   });
 
-  test("握手 + tools/list：暴露 4 个工具，stdout 全程纯净", async () => {
+  test("握手 + tools/list：暴露 8 个工具，stdout 全程纯净", async () => {
     const client = await startClient();
     try {
       const response = await client.request("tools/list");

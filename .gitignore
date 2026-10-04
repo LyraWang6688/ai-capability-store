@@ -25,3 +25,6 @@ HANDOFF.md
 # 调研过程中的原始抓取数据（体积大，不进版本库；结论已沉淀到 docs/）
 .research/
 .xhs-research/
+
+# headless Chrome 用户目录（渲染 PDF/截图时产生，不进版本库）
+.chrome-tmp/

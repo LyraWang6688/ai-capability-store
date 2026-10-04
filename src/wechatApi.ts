@@ -76,6 +76,13 @@ export type DraftArticle = {
   image_info?: { image_list: Array<{ image_media_id: string }> };
   need_open_comment?: 0 | 1;
   only_fans_can_comment?: 0 | 1;
+  /** 封面是否显示在正文顶部。更新草稿时必须原样回传，否则会被重置。 */
+  show_cover_pic?: 0 | 1;
+  /**
+   * 封面裁切信息（微信返回的 crop_percent_list）。
+   * 更新草稿时必须原样回传：不回传会丢掉用户手工选的裁切比例。
+   */
+  cover_info?: Record<string, unknown>;
 };
 
 export function createWechatApi(options: WechatApiOptions) {
@@ -205,6 +212,55 @@ export function createWechatApi(options: WechatApiOptions) {
       ensureCredentialShape(options.credentials);
       await ensureToken();
       return raw<Record<string, unknown>>("draft/get", { json: { media_id: mediaId } });
+    },
+
+    /**
+     * 原地更新草稿正文（覆盖）。
+     * 调用方**必须**先备份当前正文，并在更新后读回核验。
+     */
+    async updateDraft(mediaId: string, article: DraftArticle): Promise<void> {
+      ensureCredentialShape(options.credentials);
+      await ensureToken();
+      await raw<Record<string, unknown>>("draft/update", {
+        json: { media_id: mediaId, index: 0, articles: stripUndefined(article) }
+      });
+    },
+
+    /**
+     * 删除草稿（不可逆，微信不提供恢复）。
+     * 调用方**必须**已完成备份与二次确认；本函数只负责调接口。
+     */
+    async deleteDraft(mediaId: string): Promise<void> {
+      ensureCredentialShape(options.credentials);
+      await ensureToken();
+      await raw<Record<string, unknown>>("draft/delete", { json: { media_id: mediaId } });
+    },
+
+    /**
+     * 删除永久素材（如封面图）。
+     * 注意：素材可能被其他草稿/已发布文章引用，删除前应确认引用关系。
+     */
+    async deleteMaterial(mediaId: string): Promise<void> {
+      ensureCredentialShape(options.credentials);
+      await ensureToken();
+      await raw<Record<string, unknown>>("material/del_material", { json: { media_id: mediaId } });
+    },
+
+    /** 读取已发布图文（删除前备份用）。 */
+    async getPublishedArticle(articleId: string): Promise<Record<string, unknown>> {
+      ensureCredentialShape(options.credentials);
+      await ensureToken();
+      return raw<Record<string, unknown>>("freepublish/getarticle", { json: { article_id: articleId } });
+    },
+
+    /**
+     * 删除已发布的文章（最高危：动的是线上内容）。
+     * 调用方**必须**先备份（getPublishedArticle）并完成二次确认。
+     */
+    async deletePublishedArticle(articleId: string, index = 0): Promise<void> {
+      ensureCredentialShape(options.credentials);
+      await ensureToken();
+      await raw<Record<string, unknown>>("freepublish/delete", { json: { article_id: articleId, index } });
     },
 
     /** 无副作用的权限探测：能读到草稿总数即说明草稿箱接口已授权。 */

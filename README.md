@@ -1,8 +1,11 @@
 # wechat-draft-mcp
 
-本地 MCP 服务：把一个磁盘上的文章文件夹，创建成微信公众号草稿。
+本地 MCP 服务：把一个磁盘上的文章文件夹，创建或**原地更新**微信公众号草稿。
 
-**只创建草稿。不发布、不群发、不删除、不改动公众号任何设置。**
+**默认只创建草稿，不发布、不群发、不改动公众号任何设置。**
+0.3.0 起按需开放三类破坏性操作（更新草稿 / 删除草稿 / 删除永久素材 / 删除已发布文章），
+**默认全部关闭**：需要宿主显式设置 `WECHAT_ALLOW_DESTRUCTIVE=1`，且每条删除都要二次确认（目标 ID 后 6 位），
+执行前自动备份到本地、执行后写入审计日志。
 
 ## 这是什么
 
@@ -17,7 +20,9 @@
 | **先记账，再动手** | 第一次微信副作用之前必须先落盘 `creating`。此后任何异常都属于「结果未知」，禁止自动重试 |
 | **内容指纹幂等** | 同一账号 + 同一内容重复调用返回既有草稿，不会重复创建 |
 | **凭证不出本机** | AppID/AppSecret 由 Host 注入环境变量；本服务不读 `.env`、不持久化密钥、不把密钥返回给模型 |
-| **只创建草稿** | 正式发布始终由用户在公众号后台人工完成 |
+| **只创建草稿（默认）** | 正式发布始终由用户在公众号后台人工完成 |
+| **破坏性操作四道门** | ① `WECHAT_ALLOW_DESTRUCTIVE=1`（默认关）② `confirm` = 目标 ID 后 6 位 ③ 先备份到 `state/backups/` ④ 写入 `state/audit.jsonl` |
+| **更新保留线上字段** | `draft/update` 只替换正文；标题、作者、摘要、封面及其裁切信息、评论设置一律原样回传 |
 
 ## 工具
 
@@ -27,6 +32,10 @@
 | `inspect_wechat_article` | 预检文章文件夹 | 无 |
 | `upload_wechat_draft` | 创建公众号草稿 | 有（仅草稿） |
 | `get_wechat_draft` | 按 media_id 读回草稿 | 无 |
+| `update_wechat_draft` | **原地更新**已有草稿的正文（可 `dry_run` 演练） | 有（覆盖正文，改前自动备份） |
+| `delete_wechat_draft` | 删除草稿（不可逆） | ⚠️ 破坏性，需开关 + 确认 |
+| `delete_wechat_material` | 删除永久素材（如封面图） | ⚠️ 破坏性，需开关 + 确认 |
+| `delete_wechat_published` | 删除**已发布**文章（最高危） | ⚠️ 需开关 + 确认 + `i_understand_published_deletion=true` |
 
 ## 文章文件夹结构
 
@@ -91,6 +100,8 @@ node dist/mcpServer.js
 node --env-file=.env dist/cli.js doctor
 node --env-file=.env dist/cli.js inspect "/绝对路径/文章目录"
 node --env-file=.env dist/cli.js upload  "/绝对路径/文章目录"
+node --env-file=.env dist/cli.js update  "/绝对路径/文章目录" --media-id <草稿ID> [--with-meta] [--with-cover] [--dry-run]
+node --env-file=.env dist/cli.js audit --limit 20
 ```
 
 ## 测试
