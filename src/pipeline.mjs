@@ -9,7 +9,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import {
-  searchMeetings, meetingDetail, fetchTranscript, sendMessage, createDoc, LarkError,
+  searchMeetings, meetingDetail, meetingDetailsBatch, fetchTranscript, sendMessage, createDoc, LarkError,
 } from './lark.mjs';
 import { analyze } from './analysis.mjs';
 import { renderReportCard, renderReportDoc } from './render.mjs';
@@ -190,10 +190,25 @@ export async function handleMinuteEvent(ev, { chatId, userId, onProgress = () =>
  */
 export async function listMeetingsWithEligibility({ days = 30, query = '', verify = false } = {}) {
   const meetings = searchMeetings({ days, query });
+  // 一次批量取详情，避免 N+1（实测 15 场逐场查要 12 秒，批量 1 秒内）
+  // 批量失败时退回逐场：宁可慢，也不能让整份清单静默降级成"全都不可分析"。
+  let details = new Map();
+  try {
+    details = await meetingDetailsBatch(meetings.map((m) => m.meetingId));
+  } catch (batchError) {
+    process.stderr.write(`[warn] 批量取会议详情失败，退回逐场查询：${
+      String(batchError?.message || batchError).split('\n')[0]}\n`);
+    for (const m of meetings) {
+      try {
+        const d = meetingDetail(m.meetingId);
+        if (d) details.set(m.meetingId, d);
+      } catch { /* 单场失败就跳过该场，不影响其他场 */ }
+    }
+  }
+
   const out = [];
   for (const m of meetings) {
-    let detail = null;
-    try { detail = meetingDetail(m.meetingId); } catch { detail = null; }
+    const detail = details.get(m.meetingId) || null;
     const hasMinute = Boolean(detail?.minuteToken);
     const minuteReadable = hasMinute && !detail.minuteDenied;
 

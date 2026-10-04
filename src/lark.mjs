@@ -8,12 +8,14 @@
  *
  * 约定：所有函数失败时抛 Error（消息面向用户），不返回裸错误对象。
  */
-import { execFileSync } from 'node:child_process';
+import { execFile, execFileSync } from 'node:child_process';
+import { promisify } from 'node:util';
 import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';   // 仅作为 /tmp 不可用时的兜底
 import { dirname, join } from 'node:path';
 
 const LARK = process.env.LARK_CLI || 'lark-cli';
+const execFileAsync = promisify(execFile);
 
 /**
  * 调 lark-cli 时用的环境变量。
@@ -123,6 +125,51 @@ export function searchMeetings({ days = 30, query = '' } = {}) {
       hasDoc: info.includes('云文档'),
     };
   }).filter((m) => !query || m.title.includes(query));
+}
+
+/**
+ * 批量取会议详情。
+ *
+ * 两个性能坑（都实测过）：
+ * 1. 逐场调用是 N+1——15 场要 12 秒，必然撞宿主的 tools/call 总超时
+ * 2. 即使一次传 15 个 ID，服务端**仍是逐场串行查**——实测 9.7 秒
+ *
+ * 所以这里切成小块**并发**跑：实测 15 场从 9.7 秒降到 2 秒级。
+ * 并发上限保守取 4，避免触发限流。
+ */
+export async function meetingDetailsBatch(meetingIds, { chunkSize = 3, concurrency = 4 } = {}) {
+  const ids = [...new Set(meetingIds.filter(Boolean))];
+  const chunks = [];
+  for (let i = 0; i < ids.length; i += chunkSize) chunks.push(ids.slice(i, i + chunkSize));
+
+  const result = new Map();
+  for (let i = 0; i < chunks.length; i += concurrency) {
+    const wave = chunks.slice(i, i + concurrency);
+    const settled = await Promise.all(wave.map(async (chunk) => {
+      const { stdout } = await execFileAsync(LARK, [
+        'vc', '+detail', '--meeting-ids', chunk.join(','), '--as', 'user', '--format', 'json',
+      ], { encoding: 'utf8', maxBuffer: 32 * 1024 * 1024, env: spawnEnv() });
+      const text = String(stdout).trim();
+      const start = text.indexOf('{');
+      if (start < 0) throw new LarkError(`vc +detail 返回无法解析：${text.slice(0, 120)}`, { kind: 'lark_failed' });
+      return JSON.parse(text.slice(start));
+    }).map((pr) => pr.catch((e) => ({ __error: e }))));
+
+    for (const res of settled) {
+      if (res?.__error) throw res.__error;   // 让调用方决定是否降级，不静默吞
+      for (const mt of res?.data?.meetings || []) {
+        result.set(mt.meeting_id, {
+          meetingId: mt.meeting_id,
+          topic: mt.topic || '(无标题)',
+          startTime: mt.start_time || '',
+          noteId: mt.note_id || null,
+          minuteToken: mt.minute_token || null,
+          minuteDenied: /no permission/i.test(mt.hint || ''),
+        });
+      }
+    }
+  }
+  return result;
 }
 
 /** 会议详情：拿 note_id / minute_token，并识别妙记权限 */
