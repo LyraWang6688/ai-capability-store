@@ -19,7 +19,7 @@
 | 阶段 | 内容 | 状态 |
 |---|---|---|
 | **1** | 核心链路：取逐字稿 → 分析 → 推送 | 🟢 **已用真实会议端到端跑通** |
-| **2** | 装进宿主（MCP + Skill） | 🟡 MCP 已实现并通过协议测试；**尚未在宿主里实测** |
+| **2** | 装进宿主（MCP + Skill） | 🟢 **已装入 WorkBuddy**（配置 + 技能），并在**模拟 GUI 宿主环境**下验证三个工具可调；待 App 重载后人工确认 |
 | **3** | 事件驱动自动触发（`watch`） | 🟡 逻辑已实现并用模拟事件验证；**未用真实事件验证** |
 | **4** | 多用户产品化 | ⬜ 未开始（见 §8） |
 
@@ -61,6 +61,7 @@
 | 用 `--user-id <自己的open_id>` 发消息会被拒 | 报 `99992351`。**必须用 `--chat-id`**（和自己单聊的 `oc_...`），`self-chat` 命令就是查这个 |
 | `lark-cli` 的妙记事件订阅**绑在 consume 进程生命周期上** | 官方文档明示：minutes/vc/board 类的 PreConsume 会注册服务端订阅，**退出时注销**，`kill -9` 会泄漏订阅 |
 | 分析结果有跑次差异 | 同一份逐字稿两次分析，一次判「可能是冷漠区或舒适区」，一次判「证据不足，暂不定位」。方向一致（都谨慎），但边界不稳定 |
+| **GUI 宿主 PATH 不含 `/usr/local/bin`，光给 lark-cli 绝对路径也没用** | `lark-cli` 的 shebang 是 `#!/usr/bin/env node`，宿主 PATH 里找不到 node → ENOENT，极易被误判成"没装 lark-cli"。修法：由我们的 spawn 自己前置 PATH（`src/lark.mjs` 的 `SPAWN_ENV`） |
 | AI 摘要**不能**替代逐字稿 | 团队动力分析需要成员原始发言；只有 AI 纪要时应当直接告诉用户无法分析 |
 
 ---
@@ -105,6 +106,8 @@ teaming-bot/src/types/{index,v1,v2}.ts
 | 正则 `/^[uo]_/` 匹配 `ou_xxx` | 匹配不到（`ou` 后是 `u` 不是 `_`）。写 `/^ou_/` 或 `startsWith` |
 | `node --test <目录>` 在本机报错 | 改成 `node --test tests/*.test.mjs` |
 | GUI 进程不继承 shell PATH | MCP 配置里 `command` 必须写 `/usr/local/bin/node` 绝对路径 |
+| **只解决"我们的 command"不够** | 我们 spawn 出去的 lark-cli 同样受宿主 PATH 影响。它的 shebang `#!/usr/bin/env node` 会失败。**必须由代码自己补 PATH**，不能只靠配置文件 |
+| 体检漏检查 lark-cli | 早期 `teaming_doctor` 只查引擎，导致"体检通过但飞书工具全挂"。现在 `larkReadiness()` 覆盖 lark-cli 存在性、授权与 scope |
 | 改了 `src/` 忘了重载宿主 | 宿主不会自动重载连接器，要关闭再打开开关或重启 App |
 
 ---

@@ -9,8 +9,29 @@
  * 约定：所有函数失败时抛 Error（消息面向用户），不返回裸错误对象。
  */
 import { execFileSync } from 'node:child_process';
+import { dirname } from 'node:path';
 
 const LARK = process.env.LARK_CLI || 'lark-cli';
+
+/**
+ * 调 lark-cli 时用的环境变量。
+ *
+ * 为什么必须显式补 PATH：GUI 宿主（豆包工作 / WorkBuddy）不继承 shell 的 PATH，
+ * 通常是 `/usr/bin:/bin:/usr/sbin:/sbin`。而 lark-cli 的 shebang 是
+ * `#!/usr/bin/env node`，node 装在 /usr/local/bin —— 于是即使给了 lark-cli 的
+ * 绝对路径，它自己也起不来（表现为 ENOENT，很容易被误判成"没装"）。
+ *
+ * 做法：把 node 自己所在目录和常见的用户 bin 目录前置到 PATH。
+ */
+const SPAWN_ENV = (() => {
+  const extra = [
+    dirname(process.execPath),   // node 所在目录，保证 `#!/usr/bin/env node` 能找到
+    '/usr/local/bin',
+    '/opt/homebrew/bin',
+  ];
+  const cur = (process.env.PATH || '').split(':').filter(Boolean);
+  return { ...process.env, PATH: [...new Set([...extra, ...cur])].join(':') };
+})();
 
 export class LarkError extends Error {
   constructor(message, { kind = 'unknown', raw = '' } = {}) {
@@ -29,6 +50,7 @@ export function larkJson(args, { allowFail = false } = {}) {
       encoding: 'utf8',
       maxBuffer: 64 * 1024 * 1024,
       stdio: ['ignore', 'pipe', 'pipe'],
+      env: SPAWN_ENV,
     });
   } catch (e) {
     if (allowFail) return null;
@@ -205,6 +227,47 @@ export function findSelfChatId() {
   const self = chats.find((c) => c.p2p_target_type === 'user' && String(c.p2p_target_id || '').startsWith('ou_'));
   return self?.chat_id || null;
 }
+
+/**
+ * 飞书侧的就绪检查（只读、不联网之外的副作用）。
+ *
+ * 之所以单独抽出来：GUI 宿主不继承 shell 的 PATH，
+ * lark-cli 很可能不在宿主进程的 PATH 里——这会让所有飞书工具静默失效。
+ * 因此体检必须显式覆盖这一项。
+ */
+export function larkReadiness() {
+  const problems = [];
+  let version = '';
+  try {
+    version = execFileSync(LARK, ['--version'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], env: SPAWN_ENV }).trim();
+  } catch {
+    problems.push(
+      `找不到 lark-cli（当前按 "${LARK}" 查找）。\n`
+      + '  下一步：npm install -g @larksuite/cli，'
+      + '并在宿主配置里用 LARK_CLI 指向它的绝对路径（GUI 宿主不继承 shell 的 PATH）。',
+    );
+    return { ready: false, problems, version: null, userName: null, scopes: '' };
+  }
+
+  let userName = null; let scopes = '';
+  try {
+    const s = JSON.parse(execFileSync(LARK, ['auth', 'status'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], env: SPAWN_ENV }));
+    const u = s?.identities?.user;
+    if (u?.status === 'ready') { userName = u.userName || null; scopes = u.scope || ''; }
+    else problems.push('飞书未授权。下一步：lark-cli auth login --recommend');
+  } catch {
+    problems.push('读取飞书授权状态失败。下一步：lark-cli auth login --recommend');
+  }
+
+  if (userName) {
+    if (!scopes.includes('vc:meeting.search:read')) problems.push('缺少会议搜索权限。下一步：lark-cli auth login --recommend');
+    if (!scopes.includes('minutes:minutes:readonly') && !scopes.includes('minutes:minutes.basic:read')) {
+      problems.push('缺少妙记读取权限。下一步：lark-cli auth login --recommend');
+    }
+  }
+  return { ready: problems.length === 0, problems, version, userName, scopes };
+}
+
 
 /**
  * 发飞书消息。idempotencyKey 由调用方固定，重试不会产生重复消息。

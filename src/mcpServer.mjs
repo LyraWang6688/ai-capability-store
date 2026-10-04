@@ -22,7 +22,7 @@ console.info = console.log; console.warn = console.log; console.debug = console.
 import { readFileSync } from 'node:fs';
 
 import { analysisReadiness } from './analysis.mjs';
-import { searchMeetings } from './lark.mjs';
+import { searchMeetings, larkReadiness } from './lark.mjs';
 import { reportDigest } from './render.mjs';
 import { analyzeMeeting, readReport } from './pipeline.mjs';
 
@@ -89,12 +89,18 @@ const clean = (s, max = 300) => String(s ?? '').replace(/\s+/g, ' ').trim().slic
 
 async function callTool(name, args) {
   if (name === 'teaming_doctor') {
-    const ready = analysisReadiness();
+    const engine = analysisReadiness();
+    const lark = larkReadiness();
+    const problems = [...lark.problems, ...engine.problems];
     return {
-      engine_ready: ready.ready,
-      engine_path: ready.enginePath,
-      problems: ready.problems,
-      hint: ready.ready ? '环境就绪。' : '按 problems 里的「下一步」处理后重试。',
+      ready: problems.length === 0,
+      lark_cli: lark.version || null,
+      feishu_user: lark.userName || null,
+      engine_path: engine.enginePath,
+      problems,
+      hint: problems.length
+        ? '按 problems 里每条后面的「下一步」处理后重试。'
+        : `环境就绪（飞书身份 ${lark.userName}）。`,
     };
   }
 
