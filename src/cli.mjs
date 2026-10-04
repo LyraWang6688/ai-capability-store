@@ -14,10 +14,10 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { execFileSync, spawn } from 'node:child_process';
 
-import { searchMeetings, meetingDetail, fetchTranscript, findSelfChatId, LarkError } from './lark.mjs';
+import { meetingDetail, fetchTranscript, findSelfChatId, LarkError } from './lark.mjs';
 import { analysisReadiness } from './analysis.mjs';
 import { renderReportCard } from './render.mjs';
-import { analyzeMeeting, pushReport, handleMinuteEvent } from './pipeline.mjs';
+import { analyzeMeeting, pushReport, handleMinuteEvent, listMeetingsWithEligibility } from './pipeline.mjs';
 import { writeJob } from './jobs.mjs';
 
 const argv = process.argv.slice(2);
@@ -85,14 +85,19 @@ function cmdDoctor() {
   process.exit(failed.length ? 1 : 0);
 }
 
-function cmdMeetings() {
-  const list = searchMeetings({ days: parseMinutes(flags.days), query: flags.query || '' });
+async function cmdMeetings() {
+  const list = await listMeetingsWithEligibility({
+    days: parseMinutes(flags.days), query: flags.query || '', verify: flags.verify === true,
+  });
   if (flags.json) { out(JSON.stringify({ meetings: list }, null, 2)); return; }
-  log(`共 ${list.length} 场：\n`);
+  const ok = list.filter((m) => m.analyzable).length;
+  log(`共 ${list.length} 场，其中 ${ok} 场可分析：\n`);
   for (const m of list) {
-    const tags = [m.hasRecording ? '有录制' : '', m.hasDoc ? '有智能纪要' : ''].filter(Boolean).join('+') || '无产物';
-    log(`  ${m.meetingId}  ${m.title.slice(0, 30).padEnd(32)} ${tags}`);
+    const mark = m.analyzable ? '✅' : '❌';
+    const why = m.reason ? `  (${m.reason})` : '';
+    log(`  ${mark} ${m.meetingId}  ${m.title.slice(0, 26).padEnd(28)}${why}`);
   }
+  log('\n只认妙记文字转录稿；no_minute=没录制，minute_permission_denied=妙记无权限。');
 }
 
 function cmdTranscript() {
@@ -219,7 +224,7 @@ teaming —— 会议动力分析 CLI
 async function main() {
   switch (cmd) {
     case 'doctor': cmdDoctor(); break;
-    case 'meetings': cmdMeetings(); break;
+    case 'meetings': await cmdMeetings(); break;
     case 'transcript': cmdTranscript(); break;
     case 'analyze': await cmdAnalyze(); break;
     case 'push': await cmdPush(); break;

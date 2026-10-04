@@ -181,6 +181,52 @@ export async function handleMinuteEvent(ev, { chatId, userId, onProgress = () =>
   return { skipped: false, ...result, pushed };
 }
 
+/**
+ * 列出近期会议，并标注**能不能真的做分析**。
+ *
+ * 产品只认妙记转录稿，所以判断依据是「有妙记 token 且妙记可读」，
+ * **不能用"有智能纪要"来充数**——那种会议分析不了。
+ * 默认只做便宜判断（详情接口会给 minuteDenied）；verify=true 时逐场实测取稿。
+ */
+export async function listMeetingsWithEligibility({ days = 30, query = '', verify = false } = {}) {
+  const meetings = searchMeetings({ days, query });
+  const out = [];
+  for (const m of meetings) {
+    let detail = null;
+    try { detail = meetingDetail(m.meetingId); } catch { detail = null; }
+    const hasMinute = Boolean(detail?.minuteToken);
+    const minuteReadable = hasMinute && !detail.minuteDenied;
+
+    let analyzable = minuteReadable;
+    let reason = minuteReadable ? null
+      : !hasMinute ? 'no_minute'
+        : 'minute_permission_denied';
+
+    if (verify && analyzable) {
+      try {
+        const t = fetchTranscript({ minuteToken: detail.minuteToken, topic: detail.topic });
+        const turns = t.split('\n').filter((l) => /^.{1,48}?\s+\d{1,2}:\d{2}/.test(l)).length;
+        analyzable = turns >= 4;
+        if (!analyzable) reason = 'transcript_too_short';
+      } catch {
+        analyzable = false;
+        reason = 'transcript_unavailable';
+      }
+    }
+
+    out.push({
+      meetingId: m.meetingId,
+      title: detail?.topic || m.title,
+      startTime: detail?.startTime || null,
+      hasMinute,
+      minuteReadable,
+      analyzable,
+      reason,
+    });
+  }
+  return out;
+}
+
 /** 本地已处理的会议台账（给 MCP 的 list 用，避免重复推荐） */
 export function analyzedMeetings() {
   if (!existsSync(OUT_DIR)) return [];

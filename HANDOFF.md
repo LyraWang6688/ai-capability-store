@@ -55,7 +55,7 @@
 |---|---|
 | 飞书逐字稿有**两条可取路径** | ① 妙记：`minutes +detail --minute-tokens <t> --transcript --output-dir /tmp/...` → 从返回的 `artifacts.transcript_file` 读文件；② 智能纪要：`note +detail` 拿 `verbatim_doc_token` → `docs +fetch` 取 HTML 再转换。**两条都要保留**：实测 15 场会里 8 场只有妙记、2 场只有智能纪要 |
 | **妙记路径的三个必要条件**（少一个就整个走不通） | ① flag 是 `--minute-tokens`（**复数**，单数会报 unknown flag）；② 必须显式传 `--transcript`，否则只返回基本信息；③ `--output-dir` 只允许 **cwd / `/tmp` / `~/files`**——macOS 的 `os.tmpdir()` 返回 `/var/folders/...`，**会被拒绝** |
-| 真实会议取数成功率 | 实测 15 场：**10 场能取到逐字稿**，5 场失败（都是没有录制/妙记的会，属正常）。妙记路径 8 场、智能纪要路径 2 场 |
+| 真实会议可分析率 | **只认妙记后，实测 15 场里 8 场可分析**。不可分析的 7 场全是 `no_minute`（没录制）。<br>⚠️ 更早一次统计出"10 场成功"是**被智能纪要 fallback 撑高的**——那 2 场实际不可分析，按产品规则应当拒绝 |
 | 有会议**逐字稿很短** | 实测最短 3 行。`src/analysis.mjs` 有 `transcript_too_short`（<50 字）拦截，但 10 余行的会仍会跑，产出会很薄——产品上要考虑是否加更严的门槛 |
 | 逐字稿格式是 HTML，且 `<title>` 必须剥掉 | 不剥会粘到第一条发言上污染发言人姓名。**这是测试抓出来的真 bug** |
 | 引擎认 `姓名 MM:SS 发言` 这个形状 | 见 `src/engine-src/lib/analysis/transcript.ts` 的 `matchSpeakerLine` |

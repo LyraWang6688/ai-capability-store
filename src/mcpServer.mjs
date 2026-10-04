@@ -25,9 +25,9 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { analysisReadiness } from './analysis.mjs';
-import { searchMeetings, larkReadiness, findSelfChatId } from './lark.mjs';
+import { larkReadiness, findSelfChatId } from './lark.mjs';
 import { reportDigest } from './render.mjs';
-import { readReport, pushReport } from './pipeline.mjs';
+import { readReport, pushReport, listMeetingsWithEligibility } from './pipeline.mjs';
 import { newJobId, writeJob, readJob, waitForJob, pruneJobs } from './jobs.mjs';
 
 const CLI = process.env.TEAMING_CLI || join(dirname(fileURLToPath(import.meta.url)), 'cli.mjs');
@@ -55,6 +55,7 @@ const TOOLS = [
       properties: {
         days: { type: 'integer', minimum: 1, maximum: 90, description: '回溯天数，默认 30' },
         query: { type: 'string', description: '按标题关键词过滤，可省略' },
+        verify: { type: 'boolean', description: '是否逐场实测能否取到转录稿（更准但更慢），默认 false' },
       },
       additionalProperties: false,
     },
@@ -148,17 +149,21 @@ async function callTool(name, args) {
   }
 
   if (name === 'teaming_list_meetings') {
-    const list = searchMeetings({ days: args.days || 30, query: args.query || '' });
+    const list = await listMeetingsWithEligibility({
+      days: args.days || 30, query: args.query || '', verify: args.verify === true,
+    });
     return {
       count: list.length,
+      analyzable_count: list.filter((m) => m.analyzable).length,
       meetings: list.map((m) => ({
         meeting_id: m.meetingId,
         title: m.title,
-        has_recording: m.hasRecording,
-        has_ai_notes: m.hasDoc,
-        analyzable: m.hasRecording || m.hasDoc,
+        start_time: m.startTime,
+        analyzable: m.analyzable,
+        reason: m.reason,
       })),
-      hint: 'analyzable=false 的会议没有逐字稿，无法做团队动力分析。',
+      hint: '只能分析 analyzable=true 的会议——产品只认妙记的文字转录稿。'
+        + 'reason=no_minute 表示没录制；minute_permission_denied 表示妙记无权限。',
     };
   }
 

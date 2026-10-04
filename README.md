@@ -90,7 +90,7 @@ node src/cli.mjs doctor
 | 工具 | 副作用 | 用途 |
 |---|---|---|
 | `teaming_doctor` | 无 | 体检：lark-cli、飞书授权与 scope、分析凭证、引擎 |
-| `teaming_list_meetings` | 无 | 列出近期会议，标注哪场有逐字稿 |
+| `teaming_list_meetings` | 无 | 列出近期会议，标明**哪场真的能分析**（只认妙记转录稿） |
 | `teaming_read_report` | 无 | 读已生成报告的摘要 |
 | `teaming_analyze_meeting` | 有 | 分析一场会；已有报告会复用 |
 | `teaming_job_status` | 无 | 查分析任务进度 |
