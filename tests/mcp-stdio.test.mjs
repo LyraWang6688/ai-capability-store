@@ -63,10 +63,11 @@ test('MCP 握手 + 工具清单 + stdout 纯净性', async () => {
     assert.ok(listed, 'tools/list 应有响应');
 
     const tools = listed.result.tools;
-    assert.ok(tools.length >= 4, `至少 4 个工具，实际 ${tools.length}`);
+    assert.ok(tools.length >= 6, `至少 6 个工具，实际 ${tools.length}`);
 
     const names = tools.map((t) => t.name);
-    for (const required of ['teaming_doctor', 'teaming_list_meetings', 'teaming_read_report', 'teaming_analyze_meeting']) {
+    for (const required of ['teaming_doctor', 'teaming_list_meetings', 'teaming_read_report',
+      'teaming_analyze_meeting', 'teaming_job_status', 'teaming_push_report']) {
       assert.ok(names.includes(required), `缺少工具 ${required}`);
     }
 

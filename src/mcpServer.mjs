@@ -25,9 +25,9 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { analysisReadiness } from './analysis.mjs';
-import { searchMeetings, larkReadiness } from './lark.mjs';
+import { searchMeetings, larkReadiness, findSelfChatId } from './lark.mjs';
 import { reportDigest } from './render.mjs';
-import { readReport } from './pipeline.mjs';
+import { readReport, pushReport } from './pipeline.mjs';
 import { newJobId, writeJob, readJob, waitForJob, pruneJobs } from './jobs.mjs';
 
 const CLI = process.env.TEAMING_CLI || join(dirname(fileURLToPath(import.meta.url)), 'cli.mjs');
@@ -88,6 +88,24 @@ const TOOLS = [
         meeting_id: { type: 'string', description: '会议 ID' },
         wait_seconds: { type: 'integer', minimum: 0, maximum: 600, description: '最多内联等待多少秒，默认 45；填 0 则立即返回 job_id' },
         force: { type: 'boolean', description: '已有报告时是否强制重跑，默认 false' },
+      },
+      required: ['meeting_id'],
+      additionalProperties: false,
+    },
+    annotations: { readOnlyHint: false },
+  },
+  {
+    name: 'teaming_push_report',
+    description:
+      '把一场会议的分析报告作为**交互卡片**推送到飞书。'
+      + '什么时候用：用户说「把报告发我」「推送到飞书」「发我私信」时。'
+      + '不传 chat_id 就推给用户自己（自动查和自己的单聊）。'
+      + '推送是幂等的，重复调用不会产生重复消息。',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        meeting_id: { type: 'string', description: '会议 ID' },
+        chat_id: { type: 'string', description: '目标会话 ID；省略则推给用户自己' },
       },
       required: ['meeting_id'],
       additionalProperties: false,
@@ -202,6 +220,37 @@ async function callTool(name, args) {
       status: 'running', job_id: jobId, meeting_id: meetingId,
       hint: `分析在后台继续跑（通常 60~120 秒），不会因等待超时而丢失。`
         + `请稍后用 teaming_job_status 查 job_id=${jobId}。`,
+    };
+  }
+
+  if (name === 'teaming_push_report') {
+    const found = readReport(args.meeting_id);
+    if (!found) {
+      return {
+        ok: false,
+        hint: '这场会议还没有分析报告。请先用 teaming_analyze_meeting 生成。',
+      };
+    }
+    let chatId = args.chat_id || null;
+    if (!chatId) {
+      chatId = findSelfChatId();
+      if (!chatId) {
+        return {
+          ok: false,
+          hint: '找不到和你自己的单聊会话。请显式传 chat_id，'
+            + '或先在飞书里给自己发一条消息后重试。',
+        };
+      }
+    }
+    // 报告文件名约定为 <会议标题>-<meetingId>.report.json，从中还原标题
+    const meetingTitle = /^(.+)-\d+\.report\.json$/.exec(found.path.split('/').pop())?.[1] || undefined;
+    const r = pushReport(found.report, { chatId, meetingTitle });
+    return {
+      ok: true,
+      meeting_id: args.meeting_id,
+      chat_id: chatId,
+      message_id: r.messageId,
+      hint: '已作为交互卡片推送。',
     };
   }
 

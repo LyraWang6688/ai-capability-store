@@ -15,7 +15,7 @@ visibility: "public"
 
 **这是观察工具，不是考核工具。**
 
-本技能依赖 `teaming-mcp` 连接器（本地 stdio MCP），它提供 5 个工具：
+本技能依赖 `teaming-mcp` 连接器（本地 stdio MCP），它提供 6 个工具：
 
 | 工具 | 用途 | 副作用 |
 |---|---|---|
@@ -24,6 +24,7 @@ visibility: "public"
 | `teaming_read_report` | 读某场会已生成的报告摘要 | 无 |
 | `teaming_analyze_meeting` | 对一场会做分析，产出报告 | 有（落盘） |
 | `teaming_job_status` | 查分析任务进度 | 无 |
+| `teaming_push_report` | 把报告作为交互卡片推送到飞书 | 有（发消息，幂等） |
 
 ---
 
@@ -75,13 +76,18 @@ visibility: "public"
 
 ### 第 5 步：需要时推送
 
-用户要求推送时，用 CLI：
+用户说「把报告发我」「推送到飞书」时，调：
 
-```bash
-node <项目>/src/cli.mjs push <report_path> --chat <chat_id>
+```
+teaming_push_report(meeting_id)
 ```
 
-`chat_id` 用 `node <项目>/src/cli.mjs self-chat` 查（和自己单聊）。推送是**幂等**的，重复执行不会产生重复消息。
+不传 `chat_id` 就推给用户自己（连接器会自动查和他的单聊会话）。
+
+**推送形态是交互卡片**（蓝色标题栏 + 报告摘要 + 按钮），与团队 bot 线上一致。
+**推送是幂等的**：重复调用返回同一个 `message_id`，不会产生重复消息。
+
+> 不要自己拼消息文本去发。报告的统一形态是卡片，用这个工具。
 
 ---
 

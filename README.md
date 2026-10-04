@@ -94,6 +94,7 @@ node src/cli.mjs doctor
 | `teaming_read_report` | 无 | 读已生成报告的摘要 |
 | `teaming_analyze_meeting` | 有 | 分析一场会；已有报告会复用 |
 | `teaming_job_status` | 无 | 查分析任务进度 |
+| `teaming_push_report` | 有 | 把报告作为**交互卡片**推送到飞书（幂等） |
 
 ### 关于工具调用超时
 
