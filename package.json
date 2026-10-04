@@ -1,0 +1,39 @@
+{
+  "name": "teaming-mcp",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "会议动力分析 MCP：从飞书取会议逐字稿，按 Teaming 框架做团队动力分析，并把报告推送到飞书。可装进豆包工作 / WorkBuddy 等支持 MCP 的 AI 宿主。",
+  "license": "MIT",
+  "bin": {
+    "teaming": "./src/cli.mjs",
+    "teaming-mcp": "./src/mcpServer.mjs"
+  },
+  "files": [
+    "src",
+    "skills",
+    "dist/engine",
+    "README.md",
+    "HANDOFF.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "sync": "node scripts/sync-engine.mjs",
+    "build": "node scripts/sync-engine.mjs --build-only",
+    "test": "node --test tests/*.test.mjs",
+    "mcp": "node src/mcpServer.mjs",
+    "cli": "node src/cli.mjs",
+    "check:pack": "npm run build && npm test && npm pack --dry-run"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "feishu",
+    "lark",
+    "minutes",
+    "meeting",
+    "teaming"
+  ]
+}
