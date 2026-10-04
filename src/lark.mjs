@@ -271,12 +271,20 @@ export function larkReadiness() {
 
 /**
  * 发飞书消息。idempotencyKey 由调用方固定，重试不会产生重复消息。
+ *
+ * 传 card（对象）则发**交互卡片**；传 markdown 则发纯文本。
+ * 卡片是团队 bot 线上的形态，也是这里默认使用的形态。
  */
-export function sendMessage({ chatId, userId, markdown, idempotencyKey }) {
+export function sendMessage({ chatId, userId, markdown, card, idempotencyKey }) {
   if (!chatId && !userId) throw new LarkError('发送消息需要 chatId 或 userId。', { kind: 'bad_target' });
+  if (!card && !markdown) throw new LarkError('发送消息需要 card 或 markdown。', { kind: 'bad_payload' });
+
   const target = chatId ? ['--chat-id', chatId] : ['--user-id', userId];
-  const args = ['im', '+messages-send', ...target, '--markdown', markdown, '--as', 'user', '--format', 'json'];
+  const args = ['im', '+messages-send', ...target, '--as', 'user', '--format', 'json'];
+  if (card) args.push('--msg-type', 'interactive', '--content', JSON.stringify(card));
+  else args.push('--markdown', markdown);
   if (idempotencyKey) args.push('--idempotency-key', String(idempotencyKey).slice(0, 50));
+
   const res = larkJson(args);
   if (res?.ok === false) {
     throw new LarkError(`消息发送失败：${res.error?.message || '未知错误'}`, { kind: 'send_failed' });

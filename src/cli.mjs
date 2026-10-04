@@ -16,7 +16,7 @@ import { execFileSync, spawn } from 'node:child_process';
 
 import { searchMeetings, meetingDetail, fetchTranscript, findSelfChatId, LarkError } from './lark.mjs';
 import { analysisReadiness } from './analysis.mjs';
-import { renderReportMarkdown } from './render.mjs';
+import { renderReportCard } from './render.mjs';
 import { analyzeMeeting, pushReport, handleMinuteEvent } from './pipeline.mjs';
 import { writeJob } from './jobs.mjs';
 
@@ -141,7 +141,10 @@ function cmdPush() {
   const p = positional[0] || die('用法：teaming push <报告.json> [--chat <chat_id> | --to <open_id>]');
   const { fillChat } = parseTarget();
   const report = JSON.parse(readFileSync(p, 'utf8'));
-  if (flags['dry-run']) { out(renderReportMarkdown(report, { meetingTitle: flags.title, reportUrl: flags.url })); return; }
+  if (flags['dry-run']) {
+    out(JSON.stringify(renderReportCard(report, { meetingTitle: flags.title, reportUrl: flags.url }), null, 2));
+    return;
+  }
   const r = pushReport(report, { ...fillChat, meetingTitle: flags.title, reportUrl: flags.url });
   log(`已推送${r.messageId ? `（message_id=${r.messageId}）` : ''}`);
 }

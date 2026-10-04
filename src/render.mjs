@@ -10,6 +10,68 @@ const oneLine = (s, max = 120) => {
   return t.length > max ? `${t.slice(0, max)}…` : t;
 };
 
+/**
+ * 报告 → 飞书**交互卡片**。
+ *
+ * 结构与 teaming-bot 线上卡片对齐：蓝色标题栏 + 同样的大标题 + 动作按钮。
+ * 本机场景没有报告网页可跳，因此把报告摘要放进卡片正文，
+ * 有 reportUrl 时仍然给出「点击查看报告」按钮。
+ */
+export function renderReportCard(report, { meetingTitle, reportUrl } = {}) {
+  const ts = report.teamState || {};
+  const zone = ts.zoneLabel || ts.zone || '未定位';
+  const advice = (report.leaderAdvice || [])[0];
+  const elements = [];
+
+  if (meetingTitle) elements.push({ tag: 'markdown', content: `**会议名称：**${meetingTitle}` });
+  elements.push({ tag: 'hr' });
+  elements.push({ tag: 'markdown', content: `**区域定位**：${zone}` });
+  if (ts.psychologicalSafety?.summary) {
+    elements.push({ tag: 'markdown', content: `**心理安全**：${oneLine(ts.psychologicalSafety.summary, 180)}` });
+  }
+  if (ts.accountability?.summary) {
+    elements.push({ tag: 'markdown', content: `**高要求与问责**：${oneLine(ts.accountability.summary, 180)}` });
+  }
+
+  if (advice) {
+    elements.push({ tag: 'hr' });
+    elements.push({ tag: 'markdown', content: `**最优先建议**：${advice.advice || ''}` });
+    if (advice.reasoning) elements.push({ tag: 'markdown', content: oneLine(advice.reasoning, 180) });
+    if (advice.signalToWatch) elements.push({ tag: 'markdown', content: `_验收信号_：${oneLine(advice.signalToWatch, 140)}` });
+  }
+
+  const members = (report.communication || []).map((c) => c.name).filter(Boolean);
+  if (members.length) {
+    elements.push({ tag: 'markdown', content: `**参与成员**：${members.join('、')}` });
+  }
+
+  if (reportUrl) {
+    elements.push({
+      tag: 'action',
+      actions: [{
+        tag: 'button',
+        type: 'primary',
+        text: { tag: 'plain_text', content: '点击查看报告' },
+        url: reportUrl,
+      }],
+    });
+  }
+
+  elements.push({
+    tag: 'note',
+    elements: [{ tag: 'plain_text', content: '本报告只观察会议过程，不评价个人。' }],
+  });
+
+  return {
+    config: { wide_screen_mode: true },
+    header: {
+      template: 'blue',
+      title: { tag: 'plain_text', content: '小组会议动力分析报告 已出炉' },
+    },
+    elements,
+  };
+}
+
 export function renderReportMarkdown(report, { meetingTitle, reportUrl } = {}) {
   const ts = report.teamState || {};
   const zone = ts.zoneLabel || ts.zone || '未定位';

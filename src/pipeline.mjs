@@ -12,7 +12,7 @@ import {
   searchMeetings, meetingDetail, fetchTranscript, sendMessage, LarkError,
 } from './lark.mjs';
 import { analyze } from './analysis.mjs';
-import { renderReportMarkdown } from './render.mjs';
+import { renderReportCard } from './render.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(HERE, '..');
@@ -59,12 +59,15 @@ export async function analyzeMeeting(meetingId, { onProgress = () => {} } = {}) 
   return { meetingId, topic: detail.topic, startTime: detail.startTime, report, reportPath, transcriptPath };
 }
 
-/** 推送报告到飞书（幂等） */
+/**
+ * 推送报告到飞书（幂等）。
+ * 用交互卡片，与 teaming-bot 线上一致。
+ */
 export function pushReport(report, { chatId, userId, meetingTitle, reportUrl }) {
-  const markdown = renderReportMarkdown(report, { meetingTitle, reportUrl });
+  const card = renderReportCard(report, { meetingTitle, reportUrl });
   const zone = report.teamState?.zoneLabel || report.teamState?.zone || '未定位';
-  const idem = `teaming-${safeName(meetingTitle || 'meeting')}-${safeName(zone)}`;
-  return sendMessage({ chatId, userId, markdown, idempotencyKey: idem });
+  const idem = `teaming-${safeName(meetingTitle || 'meeting')}-${safeName(zone)}`.slice(0, 50);
+  return sendMessage({ chatId, userId, card, idempotencyKey: idem });
 }
 
 // ───────────────────── 事件驱动（妙记生成 → 分析 → 推送） ─────────────────────

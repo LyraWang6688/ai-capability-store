@@ -66,6 +66,8 @@
 | **宿主有 `tools/call` 总超时** | 豆包工作 `libmcp_helper.dylib` 里有 `TOOL_CALL_TIMEOUT` / `tools/call total timeout` / `timeoutMs must be between 1 and ...`，但**默认值读不出来**。分析要 60~120 秒，因此必须走后台任务模式 |
 | 后台任务模式已验证 | `wait_seconds=0` 立即返回 job_id；实测 40s/60s 时仍是 running，70s 变 done。**等待超时不会丢工作** |
 | 分析引擎与 teaming-bot **逐字节一致** | 10 个文件全部 `diff` 为空、sha256 相同。**报告内容是团队 bot 的代码算的，不是重写的** |
+| 推送必须是**交互卡片**，不能是纯文本 | 产品明确要求。`msg_type` 必须是 `interactive`；发 markdown 会变成 `post`，形态不对。实测已确认消息列表里显示为 `interactive` |
+| lark-cli 发卡片的方式 | `im +messages-send --msg-type interactive --content '<卡片JSON>'`。`--content` 传的是卡片的 JSON 字符串 |
 
 ---
 
