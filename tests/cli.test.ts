@@ -115,6 +115,16 @@ describe("cli", () => {
     assert.deepEqual(await readdir(stateDir), []);
   });
 
+  test("show：没有凭证时明确报错，不抛栈、不落盘", async () => {
+    const result = await runNode([CLI, "show", "MOCK_DRAFT_ID"], { env: nodeEnv() });
+
+    assert.equal(result.code, 1);
+    const payload = JSON.parse(result.stdout) as { ok: boolean; message: string };
+    assert.equal(payload.ok, false);
+    assert.match(payload.message, /缺少公众号凭证/);
+    assert.equal(result.stderr.includes("\n    at "), false, "不应把栈打给用户");
+  });
+
   test("未知命令：退出码 2 并打印用法", async () => {
     const result = await runNode([CLI, "not-a-command"], { env: nodeEnv() });
 

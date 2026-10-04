@@ -32,6 +32,7 @@
 | `inspect_wechat_article` | 预检文章文件夹 | 无 |
 | `upload_wechat_draft` | 创建公众号草稿 | 有（仅草稿） |
 | `get_wechat_draft` | 按 media_id 读回草稿 | 无 |
+| `get_wechat_audit` | 查看更新/删除的审计记录（含失败原因与备份路径） | 无 |
 | `update_wechat_draft` | **原地更新**已有草稿的正文（可 `dry_run` 演练） | 有（覆盖正文，改前自动备份） |
 | `delete_wechat_draft` | 删除草稿（不可逆） | ⚠️ 破坏性，需开关 + 确认 |
 | `delete_wechat_material` | 删除永久素材（如封面图） | ⚠️ 破坏性，需开关 + 确认 |
@@ -101,6 +102,7 @@ node --env-file=.env dist/cli.js doctor
 node --env-file=.env dist/cli.js inspect "/绝对路径/文章目录"
 node --env-file=.env dist/cli.js upload  "/绝对路径/文章目录"
 node --env-file=.env dist/cli.js update  "/绝对路径/文章目录" --media-id <草稿ID> [--with-meta] [--with-cover] [--dry-run]
+node --env-file=.env dist/cli.js show <草稿ID>          # 读回一条草稿，打印它现在的样子
 node --env-file=.env dist/cli.js audit --limit 20
 ```
 

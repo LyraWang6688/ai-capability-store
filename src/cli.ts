@@ -27,6 +27,7 @@ import {
   deletePublishedById,
   inspectArticleBundle,
   publishArticleBundle,
+  summarizeDraft,
   updateArticleBundle
 } from "./publish.js";
 import { createWechatApi, readCredentialsFromEnv } from "./wechatApi.js";
@@ -51,6 +52,8 @@ async function main() {
       return upload(target);
     case "update":
       return update(target);
+    case "show":
+      return show(target);
     case "delete-draft":
       return remove("draft", target);
     case "delete-material":
@@ -178,6 +181,37 @@ async function update(bundlePath?: string) {
   }
 }
 
+async function show(mediaId?: string) {
+  if (!mediaId) {
+    console.error("用法：show <草稿ID> [--json]");
+    process.exit(2);
+  }
+  try {
+    const api = createWechatApi({ credentials: readCredentialsFromEnv() });
+    const payload = await api.getDraft(mediaId);
+    const summary = summarizeDraft(mediaId, payload);
+    if (!summary) {
+      output({ ok: false, message: `读不到草稿 ${mediaId}：media_id 无效，或不属于当前公众号。` }, true);
+      return;
+    }
+    if (asJson) {
+      output({ ok: true, ...summary });
+      return;
+    }
+    console.log("\n=== 草稿内容 ===\n");
+    console.log("标题       :", summary.title, `(${[...summary.title].length} 字)`);
+    console.log("作者       :", summary.author ?? "(未设置)");
+    console.log("摘要       :", summary.digest ?? "(未设置)");
+    console.log("正文       :", summary.contentChars, "字符 /", summary.contentBytes, "字节");
+    console.log("正文图片   :", summary.bodyImageCount, "张");
+    console.log("封面       :", summary.hasCover ? "已设置" : "❌ 缺失", summary.coverCropRatios.length ? `（裁切比例：${summary.coverCropRatios.join(" / ")}）` : "");
+    console.log("留言       :", summary.comment.open ? "开启" : "关闭", summary.comment.onlyFans ? "· 仅粉丝可留言" : "");
+    console.log("草稿 ID    :", summary.mediaId, "\n");
+  } catch (error) {
+    output({ ok: false, message: messageOf(error) }, true);
+  }
+}
+
 async function remove(kind: "draft" | "material" | "published", targetId?: string) {
   const confirm = flag.value("confirm");
   const usage =
@@ -258,6 +292,7 @@ function printUsage() {
   doctor                        检查微信凭证、IP 白名单与草稿箱权限（只读）
   inspect "<文章目录>"           上传前预检，不调用微信
   upload  "<文章目录>"           创建公众号草稿
+  show    <草稿ID>               读回一条草稿，打印它当前的样子
   update  "<文章目录>" --media-id <草稿ID>
                                 原地更新已有草稿的正文（默认保留标题/摘要/封面/评论设置）
                                 可选：--with-meta（连标题摘要一起覆盖）--with-cover（换封面）--dry-run

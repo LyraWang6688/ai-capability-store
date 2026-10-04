@@ -28,6 +28,7 @@ process.on("uncaughtException", (error) => {
 
 const { inspectArticleBundle, publishArticleBundle, summarizeBundle, updateArticleBundle, deleteDraftById, deleteMaterialById, deletePublishedById } = await import("./publish.js");
 const { createWechatApi, readCredentialsFromEnv } = await import("./wechatApi.js");
+const { readAudit } = await import("./destructive.js");
 
 const server = new McpServer({
   name: "wechat-draft-mcp",
@@ -287,6 +288,26 @@ server.registerTool(
       }
       const result = await deletePublishedById({ targetId: article_id, confirm, index, dryRun: dry_run });
       return text({ ...result });
+    } catch (error) {
+      return failure(error);
+    }
+  }
+);
+
+server.registerTool(
+  "get_wechat_audit",
+  {
+    title: "查看更新/删除审计",
+    description:
+      "读取本机 state/audit.jsonl 里最近的破坏性操作记录（时间、操作、目标 ID、结果、备份路径、失败原因）。只读。" +
+      "当用户问「刚才那次删/更新到底做了什么」「为什么被拒绝了」时用它。",
+    inputSchema: { limit: z.number().int().min(1).max(100).optional().describe("返回最近多少条，默认 10") },
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false }
+  },
+  async ({ limit }) => {
+    try {
+      const records = await readAudit(limit ?? 10);
+      return text({ ok: true, count: records.length, records });
     } catch (error) {
       return failure(error);
     }

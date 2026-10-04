@@ -16,6 +16,7 @@ import { loadArticleBundle } from "../src/articleBundle.js";
 import { isReusable, readDeliveryState, stateFile, writeDeliveryState } from "../src/deliveryState.js";
 import { DestructiveOperationBlockedError, confirmationTokenFor, readAudit } from "../src/destructive.js";
 import {
+  summarizeDraft,
   deleteDraftById,
   deleteMaterialById,
   deletePublishedById,
@@ -65,6 +66,32 @@ describe("破坏性操作：更新与删除", () => {
     assert.equal(confirmationTokenFor("ABC123456789"), "456789");
     assert.equal(confirmationTokenFor("AB12"), "AB12");
     assert.equal(confirmationTokenFor(""), "");
+  });
+
+  // ── 草稿摘要（CLI show 的渲染逻辑，纯函数）────────────────────────────────
+  test("summarizeDraft：把 draft/get 的返回压成一页，并读出封面裁切比例", () => {
+    const summary = summarizeDraft("DRAFT_SUM", {
+      news_item: [
+        {
+          title: "标题",
+          author: "老王",
+          digest: "摘要",
+          content: '<p>正文</p><img src="a.png"><img src="b.png">',
+          thumb_media_id: "COVER_1",
+          cover_info: { crop_percent_list: [{ ratio: "2.35_1" }, { ratio: "1_1" }] },
+          need_open_comment: 1,
+          only_fans_can_comment: 1
+        }
+      ]
+    });
+    assert.ok(summary);
+    assert.equal(summary.title, "标题");
+    assert.equal(summary.bodyImageCount, 2);
+    assert.deepEqual(summary.coverCropRatios, ["2.35_1", "1_1"]);
+    assert.deepEqual(summary.comment, { open: true, onlyFans: true });
+    assert.equal(summary.hasCover, true);
+    // 空 news_item → undefined（CLI 据此报"读不到草稿"）
+    assert.equal(summarizeDraft("X", { news_item: [] }), undefined);
   });
 
   // ── 更新草稿 ──────────────────────────────────────────────────────────────

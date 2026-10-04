@@ -422,6 +422,44 @@ export async function updateArticleBundle(options: UpdateOptions): Promise<Updat
   });
 }
 
+export type DraftSummary = {
+  mediaId: string;
+  title: string;
+  author: string | null;
+  digest: string | null;
+  contentChars: number;
+  contentBytes: number;
+  bodyImageCount: number;
+  hasCover: boolean;
+  /** 封面裁切比例（微信返回的 crop_percent_list，如 ["2.35_1","1_1"]）。 */
+  coverCropRatios: string[];
+  comment: { open: boolean; onlyFans: boolean };
+};
+
+/** 把 draft/get 的原始返回压成"人看得懂的一页"（纯函数，便于测试与 CLI/MCP 复用）。 */
+export function summarizeDraft(mediaId: string, payload: Record<string, unknown>): DraftSummary | undefined {
+  const item = firstNewsItem(payload);
+  if (!item) return undefined;
+  const content = String(item.content ?? "");
+  const crop =
+    ((item.cover_info as { crop_percent_list?: Array<{ ratio?: string }> } | undefined)?.crop_percent_list ?? []);
+  return {
+    mediaId,
+    title: String(item.title ?? ""),
+    author: asString(item.author) ?? null,
+    digest: asString(item.digest) ?? null,
+    contentChars: [...content].length,
+    contentBytes: Buffer.byteLength(content, "utf8"),
+    bodyImageCount: (content.match(/<img/gi) ?? []).length,
+    hasCover: Boolean(asString(item.thumb_media_id)),
+    coverCropRatios: crop.map((entry) => String(entry.ratio ?? "")).filter(Boolean),
+    comment: {
+      open: (item.need_open_comment as number | undefined) === 1,
+      onlyFans: (item.only_fans_can_comment as number | undefined) === 1
+    }
+  };
+}
+
 export type DeleteKind = "draft" | "material" | "published";
 
 export type DeleteOptions = {
