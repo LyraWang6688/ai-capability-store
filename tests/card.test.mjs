@@ -1,79 +1,113 @@
 /**
- * 卡片渲染自测 —— 纯函数，不联网。
+ * 卡片与报告文档渲染自测 —— 纯函数，不联网。
  *
- * 重点：卡片必须与 teaming-bot 线上的形态一致（蓝色标题栏 + 同样的大标题），
- * 这是产品上明确要求过的，不能被"优化"成纯文本。
+ * 卡片形态是产品明确指定的：**严格对齐 teaming-bot 线上的极简版**。
+ * 这个测试的作用就是把它锁死，防止以后被"优化"成内容更丰富的版本。
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { renderReportCard, renderReportMarkdown, reportDigest } from '../src/render.mjs';
+import { renderReportCard, renderReportDoc, renderReportMarkdown, reportDigest } from '../src/render.mjs';
 
 const REPORT = {
   summary: '本次会议暂定位为可能是冷漠区或舒适区。',
   teamState: {
     zoneLabel: '可能是冷漠区或舒适区',
-    psychologicalSafety: { summary: '证据不足以确认心理安全充足。' },
-    accountability: { summary: '未形成团队共同承载的明确质量标准。' },
+    analysis: '讨论从职业规划进入合作意向，成员表达了具体关切，但任务标准尚不明确。',
+    psychologicalSafety: { summary: '证据不足以确认心理安全充足。', evidence: ['成员主动承认不确定'], limitation: '样本偏少' },
+    accountability: { summary: '未形成团队共同承载的明确质量标准。', evidence: ['无验收节点'] },
+    confidenceNote: '证据有限，结论偏保守。',
+  },
+  dialogueNetwork: {
+    analysis: '互动集中在两人之间。',
+    noteworthyPattern: '一方持续提出方向，另一方承接并补充。',
+    nodes: [{ name: '方春剑', playerReason: '主要推动者', evidence: ['「我觉得真的可以考虑」'] }],
   },
   leaderAdvice: [{
     action: 'frame_for_learning',
     advice: '把当前合作从意向推进明确为需共同探索的学习任务',
     reasoning: '尚未明确质量标准与验证闭环',
+    timing: '在梳理落地安排时',
     signalToWatch: '双方共同输出质量标准与验证节点',
+    optionalScript: '我们先把验收标准说清楚',
   }],
   communication: [{ name: '方春剑' }, { name: 'Lyra Wang' }],
-  unfinishedDialogues: [],
+  unfinishedDialogues: [{ topic: '落地细节', conversationSoFar: '已达成合作意向', whatRemains: '质量标准与分工未定' }],
   unseenDisagreements: [],
 };
 
-test('卡片形态与线上一致：蓝色标题栏 + 固定大标题', () => {
-  const card = renderReportCard(REPORT, { meetingTitle: 'ABC周二测试' });
+// ─────────────────── 卡片：必须与线上一致 ───────────────────
+
+test('卡片严格对齐线上：蓝色标题栏 + 固定大标题', () => {
+  const card = renderReportCard(REPORT, { meetingTitle: 'ABC周二测试', reportUrl: 'https://x/docx/1' });
   assert.equal(card.config.wide_screen_mode, true);
   assert.equal(card.header.template, 'blue');
   assert.equal(card.header.title.tag, 'plain_text');
   assert.equal(card.header.title.content, '小组会议动力分析报告 已出炉');
 });
 
-test('卡片必须包含会议名称与区域定位', () => {
-  const card = renderReportCard(REPORT, { meetingTitle: 'ABC周二测试' });
-  const text = JSON.stringify(card.elements);
-  assert.match(text, /会议名称/);
-  assert.match(text, /ABC周二测试/);
-  assert.match(text, /可能是冷漠区或舒适区/);
-  assert.match(text, /最优先建议/);
-  assert.match(text, /参与成员/);
+test('卡片只有两个元素：一行会议名称 + 一个按钮（正文不进卡片）', () => {
+  const card = renderReportCard(REPORT, { meetingTitle: 'ABC周二测试', reportUrl: 'https://x/docx/1' });
+  assert.equal(card.elements.length, 2, `极简版应只有 2 个元素，实际 ${card.elements.length}`);
+  assert.equal(card.elements[0].tag, 'markdown');
+  assert.equal(card.elements[0].content, '**会议名称：**ABC周二测试');
+  assert.equal(card.elements[1].tag, 'action');
 });
 
-test('有报告链接时给出「点击查看报告」按钮', () => {
-  const card = renderReportCard(REPORT, { meetingTitle: 'X', reportUrl: 'https://example.com/r/1' });
+test('卡片里绝对不能出现报告正文（区域、建议、成员等）', () => {
+  const card = renderReportCard(REPORT, { meetingTitle: 'ABC周二测试', reportUrl: 'https://x/docx/1' });
+  const text = JSON.stringify(card);
+  for (const leak of ['可能'.concat('是冷漠区'), '最优先建议', '心理安全', '参与成员', '不评价个人']) {
+    assert.ok(!text.includes(leak), `极简卡片不应包含「${leak}」`);
+  }
+});
+
+test('按钮指向报告网页，文案固定为「点击查看报告」', () => {
+  const card = renderReportCard(REPORT, { meetingTitle: 'X', reportUrl: 'https://my.feishu.cn/docx/abc' });
   const action = card.elements.find((e) => e.tag === 'action');
-  assert.ok(action, '应包含动作区');
   assert.equal(action.actions[0].text.content, '点击查看报告');
-  assert.equal(action.actions[0].url, 'https://example.com/r/1');
+  assert.equal(action.actions[0].url, 'https://my.feishu.cn/docx/abc');
+  assert.equal(action.actions[0].type, 'primary');
 });
 
-test('没有报告链接时不出现空按钮', () => {
-  const card = renderReportCard(REPORT, { meetingTitle: 'X' });
-  assert.equal(card.elements.find((e) => e.tag === 'action'), undefined);
+test('没有会议名称时退回「会议报告已生成」（与线上一致）', () => {
+  const card = renderReportCard(REPORT, { reportUrl: 'https://x' });
+  assert.equal(card.elements[0].content, '会议报告已生成');
 });
 
-test('卡片以「不评价个人」的脚注收尾', () => {
-  const card = renderReportCard(REPORT, { meetingTitle: 'X' });
-  const last = card.elements[card.elements.length - 1];
-  assert.equal(last.tag, 'note');
-  assert.match(last.elements[0].content, /不评价个人/);
+// ─────────────────── 报告文档：完整四部分，作为按钮落点 ───────────────────
+
+test('报告文档包含四部分与小节标题', () => {
+  const md = renderReportDoc(REPORT, { meetingTitle: 'ABC周二测试', startTime: '2026-09-22 11:36' });
+  assert.match(md, /^# 小组会议动力分析报告/m);
+  assert.match(md, /## 一、团队状态定位/);
+  assert.match(md, /## 二、互动概览/);
+  assert.match(md, /## 三、未完成的对话与值得被看见的非共识/);
+  assert.match(md, /## 四、给领导者的建议/);
+  assert.match(md, /ABC周二测试/);
+  assert.match(md, /2026-09-22 11:36/);
 });
 
-test('卡片正文受长度约束，不会把整份报告塞进去', () => {
-  const long = JSON.parse(JSON.stringify(REPORT));
-  long.teamState.psychologicalSafety.summary = '很长的内容'.repeat(200);
-  const card = renderReportCard(long, { meetingTitle: 'X' });
-  const bytes = JSON.stringify(card).length;
-  assert.ok(bytes < 8000, `卡片体积应受控，实际 ${bytes} 字节`);
+test('报告文档把领导行为映射成中文小标题', () => {
+  const md = renderReportDoc(REPORT, { meetingTitle: 'X' });
+  assert.match(md, /### 为学习框定情境/);
+  assert.ok(!md.includes('frame_for_learning'), '不应把后台枚举值暴露给读者');
 });
 
-test('reportDigest 给出紧凑摘要，不包含逐字稿类大字段', () => {
+test('报告文档带「不评价个人」的收尾', () => {
+  const md = renderReportDoc(REPORT, { meetingTitle: 'X' });
+  assert.match(md, /不评价个人/);
+});
+
+test('报告文档能容忍缺字段的旧报告，不抛错', () => {
+  const md = renderReportDoc({ teamState: { zone: 'Learning' } }, { meetingTitle: 'X' });
+  assert.match(md, /学习区|Learning/);
+  assert.match(md, /不评价个人/);
+});
+
+// ─────────────────── 摘要与纯文本（辅助用途） ───────────────────
+
+test('reportDigest 给出紧凑摘要，不含大字段', () => {
   const d = reportDigest(REPORT);
   assert.equal(d.zone, '可能是冷漠区或舒适区');
   assert.deepEqual(d.members, ['方春剑', 'Lyra Wang']);

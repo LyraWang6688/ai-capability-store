@@ -9,10 +9,11 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import {
-  searchMeetings, meetingDetail, fetchTranscript, sendMessage, LarkError,
+  searchMeetings, meetingDetail, fetchTranscript, sendMessage, createDoc, LarkError,
 } from './lark.mjs';
 import { analyze } from './analysis.mjs';
-import { renderReportCard } from './render.mjs';
+import { renderReportCard, renderReportDoc } from './render.mjs';
+import { publishReportToServer } from './publish.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(HERE, '..');
@@ -42,7 +43,7 @@ export async function analyzeMeeting(meetingId, { onProgress = () => {} } = {}) 
   onProgress({ step: 'detail', detail });
   if (detail.minuteDenied) onProgress({ step: 'note', message: '妙记无权限，改用智能纪要逐字稿' });
 
-  const transcript = fetchTranscript(detail);
+  const transcript = fetchTranscript({ minuteToken: detail.minuteToken, topic: detail.topic });
   onProgress({ step: 'transcript', turns: transcript.split('\n').length, chars: transcript.length });
 
   const t0 = Date.now();
@@ -59,15 +60,61 @@ export async function analyzeMeeting(meetingId, { onProgress = () => {} } = {}) 
   return { meetingId, topic: detail.topic, startTime: detail.startTime, report, reportPath, transcriptPath };
 }
 
+const PUBLISHED_LEDGER = join(STATE_DIR, 'published-docs.json');
+
+function readPublished() {
+  try { return JSON.parse(readFileSync(PUBLISHED_LEDGER, 'utf8')); } catch { return {}; }
+}
+
+/**
+ * 把报告发成飞书云文档，作为卡片按钮的落点。
+ * 幂等：同一场会议 + 同一个区域结论只创建一次，重复推送复用已有文档。
+ */
+export function publishReportDoc(report, { meetingTitle, startTime, reportPath }) {
+  const zone = report.teamState?.zoneLabel || report.teamState?.zone || '未定位';
+  const key = reportPath || `${meetingTitle || 'meeting'}::${zone}`;
+  const ledger = readPublished();
+  if (ledger[key]?.url) return { ...ledger[key], reused: true };
+
+  const markdown = renderReportDoc(report, { meetingTitle, startTime });
+  const doc = createDoc({
+    title: `小组会议动力分析报告${meetingTitle ? ` · ${meetingTitle}` : ''}`,
+    markdown,
+  });
+  ledger[key] = { url: doc.url, documentId: doc.documentId, at: new Date().toISOString(), meetingTitle, zone };
+  mkdirSync(STATE_DIR, { recursive: true });
+  writeFileSync(PUBLISHED_LEDGER, JSON.stringify(ledger, null, 2));
+  return { ...ledger[key], reused: false };
+}
+
 /**
  * 推送报告到飞书（幂等）。
- * 用交互卡片，与 teaming-bot 线上一致。
+ *
+ * 形态与 teaming-bot 线上一致：**极简交互卡片**（会议名称 + 按钮）。
+ * 没有传入 reportUrl 时，会先把报告发成飞书云文档，再把文档链接放进按钮——
+ * 这样本地链路也有"点击查看报告"的落点。
  */
-export function pushReport(report, { chatId, userId, meetingTitle, reportUrl }) {
-  const card = renderReportCard(report, { meetingTitle, reportUrl });
+export async function pushReport(report, {
+  chatId, userId, meetingTitle, reportUrl, startTime, feishuMeetingId, transcript, reportPath,
+}) {
+  // 报告链接的三级优先：显式传入 > 服务器报告页 > 飞书文档兜底
+  let url = reportUrl || null;
+  let source = reportUrl ? 'explicit' : null;
+
+  if (!url) {
+    const published = await publishReportToServer(report, { meetingTitle, startTime, feishuMeetingId, transcript });
+    if (published?.url) { url = published.url; source = 'server'; }
+  }
+  if (!url) {
+    url = publishReportDoc(report, { meetingTitle, startTime, reportPath }).url;
+    source = 'feishu_doc';
+  }
+
+  const card = renderReportCard(report, { meetingTitle, reportUrl: url });
   const zone = report.teamState?.zoneLabel || report.teamState?.zone || '未定位';
   const idem = `teaming-${safeName(meetingTitle || 'meeting')}-${safeName(zone)}`.slice(0, 50);
-  return sendMessage({ chatId, userId, card, idempotencyKey: idem });
+  const sent = sendMessage({ chatId, userId, card, idempotencyKey: idem });
+  return { ...sent, reportUrl: url, reportUrlSource: source };
 }
 
 // ───────────────────── 事件驱动（妙记生成 → 分析 → 推送） ─────────────────────
@@ -125,7 +172,11 @@ export async function handleMinuteEvent(ev, { chatId, userId, onProgress = () =>
 
   let pushed = null;
   if (chatId || userId) {
-    pushed = pushReport(result.report, { chatId, userId, meetingTitle: result.topic });
+    pushed = await pushReport(result.report, {
+      chatId, userId, meetingTitle: result.topic,
+      startTime: result.startTime, feishuMeetingId: result.meetingId,
+      transcript: result.transcript, reportPath: result.reportPath,
+    });
   }
   return { skipped: false, ...result, pushed };
 }

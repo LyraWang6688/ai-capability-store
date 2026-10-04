@@ -137,7 +137,7 @@ async function cmdAnalyze() {
   }
 }
 
-function cmdPush() {
+async function cmdPush() {
   const p = positional[0] || die('用法：teaming push <报告.json> [--chat <chat_id> | --to <open_id>]');
   const { fillChat } = parseTarget();
   const report = JSON.parse(readFileSync(p, 'utf8'));
@@ -145,7 +145,7 @@ function cmdPush() {
     out(JSON.stringify(renderReportCard(report, { meetingTitle: flags.title, reportUrl: flags.url }), null, 2));
     return;
   }
-  const r = pushReport(report, { ...fillChat, meetingTitle: flags.title, reportUrl: flags.url });
+  const r = await pushReport(report, { ...fillChat, meetingTitle: flags.title, reportUrl: flags.url });
   log(`已推送${r.messageId ? `（message_id=${r.messageId}）` : ''}`);
 }
 
@@ -222,7 +222,7 @@ async function main() {
     case 'meetings': cmdMeetings(); break;
     case 'transcript': cmdTranscript(); break;
     case 'analyze': await cmdAnalyze(); break;
-    case 'push': cmdPush(); break;
+    case 'push': await cmdPush(); break;
     case 'self-chat': cmdSelfChat(); break;
     case 'watch': cmdWatch(); break;
     default: out(USAGE); process.exit(cmd ? 1 : 0);

@@ -244,13 +244,19 @@ async function callTool(name, args) {
     }
     // 报告文件名约定为 <会议标题>-<meetingId>.report.json，从中还原标题
     const meetingTitle = /^(.+)-\d+\.report\.json$/.exec(found.path.split('/').pop())?.[1] || undefined;
-    const r = pushReport(found.report, { chatId, meetingTitle });
+    const r = await pushReport(found.report, {
+      chatId, meetingTitle, reportPath: found.path,
+    });
     return {
       ok: true,
       meeting_id: args.meeting_id,
       chat_id: chatId,
       message_id: r.messageId,
-      hint: '已作为交互卡片推送。',
+      report_url: r.reportUrl,
+      report_url_source: r.reportUrlSource,
+      hint: r.reportUrlSource === 'server'
+        ? '已作为交互卡片推送，按钮指向服务器报告页（含图表）。'
+        : '已作为交互卡片推送。注意：按钮指向飞书文档兜底页（服务器报告页不可用），图表无法呈现。',
     };
   }
 

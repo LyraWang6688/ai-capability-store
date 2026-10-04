@@ -146,42 +146,25 @@ export function meetingDetail(meetingId) {
  *  2) 智能纪要的「逐字稿文档」（妙记无权限时的可行路径）
  * 两条都取不到就抛错——不要用 AI 摘要替代，那会丢掉全部原始发言。
  */
-export function fetchTranscript({ noteId, minuteToken, topic = '这场会' }) {
-  const failures = [];
-
-  if (minuteToken) {
-    try {
-      const t = fetchMinuteTranscript(minuteToken);
-      if (t) return t;
-      failures.push('妙记导出没有产出逐字稿文件');
-    } catch (e) {
-      failures.push(`妙记路径失败：${e.message.split('\n')[0]}`);
-    }
-  } else {
-    failures.push('这场会没有妙记 token');
-  }
-
-  if (!noteId) {
+export function fetchTranscript({ minuteToken, topic = '这场会' }) {
+  if (!minuteToken) {
     throw new LarkError(
-      `${topic} 取不到逐字稿。\n`
-      + failures.map((f) => `  · ${f}`).join('\n') + '\n'
-      + '  团队动力分析需要成员原始发言，AI 摘要无法替代。请换一场有逐字稿的会议。',
-      { kind: 'no_transcript' },
+      `${topic} 没有妙记（未录制或未生成），无法做团队动力分析。\n`
+      + '  团队动力分析只认妙记的文字转录稿——成员原始发言，'
+      + '不可用 AI 摘要或其他产物替代。',
+      { kind: 'no_minute' },
     );
   }
-  const note = larkJson(['note', '+detail', '--note-id', noteId, '--as', 'user', '--format', 'json']);
-  const docToken = note?.data?.note?.verbatim_doc_token;
-  if (!docToken) {
+  try {
+    return fetchMinuteTranscript(minuteToken);
+  } catch (e) {
     throw new LarkError(
-      `${topic} 只有 AI 智能纪要，没有逐字稿文档。\n`
-      + '  团队动力分析需要原始发言，无法继续。',
-      { kind: 'no_verbatim_doc' },
+      `${topic} 的妙记转录稿取不到。\n`
+      + `  · ${e.message.split('\n')[0]}\n`
+      + '  团队动力分析只认妙记文字转录稿，不会退化成 AI 摘要。',
+      { kind: 'minute_transcript_failed' },
     );
   }
-  const doc = larkJson(['docs', '+fetch', '--doc', docToken, '--as', 'user']);
-  const html = doc?.data?.document?.content;
-  if (!html) throw new LarkError(`${topic} 的逐字稿文档为空。`, { kind: 'empty_doc' });
-  return htmlToTranscript(html);
 }
 
 /**
@@ -214,45 +197,6 @@ function fetchMinuteTranscript(minuteToken) {
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
-}
-
-/**
- * 飞书逐字稿 HTML → 引擎可解析的纯文本。
- * 目标格式：`姓名 MM:SS 发言`（引擎的 matchSpeakerLine 认这个）
- * 已知形态：
- *   <cite type="user" user-name="方春剑"></cite> 00:00:09<br/>发言
- *   @Lyra Wang 00:00:12<br/>发言
- *   说话人 1 用 @Lyra Wang 的设备 00:01:24<br/>嗯。
- */
-export function htmlToTranscript(html) {
-  let s = String(html);
-  s = s.replace(/<title>[\s\S]*?<\/title>/g, '');   // 文档标题会粘到第一条发言上，必须先剥掉
-  s = s.replace(/<blockquote>[\s\S]*?<\/blockquote>/g, '');
-  s = s.replace(/<cite[^>]*user-name="([^"]*)"[^>]*><\/cite>/g, '$1');
-  s = s.replace(/<br\s*\/?>/g, '\n');       // 必须早于去标签，否则发言会粘在时间戳上
-  s = s.replace(/<\/p>/g, '\n\n');
-  s = s.replace(/<[^>]+>/g, '');
-  s = s.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&nbsp;/g, ' ');
-
-  const lines = s.split('\n').map((x) => x.trim()).filter(Boolean);
-  const turns = [];
-  let cur = null;
-  for (const line of lines) {
-    const m = line.match(/^(.{1,60}?)\s+(\d{1,2}:\d{2}(?::\d{2})?(?:\.\d{1,3})?)$/);
-    if (m) { if (cur) turns.push(cur); cur = { sp: m[1].replace(/^@/, '').trim(), ts: m[2], tx: [] }; continue; }
-    if (cur && /^\d{1,2}:\d{2}(:\d{2})?(\.\d+)?$/.test(line)) { cur.ts = line; continue; }
-    if (cur) cur.tx.push(line);
-  }
-  if (cur) turns.push(cur);
-
-  const kept = turns.filter((t) => t.tx.length);
-  if (!kept.length) {
-    throw new LarkError('逐字稿解析后没有任何发言，文档格式可能变了。请把原始文档反馈给维护者。',
-      { kind: 'transcript_parse_failed' });
-  }
-  return kept
-    .map((t) => `${t.sp.replace(/\s*用\s*@?.*的设备\s*/, '（设备）')} ${t.ts} ${t.tx.join(' ')}`)
-    .join('\n');
 }
 
 /** 找和自己单聊的会话 ID（推送给自己的最稳方式；用 --user-id 发给自己会被飞书拒绝） */
@@ -303,6 +247,21 @@ export function larkReadiness() {
   return { ready: problems.length === 0, problems, version, userName, scopes };
 }
 
+
+/**
+ * 创建飞书云文档，返回 { documentId, url }。
+ * 用作「点击查看报告」的落点——本地链路没有报告网页，用飞书文档承载。
+ */
+export function createDoc({ title, markdown }) {
+  const res = larkJson([
+    'docs', '+create', '--title', title,
+    '--doc-format', 'markdown', '--content', markdown,
+    '--as', 'user', '--format', 'json',
+  ]);
+  const doc = res?.data?.document;
+  if (!doc?.url) throw new LarkError('创建飞书文档未返回链接。', { kind: 'doc_create_failed' });
+  return { documentId: doc.document_id || null, url: doc.url };
+}
 
 /**
  * 发飞书消息。idempotencyKey 由调用方固定，重试不会产生重复消息。
