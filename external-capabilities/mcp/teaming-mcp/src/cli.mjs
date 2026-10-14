@@ -80,20 +80,35 @@ function cmdDoctor() {
   //
   // 判据：已通过接入码配好（isEnrolled）就说明走的是新架构，标 SKIP。
   const enrolled = isEnrolled();
-  const feishuSkip = enrolled
-    ? { skip: true }
-    : {};
-  const feishuHint = enrolled ? '新架构下由宿主取数，MCP 不需要飞书授权' : '';
-
   const readiness = larkReadiness();
   const scopes = readiness.scopes || '';
-  add('飞书已授权', Boolean(readiness.userName),
-    readiness.userName || feishuHint || '执行 lark-cli auth login --recommend', feishuSkip);
-  add('会议搜索权限', Boolean(readiness.userName) && scopes.includes('vc:meeting.search:read'), feishuHint, feishuSkip);
-  add('妙记读取权限',
-    Boolean(readiness.userName)
-    && (scopes.includes('minutes:minutes:readonly') || scopes.includes('minutes:minutes.basic:read')),
-    feishuHint, feishuSkip);
+  const authorized = Boolean(readiness.userName);
+  const hasSearchScope = authorized && scopes.includes('vc:meeting.search:read');
+  const hasMinutesScope = authorized
+    && (scopes.includes('minutes:minutes:readonly') || scopes.includes('minutes:minutes.basic:read'));
+
+  /**
+   * 新架构下这三项**不是必需**的：没通过时标 SKIP 而不是 FAIL，
+   * 免得用户照着一个本来不需要的错误去折腾 lark-cli 授权。
+   *
+   * **但通过时必须显示 OK。** 曾经只要配了接入码就无条件标 SKIP，
+   * 于是出现「SKIP 飞书已授权 王颖」——宿主 AI 读到后报告
+   * "飞书授权：已登录，身份为王颖"，而新架构下 MCP 根本不该碰飞书。
+   * 一个"通过"的事实被标成 SKIP，两种读法都是错的。
+   */
+  const optional = (passed) => (passed || !enrolled ? {} : { skip: true });
+  const reason = (passed, fallback) => {
+    if (passed) return '';
+    return enrolled ? '新架构下由宿主取数，MCP 不需要飞书授权' : fallback;
+  };
+
+  add('飞书已授权', authorized,
+    readiness.userName || reason(authorized, '执行 lark-cli auth login --recommend'),
+    optional(authorized));
+  add('会议搜索权限', hasSearchScope,
+    hasSearchScope ? '' : reason(hasSearchScope, '需要 vc:meeting.search:read'), optional(hasSearchScope));
+  add('妙记读取权限', hasMinutesScope,
+    hasMinutesScope ? '' : reason(hasMinutesScope, '需要妙记读取权限'), optional(hasMinutesScope));
 
   const ready = analysisReadiness();
   add('分析引擎已构建', ready.problems.every((p) => !p.includes('引擎')), ready.enginePath);

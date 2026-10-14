@@ -206,11 +206,30 @@ export function fetchTranscript({ minuteToken, topic = '这场会' }) {
   try {
     return fetchMinuteTranscript(minuteToken);
   } catch (e) {
+    const firstLine = String(e?.message || e).split('\n')[0];
+
+    /**
+     * 「这场妙记不属于本机 lark-cli 授权的那个账号」——飞书原话是
+     * `No read permission for minute ...`。
+     *
+     * 2026-10-14 在豆包工作的豆包账号里实测到：宿主自己能用飞书能力读到这场会，
+     * 但它调了 teaming_analyze_meeting（让 MCP 去取数），而 MCP 的 lark-cli
+     * 身份是另一个人 → 拉不到 → 整条链路断在这里，而报错没说下一步怎么办。
+     *
+     * 所以对这种错误单独指路：**改用 teaming_analyze_transcript，由调用方供稿。**
+     */
+    const notMine = /No read permission|no permission|permission denied|access denied/i.test(firstLine);
+
     throw new LarkError(
       `${topic} 的妙记转录稿取不到。\n`
-      + `  · ${e.message.split('\n')[0]}\n`
+      + `  · ${firstLine}\n`
+      + (notMine
+        ? '  **这场妙记不属于本机 lark-cli 授权的那个飞书账号。**\n'
+          + '  如果调用方（宿主）自己能读到逐字稿，请改用 teaming_analyze_transcript：\n'
+          + '  先用宿主自己的飞书能力导出逐字稿，再把它作为 transcript 传进来分析。\n'
+        : '')
       + '  团队动力分析只认妙记文字转录稿，不会退化成 AI 摘要。',
-      { kind: 'minute_transcript_failed' },
+      { kind: notMine ? 'minute_not_authorized' : 'minute_transcript_failed' },
     );
   }
 }

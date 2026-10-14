@@ -43,8 +43,11 @@ applyStoredConfigToEnv();
  * - 只记方法与结果，**绝不记参数正文**（可能含会议原文）
  * - 自己出错绝不抛，日志不能反过来搞挂服务
  */
+// 日志走 paths.mjs 的解析：npm 全局安装时包目录在 node_modules 里，
+// 写在那儿既不合规（升级/卸载会连日志一起没），也容易没权限。
+// 之前只把「数据目录」接进了 paths.mjs，漏了这一处。
 const LOG_PATH = process.env.TEAMING_MCP_LOG
-  || join(dirname(fileURLToPath(import.meta.url)), '..', '.state', 'mcp.log');
+  || join(resolveStateDir(), 'mcp.log');
 const LOG_MAX_BYTES = 1024 * 1024;
 
 function trace(event, detail = {}) {
@@ -77,6 +80,7 @@ import { readReport, pushReport, listMeetingsWithEligibility } from './pipeline.
 import { normalizeTranscript } from './transcript.mjs';
 import { newJobId, writeJob, readJob, waitForJob, pruneJobs, JOBS_DIR } from './jobs.mjs';
 import { applyStoredConfigToEnv } from './config.mjs';
+import { resolveStateDir } from './paths.mjs';
 
 const SERVER_INFO = { name: 'teaming', version: '0.1.0' };
 const SUPPORTED = ['2024-11-05', '2025-03-26', '2025-06-18', '2025-11-25'];
@@ -153,10 +157,14 @@ const TOOLS = [
     name: 'teaming_analyze_transcript',
     description:
       '直接分析**你提供的逐字稿**，产出四部分报告。'
-      + '**本工具不访问飞书、不需要飞书授权**——适合宿主自己已经取到逐字稿的场景。'
-      + '什么时候用：宿主（如豆包工作）用自己的飞书能力取到了妙记文字转录稿，'
+      + '**本工具不访问飞书、不需要飞书授权，也不会因为「身份不匹配」而失败——'
+      + '只要你自己能读到逐字稿，就应该优先用它。**'
+      + '什么时候用：你自己（宿主）能用飞书能力搜到这场会并导出妙记文字稿；'
       + '或者用户直接粘贴了一段会议逐字稿要你分析。'
-      + '什么时候不要用：如果本机 lark-cli 已授权且想按会议 ID 取数，用 teaming_analyze_meeting。'
+      + '判断方法：先用你自己的飞书能力搜一下这场会——搜得到就用本工具。'
+      + '**注意：本工具用 MCP 自己的 lark-cli 身份去取数，那个身份和当前用户登录的账号可能不是同一个人。'
+      + '如果取数时报「No read permission」，说明这场会议不属于本机授权的账号——'
+      + '此时改用 teaming_analyze_transcript，由你自己取好逐字稿再传进来。**'
       + '逐字稿必须是**成员原始发言**（每行形如「姓名 MM:SS 发言内容」）；'
       + 'AI 摘要、会议纪要、待办列表都不算逐字稿，传了会被拒绝。'
       + '**本工具会尽快返回，不会一直等到分析结束。**'
