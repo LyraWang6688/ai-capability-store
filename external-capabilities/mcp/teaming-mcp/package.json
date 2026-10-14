@@ -15,7 +15,6 @@
   },
   "files": [
     "src",
-    "docs",
     "skills",
     "dist/engine",
     "README.md",
