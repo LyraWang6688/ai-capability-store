@@ -28,22 +28,60 @@ export class AnalysisError extends Error {
   }
 }
 
+/**
+ * 方舟（Ark）公开端点。引擎的 `getBaseUrl()` **没有内置默认值**，
+ * 不配 `DOUBAO_BASE_URL` 就会在分析时抛
+ * 「未配置 LLM_API_KEY/LLM_BASE_URL…」，整场分析降级成 basic_fallback。
+ *
+ * 而连接器配置文档过去只写了 `DOUBAO_API_KEY`——于是每个照文档配置的用户
+ * 都会踩到"体检通过、分析降级"。2026-10-14 在豆包工作里实测时正是如此。
+ *
+ * 这里补一个默认值（仍可被环境变量覆盖），让"只配一个 key"就能跑通。
+ */
+export const DEFAULT_DOUBAO_BASE_URL = 'https://ark.cn-beijing.volces.com/api/v3';
+
+/** 引擎读取 process.env，因此必须在调用前落到位。 */
+export function applyProviderDefaults() {
+  if (!process.env.DOUBAO_BASE_URL && !process.env.LLM_BASE_URL && !process.env.ARK_BASE_URL) {
+    process.env.DOUBAO_BASE_URL = DEFAULT_DOUBAO_BASE_URL;
+  }
+}
+
+function resolveProviderConfig() {
+  const key = process.env.LLM_API_KEY || process.env.DOUBAO_API_KEY || process.env.ARK_API_KEY;
+  const explicit = process.env.LLM_BASE_URL || process.env.DOUBAO_BASE_URL || process.env.ARK_BASE_URL;
+  const baseUrl = explicit || DEFAULT_DOUBAO_BASE_URL;
+  const model = process.env.ANALYSIS_MODEL || process.env.DOUBAO_MODEL || '';
+  return { key, baseUrl, model, baseUrlIsDefault: !explicit };
+}
+
 /** 检查分析所需的前置条件（只读，不联网） */
 export function analysisReadiness() {
   const problems = [];
   if (!existsSync(ENGINE_PATH)) {
     problems.push(`分析引擎未构建（期望 ${ENGINE_PATH}）。下一步：npm run build`);
   }
-  const key = process.env.DOUBAO_API_KEY || process.env.LLM_API_KEY || process.env.ARK_API_KEY;
+  const { key, baseUrl } = resolveProviderConfig();
   if (!key) {
     problems.push('缺少分析凭证。下一步：配置环境变量 DOUBAO_API_KEY');
   }
-  return { ready: problems.length === 0, problems, enginePath: ENGINE_PATH };
+  return { ready: problems.length === 0, problems, enginePath: ENGINE_PATH, baseUrl };
+}
+
+/** 体检展示用：当前实际生效的模型端点与模型。 */
+export function providerSummary() {
+  const { baseUrl, baseUrlIsDefault, model } = resolveProviderConfig();
+  return {
+    baseUrl,
+    baseUrlIsDefault,
+    model: model || 'doubao-seed-2-0-pro-260215（引擎默认）',
+  };
 }
 
 export function loadEngine() {
   const { ready, problems } = analysisReadiness();
   if (!ready) throw new AnalysisError(problems.join('\n'), { kind: 'not_ready' });
+  applyProviderDefaults();
   const mod = require(ENGINE_PATH);
   if (typeof mod.analyzeTranscript !== 'function') {
     throw new AnalysisError('分析引擎缺少 analyzeTranscript 导出，可能版本不匹配。', { kind: 'bad_engine' });

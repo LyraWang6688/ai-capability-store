@@ -15,7 +15,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { execFileSync, spawn } from 'node:child_process';
 
 import { meetingDetail, fetchTranscript, findSelfChatId, larkReadiness, LarkError } from './lark.mjs';
-import { analysisReadiness } from './analysis.mjs';
+import { analysisReadiness, providerSummary } from './analysis.mjs';
 import { renderReportCard } from './render.mjs';
 import { analyzeMeeting, pushReport, handleMinuteEvent, listMeetingsWithEligibility } from './pipeline.mjs';
 import { writeJob } from './jobs.mjs';
@@ -73,6 +73,11 @@ function cmdDoctor() {
   const ready = analysisReadiness();
   add('分析引擎已构建', ready.problems.every((p) => !p.includes('引擎')), ready.enginePath);
   add('分析凭证可用', ready.problems.every((p) => !p.includes('凭证')), '');
+  // 端点过去完全不展示，而引擎缺它会直接降级成 basic_fallback——
+  // 用户看到"凭证可用"却拿不到完整报告。这里把实际生效的端点摆出来。
+  const provider = providerSummary();
+  add('模型端点', true, `${provider.baseUrl}${provider.baseUrlIsDefault ? '（默认，可用 DOUBAO_BASE_URL 覆盖）' : ''}`);
+  add('分析模型', true, provider.model || '');
 
   const failed = checks.filter((c) => c.status === 'FAIL');
   if (flags.json) { out(JSON.stringify({ ok: failed.length === 0, checks }, null, 2)); process.exit(failed.length ? 1 : 0); }

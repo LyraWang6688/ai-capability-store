@@ -116,6 +116,7 @@ teaming-bot/src/types/{index,v1,v2}.ts
 | GUI 进程不继承 shell PATH | MCP 配置里 `command` 必须写 `/usr/local/bin/node` 绝对路径 |
 | **只解决"我们的 command"不够** | 我们 spawn 出去的 lark-cli 同样受宿主 PATH 影响。它的 shebang `#!/usr/bin/env node` 会失败。**必须由代码自己补 PATH**，不能只靠配置文件 |
 | 体检漏检查 lark-cli | 早期 `teaming_doctor` 只查引擎，导致"体检通过但飞书工具全挂"。现在 `larkReadiness()` 覆盖 lark-cli 存在性、授权与 scope |
+| **引擎的 `getBaseUrl()` 没有默认值** | 不配 `DOUBAO_BASE_URL` 就会抛「未配置…」→ 被 catch → `analysisMode=basic_fallback`，而提示写的是「模型服务未完成核心分析，请稍后重试」——**把配置问题说成了服务问题**。2026-10-14 在豆包工作里连试两次都中招。现已内置方舟默认端点，并在 doctor 里展示生效端点 |
 | **只认 `status === 'ready'` 判授权** | lark-cli 对"访问令牌过期、refresh token 有效"报 `needs_refresh`，含义是**下次调用自动刷新**，属正常状态。曾经**两份代码副本**都只认 `ready`，于是在豆包工作里实测时，用户授权明明正常、体检却让去重新登录。现已抽成 `src/readiness.mjs` 的纯函数 `isLarkUserUsable`，规则只有一份且可测 |
 | 改了 `src/` 忘了重载宿主 | 宿主不会自动重载连接器，要关闭再打开开关或重启 App |
 

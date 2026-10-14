@@ -33,7 +33,7 @@
 | **Node.js ≥ 20** | 运行环境 |
 | **lark-cli ≥ 1.0.97** | 飞书官方 CLI，本项目用它取数、推送。`npm install -g @larksuite/cli` |
 | **飞书授权** | `lark-cli auth login --recommend` |
-| **分析凭证** | 环境变量 `DOUBAO_API_KEY`（豆包方舟） |
+| **分析凭证** | 环境变量 `DOUBAO_API_KEY`（豆包方舟）。模型端点已内置默认值（方舟公开端点），需要改才设 `DOUBAO_BASE_URL` |
 
 第一次用先跑体检：
 
@@ -56,7 +56,7 @@ node src/cli.mjs doctor
 | 传输类型 | STDIO |
 | 命令 | `/usr/local/bin/node`（**必须绝对路径**，GUI 不继承 PATH） |
 | 参数 | 本目录下 `src/mcpServer.mjs` 的绝对路径 |
-| 环境变量 | `DOUBAO_API_KEY` = 你的豆包方舟 Key |
+| 环境变量 | `DOUBAO_API_KEY` = 你的豆包方舟 Key（端点有默认值，通常不用配） |
 
 再把 `skills/teaming-meeting-analysis/` 里的 `SKILL.md` 作为技能导入（若界面支持技能包导入）。
 
@@ -124,6 +124,11 @@ node src/cli.mjs watch --chat <id>            # 监听妙记生成事件，自�
 ```
 
 `watch` 是**事件驱动**的：飞书妙记生成 → 自动分析 → 自动推送。
+
+> 历史坑：引擎的 `getBaseUrl()` **原本没有默认值**，而文档只写了 `DOUBAO_API_KEY`。
+> 于是照文档配置的用户会在分析时降级成 `basic_fallback`，报「模型服务未完成核心分析，请稍后重试」——
+> **那句话把配置问题说成了服务问题，用户重试多少次都不会好**。
+> 现已补默认端点，并在 `teaming_doctor` 里展示实际生效的端点与模型。
 
 > ⚠️ `watch` 依赖 `lark-cli event consume`，而它的订阅是**进程启动时注册、退出时注销**。
 > 也就是说：**进程不在跑，就完全收不到事件**（不是漏几条，是没订阅）。
