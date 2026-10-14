@@ -146,6 +146,8 @@ node src/cli.mjs push <报告.json> --chat <你的chat_id> --dry-run   # 先预�
 |---|---|---|
 | 1 | ~~在豆包工作 / WorkBuddy 里实测连接器~~ | 🟢 **2026-10-14 已在豆包工作里跑通**：宿主成功拉起 MCP 并调到 `teaming_doctor`（之前报的"未授权"是 doctor 自己的误判，已修）。下一步在宿主里试 `teaming_list_meetings` 与真实分析 |
 | 2 | 用**真实事件**验证 `watch` | 需要一个真实的妙记生成事件触发 |
+| **报告链接只能落到飞书文档兜底** | `src/publish.mjs` 会先 `POST {TEAMING_SERVER_URL}/api/host/reports` 换真正的报告页（含图表），失败才退到飞书文档。**但两端都没对齐**：MCP 用的是 `/api/host/reports`，而 teaming-bot 的 ADR（`docs/AI宿主接入设计.md`）规定的是 `/api/host/v1/*`；且服务端该路由**尚未实现**。所以卡片按钮现在指向文档兜底页，图表出不来。要做成完整体验，需先实现服务端 `/api/host/v1/reports` 并把 MCP 的路径对齐。 |
+| **报告链接只能落到飞书文档兜底** | `src/publish.mjs` 会先 `POST {TEAMING_SERVER_URL}/api/host/reports` 换真正的报告页（含图表），失败才退飞书文档。**但两端没对齐**：MCP 用 `/api/host/reports`，teaming-bot 的 ADR（`docs/AI宿主接入设计.md`）规定 `/api/host/v1/*`；且服务端该路由**尚未实现**。所以卡片按钮指向文档兜底页、图表出不来。要完整体验，需实现服务端 `/api/host/v1/reports` 并把 MCP 路径对齐。 |
 | 3 | 处理**跑次差异** | 同一会议两次分析边界不一致，产品上需要定策略（固定输出"证据不足/靠近边界"？） |
 | 4 | 多用户产品化 | 现在是**单用户本机工具**（用本机 lark-cli 授权）。给真实用户用需要：平台应用 + 用户授权 + 服务端常驻订阅。**注意：不要试图用本项目的 `watch` 承担多用户可靠性** |
 
