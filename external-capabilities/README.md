@@ -66,7 +66,9 @@ native structure).
 A capability record requires:
 
 - `name`          — capability identifier (lowercase kebab-case, == map key)
-- `provider`      — provider identifier (lowercase kebab-case)
+- `provider`      — the party that provides the underlying service this
+                    capability depends on, and whose rules therefore bound what
+                    it can do (lowercase kebab-case). See **Provider Semantics**.
 - `type`          — one of: plugin / mcp / connector / cli / external-api / integration
 - `status`        — one of: available / limited / disabled / unknown
 - `provider_path` — `external-capabilities/providers/<provider>/README.md` (must exist)
@@ -90,6 +92,33 @@ Optional, when known:
 - `notes`         — free-form notes
 
 Do not invent unknown permissions or authentication methods.
+
+## Provider Semantics
+
+`provider` names **the party that provides the underlying service** — the side
+whose rules bound what the capability can do.
+
+| The capability's boundary is set by… | `provider` |
+|---|---|
+| a third-party platform's API, quota and permission model | that platform (`feishu`, `wechat`) |
+| our own design | the Store owner (`lyrawang`) |
+
+The test is: **who decides what this capability can do?** If the answer is "the
+platform's API", the provider is the platform. If the answer is "our own
+design", it is the self-provider.
+
+**`provider` is not a maintainer field.** This Store accepts Store-managed
+capabilities only (see Scope Policy above), so every registered capability has
+the same maintainer. A maintainer field would be constant and carry no
+information; `provider` exists to record *which external rules apply*.
+
+Worked example — `teaming-mcp` uses Feishu, an LLM service and a self-built
+report server, yet its provider is `lyrawang`, not `feishu`: by design it never
+calls Feishu itself (the host fetches the transcript and hands it over), so
+Feishu's rules do not bound it. Its boundary comes from our own architecture.
+
+`provider_path` points at `external-capabilities/providers/<provider>/README.md`,
+which documents that party's official interfaces, auth model and constraints.
 
 ## Security
 
