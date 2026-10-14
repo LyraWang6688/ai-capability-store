@@ -18,7 +18,7 @@ import { meetingDetail, fetchTranscript, findSelfChatId, larkReadiness, LarkErro
 import { analysisReadiness, providerSummary } from './analysis.mjs';
 import { renderReportCard } from './render.mjs';
 import { analyzeMeeting, analyzeProvidedTranscript, pushReport, handleMinuteEvent, listMeetingsWithEligibility } from './pipeline.mjs';
-import { CONFIG_PATH, readStoredConfig, writeStoredConfig, applyStoredConfigToEnv } from './config.mjs';
+import { CONFIG_PATH, readStoredConfig, writeStoredConfig, applyStoredConfigToEnv, isEnrolled } from './config.mjs';
 import { writeJob } from './jobs.mjs';
 
 const argv = process.argv.slice(2);
@@ -51,7 +51,12 @@ function parseMinutes(v) {
 
 function cmdDoctor() {
   const checks = [];
-  const add = (name, ok, extra = '') => checks.push({ name, status: ok ? 'OK' : 'FAIL', extra });
+  // 三种状态：OK / FAIL / SKIP。
+  // SKIP 用于「这一项在当前架构下不是必需」——它不该拉低通过率，
+  // 否则用户会照着一个本来不需要的 FAIL 去折腾。
+  const add = (name, ok, extra = '', { skip = false } = {}) => checks.push({
+    name, status: skip ? 'SKIP' : (ok ? 'OK' : 'FAIL'), extra,
+  });
 
   let version = '';
   try {
@@ -66,13 +71,29 @@ function cmdDoctor() {
   // 这里曾经自己判一遍 `status === 'ready'`，而 lark.mjs 里也判一遍，
   // 两处都会把正常的 needs_refresh 误判成"未授权"。
   // 修 lark.mjs 后本处仍报 FAIL，就是因为漏了这个副本。
+  //
+  // 2026-10-14 追加：新架构下这三项**不是必需**的。
+  //
+  // 取数与推送已交给宿主（豆包工作用自己的飞书能力），MCP 只做分析，
+  // 所以没授权也能跑通。但 doctor 仍然把它们报成 FAIL，用户会照着一个
+  // 本来不需要的错误去折腾 lark-cli 授权——又一个「系统说错话」。
+  //
+  // 判据：已通过接入码配好（isEnrolled）就说明走的是新架构，标 SKIP。
+  const enrolled = isEnrolled();
+  const feishuSkip = enrolled
+    ? { skip: true }
+    : {};
+  const feishuHint = enrolled ? '新架构下由宿主取数，MCP 不需要飞书授权' : '';
+
   const readiness = larkReadiness();
   const scopes = readiness.scopes || '';
-  add('飞书已授权', Boolean(readiness.userName), readiness.userName || '执行 lark-cli auth login --recommend');
-  add('会议搜索权限', Boolean(readiness.userName) && scopes.includes('vc:meeting.search:read'));
+  add('飞书已授权', Boolean(readiness.userName),
+    readiness.userName || feishuHint || '执行 lark-cli auth login --recommend', feishuSkip);
+  add('会议搜索权限', Boolean(readiness.userName) && scopes.includes('vc:meeting.search:read'), feishuHint, feishuSkip);
   add('妙记读取权限',
     Boolean(readiness.userName)
-    && (scopes.includes('minutes:minutes:readonly') || scopes.includes('minutes:minutes.basic:read')));
+    && (scopes.includes('minutes:minutes:readonly') || scopes.includes('minutes:minutes.basic:read')),
+    feishuHint, feishuSkip);
 
   const ready = analysisReadiness();
   add('分析引擎已构建', ready.problems.every((p) => !p.includes('引擎')), ready.enginePath);
@@ -84,12 +105,22 @@ function cmdDoctor() {
   add('分析模型', true, provider.model || '');
 
   const failed = checks.filter((c) => c.status === 'FAIL');
-  if (flags.json) { out(JSON.stringify({ ok: failed.length === 0, checks }, null, 2)); process.exit(failed.length ? 1 : 0); }
+  const skipped = checks.filter((c) => c.status === 'SKIP');
+  if (flags.json) {
+    out(JSON.stringify({ ok: failed.length === 0, checks, skipped: skipped.map((c) => c.name) }, null, 2));
+    process.exit(failed.length ? 1 : 0);
+  }
 
   const w = Math.max(...checks.map((c) => c.name.length));
   log('\n=== teaming doctor ===');
   for (const c of checks) log(`  ${c.status.padEnd(5)} ${c.name.padEnd(w)} ${c.extra}`);
-  log(failed.length ? `\n${failed.length} 项未通过。` : '\n全部通过，可以开始使用。');
+  if (failed.length) {
+    log(`\n${failed.length} 项未通过。`);
+  } else if (skipped.length) {
+    log(`\n可以开始使用。${skipped.length} 项已跳过（当前架构下不需要）。`);
+  } else {
+    log('\n全部通过，可以开始使用。');
+  }
   for (const p of ready.problems) log(`  · ${p}`);
   process.exit(failed.length ? 1 : 0);
 }
