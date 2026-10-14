@@ -19,18 +19,58 @@ const realWrite = process.stdout.write.bind(process.stdout);
 console.log = (...a) => process.stderr.write(`${a.map(String).join(' ')}\n`);
 console.info = console.log; console.warn = console.log; console.debug = console.log;
 
-import { readFileSync } from 'node:fs';
+import { readFileSync, appendFileSync, mkdirSync, statSync, writeFileSync } from 'node:fs';
 import { spawn } from 'node:child_process';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+
+const CLI = process.env.TEAMING_CLI || join(dirname(fileURLToPath(import.meta.url)), 'cli.mjs');
+
+/**
+ * 连接诊断日志。
+ *
+ * 为什么需要：宿主报"连不上"时，stdio MCP **没有任何可观测性**——
+ * 进程活着但在等 stdin，宿主说握手失败，双方都不留痕，只能反复重启碰运气。
+ * 2026-10-14 在豆包工作里就卡在这个状态：`ps` 显示进程健康，
+ * 但宿主侧报连接层故障，无从判断卡在哪一步。
+ *
+ * 原则：
+ * - **只写文件**，一个字节都不进 stdout（stdout 只走 JSON-RPC）
+ * - 只记方法与结果，**绝不记参数正文**（可能含会议原文）
+ * - 自己出错绝不抛，日志不能反过来搞挂服务
+ */
+const LOG_PATH = process.env.TEAMING_MCP_LOG
+  || join(dirname(fileURLToPath(import.meta.url)), '..', '.state', 'mcp.log');
+const LOG_MAX_BYTES = 1024 * 1024;
+
+function trace(event, detail = {}) {
+  try {
+    mkdirSync(dirname(LOG_PATH), { recursive: true });
+    try {
+      if (statSync(LOG_PATH).size > LOG_MAX_BYTES) writeFileSync(LOG_PATH, '');
+    } catch { /* 文件不存在，无需轮转 */ }
+    appendFileSync(LOG_PATH, `${JSON.stringify({ t: new Date().toISOString(), event, ...detail })}\n`);
+  } catch { /* 日志失败不影响服务 */ }
+}
+
+trace('mcp_server_started', {
+  pid: process.pid,
+  cwd: process.cwd(),
+  protocol: process.argv.slice(2).join(' '),
+  // 只记"有没有"，不记值
+  hasDoubaoKey: Boolean(process.env.DOUBAO_API_KEY || process.env.LLM_API_KEY || process.env.ARK_API_KEY),
+  hasBaseUrl: Boolean(process.env.DOUBAO_BASE_URL || process.env.LLM_BASE_URL || process.env.ARK_BASE_URL),
+  hasLarkCli: Boolean(process.env.LARK_CLI),
+});
+
+process.on('uncaughtException', (e) => trace('uncaught_exception', { message: String(e?.message || e) }));
+process.on('unhandledRejection', (e) => trace('unhandled_rejection', { message: String(e?.message || e) }));
 
 import { analysisReadiness } from './analysis.mjs';
 import { larkReadiness, findSelfChatId } from './lark.mjs';
 import { reportDigest } from './render.mjs';
 import { readReport, pushReport, listMeetingsWithEligibility } from './pipeline.mjs';
 import { newJobId, writeJob, readJob, waitForJob, pruneJobs } from './jobs.mjs';
-
-const CLI = process.env.TEAMING_CLI || join(dirname(fileURLToPath(import.meta.url)), 'cli.mjs');
 
 const SERVER_INFO = { name: 'teaming', version: '0.1.0' };
 const SUPPORTED = ['2024-11-05', '2025-03-26', '2025-06-18', '2025-11-25'];
@@ -283,6 +323,8 @@ const send = (msg) => realWrite(`${JSON.stringify(msg)}\n`);
 async function handle(msg) {
   const { id, method, params } = msg;
   const isNotification = id === undefined || id === null;
+  // 只记方法名与工具名，不记参数正文（可能含会议原文）
+  trace('request', { method, tool: method === 'tools/call' ? params?.name : undefined, isNotification });
   try {
     if (method === 'initialize') {
       const want = params?.protocolVersion;
@@ -303,6 +345,7 @@ async function handle(msg) {
     if (method === 'tools/call') {
       try {
         const result = await callTool(params?.name, params?.arguments || {});
+        trace('tool_ok', { tool: params?.name });
         send({
           jsonrpc: '2.0',
           id,
@@ -313,6 +356,7 @@ async function handle(msg) {
           },
         });
       } catch (e) {
+        trace('tool_failed', { tool: params?.name, message: String(e?.message || e).slice(0, 200) });
         send({
           jsonrpc: '2.0',
           id,
@@ -330,12 +374,20 @@ async function handle(msg) {
 let buf = '';
 process.stdin.setEncoding('utf8');
 process.stdin.on('data', (chunk) => {
+  trace('stdin_chunk', { bytes: Buffer.byteLength(chunk) });
   buf += chunk;
   let i;
   while ((i = buf.indexOf('\n')) >= 0) {
     const line = buf.slice(0, i).trim(); buf = buf.slice(i + 1);
     if (!line) continue;
-    let msg; try { msg = JSON.parse(line); } catch { continue; }
+    let msg; try { msg = JSON.parse(line); } catch {
+      // 解析失败是最容易导致"宿主说连不上"的原因，必须留痕
+      trace('stdin_parse_failed', { preview: line.slice(0, 120) });
+      continue;
+    }
     handle(msg);
   }
 });
+process.stdin.on('end', () => trace('stdin_closed'));
+process.stdin.on('error', (e) => trace('stdin_error', { message: String(e?.message || e) }));
+
