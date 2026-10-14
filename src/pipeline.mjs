@@ -17,10 +17,12 @@ import { normalizeTranscript } from './transcript.mjs';
 import { renderReportCard, renderReportDoc } from './render.mjs';
 import { publishReportToServer } from './publish.mjs';
 
-const HERE = dirname(fileURLToPath(import.meta.url));
-const ROOT = join(HERE, '..');
-export const OUT_DIR = process.env.TEAMING_OUT || join(ROOT, '.out');
-const STATE_DIR = join(ROOT, '.state');
+import { resolveOutDir, resolveStateDir } from './paths.mjs';
+
+// 数据目录按「git 检出 vs npm 安装」分流，见 paths.mjs：
+// 全局安装时包目录在 node_modules 里，既可能不可写、升级也会被清掉。
+export const OUT_DIR = resolveOutDir();
+const STATE_DIR = resolveStateDir();
 const LEDGER = join(STATE_DIR, 'processed.json');
 
 const safeName = (s) => String(s).replace(/[^\w\u4e00-\u9fa5-]/g, '_').slice(0, 60);

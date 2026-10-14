@@ -26,6 +26,30 @@
 
 ---
 
+## 一点五、安装
+
+**方式一：npm（推荐给使用者）**
+
+```bash
+npm install -g teaming-mcp
+```
+
+装完得到两个命令：`teaming-mcp`（MCP 服务）与 `teaming`（命令行）。
+
+**方式二：从源码跑（给开发者）**
+
+```bash
+git clone <本仓库> && cd teaming-mcp
+npm run build     # 编译分析引擎到 dist/engine/
+```
+
+> **运行数据放哪**：从 git 检出跑时用仓库内的 `.out/` 与 `.state/`（已在 .gitignore）；
+> 用 npm 全局安装时自动改用 `~/.teaming-mcp/`——因为包目录在 `node_modules` 里，
+> 既可能没有写权限，升级重装也会把报告和账本清掉。
+> 两种都可用 `TEAMING_OUT` / `TEAMING_STATE` / `TEAMING_DATA_DIR` 覆盖。
+
+---
+
 ## 二、前置条件
 
 | 依赖 | 说明 |

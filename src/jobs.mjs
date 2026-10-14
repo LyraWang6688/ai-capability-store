@@ -13,11 +13,12 @@
  */
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync, unlinkSync } from 'node:fs';
 import { dirname, join } from 'node:path';
+import { resolveJobsDir } from './paths.mjs';
 import { fileURLToPath } from 'node:url';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(HERE, '..');
-export const JOBS_DIR = process.env.TEAMING_JOBS || join(ROOT, '.state', 'jobs');
+export const JOBS_DIR = resolveJobsDir();
 
 const KEEP_MS = 7 * 24 * 3600 * 1000;   // 账本保留 7 天
 
