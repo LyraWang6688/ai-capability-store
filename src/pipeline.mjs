@@ -30,8 +30,22 @@ const safeName = (s) => String(s).replace(/[^\w\u4e00-\u9fa5-]/g, '_').slice(0, 
 /** 报告落盘路径（约定：<标题>-<meetingId>.report.json），MCP 靠它反查 */
 export function reportPathFor(meetingId) {
   if (!existsSync(OUT_DIR)) return null;
+
+  // ① 文件名约定：<标题>-<id>.report.json
   const hit = readdirSync(OUT_DIR).find((f) => f.endsWith(`${meetingId}.report.json`));
-  return hit ? join(OUT_DIR, hit) : null;
+  if (hit) return join(OUT_DIR, hit);
+
+  // ② 退一步读报告里的 meetingRef。
+  //    供稿模式下文件名里的 id 可能是【内容哈希】，而宿主持有的是【飞书
+  //    meeting_id】——只按文件名匹配会找不到报告（2026-10-15 实测踩到）。
+  const files = readdirSync(OUT_DIR).filter((f) => f.endsWith('.report.json'));
+  for (const f of files) {
+    try {
+      const ref = JSON.parse(readFileSync(join(OUT_DIR, f), 'utf8'))?.meetingRef || {};
+      if (ref.id === meetingId || ref.feishuMeetingId === meetingId) return join(OUT_DIR, f);
+    } catch { /* 坏文件跳过，不影响其它候选 */ }
+  }
+  return null;
 }
 
 export function readReport(meetingId) {
@@ -105,7 +119,22 @@ export async function analyzeProvidedTranscript({
   const base = `${safeName(topic)}-${id}`;
   const reportPath = join(OUT_DIR, `${base}.report.json`);
   const transcriptPath = join(OUT_DIR, `${base}.transcript.txt`);
-  writeFileSync(reportPath, JSON.stringify(report, null, 2));
+
+  // 把身份信息一起落盘，供两件事：
+  //   ① reportPathFor 能按【飞书 meeting_id】反查到报告——
+  //      供稿模式下文件名里的 id 可能是内容哈希，宿主持有的是飞书 ID，
+  //      只靠文件名匹配会找不到（2026-10-15 实测踩到）；
+  //   ② 之后渲染卡片时能拿到会议标题。
+  const stored = {
+    ...report,
+    meetingRef: {
+      id,
+      feishuMeetingId: meetingId || null,
+      title: topic,
+      savedAt: new Date().toISOString(),
+    },
+  };
+  writeFileSync(reportPath, JSON.stringify(stored, null, 2));
   writeFileSync(transcriptPath, text);
 
   // 顺手换一个服务器报告页链接：报告页有四象限图和语义互动网络图，
@@ -161,9 +190,19 @@ export function publishReportDoc(report, { meetingTitle, startTime, reportPath }
  * 没有传入 reportUrl 时，会先把报告发成飞书云文档，再把文档链接放进按钮——
  * 这样本地链路也有"点击查看报告"的落点。
  */
-export async function pushReport(report, {
-  chatId, userId, meetingTitle, reportUrl, startTime, feishuMeetingId, transcript, reportPath,
-}) {
+/**
+ * 组装报告卡片但**不发送**——供「宿主自己投递」的场景使用。
+ *
+ * 背景（2026-10-15 在豆包账号的豆包工作里实测）：MCP 自己那套 lark-cli
+ * 授权的可能是本机另一个账号，于是 teaming_push_report 推不到当前用户；
+ * 宿主改用自己租户的飞书能力发送时，它只能自己拼卡片——卡片样式于是
+ * 和线上团队 bot 发的不一致。
+ *
+ * 解法：**卡片 JSON 由 MCP 出（唯一内容来源），宿主只负责投递。**
+ */
+export async function buildReportCard(report, {
+  meetingTitle, reportUrl, startTime, feishuMeetingId, transcript, reportPath,
+} = {}) {
   // 报告链接的三级优先：显式传入 > 服务器报告页 > 飞书文档兜底
   let url = reportUrl || null;
   let source = reportUrl ? 'explicit' : null;
@@ -177,7 +216,16 @@ export async function pushReport(report, {
     source = 'feishu_doc';
   }
 
-  const card = renderReportCard(report, { meetingTitle, reportUrl: url });
+  return {
+    card: renderReportCard(report, { meetingTitle, reportUrl: url }),
+    reportUrl: url,
+    reportUrlSource: source,
+  };
+}
+
+export async function pushReport(report, opts = {}) {
+  const { chatId, userId, meetingTitle } = opts;
+  const { card, reportUrl: url, reportUrlSource: source } = await buildReportCard(report, opts);
   const zone = report.teamState?.zoneLabel || report.teamState?.zone || '未定位';
   const idem = `teaming-${safeName(meetingTitle || 'meeting')}-${safeName(zone)}`.slice(0, 50);
   const sent = sendMessage({ chatId, userId, card, idempotencyKey: idem });

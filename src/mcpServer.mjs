@@ -76,13 +76,15 @@ process.on('unhandledRejection', (e) => trace('unhandled_rejection', { message: 
 import { analysisReadiness } from './analysis.mjs';
 import { larkReadiness, findSelfChatId } from './lark.mjs';
 import { reportDigest } from './render.mjs';
-import { readReport, pushReport, listMeetingsWithEligibility } from './pipeline.mjs';
+import { readReport, pushReport, buildReportCard, listMeetingsWithEligibility } from './pipeline.mjs';
 import { normalizeTranscript } from './transcript.mjs';
 import { newJobId, writeJob, readJob, waitForJob, pruneJobs, JOBS_DIR } from './jobs.mjs';
 import { applyStoredConfigToEnv } from './config.mjs';
 import { resolveStateDir } from './paths.mjs';
 
-const SERVER_INFO = { name: 'teaming', version: '0.1.0' };
+// 版本号从 package.json 读：曾写死成 '0.1.0'，发到 0.1.1 后 initialize 里报的还是旧版本
+const PKG_VERSION = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version;
+const SERVER_INFO = { name: 'teaming', version: PKG_VERSION };
 const SUPPORTED = ['2024-11-05', '2025-03-26', '2025-06-18', '2025-11-25'];
 
 const TOOLS = [
@@ -206,6 +208,28 @@ const TOOLS = [
       additionalProperties: false,
     },
     annotations: { readOnlyHint: false },
+  },
+  {
+    name: 'teaming_report_card',
+    description:
+      '取一份报告的【飞书交互卡片 JSON】——这是本产品统一的消息卡片样式。'
+      + '**本工具不发送任何消息**，只把卡片交给你。'
+      + '什么时候用：你要把报告以卡片形式发给用户，但 MCP 自己那套 lark-cli 授权'
+      + '不是当前用户（例如用户用豆包账号、本机 lark-cli 是另一个人），'
+      + '于是 teaming_push_report 推不到他。'
+      + '拿到 card 后，用【你自己的】飞书发消息能力把它作为 interactive 消息发出去。'
+      + '**不要自己设计卡片样式**——那样做出来的卡片和线上团队 bot 发的不一致。'
+      + '能用 teaming_push_report 直接发（本机 lark-cli 就是当前用户）时，优先用那个。',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        meeting_id: { type: 'string', description: '会议 ID' },
+        report_url: { type: 'string', description: '可选：报告页链接。不传则自动发布到服务器取链接' },
+      },
+      required: ['meeting_id'],
+      additionalProperties: false,
+    },
+    annotations: { readOnlyHint: true },
   },
   {
     name: 'teaming_job_status',
@@ -441,6 +465,34 @@ async function callTool(name, args) {
       hint: r.reportUrlSource === 'server'
         ? '已作为交互卡片推送，按钮指向服务器报告页（含图表）。'
         : '已作为交互卡片推送。注意：按钮指向飞书文档兜底页（服务器报告页不可用），图表无法呈现。',
+    };
+  }
+
+  if (name === 'teaming_report_card') {
+    const found = readReport(args.meeting_id);
+    if (!found) {
+      return {
+        ok: false,
+        hint: '这场会议还没有分析报告。请先用 teaming_analyze_transcript 或 teaming_analyze_meeting 生成。',
+      };
+    }
+    const meetingTitle = /^(.+)-\d+\.report\.json$/.exec(found.path.split('/').pop())?.[1] || undefined;
+    const built = await buildReportCard(found.report, {
+      meetingTitle, reportUrl: args.report_url, reportPath: found.path,
+    });
+    return {
+      ok: true,
+      meeting_id: args.meeting_id,
+      meeting_title: meetingTitle,
+      report_url: built.reportUrl,
+      report_url_source: built.reportUrlSource,
+      card: built.card,
+      how_to_send: 'msg_type=interactive，content=JSON.stringify(card)。原样发送，'
+        + '不要改动 card 的结构与文案。',
+      hint: '★ 用【你自己的】飞书发消息能力把 card 发出去，不要自己设计卡片样式。'
+        + (built.reportUrlSource === 'server'
+          ? ' 按钮指向服务器报告页（含图表）。'
+          : ' 注意：按钮指向飞书文档兜底页（服务器报告页不可用），图表无法呈现。'),
     };
   }
 
