@@ -116,6 +116,7 @@ teaming-bot/src/types/{index,v1,v2}.ts
 | GUI 进程不继承 shell PATH | MCP 配置里 `command` 必须写 `/usr/local/bin/node` 绝对路径 |
 | **只解决"我们的 command"不够** | 我们 spawn 出去的 lark-cli 同样受宿主 PATH 影响。它的 shebang `#!/usr/bin/env node` 会失败。**必须由代码自己补 PATH**，不能只靠配置文件 |
 | 体检漏检查 lark-cli | 早期 `teaming_doctor` 只查引擎，导致"体检通过但飞书工具全挂"。现在 `larkReadiness()` 覆盖 lark-cli 存在性、授权与 scope |
+| **只认 `status === 'ready'` 判授权** | lark-cli 对"访问令牌过期、refresh token 有效"报 `needs_refresh`，含义是**下次调用自动刷新**，属正常状态。曾经**两份代码副本**都只认 `ready`，于是在豆包工作里实测时，用户授权明明正常、体检却让去重新登录。现已抽成 `src/readiness.mjs` 的纯函数 `isLarkUserUsable`，规则只有一份且可测 |
 | 改了 `src/` 忘了重载宿主 | 宿主不会自动重载连接器，要关闭再打开开关或重启 App |
 
 ---
@@ -140,7 +141,7 @@ node src/cli.mjs push <报告.json> --chat <你的chat_id> --dry-run   # 先预�
 
 | # | 事项 | 说明 |
 |---|---|---|
-| 1 | **在豆包工作 / WorkBuddy 里实测连接器** | 唯一还没验证的一环：宿主能不能拉起本 MCP、工具能不能调通 |
+| 1 | ~~在豆包工作 / WorkBuddy 里实测连接器~~ | 🟢 **2026-10-14 已在豆包工作里跑通**：宿主成功拉起 MCP 并调到 `teaming_doctor`（之前报的"未授权"是 doctor 自己的误判，已修）。下一步在宿主里试 `teaming_list_meetings` 与真实分析 |
 | 2 | 用**真实事件**验证 `watch` | 需要一个真实的妙记生成事件触发 |
 | 3 | 处理**跑次差异** | 同一会议两次分析边界不一致，产品上需要定策略（固定输出"证据不足/靠近边界"？） |
 | 4 | 多用户产品化 | 现在是**单用户本机工具**（用本机 lark-cli 授权）。给真实用户用需要：平台应用 + 用户授权 + 服务端常驻订阅。**注意：不要试图用本项目的 `watch` 承担多用户可靠性** |

@@ -14,7 +14,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { execFileSync, spawn } from 'node:child_process';
 
-import { meetingDetail, fetchTranscript, findSelfChatId, LarkError } from './lark.mjs';
+import { meetingDetail, fetchTranscript, findSelfChatId, larkReadiness, LarkError } from './lark.mjs';
 import { analysisReadiness } from './analysis.mjs';
 import { renderReportCard } from './render.mjs';
 import { analyzeMeeting, pushReport, handleMinuteEvent, listMeetingsWithEligibility } from './pipeline.mjs';
@@ -57,18 +57,18 @@ function cmdDoctor() {
     add('lark-cli 可用', false, '未安装或不在 PATH；可用 LARK_CLI 指定绝对路径');
   }
 
-  let authOk = false; let who = '';
-  try {
-    const s = JSON.parse(execFileSync(process.env.LARK_CLI || 'lark-cli', ['auth', 'status'], { encoding: 'utf8' }));
-    authOk = s?.identities?.user?.status === 'ready';
-    who = s?.identities?.user?.userName || '';
-    const scopes = s?.identities?.user?.scope || '';
-    add('飞书已授权', authOk, who);
-    add('会议搜索权限', scopes.includes('vc:meeting.search:read'));
-    add('妙记读取权限', scopes.includes('minutes:minutes:readonly') || scopes.includes('minutes:minutes.basic:read'));
-  } catch {
-    add('飞书已授权', false, '执行 lark-cli auth login --recommend');
-  }
+  // 授权判定复用 larkReadiness()，只留一个判据。
+  //
+  // 这里曾经自己判一遍 `status === 'ready'`，而 lark.mjs 里也判一遍，
+  // 两处都会把正常的 needs_refresh 误判成"未授权"。
+  // 修 lark.mjs 后本处仍报 FAIL，就是因为漏了这个副本。
+  const readiness = larkReadiness();
+  const scopes = readiness.scopes || '';
+  add('飞书已授权', Boolean(readiness.userName), readiness.userName || '执行 lark-cli auth login --recommend');
+  add('会议搜索权限', Boolean(readiness.userName) && scopes.includes('vc:meeting.search:read'));
+  add('妙记读取权限',
+    Boolean(readiness.userName)
+    && (scopes.includes('minutes:minutes:readonly') || scopes.includes('minutes:minutes.basic:read')));
 
   const ready = analysisReadiness();
   add('分析引擎已构建', ready.problems.every((p) => !p.includes('引擎')), ready.enginePath);

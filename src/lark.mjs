@@ -13,6 +13,7 @@ import { promisify } from 'node:util';
 import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';   // 仅作为 /tmp 不可用时的兜底
 import { dirname, join } from 'node:path';
+import { readLarkIdentity } from './readiness.mjs';
 
 const LARK = process.env.LARK_CLI || 'lark-cli';
 const execFileAsync = promisify(execFile);
@@ -278,8 +279,10 @@ export function larkReadiness() {
   let userName = null; let scopes = '';
   try {
     const s = JSON.parse(execFileSync(LARK, ['auth', 'status'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], env: spawnEnv() }));
-    const u = s?.identities?.user;
-    if (u?.status === 'ready') { userName = u.userName || null; scopes = u.scope || ''; }
+    // 判定抽到 readiness.mjs 的纯函数里，保证规则只有一份且可测。
+    // 曾经这里只认 status === 'ready'，把正常的 needs_refresh 误判成未授权。
+    const { userName: name, scopes: granted } = readLarkIdentity(s);
+    if (name) { userName = name; scopes = granted; }
     else problems.push('飞书未授权。下一步：lark-cli auth login --recommend');
   } catch {
     problems.push('读取飞书授权状态失败。下一步：lark-cli auth login --recommend');
