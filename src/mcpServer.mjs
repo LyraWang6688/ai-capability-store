@@ -487,9 +487,20 @@ async function callTool(name, args) {
       report_url: built.reportUrl,
       report_url_source: built.reportUrlSource,
       card: built.card,
-      how_to_send: 'msg_type=interactive，content=JSON.stringify(card)。原样发送，'
-        + '不要改动 card 的结构与文案。',
-      hint: '★ 用【你自己的】飞书发消息能力把 card 发出去，不要自己设计卡片样式。'
+      how_to_send: 'msg_type=interactive，content=JSON.stringify(card)。'
+        + '原样发送，不要改动 card 的结构与文案。',
+      deliver_to: '★ 发给【当前对话用户自己】。'
+        + '注意：那个会话要用【你自己的】飞书能力去找，别用 MCP —— '
+        + 'MCP 用的 lark-cli 授权可能是另一个账号，找不到当前用户的会话。',
+      delivery_steps: [
+        '1) 用你自己的飞书能力列出当前账号的单聊会话（lark-cli 里是 '
+          + '`im +chat-list --types=p2p`，用你自己的身份/租户）。',
+        '2) 选中属于【当前账号自己】的那条自聊会话（你的自聊，不是别人的）。',
+        '3) 把上面 card 原样作为 interactive 消息发出（msg_type=interactive）。',
+        '4) 发送后把 message_id 回报给用户。',
+      ],
+      hint: '★ 卡片样式是固定的（蓝色标题栏 + 一行会议名称 + 一个按钮），'
+        + '**不要自己设计**，不要加指标块、分区块或报告正文。'
         + (built.reportUrlSource === 'server'
           ? ' 按钮指向服务器报告页（含图表）。'
           : ' 注意：按钮指向飞书文档兜底页（服务器报告页不可用），图表无法呈现。'),
