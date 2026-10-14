@@ -106,7 +106,23 @@ export async function analyzeProvidedTranscript({
   writeFileSync(reportPath, JSON.stringify(report, null, 2));
   writeFileSync(transcriptPath, text);
 
-  return { meetingId: id, topic, report, reportPath, transcriptPath, speakerLines };
+  // 顺手换一个服务器报告页链接：报告页有四象限图和语义互动网络图，
+  // 飞书云文档只有纯文本，复现不了那两张图。
+  //
+  // 上传失败**不影响分析结果**——publishReportToServer 内部已兜底（网络/超时/
+  // 未配置都返回 null），调用方拿不到链接时退回文档或纯文本即可。
+  let reportUrl = null;
+  try {
+    const published = await publishReportToServer(report, {
+      meetingTitle: topic, startTime: null, feishuMeetingId: meetingId, transcript: text,
+    });
+    reportUrl = published?.url || null;
+    if (reportUrl) onProgress({ step: 'published', url: reportUrl });
+  } catch (e) {
+    onProgress({ step: 'publish_failed', message: String(e?.message || e).slice(0, 120) });
+  }
+
+  return { meetingId: id, topic, report, reportPath, transcriptPath, speakerLines, reportUrl };
 }
 
 const PUBLISHED_LEDGER = join(STATE_DIR, 'published-docs.json');

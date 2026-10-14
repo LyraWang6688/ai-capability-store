@@ -5,8 +5,8 @@
  * 飞书云文档是纯文本，**无法复现那两张图和导出能力**。
  * 所以卡片按钮的正解是服务器报告页，飞书文档只当兜底。
  *
- * 服务端契约（待实现）：
- *   POST {TEAMING_SERVER_URL}/api/host/reports
+ * 服务端契约（已于 2026-10-14 实现，见 teaming-bot 的 src/app/api/host/v1/reports/route.ts）：
+ *   POST {TEAMING_SERVER_URL}/api/host/v1/reports
  *   Authorization: Bearer {TEAMING_HOST_TOKEN}
  *   Content-Type: application/json
  *   {
@@ -47,7 +47,9 @@ function requestIdFor(report, meetingTitle) {
  */
 export async function publishReportToServer(report, { meetingTitle, startTime, feishuMeetingId, transcript } = {}) {
   if (!serverPublishConfigured()) return null;
-  const url = `${SERVER_URL()}/api/host/reports`;
+  // 路径带 /v1/：对齐 teaming-bot 的 ADR（docs/AI宿主接入设计.md 第九章）。
+  // 曾经这里写的是 /api/host/reports，服务端按 ADR 实现的是 /api/host/v1/*，两边对不上。
+  const url = `${SERVER_URL()}/api/host/v1/reports`;
   const body = {
     meetingTitle: meetingTitle || null,
     meetingStartedAt: startTime || null,
@@ -71,7 +73,7 @@ export async function publishReportToServer(report, { meetingTitle, startTime, f
     });
     if (!res.ok) return null;
     const data = await res.json().catch(() => null);
-    const reportUrl = data?.reportUrl || (data?.reportPublicId ? `${SERVER_URL()}/report/${data.reportPublicId}` : null);
+    const reportUrl = data?.reportUrl || (data?.reportPublicId ? `${SERVER_URL()}/report/v2/${data.reportPublicId}` : null);
     if (!reportUrl) return null;
     return { url: reportUrl, reportPublicId: data?.reportPublicId || null };
   } catch {

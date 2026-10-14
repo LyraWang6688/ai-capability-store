@@ -174,6 +174,8 @@ async function cmdAnalyzeTranscript() {
       onProgress: (e) => {
         if (e.step === 'transcript') log(`[1/2] 逐字稿 ${e.turns} 条发言 / ${e.chars} 字`);
         else if (e.step === 'analyzed') log(`[2/2] 分析完成（${e.seconds} 秒）`);
+        else if (e.step === 'published') log(`      报告页：${e.url}`);
+        else if (e.step === 'publish_failed') log(`      报告页上传失败（不影响分析）：${e.message}`);
       },
     });
     const zone = r.report.teamState?.zoneLabel || r.report.teamState?.zone || '未定位';
@@ -181,13 +183,15 @@ async function cmdAnalyzeTranscript() {
       writeJob(jobId, {
         status: 'done', finishedAt: new Date().toISOString(),
         reportPath: r.reportPath, transcriptPath: r.transcriptPath, topic: r.topic, zone,
+        reportUrl: r.reportUrl || null,
       });
     }
-    log(`\n区域定位：${zone}\n报告：${r.reportPath}`);
+    log(`\n区域定位：${zone}\n报告：${r.reportPath}${r.reportUrl ? `\n报告页：${r.reportUrl}` : ''}`);
     if (flags.json) {
       out(JSON.stringify({
         reportPath: r.reportPath, transcriptPath: r.transcriptPath,
         zone, topic: r.topic, meetingId: r.meetingId, speakerLines: r.speakerLines,
+        reportUrl: r.reportUrl || null,
       }));
     }
   } catch (e) {
