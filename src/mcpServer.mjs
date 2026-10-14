@@ -129,11 +129,13 @@ const TOOLS = [
       type: 'object',
       properties: {
         meeting_id: { type: 'string', description: '会议 ID' },
-        // 默认值刻意压到 10 秒：前置检查（lark-cli 取数）本身要 ~17 秒，
-        // 若再加 45 秒内联等待，总耗时会超过宿主的 tools/call 超时（豆包工作约 60 秒），
-        // 宿主会在第 60 秒取消调用——用户看到的就是"失败"，尽管分析其实已经跑完。
-        // 2026-10-14 实测：默认 45 秒时总耗时 62 秒，正好被取消。
-        wait_seconds: { type: 'integer', minimum: 0, maximum: 600, description: '最多内联等待多少秒，默认 10；填 0 则立即返回 job_id' },
+        // 默认 0：立刻返回，绝不内联等待。
+        // 2026-10-14 实测教训：这个 MCP 本身 10.4 秒就能返回（已用协议端到端计时确认），
+        // 但宿主观测到的却是 70 秒——多出的 60 秒在宿主侧（疑似 macOS 沙箱对后台进程的调度挂起），
+        // 于是无论内联等待设 45 还是 10，都会撞上宿主 60 秒的 tools/call 超时，
+        // 用户看到"失败"，而分析其实早已跑完。默认 0 让工具调用只做「排队」这一件事，
+        // 等待完全交给 teaming_job_status。
+        wait_seconds: { type: 'integer', minimum: 0, maximum: 600, description: '最多内联等待多少秒，默认 0（立即返回）。除非你明确想等，否则不要传' },
         force: { type: 'boolean', description: '已有报告时是否强制重跑，默认 false' },
       },
       required: ['meeting_id'],
@@ -247,7 +249,7 @@ async function callTool(name, args) {
     });
     child.unref();
 
-    const waitMs = Math.max(0, Math.min(600, Number.isFinite(args.wait_seconds) ? args.wait_seconds : 10)) * 1000;
+    const waitMs = Math.max(0, Math.min(600, Number.isFinite(args.wait_seconds) ? args.wait_seconds : 0)) * 1000;
     const job = await waitForJob(jobId, waitMs);
 
     if (job?.status === 'done') {
