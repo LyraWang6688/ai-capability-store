@@ -1,0 +1,22 @@
+# 依赖
+node_modules/
+
+# 构建产物
+dist/engine/
+*.tsbuildinfo
+
+# 本地运行数据（分析输出、事件账本）——含会议原文，绝不入库
+.out/
+.state/
+
+# 环境变量
+.env
+.env.local
+.env.*.local
+
+# 编辑器与系统
+.DS_Store
+.vscode/
+.idea/
+*.log
+*.tgz
