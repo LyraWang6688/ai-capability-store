@@ -131,6 +131,7 @@ teaming_push_report(meeting_id)
 | `teaming_doctor` 报飞书未授权 | 让用户在终端执行 `lark-cli auth login --recommend` 后重试 |
 | 会议 `analyzable=false` | 说明该会议没有逐字稿，AI 纪要无法替代原始发言，换一场 |
 | 分析返回 `status=running` | 正常。用 `teaming_job_status` 轮询，**不要重新发起分析** |
+| **分析调用被取消或超时** | **任务并没有失败**——它在后台进程里继续跑。**先调一次 `teaming_job_status`**（若手上没有 job_id，先 `teaming_read_report` 或重新 `teaming_list_meetings` 看是否已生成），**不要直接告诉用户"失败了"** |
 | 分析返回 `status=failed` | 按返回的 `error` 说明原因；逐字稿缺失的换一场会 |
 | 逐字稿过短 | 说明证据不足以支撑判断，可以给有限观察但不下区域结论 |
 | 用户要求评价某个人 | 说明本技能只观察会议中的行为与互动，不评价个人 |

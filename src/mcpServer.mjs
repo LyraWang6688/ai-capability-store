@@ -121,13 +121,19 @@ const TOOLS = [
       '对一场会议做团队动力分析，产出四部分报告（团队状态定位／互动概览／未完成的对话与非共识／给领导者的建议）。'
       + '什么时候用：用户明确要求「分析这场会」「看看团队氛围」。'
       + '已分析过的会议会直接复用已有报告，不重复消耗（要重跑传 force=true）。'
-      + '分析在后台进程执行：如果 wait_seconds 内没跑完，会返回 status=running 与 job_id，'
-      + '此时用 teaming_job_status 查结果——**任务不会因为等待超时而丢失**。',
+      + '**本工具会尽快返回，不会一直等到分析结束。**'
+      + '返回 status=running 时，必须用 teaming_job_status 轮询同一个 job_id 直到 status=done，'
+      + '然后把报告摘要给用户；**不要重复调用本工具**（会重复排队）。'
+      + '分析通常需要 60~120 秒，任务不会因为等待超时而丢失。',
     inputSchema: {
       type: 'object',
       properties: {
         meeting_id: { type: 'string', description: '会议 ID' },
-        wait_seconds: { type: 'integer', minimum: 0, maximum: 600, description: '最多内联等待多少秒，默认 45；填 0 则立即返回 job_id' },
+        // 默认值刻意压到 10 秒：前置检查（lark-cli 取数）本身要 ~17 秒，
+        // 若再加 45 秒内联等待，总耗时会超过宿主的 tools/call 超时（豆包工作约 60 秒），
+        // 宿主会在第 60 秒取消调用——用户看到的就是"失败"，尽管分析其实已经跑完。
+        // 2026-10-14 实测：默认 45 秒时总耗时 62 秒，正好被取消。
+        wait_seconds: { type: 'integer', minimum: 0, maximum: 600, description: '最多内联等待多少秒，默认 10；填 0 则立即返回 job_id' },
         force: { type: 'boolean', description: '已有报告时是否强制重跑，默认 false' },
       },
       required: ['meeting_id'],
@@ -241,7 +247,7 @@ async function callTool(name, args) {
     });
     child.unref();
 
-    const waitMs = Math.max(0, Math.min(600, Number.isFinite(args.wait_seconds) ? args.wait_seconds : 45)) * 1000;
+    const waitMs = Math.max(0, Math.min(600, Number.isFinite(args.wait_seconds) ? args.wait_seconds : 10)) * 1000;
     const job = await waitForJob(jobId, waitMs);
 
     if (job?.status === 'done') {
