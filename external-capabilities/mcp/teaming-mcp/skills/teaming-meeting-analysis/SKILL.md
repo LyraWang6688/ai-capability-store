@@ -15,14 +15,15 @@ visibility: "public"
 
 **这是观察工具，不是考核工具。**
 
-本技能依赖 `teaming-mcp` 连接器（本地 stdio MCP），它提供 6 个工具：
+本技能依赖 `teaming-mcp` 连接器（本地 stdio MCP），它提供 7 个工具：
 
 | 工具 | 用途 | 副作用 |
 |---|---|---|
 | `teaming_doctor` | 体检：飞书授权、分析凭证、引擎是否就绪 | 无 |
-| `teaming_list_meetings` | 列出近期会议，并标注哪场有逐字稿 | 无 |
+| `teaming_list_meetings` | 列出近期会议，并标注哪场有逐字稿（**由 MCP 自己查，需本机 lark-cli 授权**） | 无 |
 | `teaming_read_report` | 读某场会已生成的报告摘要 | 无 |
-| `teaming_analyze_meeting` | 对一场会做分析，产出报告 | 有（落盘） |
+| `teaming_analyze_transcript` | **由你提供逐字稿**，MCP 只做分析。**不碰飞书、不需要飞书授权** | 有（落盘） |
+| `teaming_analyze_meeting` | 由 **MCP 自己**经 lark-cli 取数并分析 | 有（落盘） |
 | `teaming_job_status` | 查分析任务进度 | 无 |
 | `teaming_push_report` | 把报告作为交互卡片推送到飞书 | 有（发消息，幂等） |
 
@@ -42,7 +43,32 @@ visibility: "public"
 
 ## 二、标准流程
 
+### ⚠️ 第 0 步（最重要）：先判断「谁来取逐字稿」
+
+**MCP 的 lark-cli 身份是本机那个飞书账号，和当前用户登录的账号可能不是一个人。**
+所以先问自己一句：
+
+```
+我能自己读到这场会的逐字稿吗？
+（比如我能用宿主自带的飞书能力搜到这场会、导出妙记）
+```
+
+| 判断 | 用哪个工具 | 说明 |
+|---|---|---|
+| **能**（推荐） | **`teaming_analyze_transcript`** | 自己取好逐字稿 → 作为 `transcript` 传进去。**MCP 不碰飞书，不会因身份不匹配而失败** |
+| 不能 | `teaming_analyze_meeting` | 让 MCP 用它自己的 lark-cli 去取。**要求本机 lark-cli 已授权，且那个账号能读到这场会** |
+
+**判断方法**：先用你**自己的**飞书能力（宿主技能 / lark-cli）搜一下这场会。
+搜得到、能导出妙记 → 走第一条；搜不到 → 走第二条，或者如实告诉用户"读不到这场会"。
+
+> **踩过的坑（2026-10-14 实测）**：用户在 A 账号下开会，本机 lark-cli 授权的却是 B 账号。
+> 宿主调了 `teaming_analyze_meeting`，MCP 拿着 B 的身份去读 A 的妙记，
+> 报 `No read permission` —— 整条链路断在这里。
+> 换成 `teaming_analyze_transcript` 就绕开了：逐字稿由宿主自己取。
+
 ### 第 1 步：确定是哪场会
+
+**（走 `teaming_analyze_transcript` 的路径时，本步用你自己的飞书能力找会，不必调 `teaming_list_meetings`。）**
 
 先调 `teaming_list_meetings`。若用户没说清是哪场，列出候选让用户选，**不要自己猜**。
 
@@ -55,7 +81,19 @@ visibility: "public"
 
 ### 第 3 步：没有报告才分析
 
-调 `teaming_analyze_meeting(meeting_id)`。它会自动复用已有报告，不会重复消耗。
+按第 0 步的判断二选一：
+
+```
+能自己取到逐字稿 → teaming_analyze_transcript({
+                      transcript: 逐字稿全文,
+                      title:      会议标题,
+                      meeting_id: 会议 ID（可选，便于对账）
+                    })
+
+取不到           → teaming_analyze_meeting(meeting_id)
+```
+
+两者都会自动复用已有报告，不会重复消耗。
 
 **返回 `status="running"` 时不要重试分析**——分析已经在后台跑了，重试只会再起一个。
 
