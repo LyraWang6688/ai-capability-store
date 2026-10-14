@@ -17,7 +17,7 @@ import { execFileSync, spawn } from 'node:child_process';
 import { meetingDetail, fetchTranscript, findSelfChatId, larkReadiness, LarkError } from './lark.mjs';
 import { analysisReadiness, providerSummary } from './analysis.mjs';
 import { renderReportCard } from './render.mjs';
-import { analyzeMeeting, pushReport, handleMinuteEvent, listMeetingsWithEligibility } from './pipeline.mjs';
+import { analyzeMeeting, analyzeProvidedTranscript, pushReport, handleMinuteEvent, listMeetingsWithEligibility } from './pipeline.mjs';
 import { writeJob } from './jobs.mjs';
 
 const argv = process.argv.slice(2);
@@ -147,6 +147,60 @@ async function cmdAnalyze() {
   }
 }
 
+/**
+ * 分析**由宿主提供的**逐字稿——全程不碰飞书。
+ *
+ * 供新架构使用：宿主（豆包工作/WorkBuddy）自己取数，把逐字稿交给我们分析。
+ * 逐字稿走文件而不是命令行参数——它可能很长，argv 放不下。
+ */
+async function cmdAnalyzeTranscript() {
+  const file = flags.file || positional[0]
+    || die('用法：teaming analyze-transcript --file <逐字稿路径> [--title <标题>] [--meeting-id <id>] [--job-id <id>]');
+  const jobId = flags['job-id'];
+  const title = flags.title || '会议';
+  const meetingId = flags['meeting-id'] || null;
+
+  if (jobId) {
+    writeJob(jobId, {
+      status: 'running', meetingId: meetingId || jobId,
+      startedAt: new Date().toISOString(), pid: process.pid,
+    });
+  }
+
+  try {
+    const transcript = readFileSync(file, 'utf8');
+    const r = await analyzeProvidedTranscript({
+      transcript, title, meetingId,
+      onProgress: (e) => {
+        if (e.step === 'transcript') log(`[1/2] 逐字稿 ${e.turns} 条发言 / ${e.chars} 字`);
+        else if (e.step === 'analyzed') log(`[2/2] 分析完成（${e.seconds} 秒）`);
+      },
+    });
+    const zone = r.report.teamState?.zoneLabel || r.report.teamState?.zone || '未定位';
+    if (jobId) {
+      writeJob(jobId, {
+        status: 'done', finishedAt: new Date().toISOString(),
+        reportPath: r.reportPath, transcriptPath: r.transcriptPath, topic: r.topic, zone,
+      });
+    }
+    log(`\n区域定位：${zone}\n报告：${r.reportPath}`);
+    if (flags.json) {
+      out(JSON.stringify({
+        reportPath: r.reportPath, transcriptPath: r.transcriptPath,
+        zone, topic: r.topic, meetingId: r.meetingId, speakerLines: r.speakerLines,
+      }));
+    }
+  } catch (e) {
+    if (jobId) {
+      writeJob(jobId, {
+        status: 'failed', finishedAt: new Date().toISOString(),
+        error: String(e?.message || e).slice(0, 500), kind: e?.kind || null,
+      });
+    }
+    throw e;
+  }
+}
+
 async function cmdPush() {
   const p = positional[0] || die('用法：teaming push <报告.json> [--chat <chat_id> | --to <open_id>]');
   const { fillChat } = parseTarget();
@@ -232,6 +286,7 @@ async function main() {
     case 'meetings': await cmdMeetings(); break;
     case 'transcript': cmdTranscript(); break;
     case 'analyze': await cmdAnalyze(); break;
+    case 'analyze-transcript': await cmdAnalyzeTranscript(); break;
     case 'push': await cmdPush(); break;
     case 'self-chat': cmdSelfChat(); break;
     case 'watch': cmdWatch(); break;

@@ -20,6 +20,7 @@ console.log = (...a) => process.stderr.write(`${a.map(String).join(' ')}\n`);
 console.info = console.log; console.warn = console.log; console.debug = console.log;
 
 import { readFileSync, appendFileSync, mkdirSync, statSync, writeFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { spawn } from 'node:child_process';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -70,7 +71,8 @@ import { analysisReadiness } from './analysis.mjs';
 import { larkReadiness, findSelfChatId } from './lark.mjs';
 import { reportDigest } from './render.mjs';
 import { readReport, pushReport, listMeetingsWithEligibility } from './pipeline.mjs';
-import { newJobId, writeJob, readJob, waitForJob, pruneJobs } from './jobs.mjs';
+import { normalizeTranscript } from './transcript.mjs';
+import { newJobId, writeJob, readJob, waitForJob, pruneJobs, JOBS_DIR } from './jobs.mjs';
 
 const SERVER_INFO = { name: 'teaming', version: '0.1.0' };
 const SUPPORTED = ['2024-11-05', '2025-03-26', '2025-06-18', '2025-11-25'];
@@ -139,6 +141,34 @@ const TOOLS = [
         force: { type: 'boolean', description: '已有报告时是否强制重跑，默认 false' },
       },
       required: ['meeting_id'],
+      additionalProperties: false,
+    },
+    annotations: { readOnlyHint: false },
+  },
+  {
+    name: 'teaming_analyze_transcript',
+    description:
+      '直接分析**你提供的逐字稿**，产出四部分报告。'
+      + '**本工具不访问飞书、不需要飞书授权**——适合宿主自己已经取到逐字稿的场景。'
+      + '什么时候用：宿主（如豆包工作）用自己的飞书能力取到了妙记文字转录稿，'
+      + '或者用户直接粘贴了一段会议逐字稿要你分析。'
+      + '什么时候不要用：如果本机 lark-cli 已授权且想按会议 ID 取数，用 teaming_analyze_meeting。'
+      + '逐字稿必须是**成员原始发言**（每行形如「姓名 MM:SS 发言内容」）；'
+      + 'AI 摘要、会议纪要、待办列表都不算逐字稿，传了会被拒绝。'
+      + '**本工具会尽快返回，不会一直等到分析结束。**'
+      + '返回 status=running 时，用 teaming_job_status 轮询同一个 job_id 直到 status=done。',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        transcript: {
+          type: 'string',
+          description: '逐字稿正文。可以是引擎格式的纯文本（每行「姓名 MM:SS 内容」），也可以是妙记导出的 HTML（会自动转换并剥掉标题）',
+        },
+        title: { type: 'string', description: '会议标题，用于报告命名与展示，默认「会议」' },
+        meeting_id: { type: 'string', description: '会议 ID（可选）。不传则用逐字稿内容哈希做标识，同一份逐字稿不会重复分析' },
+        wait_seconds: { type: 'integer', minimum: 0, maximum: 600, description: '最多内联等待多少秒，默认 0（立即返回）' },
+      },
+      required: ['transcript'],
       additionalProperties: false,
     },
     annotations: { readOnlyHint: false },
@@ -271,6 +301,91 @@ async function callTool(name, args) {
     }
     return {
       status: 'running', job_id: jobId, meeting_id: meetingId,
+      hint: `分析在后台继续跑（通常 60~120 秒），不会因等待超时而丢失。`
+        + `请稍后用 teaming_job_status 查 job_id=${jobId}。`,
+    };
+  }
+
+  // 分析由调用方提供的逐字稿：全程不碰飞书（新架构的入口）
+  if (name === 'teaming_analyze_transcript') {
+    const transcript = args.transcript;
+    if (typeof transcript !== 'string' || !transcript.trim()) {
+      return { status: 'failed', error: '没有拿到逐字稿正文。', hint: '把妙记文字转录稿原文传进 transcript。' };
+    }
+
+    // **先做一次本地校验**：不合格就当场拒绝。
+    // 校验放在后台进程里也能拦住（analyze 之前就 normalize），但那样调用方要先拿到
+    // running、再轮询才发现失败——体验差，还白起一个进程。
+    try {
+      normalizeTranscript(transcript);
+    } catch (e) {
+      return {
+        status: 'failed',
+        error: clean(e?.message || e),
+        kind: e?.kind || null,
+        hint: '逐字稿必须是成员原始发言（每行「姓名 MM:SS 内容」）。AI 摘要、会议纪要不能替代。',
+      };
+    }
+
+    // 逐字稿内容哈希做标识，同一份内容重复调用会复用同一份报告。
+    const title = String(args.title || '会议').trim() || '会议';
+    const meetingId = args.meeting_id || null;
+    const jobId = newJobId();
+    const digest = createHash('sha256').update(transcript).digest('hex').slice(0, 12);
+    const idForReuse = meetingId || `h${digest}`;
+    if (!args.force) {
+      const existing = readReport(idForReuse);
+      if (existing) {
+        return {
+          status: 'done', reused: true, meeting_id: idForReuse,
+          report_path: existing.path, ...reportDigest(existing.report),
+          hint: '同一份逐字稿已有报告，直接复用。需要重跑请传 force=true。',
+        };
+      }
+    }
+
+    // 逐字稿走临时文件：它可能很长，argv 放不下
+    const transcriptDir = join(dirname(JOBS_DIR), 'transcripts');
+    let transcriptFile;
+    try {
+      mkdirSync(transcriptDir, { recursive: true });
+      transcriptFile = join(transcriptDir, `${jobId}.txt`);
+      writeFileSync(transcriptFile, transcript, 'utf8');
+    } catch (e) {
+      return { status: 'failed', error: `逐字稿落盘失败：${clean(e?.message || e)}` };
+    }
+
+    writeJob(jobId, {
+      status: 'running', meetingId: idForReuse,
+      startedAt: new Date().toISOString(),
+    });
+    const childArgs = [CLI, 'analyze-transcript', '--file', transcriptFile, '--title', title, '--job-id', jobId];
+    if (meetingId) childArgs.push('--meeting-id', meetingId);
+    const child = spawn(process.execPath, childArgs, {
+      detached: true, stdio: 'ignore', env: process.env,
+    });
+    child.unref();
+
+    const waitMs = Math.max(0, Math.min(600, Number.isFinite(args.wait_seconds) ? args.wait_seconds : 0)) * 1000;
+    const job = await waitForJob(jobId, waitMs);
+
+    if (job?.status === 'done') {
+      const found = readReport(idForReuse);
+      return {
+        status: 'done', job_id: jobId, meeting_id: idForReuse,
+        report_path: job.reportPath, zone: job.zone,
+        ...(found ? reportDigest(found.report) : {}),
+      };
+    }
+    if (job?.status === 'failed') {
+      return {
+        status: 'failed', job_id: jobId, error: clean(job.error),
+        hint: '逐字稿不合格或分析失败。逐字稿必须是成员原始发言（每行「姓名 MM:SS 内容」），'
+          + 'AI 摘要/会议纪要不能替代。',
+      };
+    }
+    return {
+      status: 'running', job_id: jobId, meeting_id: idForReuse,
       hint: `分析在后台继续跑（通常 60~120 秒），不会因等待超时而丢失。`
         + `请稍后用 teaming_job_status 查 job_id=${jobId}。`,
     };

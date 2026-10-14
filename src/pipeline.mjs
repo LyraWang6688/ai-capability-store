@@ -5,6 +5,7 @@
  * 落盘位置、幂等账本都归这里管。
  */
 import { mkdirSync, readFileSync, writeFileSync, readdirSync, existsSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -12,6 +13,7 @@ import {
   searchMeetings, meetingDetail, meetingDetailsBatch, fetchTranscript, sendMessage, createDoc, LarkError,
 } from './lark.mjs';
 import { analyze } from './analysis.mjs';
+import { normalizeTranscript } from './transcript.mjs';
 import { renderReportCard, renderReportDoc } from './render.mjs';
 import { publishReportToServer } from './publish.mjs';
 
@@ -58,6 +60,53 @@ export async function analyzeMeeting(meetingId, { onProgress = () => {} } = {}) 
   writeFileSync(transcriptPath, transcript);
 
   return { meetingId, topic: detail.topic, startTime: detail.startTime, report, reportPath, transcriptPath };
+}
+
+/**
+ * 分析**由宿主提供的**逐字稿——不碰飞书、不调 lark-cli。
+ *
+ * ## 为什么需要它
+ *
+ * 2026-10-14 确定了新架构：**宿主（豆包工作/WorkBuddy）自己取数，MCP 只做分析。**
+ *
+ * 起因是豆包账号在飞书侧被彻底限制：既不能创建应用，也不能授权已有应用。
+ * 而宿主自带飞书能力（豆包工作用的是它自己的内部应用），所以取数交给宿主，
+ * MCP 就完全不需要飞书授权了。
+ *
+ * ## 与 analyzeMeeting 的区别
+ *
+ * | | analyzeMeeting | analyzeProvidedTranscript |
+ * |---|---|---|
+ * | 逐字稿来源 | 本 MCP 经 lark-cli 取 | **调用方传入** |
+ * | 需要飞书授权 | 需要 | **不需要** |
+ * | 幂等键 | meetingId | meetingId，或逐字稿内容哈希 |
+ */
+export async function analyzeProvidedTranscript({
+  transcript,
+  title = '会议',
+  meetingId = null,
+  onProgress = () => {},
+} = {}) {
+  const { text, speakerLines } = normalizeTranscript(transcript);
+  onProgress({ step: 'transcript', turns: speakerLines, chars: text.length });
+
+  const t0 = Date.now();
+  const report = await analyze(text);
+  onProgress({ step: 'analyzed', seconds: Math.round((Date.now() - t0) / 1000) });
+
+  // 没有 meetingId 时用内容哈希当标识：同一份逐字稿重复调用会复用同一份报告，
+  // 不会重复烧模型（幂等键来自内容，而不是调用次数）。
+  const id = meetingId || `h${createHash('sha256').update(text).digest('hex').slice(0, 12)}`;
+  const topic = String(title || '会议').trim() || '会议';
+
+  mkdirSync(OUT_DIR, { recursive: true });
+  const base = `${safeName(topic)}-${id}`;
+  const reportPath = join(OUT_DIR, `${base}.report.json`);
+  const transcriptPath = join(OUT_DIR, `${base}.transcript.txt`);
+  writeFileSync(reportPath, JSON.stringify(report, null, 2));
+  writeFileSync(transcriptPath, text);
+
+  return { meetingId: id, topic, report, reportPath, transcriptPath, speakerLines };
 }
 
 const PUBLISHED_LEDGER = join(STATE_DIR, 'published-docs.json');
