@@ -43,8 +43,11 @@ applyStoredConfigToEnv();
  * - 只记方法与结果，**绝不记参数正文**（可能含会议原文）
  * - 自己出错绝不抛，日志不能反过来搞挂服务
  */
+// 日志走 paths.mjs 的解析：npm 全局安装时包目录在 node_modules 里，
+// 写在那儿既不合规（升级/卸载会连日志一起没），也容易没权限。
+// 之前只把「数据目录」接进了 paths.mjs，漏了这一处。
 const LOG_PATH = process.env.TEAMING_MCP_LOG
-  || join(dirname(fileURLToPath(import.meta.url)), '..', '.state', 'mcp.log');
+  || join(resolveStateDir(), 'mcp.log');
 const LOG_MAX_BYTES = 1024 * 1024;
 
 function trace(event, detail = {}) {
@@ -77,6 +80,7 @@ import { readReport, pushReport, listMeetingsWithEligibility } from './pipeline.
 import { normalizeTranscript } from './transcript.mjs';
 import { newJobId, writeJob, readJob, waitForJob, pruneJobs, JOBS_DIR } from './jobs.mjs';
 import { applyStoredConfigToEnv } from './config.mjs';
+import { resolveStateDir } from './paths.mjs';
 
 const SERVER_INFO = { name: 'teaming', version: '0.1.0' };
 const SUPPORTED = ['2024-11-05', '2025-03-26', '2025-06-18', '2025-11-25'];
