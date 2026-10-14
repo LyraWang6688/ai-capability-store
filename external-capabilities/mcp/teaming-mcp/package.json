@@ -1,8 +1,13 @@
 {
   "name": "teaming-mcp",
   "version": "0.1.0",
-  "type": "module",
   "description": "会议动力分析 MCP：从飞书取会议逐字稿，按 Teaming 框架做团队动力分析，并把报告推送到飞书。可装进豆包工作 / WorkBuddy 等支持 MCP 的 AI 宿主。",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/LyraWang6688/ai-capability-store.git",
+    "directory": "external-capabilities/mcp/teaming-mcp"
+  },
+  "type": "module",
   "license": "MIT",
   "bin": {
     "teaming": "./src/cli.mjs",
@@ -10,6 +15,7 @@
   },
   "files": [
     "src",
+    "docs",
     "skills",
     "dist/engine",
     "README.md",
