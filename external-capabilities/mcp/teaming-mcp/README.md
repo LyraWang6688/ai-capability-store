@@ -126,9 +126,10 @@ node src/cli.mjs doctor
 
 ---
 
-## 三点五、换用别的大模型（可选）
+## 三点五、模型服务
 
-引擎读的是 **provider-agnostic** 的环境变量，换模型**不需要改代码**：
+**默认走 DeepSeek**（`https://api.deepseek.com/v1` + `deepseek-flash`），
+换成别的 OpenAI 兼容服务**不需要改代码**。
 
 | 变量 | 作用 |
 |---|---|
@@ -136,30 +137,29 @@ node src/cli.mjs doctor
 | `LLM_BASE_URL` | 模型端点（优先级高于 `DOUBAO_BASE_URL`） |
 | `ANALYSIS_MODEL` | 模型名（优先级高于 `DOUBAO_MODEL`） |
 
-### DeepSeek
+> 变量名保留了历史遗留的 `DOUBAO_*`，实际含义已经是"任意 OpenAI 兼容服务"，
+> 用 `LLM_*` / `ANALYSIS_MODEL` 可覆盖。
 
-```jsonc
-"env": {
-  "LLM_API_KEY": "sk-...",
-  "LLM_BASE_URL": "https://api.deepseek.com/v1",
-  "ANALYSIS_MODEL": "deepseek-chat"
-}
-```
+### ⚠️ 端点与模型必须成对换
 
-**兼容性**：DeepSeek 的思考模式开关是 `{"thinking": {"type": "enabled/disabled"}}`，
-与引擎请求体里的写法**完全一致**（见 [DeepSeek 思考模式](https://api-docs.deepseek.com/zh-cn/guides/thinking_mode/)），
-因此无需适配。
+只换端点不换模型 → 引擎会拿**上一个服务的模型名**去请求新服务，报模型不存在。
+`applyProviderDefaults()` 已经改成两个一起给默认值，但你自己显式配时要注意成对。
 
-**三个已知差异**（官方文档明示）：
+### DeepSeek 适配情况（已核对官方文档）
 
-1. **思考模式下 `temperature` 不生效**——"设置参数不会报错，但也不会生效"。
-2. **思考模式默认打开**，effort 默认 `high`：返回会带 `reasoning_content`（引擎只读 `content`，无害），
-   但耗时与成本上升。
-3. **JSON 输出要求 prompt 里出现 "json" 字样**（见 [JSON Output](https://api-docs.deepseek.com/zh-cn/guides/json_mode/)）。
+| 项 | 结论 |
+|---|---|
+| 请求体里的 `thinking` 开关 | ✅ **形状一致** —— DeepSeek 就是 `{"thinking": {"type": "enabled/disabled"}}`（SDK 才需要塞进 `extra_body`，引擎是原生 fetch 放顶层，正合适） |
+| 引擎默认 `thinking: disabled` | ✅ 非思考模式，**`temperature` 生效**（思考模式下该参数会被静默忽略） |
+| JSON 模式要求 prompt 含 `json` 字样 | ✅ 已满足（引擎的 system prompt 以「只返回 JSON。」结尾） |
+| 模型名 | ⚠️ 必须用现役名 `deepseek-flash`。`deepseek-chat`、`deepseek-v4-flash` 等旧名**不再现役**（旧名仍可调用但会转由 V4.1-Flash 服务，按 Flash 计费） |
+| 上下文 / 输出上限 | 1M / 384K，远大于本引擎单场会议的用量 |
+| **JSON Output 有概率返回空 content**（官方明示） | ⚠️ 已知风险。引擎有 JSON 局部修复与重试（`jsonRetries`），但极端情况下仍可能失败——报错是"模型返回为空"，**不是逐字稿的问题** |
 
-> ⚠️ **换模型会改变报告**。引擎提示词是针对豆包调的，同一份逐字稿在不同模型下
-> Zone 判定可能不同（HANDOFF 已记录"同稿两次分析边界会跳动"）。
-> 换之前建议先用同一场会跑一次对比，确认差异可接受。
+### 换模型会改变报告
+
+引擎提示词是针对原模型调的，同一份逐字稿在不同模型下 **Zone 判定可能不同**
+（同稿两次分析边界都会跳动）。换之前建议先用同一场会跑一次对比。
 
 ---
 
