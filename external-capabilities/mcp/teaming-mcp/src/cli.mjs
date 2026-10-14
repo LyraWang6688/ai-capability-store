@@ -365,20 +365,39 @@ function parseTarget() {
 const USAGE = `
 teaming —— 会议动力分析 CLI
 
+新装第一步：
+  teaming setup --code <接入码>          用接入码配好本机（凭证 / 端点 / 模型）
+
+日常命令：
   teaming doctor                        自检（只读）
   teaming meetings [--days 30]          列出近期会议（只读）
   teaming transcript <meetingId>        取逐字稿（只读）
-  teaming analyze <meetingId> [--json]  取数 + 分析
+  teaming analyze <meetingId> [--json]  取数 + 分析（走 lark-cli，需飞书授权）
+  teaming analyze-transcript --file <逐字稿> [--title <标题>]
+                                        只分析，不碰飞书（宿主供稿用）
   teaming push <报告.json> [--chat ID]  推送飞书（--dry-run 预览）
   teaming self-chat                     查出自己的 chat_id
   teaming watch [--chat ID]             监听妙记生成事件并自动分析推送
 
-环境变量：
+环境变量（可选；setup 写入 ~/.teaming-mcp/config.json 后通常不用配）：
   LARK_CLI         lark-cli 路径
   TEAMING_ENGINE   分析引擎路径（默认 dist/engine/...）
-  TEAMING_OUT      产物目录（默认 .out/）
-  DOUBAO_API_KEY   分析所用模型凭证
+  TEAMING_OUT      产物目录
+  LLM_API_KEY      模型凭证（优先于 DOUBAO_API_KEY）
+  LLM_BASE_URL     模型端点（默认 https://api.deepseek.com/v1）
+  ANALYSIS_MODEL   模型名（默认 deepseek-flash）
 `;
+
+/**
+ * 退出码约定：
+ *   无参数 / --help / -h / help  → 打印用法，退出 0（这是用户主动要看的）
+ *   未知命令                      → 打印用法，退出 1（这是调用出错）
+ *   --version                    → 打印版本，退出 0
+ *
+ * 曾经 --help 和未知命令都退出 1——用户查帮助却拿到失败退出码，
+ * 在脚本里会被当成错误。
+ */
+const HELP_CMDS = new Set(['--help', '-h', 'help']);
 
 async function main() {
   switch (cmd) {
@@ -391,7 +410,15 @@ async function main() {
     case 'push': await cmdPush(); break;
     case 'self-chat': cmdSelfChat(); break;
     case 'watch': cmdWatch(); break;
-    default: out(USAGE); process.exit(cmd ? 1 : 0);
+    case '--version': case '-v': {
+      const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
+      out(pkg.version);
+      break;
+    }
+    default:
+      out(USAGE);
+      // 主动查帮助不算失败；只有未知命令才是
+      process.exit(!cmd || HELP_CMDS.has(cmd) ? 0 : 1);
   }
 }
 
