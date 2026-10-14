@@ -119,6 +119,7 @@ teaming-bot/src/types/{index,v1,v2}.ts
 | **`teaming_analyze_meeting` 默认内联等待会撞上宿主超时** | 前置检查（lark-cli 取数）约 17 秒 + 内联等待 45 秒 = 62 秒，超过豆包工作的 `tools/call` 超时（约 60 秒），宿主在第 60 秒取消调用 → 用户看到"失败"，**但分析其实已经跑完并落了报告**。默认等待已降到 10 秒；SKILL 补了"被取消不等于失败，先查 job_status" |
 | **引擎的 `getBaseUrl()` 没有默认值** | 不配 `DOUBAO_BASE_URL` 就会抛「未配置…」→ 被 catch → `analysisMode=basic_fallback`，而提示写的是「模型服务未完成核心分析，请稍后重试」——**把配置问题说成了服务问题**。2026-10-14 在豆包工作里连试两次都中招。现已内置方舟默认端点，并在 doctor 里展示生效端点 |
 | **只认 `status === 'ready'` 判授权** | lark-cli 对"访问令牌过期、refresh token 有效"报 `needs_refresh`，含义是**下次调用自动刷新**，属正常状态。曾经**两份代码副本**都只认 `ready`，于是在豆包工作里实测时，用户授权明明正常、体检却让去重新登录。现已抽成 `src/readiness.mjs` 的纯函数 `isLarkUserUsable`，规则只有一份且可测 |
+| **WorkBuddy 里自定义 MCP 必须手动信任一次** | 仅把条目写进 `~/.workbuddy/mcp.json` 不生效：必须在该 App 的「自定义连接器」入口点一次「信任」，否则工具检索里完全看不到 `teaming_*`，表现与"没配"一模一样。信任记录在 `~/.workbuddy/mcp-approvals.json`（键为 `<sha256>::<服务器名>`，哈希含盐、无法手工构造，只能走 UI）。**这是"改了 src 要重载宿主"的同类问题：配置对 ≠ 生效。** |
 | 改了 `src/` 忘了重载宿主 | 宿主不会自动重载连接器，要关闭再打开开关或重启 App |
 
 ---
