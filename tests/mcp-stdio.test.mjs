@@ -66,7 +66,9 @@ test('MCP 握手 + 工具清单 + stdout 纯净性', async () => {
       'teaming_analyze_transcript',   // 宿主自己取数时该用哪个工具
       'teaming_report_card',          // 卡片由 MCP 出
       'interactive',                  // 投递方式
-      '自聊',                          // 发到当前账号自己的会话
+      '单聊',                          // 发到当前账号自己的会话
+      '当前对话用户',                   // 用谁的飞书身份决定发到哪个账号
+      '用谁的飞书身份',                 // 交付段的立论：身份决定落点
       '不要自己设计',                   // 卡片样式固定
     ]) {
       assert.ok(ins.includes(must), `instructions 里应说明「${must}」`);
