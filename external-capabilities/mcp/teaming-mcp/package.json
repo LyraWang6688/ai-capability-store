@@ -10,8 +10,8 @@
   "type": "module",
   "license": "MIT",
   "bin": {
-    "teaming": "./src/cli.mjs",
-    "teaming-mcp": "./src/mcpServer.mjs"
+    "teaming": "src/cli.mjs",
+    "teaming-mcp": "src/mcpServer.mjs"
   },
   "files": [
     "src",
