@@ -85,6 +85,40 @@ import { resolveStateDir } from './paths.mjs';
 // 版本号从 package.json 读：曾写死成 '0.1.0'，发到 0.1.1 后 initialize 里报的还是旧版本
 const PKG_VERSION = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version;
 const SERVER_INFO = { name: 'teaming', version: PKG_VERSION };
+
+/**
+ * 交给宿主的说明书 —— MCP 协议的 initialize 响应里带它，**每个宿主连接时都会收到**。
+ *
+ * 这是【产品级】的说明位：不像包里的 SKILL.md 需要用户额外安装，
+ * 也不像工具描述只在调用某个工具时才看到。凡是希望所有宿主（豆包工作、
+ * WorkBuddy、Claude Desktop……）都自动做对的事，都写在这里。
+ *
+ * 2026-10-15 补：此前完全没有这个字段，于是"报告该由谁取数、卡片该由谁投递、
+ * 卡片长什么样"全靠用户在对话里临时交代——换个用户就做错。
+ */
+const INSTRUCTIONS = [
+  '本服务对已结束的飞书会议做团队动力分析，产出四部分报告：团队状态定位、互动概览、',
+  '未完成的对话与非共识、给领导者的建议。',
+  '',
+  '【谁取数：优先由你（宿主）取】',
+  '先用你自己的飞书能力搜一下这场会。搜得到、能导出妙记逐字稿 → 用 teaming_analyze_transcript',
+  '把逐字稿传进来；MCP 不碰飞书，也不会因身份不匹配而失败。搜不到 → 才用',
+  'teaming_analyze_meeting，让它用 MCP 自己的 lark-cli 取数。',
+  '注意：MCP 的 lark-cli 授权是【本机那个飞书账号】，和当前对话的用户可能不是同一个人；',
+  '当它取数报 "No read permission" 时，就是这个原因，改用 teaming_analyze_transcript 即可。',
+  '',
+  '【怎么交付：卡片由 MCP 出，你负责投递】',
+  '1) 调 teaming_report_card 拿到卡片 JSON。',
+  '2) 用【你自己的】飞书能力列出当前账号的单聊会话 —— 不要用 MCP 那套授权，',
+  '   它可能属于另一个账号，从而找不到当前用户的会话。',
+  '3) 选中属于【当前账号自己】的那条自聊会话。',
+  '4) 把卡片原样作为 interactive 消息发出（msg_type=interactive），并回报 message_id。',
+  '',
+  '【卡片样式是固定的，不要自己设计】',
+  '卡片只有三样：蓝色标题栏、「**会议名称：**<标题>」一行、一个「点击查看报告」按钮。',
+  '不要加指标块、分区块或报告正文 —— 详情走按钮跳转的报告页。',
+  '自己拼样式会让卡片和线上团队 bot 发的不一致。',
+].join('\n');
 const SUPPORTED = ['2024-11-05', '2025-03-26', '2025-06-18', '2025-11-25'];
 
 const TOOLS = [
@@ -538,6 +572,7 @@ async function handle(msg) {
           protocolVersion: SUPPORTED.includes(want) ? want : '2025-06-18',
           capabilities: { tools: { listChanged: false } },
           serverInfo: SERVER_INFO,
+          instructions: INSTRUCTIONS,
         },
       });
       return;
