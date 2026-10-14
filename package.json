@@ -13,7 +13,6 @@
     "skills",
     "dist/engine",
     "README.md",
-    "HANDOFF.md",
     "LICENSE"
   ],
   "scripts": {
