@@ -18,11 +18,15 @@ import { meetingDetail, fetchTranscript, findSelfChatId, larkReadiness, LarkErro
 import { analysisReadiness, providerSummary } from './analysis.mjs';
 import { renderReportCard } from './render.mjs';
 import { analyzeMeeting, analyzeProvidedTranscript, pushReport, handleMinuteEvent, listMeetingsWithEligibility } from './pipeline.mjs';
+import { CONFIG_PATH, readStoredConfig, writeStoredConfig, applyStoredConfigToEnv } from './config.mjs';
 import { writeJob } from './jobs.mjs';
 
 const argv = process.argv.slice(2);
 const cmd = argv[0];
 const flags = {};
+// 启动时先应用接入码换来的配置（不覆盖已显式设置的环境变量）
+applyStoredConfigToEnv();
+
 const positional = [];
 for (let i = 1; i < argv.length; i++) {
   if (argv[i].startsWith('--')) {
@@ -145,6 +149,67 @@ async function cmdAnalyze() {
     }
     throw e;
   }
+}
+
+/**
+ * 用接入码换回本机配置——用户侧只需要这一个命令。
+ *
+ * 换回的东西写进 ~/.teaming-mcp/config.json（0600），之后 MCP 启动时自动读取，
+ * 用户不必再在连接器里手填 token、端点、模型 key。
+ *
+ * 为什么要有它：手工配 5~7 个环境变量，还要把我们的模型 key 抄进去，
+ * 对非技术用户几乎不可完成；而且服务器无法据此判断"这份报告属于谁"。
+ */
+async function cmdSetup() {
+  const code = flags.code || positional[0];
+  if (!code) die('用法：teaming setup --code <接入码>\n  接入码向管理员索取，形如 KNTX7UCR（不含 0/O、1/I/L）。');
+
+  const serverUrl = (flags.server || process.env.TEAMING_SERVER_URL || 'https://meeting.bamamei.online')
+    .replace(/\/+$/, '');
+  const existing = readStoredConfig();
+  const installationId = existing?.installationId
+    || `inst_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+
+  log(`正在兑换接入码 ${String(code).toUpperCase()} …`);
+  let payload;
+  try {
+    const res = await fetch(`${serverUrl}/api/host/v1/enroll`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ code: String(code).toUpperCase(), installationId }),
+      signal: AbortSignal.timeout(20000),
+    });
+    payload = await res.json().catch(() => null);
+    if (!res.ok || !payload?.ok) {
+      die(`兑换失败：${payload?.error || `HTTP ${res.status}`}${payload?.hint ? `\n  ${payload.hint}` : ''}`);
+    }
+  } catch (e) {
+    die(`连不上服务器（${serverUrl}）：${e?.message || e}\n  请检查网络，或用 --server 指定地址。`);
+  }
+
+  const path = writeStoredConfig({
+    serverUrl,
+    hostToken: payload.hostToken,
+    integrationId: payload.integrationId,
+    integrationName: payload.integrationName ?? null,
+    installationId,
+    analysis: {
+      apiKey: payload.analysis?.apiKey ?? null,
+      baseUrl: payload.analysis?.baseUrl ?? null,
+      model: payload.analysis?.model ?? null,
+    },
+    enrolledAt: new Date().toISOString(),
+  });
+
+  log('');
+  log(`✅ 配置已写入 ${path}`);
+  log(`   归属集成：${payload.integrationName || payload.integrationId}`);
+  log(`   模型端点：${payload.analysis?.baseUrl || '(未下发，需手工配 DOUBAO_BASE_URL)'}`);
+  log(`   分析模型：${payload.analysis?.model || '(未下发，需手工配 DOUBAO_MODEL)'}`);
+  log('');
+  log('接下来在宿主的连接器里只需保留启动配置（command 与 args），');
+  log('不要再手工填 TEAMING_HOST_TOKEN —— 本文件里的优先。');
+  if (flags.json) out(JSON.stringify({ ok: true, configPath: path, integrationId: payload.integrationId }));
 }
 
 /**
@@ -291,6 +356,7 @@ async function main() {
     case 'transcript': cmdTranscript(); break;
     case 'analyze': await cmdAnalyze(); break;
     case 'analyze-transcript': await cmdAnalyzeTranscript(); break;
+    case 'setup': await cmdSetup(); break;
     case 'push': await cmdPush(); break;
     case 'self-chat': cmdSelfChat(); break;
     case 'watch': cmdWatch(); break;

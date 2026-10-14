@@ -164,3 +164,27 @@ node src/cli.mjs push <报告.json> --chat <你的chat_id> --dry-run   # 先预�
 | 多用户 | ✅ 已支持 | ❌ 单用户 |
 
 **两者共用分析引擎，但运行形态完全不同。** 不要在两者之间互相 import。
+
+---
+
+## 接入码（2026-10-14 起的新装流程）
+
+新用户不再手填 5~7 个环境变量，走一条命令：
+
+```
+teaming setup --code <接入码>
+  → POST {server}/api/host/v1/enroll
+  → 换回 hostToken + serverUrl + 模型配置（服务器从自己的 env 下发）
+  → 写 ~/.teaming-mcp/config.json（0600）
+```
+
+**踩过的两个坑（都是纯 JS 项目里的语法事故）：**
+
+1. `src/config.mjs` 里写了 `export type StoredConfig = {...}`——**.mjs 是纯 JS，
+   不支持 TS 类型声明**，MCP 服务因此启动即崩（`SyntaxError: Unexpected token 'export'`）。
+   `node --check` **查不出来**，因为它只做语法检查、不做模块解析。
+   症状是宿主报"连不上"、stdio 测试超时。
+   → 改用 JSDoc `@typedef`。
+
+2. 改完导入后只跑了 `node --check` 就以为没事。**判断 MCP 是否真的能起来，
+   必须实际跑一次 `initialize` 握手**（tests/mcp-stdio.test.mjs 就是干这个的）。

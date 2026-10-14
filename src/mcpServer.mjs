@@ -27,6 +27,9 @@ import { fileURLToPath } from 'node:url';
 
 const CLI = process.env.TEAMING_CLI || join(dirname(fileURLToPath(import.meta.url)), 'cli.mjs');
 
+// 启动时应用接入码换来的配置（环境变量优先，文件只补空缺）
+applyStoredConfigToEnv();
+
 /**
  * 连接诊断日志。
  *
@@ -73,6 +76,7 @@ import { reportDigest } from './render.mjs';
 import { readReport, pushReport, listMeetingsWithEligibility } from './pipeline.mjs';
 import { normalizeTranscript } from './transcript.mjs';
 import { newJobId, writeJob, readJob, waitForJob, pruneJobs, JOBS_DIR } from './jobs.mjs';
+import { applyStoredConfigToEnv } from './config.mjs';
 
 const SERVER_INFO = { name: 'teaming', version: '0.1.0' };
 const SUPPORTED = ['2024-11-05', '2025-03-26', '2025-06-18', '2025-11-25'];
