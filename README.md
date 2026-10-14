@@ -85,6 +85,43 @@ node src/cli.mjs doctor
 
 ---
 
+## 三点五、换用别的大模型（可选）
+
+引擎读的是 **provider-agnostic** 的环境变量，换模型**不需要改代码**：
+
+| 变量 | 作用 |
+|---|---|
+| `LLM_API_KEY` | 模型凭证（优先级高于 `DOUBAO_API_KEY`） |
+| `LLM_BASE_URL` | 模型端点（优先级高于 `DOUBAO_BASE_URL`） |
+| `ANALYSIS_MODEL` | 模型名（优先级高于 `DOUBAO_MODEL`） |
+
+### DeepSeek
+
+```jsonc
+"env": {
+  "LLM_API_KEY": "sk-...",
+  "LLM_BASE_URL": "https://api.deepseek.com/v1",
+  "ANALYSIS_MODEL": "deepseek-chat"
+}
+```
+
+**兼容性**：DeepSeek 的思考模式开关是 `{"thinking": {"type": "enabled/disabled"}}`，
+与引擎请求体里的写法**完全一致**（见 [DeepSeek 思考模式](https://api-docs.deepseek.com/zh-cn/guides/thinking_mode/)），
+因此无需适配。
+
+**三个已知差异**（官方文档明示）：
+
+1. **思考模式下 `temperature` 不生效**——"设置参数不会报错，但也不会生效"。
+2. **思考模式默认打开**，effort 默认 `high`：返回会带 `reasoning_content`（引擎只读 `content`，无害），
+   但耗时与成本上升。
+3. **JSON 输出要求 prompt 里出现 "json" 字样**（见 [JSON Output](https://api-docs.deepseek.com/zh-cn/guides/json_mode/)）。
+
+> ⚠️ **换模型会改变报告**。引擎提示词是针对豆包调的，同一份逐字稿在不同模型下
+> Zone 判定可能不同（HANDOFF 已记录"同稿两次分析边界会跳动"）。
+> 换之前建议先用同一场会跑一次对比，确认差异可接受。
+
+---
+
 ## 四、MCP 工具
 
 | 工具 | 副作用 | 用途 |
