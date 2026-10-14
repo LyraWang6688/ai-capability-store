@@ -70,7 +70,16 @@ capabilities:
 #
 # Required fields per entry:
 #   name           == map key, lowercase kebab-case
-#   provider       provider identifier (lowercase kebab-case)
+#   provider       the party that PROVIDES THE UNDERLYING SERVICE this capability
+#                  depends on — the side whose rules bound what it can do.
+#                  Third-party platform (feishu / wechat), or the Store owner
+#                  (lyrawang) when the capability is self-built and its boundary
+#                  comes from our own design rather than a platform's API.
+#                  NOT a maintainer field: the SCOPE POLICY above means every
+#                  registered capability has the same maintainer, so such a field
+#                  would be constant and carry no information.
+#                  Full definition: external-capabilities/README.md → Provider Semantics.
+#                  lowercase kebab-case.
 #   type           one of allowed_types
 #   status         one of allowed_statuses
 #   provider_path  external-capabilities/providers/<provider>/README.md (must exist)
