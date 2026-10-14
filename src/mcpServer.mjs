@@ -333,6 +333,7 @@ async function handle(msg) {
   const isNotification = id === undefined || id === null;
   // 只记方法名与工具名，不记参数正文（可能含会议原文）
   trace('request', { method, tool: method === 'tools/call' ? params?.name : undefined, isNotification });
+  const startedAt = Date.now();
   try {
     if (method === 'initialize') {
       const want = params?.protocolVersion;
@@ -353,7 +354,7 @@ async function handle(msg) {
     if (method === 'tools/call') {
       try {
         const result = await callTool(params?.name, params?.arguments || {});
-        trace('tool_ok', { tool: params?.name });
+        trace('tool_ok', { tool: params?.name, elapsedMs: Date.now() - startedAt });
         send({
           jsonrpc: '2.0',
           id,
@@ -364,7 +365,7 @@ async function handle(msg) {
           },
         });
       } catch (e) {
-        trace('tool_failed', { tool: params?.name, message: String(e?.message || e).slice(0, 200) });
+        trace('tool_failed', { tool: params?.name, elapsedMs: Date.now() - startedAt, message: String(e?.message || e).slice(0, 200) });
         send({
           jsonrpc: '2.0',
           id,
