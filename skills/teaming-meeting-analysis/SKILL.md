@@ -24,28 +24,58 @@ compatibility: "需要 bash 与 curl；需要能访问 https://meeting.bamamei.o
 
 ## 准备：拿到 host token（每个用户只做一次）
 
-### 第一步：先看用户有没有给接入码
+凭证会**保存在本地文件**里，所以只问一次。
 
-**没有就直接问他**——不要自己猜、不要到处翻找。问他这一句：
+### 第一步：先看本地有没有存好的凭证
+
+```bash
+TOKEN_FILE="$HOME/.teaming-mcp/host-token"
+if [ -s "$TOKEN_FILE" ]; then
+  echo "已有凭证，可直接使用"
+else
+  echo "需要获取凭证"
+fi
+```
+
+**有就直接用，跳到「标准流程」。** 不要重复问用户。
+
+### 第二步：没有就问用户要接入码
+
+**不要自己猜、不要到处翻找。** 从环境变量、历史文件或记忆里翻出来的凭证
+**可能是别人的**——用了会把报告归到别人名下。直接问用户：
 
 > 这个分析需要一个 8 位接入码（形如 `ABCD2345`），是管理员单独发给你的。
 > 你手上有吗？没有的话我告诉你去哪要。
 
-**拿到码之前不要往下走**，后面的步骤全都需要它。
+**拿到码之前不要往下走。**
 
-> 不要试图从环境变量、历史文件或记忆里"找"一个凭证——那可能是别人的，
-> 用了会把报告归到别人名下。
-
-### 第二步：用码换 token
+### 第三步：用码换凭证并保存
 
 ```bash
-curl -s -X POST https://meeting.bamamei.online/api/host/v1/enroll \
+mkdir -p "$HOME/.teaming-mcp"
+TOKEN=$(curl -s -X POST https://meeting.bamamei.online/api/host/v1/enroll \
   -H 'Content-Type: application/json' \
-  -d '{"code":"<用户给的接入码>"}'
+  -d '{"code":"<用户给的接入码>"}' \
+  | python3 -c "import sys,json; print(json.load(sys.stdin)['hostToken'])")
+
+printf '%s' "$TOKEN" > "$HOME/.teaming-mcp/host-token"
+chmod 600 "$HOME/.teaming-mcp/host-token"
+echo "凭证已保存到 $HOME/.teaming-mcp/host-token"
 ```
 
-返回里的 **`hostToken`** 就是要用的凭证。**它只返回这一次**。
-换到之后告诉用户"凭证已就绪"，后续请求都带上 `Authorization: Bearer <hostToken>`。
+保存后告诉用户：**「凭证已就绪，以后不用再提供接入码了。」**
+
+### 之后每次分析
+
+```bash
+TOKEN=$(cat "$HOME/.teaming-mcp/host-token")
+```
+
+拿它做后续请求的 `Authorization: Bearer $TOKEN`。
+
+> ⚠️ **如果运行环境不保留文件**（例如每次都是全新容器），凭证会丢，
+> 那就每次都要重新问用户。**这不算错误**——如实说明即可，用户再用同一个接入码兑换。
+> 接入码有可用次数上限，所以能存住时不要重复兑换。
 
 > 接入码是发到每个人手里的，**不要互相借用**——它决定了报告归到谁名下。
 > 用户手上有多个时，用**他自己**那个。
@@ -71,7 +101,7 @@ curl -s -X POST https://meeting.bamamei.online/api/host/v1/enroll \
 ```bash
 curl -s -X POST https://meeting.bamamei.online/api/host/v1/analyze \
   -H 'Content-Type: application/json' \
-  -H 'Authorization: Bearer <hostToken>' \
+  -H "Authorization: Bearer $(cat "$HOME/.teaming-mcp/host-token")" \
   --max-time 150 \
   -d '{"transcript":"<逐字稿原文>","title":"<会议标题>"}'
 ```
