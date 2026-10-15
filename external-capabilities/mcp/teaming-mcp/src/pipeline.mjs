@@ -77,7 +77,12 @@ export async function analyzeMeeting(meetingId, { onProgress = () => {} } = {}) 
   onProgress({ step: 'transcript', turns: transcript.split('\n').length, chars: transcript.length });
 
   const t0 = Date.now();
-  const report = await analyze(transcript);
+  // 带上飞书 meeting_id：服务器用它做幂等键，同一场会重复分析不会重复出报告。
+  // 标题也一并传，报告页用它命名。
+  const report = await analyze(transcript, {
+    feishuMeetingId: meetingId,
+    title: detail.topic || null,
+  });
   onProgress({ step: 'analyzed', seconds: Math.round((Date.now() - t0) / 1000) });
 
   mkdirSync(OUT_DIR, { recursive: true });
@@ -119,7 +124,13 @@ export async function analyzeProvidedTranscript({
   onProgress({ step: 'transcript', turns: speakerLines, chars: text.length });
 
   const t0 = Date.now();
-  const report = await analyze(text);
+  // 这里只传调用方明确给的 meetingId 与标题。
+  // 没有 meetingId 时**不传**——让服务器用逐字稿内容哈希做幂等键，
+  // 与本函数下面的本地 id 规则一致（同一份稿重复调不会重复出报告）。
+  const report = await analyze(text, {
+    feishuMeetingId: meetingId || null,
+    title: String(title || '').trim() || null,
+  });
   onProgress({ step: 'analyzed', seconds: Math.round((Date.now() - t0) / 1000) });
 
   // 没有 meetingId 时用内容哈希当标识：同一份逐字稿重复调用会复用同一份报告，

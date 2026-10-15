@@ -76,9 +76,8 @@ export function applyStoredConfigToEnv() {
   setIfAbsent('TEAMING_SERVER_URL', stored.serverUrl);
   setIfAbsent('TEAMING_HOST_TOKEN', stored.hostToken);
   setIfAbsent('TEAMING_INTEGRATION_ID', stored.integrationId);
-  setIfAbsent('DOUBAO_API_KEY', stored.analysis?.apiKey);
-  setIfAbsent('DOUBAO_BASE_URL', stored.analysis?.baseUrl);
-  setIfAbsent('DOUBAO_MODEL', stored.analysis?.model);
+  // 2026-10-15：不再注入分析模型配置。
+  // 分析改由服务器完成，本机不需要模型凭证；注入 env 只会让人以为"这里配了模型"。
 }
 
 /** 是否已经通过接入码配好了（供 doctor 与 setup 判断）。 */

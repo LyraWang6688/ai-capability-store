@@ -1,130 +1,189 @@
 /**
- * 分析引擎加载与调用
+ * 分析：调用服务器，不再在本地跑引擎。
  *
- * 引擎源码 vendored 在 src/engine-src/（从 teaming-bot 同步），
- * 由 scripts/sync-engine.mjs 编译到 dist/engine/。
+ * ## 2026-10-15 的改动：删掉本地引擎副本
  *
- * 为什么要 vendored 而不是依赖 teaming-bot：
- * 本包要能独立 npm 发布；但也因此会和上游漂移，
- * 所以保留 sync 脚本并在 HANDOFF.md 里写明同步时机。
+ * 此前本包把引擎源码 vendored 在 `src/engine-src/`（由 `scripts/sync-engine.mjs`
+ * 编译到 `dist/engine/`）。理由是"本包要能独立 npm 发布"。
+ *
+ * 代价很快就显现了：引擎在**两个仓库里各有一份**，改一边忘另一边就会漂移。
+ * 当天就真实发生了一次——服务器加了 ABC 相关性甄别、修了 provider 的兜底模型名，
+ * 而本包那份还是旧行为，且**没有任何机制会发现**。
+ *
+ * 现在改为：**引擎只有一份，在服务器上**。本包调
+ * `POST /api/host/v1/analyze`，把逐字稿发过去，拿回分析结果。
+ *
+ * 换来的：
+ *   · 物理上不可能再漂移
+ *   · npm 包变薄很多（不再打包引擎，也没有构建步骤）
+ *   · 服务器换模型、调提示词，用户不用重装
+ *
+ * 代价：需要联网；逐字稿会上传到服务器。
+ *
+ * ## 凭证
+ *
+ * 用 **host token**（接入码换来的），存在 `~/.teaming-mcp/host-token`。
+ * 不再需要 `DOUBAO_API_KEY` —— 模型调用在服务器侧发生。
  */
-import { createRequire } from 'node:module';
-import { existsSync } from 'node:fs';
+import { readFileSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
 
-const require = createRequire(import.meta.url);
-const HERE = dirname(fileURLToPath(import.meta.url));
-const ROOT = join(HERE, '..');
+/** 服务器地址。可用环境变量覆盖（自建部署用）。 */
+export const API_BASE_URL = (
+  process.env.TEAMING_API_BASE_URL || 'https://meeting.bamamei.online'
+).replace(/\/+$/, '');
 
-export const ENGINE_PATH = process.env.TEAMING_ENGINE
-  || join(ROOT, 'dist', 'engine', 'lib', 'analysis', 'engine.js');
+/** host token 的存放位置。与 Skill 用同一个文件，两者可互换。 */
+export const TOKEN_FILE = process.env.TEAMING_TOKEN_FILE
+  || join(homedir(), '.teaming-mcp', 'host-token');
+
+/** 没有接入码时给用户的申请入口（填姓名即可） */
+export const ENROLL_URL = 'https://my.feishu.cn/share/base/form/shrcnlPdC7aoXczqLl3XkxGvWhc';
 
 export class AnalysisError extends Error {
-  constructor(message, { kind = 'analysis_failed' } = {}) {
+  constructor(message, { kind = 'analysis_failed', hint = null } = {}) {
     super(message);
     this.name = 'AnalysisError';
     this.kind = kind;
+    this.hint = hint;
   }
+}
+
+/** 读本地 host token */
+export function readHostToken() {
+  if (process.env.TEAMING_HOST_TOKEN) return process.env.TEAMING_HOST_TOKEN.trim() || null;
+  try {
+    if (!existsSync(TOKEN_FILE)) return null;
+    const value = readFileSync(TOKEN_FILE, 'utf8').trim();
+    return value || null;
+  } catch {
+    return null;
+  }
+}
+
+/** 存本地 host token（0600） */
+export function writeHostToken(token) {
+  mkdirSync(dirname(TOKEN_FILE), { recursive: true });
+  writeFileSync(TOKEN_FILE, token, { mode: 0o600 });
 }
 
 /**
- * 方舟（Ark）公开端点。引擎的 `getBaseUrl()` **没有内置默认值**，
- * 不配 `DOUBAO_BASE_URL` 就会在分析时抛
- * 「未配置 LLM_API_KEY/LLM_BASE_URL…」，整场分析降级成 basic_fallback。
+ * 有没有凭证。
  *
- * 而连接器配置文档过去只写了 `DOUBAO_API_KEY`——于是每个照文档配置的用户
- * 都会踩到"体检通过、分析降级"。2026-10-14 在豆包工作里实测时正是如此。
- *
- * 这里补一个默认值（仍可被环境变量覆盖），让"只配一个 key"就能跑通。
- *
- * ── 2026-10-14：默认模型服务从方舟/豆包切到 DeepSeek ──
- *
- * 换服务**不需要改引擎代码**：引擎读的是 provider-agnostic 的 LLM_* / DOUBAO_*，
- * 且 DeepSeek 的 OpenAI 兼容接口与引擎的请求体形状一致（含 `thinking` 开关，
- * 见 https://api-docs.deepseek.com/zh-cn/guides/thinking_mode）。
- *
- * ⚠️ 但**端点与模型必须成对设置**：只换端点不换模型，引擎会拿内置的豆包模型名
- * 去请求 DeepSeek，直接报模型不存在。原来这里只设了端点——换服务时必踩。
- *
- * 环境变量名保留了 `DOUBAO_*`（历史包袱），实际含义已经是"任意 OpenAI 兼容服务"。
- * 需要时用 `LLM_*` / `ANALYSIS_MODEL` 覆盖，优先级更高。
+ * 注意：**不再检查"有没有 LLM key"** —— 模型调用在服务器侧，本机不需要任何
+ * 模型凭证。以前那句"缺少分析凭证。下一步：配置 DOUBAO_API_KEY"现在会把人
+ * 引向错误的方向。
  */
-export const DEFAULT_LLM_BASE_URL = 'https://api.deepseek.com/v1';
-
-/** 模型名必须用现役的：DeepSeek 已下线 deepseek-chat 等旧名 */
-export const DEFAULT_LLM_MODEL = 'deepseek-flash';
-
-/**
- * 记录"端点是不是我们填的默认值"。
- *
- * 为什么不直接看 `process.env.DOUBAO_BASE_URL` 有没有值：本函数自己就会把默认值
- * 写进去，之后再看永远"有值"，体检就会把默认端点报成"(显式)"——曾经如此。
- */
-let appliedBaseUrlDefault = false;
-
-/** 引擎读取 process.env，因此必须在调用前落到位。 */
-export function applyProviderDefaults() {
-  // 端点与模型成对设置：只设一个会得到"能连上但模型不存在"
-  if (!process.env.DOUBAO_BASE_URL && !process.env.LLM_BASE_URL && !process.env.ARK_BASE_URL) {
-    process.env.DOUBAO_BASE_URL = DEFAULT_LLM_BASE_URL;
-    appliedBaseUrlDefault = true;
-  }
-  if (!process.env.DOUBAO_MODEL && !process.env.ANALYSIS_MODEL) {
-    process.env.DOUBAO_MODEL = DEFAULT_LLM_MODEL;
-  }
-}
-
-function resolveProviderConfig() {
-  const key = process.env.LLM_API_KEY || process.env.DOUBAO_API_KEY || process.env.ARK_API_KEY;
-  const explicit = process.env.LLM_BASE_URL || process.env.DOUBAO_BASE_URL || process.env.ARK_BASE_URL;
-  const baseUrl = explicit || DEFAULT_LLM_BASE_URL;
-  const model = process.env.ANALYSIS_MODEL || process.env.DOUBAO_MODEL || DEFAULT_LLM_MODEL;
-  return { key, baseUrl, model, baseUrlIsDefault: !explicit || appliedBaseUrlDefault };
-}
-
-/** 检查分析所需的前置条件（只读，不联网） */
 export function analysisReadiness() {
   const problems = [];
-  if (!existsSync(ENGINE_PATH)) {
-    problems.push(`分析引擎未构建（期望 ${ENGINE_PATH}）。下一步：npm run build`);
+  if (!readHostToken()) {
+    problems.push(
+      '还没有接入码换来的凭证。'
+      + `下一步：填 ${ENROLL_URL} 申请接入码（只需填姓名），`
+      + '约一分钟会收到飞书消息，拿到后把码告诉我就行。',
+    );
   }
-  const { key, baseUrl } = resolveProviderConfig();
-  if (!key) {
-    problems.push('缺少分析凭证。下一步：配置环境变量 DOUBAO_API_KEY');
-  }
-  return { ready: problems.length === 0, problems, enginePath: ENGINE_PATH, baseUrl };
+  return { ready: problems.length === 0, problems, apiBaseUrl: API_BASE_URL, tokenFile: TOKEN_FILE };
 }
 
-/** 体检展示用：当前实际生效的模型端点与模型。 */
+/** 体检展示用：不再有"本地模型端点"，改为展示服务器地址 */
 export function providerSummary() {
-  const { baseUrl, baseUrlIsDefault, model } = resolveProviderConfig();
   return {
-    baseUrl,
-    baseUrlIsDefault,
-    model,
+    mode: 'server',
+    apiBaseUrl: API_BASE_URL,
+    hasToken: Boolean(readHostToken()),
   };
 }
 
-export function loadEngine() {
-  const { ready, problems } = analysisReadiness();
-  if (!ready) throw new AnalysisError(problems.join('\n'), { kind: 'not_ready' });
-  applyProviderDefaults();
-  const mod = require(ENGINE_PATH);
-  if (typeof mod.analyzeTranscript !== 'function') {
-    throw new AnalysisError('分析引擎缺少 analyzeTranscript 导出，可能版本不匹配。', { kind: 'bad_engine' });
-  }
-  return mod.analyzeTranscript;
-}
-
 /**
- * 跑一次分析。transcript 必须是引擎能解析的 `姓名 MM:SS 发言` 文本。
+ * 调服务器分析。transcript 必须是引擎能解析的 `姓名 MM:SS 发言` 文本。
  * 单次通常 60~120 秒。
+ *
+ * @param {string} transcript
+ * @param {{ feishuMeetingId?: string|null, title?: string|null,
+ *           clientRequestId?: string|null, signal?: AbortSignal }} [options]
  */
-export async function analyze(transcript) {
-  const analyzeTranscript = loadEngine();
+export async function analyze(transcript, options = {}) {
   if (!transcript || transcript.trim().length < 50) {
     throw new AnalysisError('逐字稿过短，不足以做判断。', { kind: 'transcript_too_short' });
   }
-  return analyzeTranscript(transcript);
+
+  const token = readHostToken();
+  if (!token) {
+    const { problems } = analysisReadiness();
+    throw new AnalysisError(problems.join('\n'), { kind: 'not_ready' });
+  }
+
+  const body = {
+    transcript,
+    // 要完整分析结果：本包用它渲染云文档与摘要。
+    // 绝大多数调用方只要 reportUrl，所以服务器默认不返回全文。
+    includeAnalysis: true,
+  };
+  if (options.feishuMeetingId) body.feishuMeetingId = String(options.feishuMeetingId);
+  if (options.title) body.title = String(options.title);
+  if (options.clientRequestId) body.clientRequestId = String(options.clientRequestId);
+
+  let response;
+  try {
+    response = await fetch(`${API_BASE_URL}/api/host/v1/analyze`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(body),
+      signal: options.signal,
+    });
+  } catch (error) {
+    throw new AnalysisError(
+      `连不上分析服务器（${API_BASE_URL}）：${String(error?.message || error)}`,
+      { kind: 'network_failed' },
+    );
+  }
+
+  const text = await response.text();
+  let payload = null;
+  try {
+    payload = text ? JSON.parse(text) : null;
+  } catch {
+    throw new AnalysisError(
+      `服务器返回了非 JSON 内容（HTTP ${response.status}）：${text.slice(0, 200)}`,
+      { kind: 'bad_response' },
+    );
+  }
+
+  if (!response.ok || !payload?.ok) {
+    const code = payload?.error?.code || `http_${response.status}`;
+    const message = payload?.error?.message || `分析失败（HTTP ${response.status}）`;
+    const hint = payload?.error?.hint || null;
+
+    if (response.status === 401 || response.status === 403) {
+      throw new AnalysisError(
+        `${message}\n接入码可能已失效或过期。下一步：重新申请一个（${ENROLL_URL}）。`,
+        { kind: 'unauthorized', hint },
+      );
+    }
+
+    throw new AnalysisError(message, { kind: code, hint });
+  }
+
+  const analysis = payload.analysisResult;
+  if (!analysis) {
+    throw new AnalysisError(
+      '服务器没有返回分析结果（服务端可能版本较旧，不支持 includeAnalysis）。',
+      { kind: 'no_analysis_in_response' },
+    );
+  }
+
+  return {
+    ...analysis,
+    server: {
+      reportUrl: payload.reportUrl || null,
+      reportPublicId: payload.reportPublicId || null,
+      reused: Boolean(payload.reused),
+      zone: payload.zone ?? analysis?.teamState?.zone ?? null,
+    },
+  };
 }

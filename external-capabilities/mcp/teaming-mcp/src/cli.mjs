@@ -111,13 +111,10 @@ function cmdDoctor() {
     hasMinutesScope ? '' : reason(hasMinutesScope, '需要妙记读取权限'), optional(hasMinutesScope));
 
   const ready = analysisReadiness();
-  add('分析引擎已构建', ready.problems.every((p) => !p.includes('引擎')), ready.enginePath);
-  add('分析凭证可用', ready.problems.every((p) => !p.includes('凭证')), '');
-  // 端点过去完全不展示，而引擎缺它会直接降级成 basic_fallback——
-  // 用户看到"凭证可用"却拿不到完整报告。这里把实际生效的端点摆出来。
-  const provider = providerSummary();
-  add('模型端点', true, `${provider.baseUrl}${provider.baseUrlIsDefault ? '（默认，可用 DOUBAO_BASE_URL 覆盖）' : ''}`);
-  add('分析模型', true, provider.model || '');
+  // 2026-10-15 起分析在服务器跑，本机只要一个 host token。
+  // 以前这里展示"模型端点/模型名"，现在那是服务器的配置，本机看不到也不必看。
+  add('分析服务器可达', true, ready.apiBaseUrl);
+  add('接入凭证可用', ready.ready, ready.ready ? `（${ready.tokenFile}）` : '');
 
   const failed = checks.filter((c) => c.status === 'FAIL');
   const skipped = checks.filter((c) => c.status === 'SKIP');
@@ -250,8 +247,8 @@ async function cmdSetup() {
   log('');
   log(`✅ 配置已写入 ${path}`);
   log(`   归属集成：${payload.integrationName || payload.integrationId}`);
-  log(`   模型端点：${payload.analysis?.baseUrl || '(未下发，需手工配 DOUBAO_BASE_URL)'}`);
-  log(`   分析模型：${payload.analysis?.model || '(未下发，需手工配 DOUBAO_MODEL)'}`);
+  // 服务器下发的 model/baseUrl 不再需要写进本机：分析在服务器跑
+  log('   分析方式：调用服务器（本机不需要任何模型配置）');
   log('');
   log('接下来在宿主的连接器里只需保留启动配置（command 与 args），');
   log('不要再手工填 TEAMING_HOST_TOKEN —— 本文件里的优先。');
@@ -396,11 +393,11 @@ teaming —— 会议动力分析 CLI
 
 环境变量（可选；setup 写入 ~/.teaming-mcp/config.json 后通常不用配）：
   LARK_CLI         lark-cli 路径
-  TEAMING_ENGINE   分析引擎路径（默认 dist/engine/...）
-  TEAMING_OUT      产物目录
-  LLM_API_KEY      模型凭证（优先于 DOUBAO_API_KEY）
-  LLM_BASE_URL     模型端点（默认 https://api.deepseek.com/v1）
-  ANALYSIS_MODEL   模型名（默认 deepseek-flash）
+  TEAMING_OUT        产物目录
+  TEAMING_HOST_TOKEN 接入码换来的凭证（也可放 ~/.teaming-mcp/host-token）
+  TEAMING_API_BASE_URL 分析服务器地址（默认 https://meeting.bamamei.online）
+  TEAMING_TOKEN_FILE 凭证文件路径（默认 ~/.teaming-mcp/host-token）
+  ★ 无需模型配置：分析在服务器侧完成
 `;
 
 /**
