@@ -1,0 +1,66 @@
+# 接口错误码与排查
+
+`POST /api/host/v1/analyze` 的所有错误都是这个结构：
+
+```json
+{ "ok": false,
+  "error": { "type": "transcript", "code": "transcript_too_short",
+             "message": "…", "hint": "…" } }
+```
+
+**看 `error.code` 判断下一步**，不要看 HTTP 状态码猜。
+
+## 错误码表
+
+| HTTP | `type` | `code` | 含义 | 怎么做 |
+|---|---|---|---|---|
+| 401 | `auth` | `unauthorized` | 缺少或无效的 host token | 带上 `Authorization: Bearer <hostToken>`；token 被吊销就重新索取接入码 |
+| 404 | `auth` | `integration_missing` | token 对应的集成不存在（通常已被归档） | 向管理员确认归属 |
+| 400 | `request` | `invalid_json` | 请求体不是合法 JSON | 检查 `-d` 的内容与转义 |
+| 400 | `transcript` | `transcript_missing` | 没传 `transcript` | 补上逐字稿原文 |
+| 400 | `transcript` | `transcript_too_short` | 内容太短（有效内容不足 120 字） | 确认导出的是**完整**转录稿，不是片段 |
+| 400 | `transcript` | `transcript_not_speaker_lines` | 认不出至少两位发言者 | 大概率传的是 AI 摘要或纪要约——改传妙记的**文字转录稿** |
+| 422 | `transcript` | `analysis_failed` | 分析引擎失败 | 可重试一次；仍失败就如实告诉用户 |
+| 429 | `rate_limit` | — | 触发限流 | 退避后重试 |
+
+## 三种"看起来像失败、其实没失败"的情况
+
+### 1. curl 超时了
+
+```
+首次分析通常 60~90 秒，接口最长可能跑到 2 分钟。
+```
+
+**超时后再调一次同一份逐字稿即可**——服务端多半已经分析完，第二次会命中幂等、
+立刻返回 `reused: true` 和同一个 `reportUrl`。
+
+**不要因为超时就换一份稿或放弃。**
+
+### 2. 返回了 `reused: true`
+
+不是错误。说明**同一份逐字稿此前已经分析过**，服务端直接返回已有报告，
+**没有重复消耗额度**。正常汇报即可。
+
+### 3. 逐字稿被拒（`transcript_too_short` / `transcript_not_speaker_lines`）
+
+**这是设计如此，不是工具故障。** 团队动力分析只认成员的原始发言：
+
+- AI 摘要 / 会议纪要 / 待办列表 → 会被拒（拿它们分析会得出假结论）
+- 单人或极短的测试录音 → 会被拒（没有团队互动可分析）
+
+**如实告诉用户"这场会的记录不满足分析条件"，不要编造报告。**
+
+## 令牌与归属
+
+- `hostToken` **只由兑换接口返回一次**，服务端只存哈希，无法找回。丢了就重新索取接入码。
+- **归属由 token 决定，调用方不能指定。** 即使 body 里传 `integrationId` 也不生效——
+  这是为了任何人都不能把报告写进别人的名下。
+- 报告会落到多维表格的**当前活跃期**那张表；**「方向」字段留空**，由运营侧自己填。
+
+## 相关接口
+
+| 接口 | 用途 |
+|---|---|
+| `POST /api/host/v1/enroll` | 用接入码换 host token（不需要 Bearer） |
+| `POST /api/host/v1/analyze` | 传逐字稿，在服务器分析（本文档） |
+| `POST /api/host/v1/reports` | 传**已经分析好的结果**，换报告页链接（MCP 通道用） |
