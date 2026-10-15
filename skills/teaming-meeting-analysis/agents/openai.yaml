@@ -1,0 +1,4 @@
+interface:
+  display_name: "组队会议动力分析"
+  short_description: "对已结束的飞书会议做团队动力分析，产出四部分报告"
+  default_prompt: "Use $teaming-meeting-analysis to analyze a finished Feishu meeting: export the minute transcript, call the analyze API, and report the four-part team-dynamics result."

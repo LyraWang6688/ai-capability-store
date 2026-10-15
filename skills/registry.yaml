@@ -24,6 +24,22 @@ skills:
     status: testing
     version: 0.1.0
     updated: "2026-10-03"
+  teaming-meeting-analysis:
+    name: teaming-meeting-analysis
+    path: skills/teaming-meeting-analysis
+    scope: shared
+    status: testing
+    version: 0.1.0
+    updated: "2026-10-15"
+    notes: >
+      Analyze a finished Feishu meeting with the Teaming framework and produce a
+      four-part report (team state, interaction overview, unfinished dialogues and
+      non-consensus, advice for leaders). Runs entirely over HTTP: the host exports
+      the minute transcript with its own Feishu ability and POSTs it to
+      /api/host/v1/analyze. Deliberately does NOT depend on the teaming-mcp
+      connector — the Doubao Work scheduled-task / cloud-computer environment
+      cannot see MCP tools (verified 2026-10-15) but does have bash + curl.
+      `testing`: end-to-end scheduled-task run not yet validated.
   store-publish:
     name: store-publish
     path: skills/store-publish
