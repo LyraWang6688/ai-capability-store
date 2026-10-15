@@ -103,8 +103,18 @@ curl -s -X POST https://meeting.bamamei.online/api/host/v1/analyze \
   -H 'Content-Type: application/json' \
   -H "Authorization: Bearer $(cat "$HOME/.teaming-mcp/host-token")" \
   --max-time 150 \
-  -d '{"transcript":"<逐字稿原文>","title":"<会议标题>"}'
+  -d '{
+    "transcript":"<逐字稿原文>",
+    "title":"<会议标题>",
+    "feishuMeetingId":"<这场会的 meeting_id 或 minute_token>"
+  }'
 ```
+
+> ★ **`feishuMeetingId` 必须传。** 它是幂等键：
+> 同一场会重复分析会命中已有报告（不重复消耗、不重复入库）。
+> **不传**的话服务端只能用逐字稿哈希当键，而同一场会每次导出的文本常有细微差异
+> （时间戳、识别噪声、格式），哈希就变了——**同一场会被当成两场，重复分析、重复建行**。
+> 这个 id 从妙记里取（导出转录稿时通常就能拿到）。
 
 > ⚠️ **`--max-time` 至少 150 秒。** 首次分析通常 60~90 秒。
 > **超时不等于失败**——服务端往往已经分析完。**重试是安全的**：
