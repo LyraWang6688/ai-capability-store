@@ -76,13 +76,58 @@ process.on('unhandledRejection', (e) => trace('unhandled_rejection', { message: 
 import { analysisReadiness } from './analysis.mjs';
 import { larkReadiness, findSelfChatId } from './lark.mjs';
 import { reportDigest } from './render.mjs';
-import { readReport, pushReport, listMeetingsWithEligibility } from './pipeline.mjs';
+import { readReport, pushReport, buildReportCard, listMeetingsWithEligibility } from './pipeline.mjs';
 import { normalizeTranscript } from './transcript.mjs';
 import { newJobId, writeJob, readJob, waitForJob, pruneJobs, JOBS_DIR } from './jobs.mjs';
 import { applyStoredConfigToEnv } from './config.mjs';
 import { resolveStateDir } from './paths.mjs';
 
-const SERVER_INFO = { name: 'teaming', version: '0.1.0' };
+// 版本号从 package.json 读：曾写死成 '0.1.0'，发到 0.1.1 后 initialize 里报的还是旧版本
+const PKG_VERSION = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version;
+const SERVER_INFO = { name: 'teaming', version: PKG_VERSION };
+
+/**
+ * 交给宿主的说明书 —— MCP 协议的 initialize 响应里带它，**每个宿主连接时都会收到**。
+ *
+ * 这是【产品级】的说明位：不像包里的 SKILL.md 需要用户额外安装，
+ * 也不像工具描述只在调用某个工具时才看到。凡是希望所有宿主（豆包工作、
+ * WorkBuddy、Claude Desktop……）都自动做对的事，都写在这里。
+ *
+ * 2026-10-15 补：此前完全没有这个字段，于是"报告该由谁取数、卡片该由谁投递、
+ * 卡片长什么样"全靠用户在对话里临时交代——换个用户就做错。
+ */
+const INSTRUCTIONS = [
+  '本服务对已结束的飞书会议做团队动力分析，产出四部分报告：团队状态定位、互动概览、',
+  '未完成的对话与非共识、给领导者的建议。',
+  '',
+  '【谁取数：优先由你（宿主）取】',
+  '先用你自己的飞书能力搜一下这场会。搜得到、能导出妙记逐字稿 → 用 teaming_analyze_transcript',
+  '把逐字稿传进来；MCP 不碰飞书，也不会因身份不匹配而失败。搜不到 → 才用',
+  'teaming_analyze_meeting，让它用 MCP 自己的 lark-cli 取数。',
+  '注意：MCP 的 lark-cli 授权是【本机那个飞书账号】，和当前对话的用户可能不是同一个人；',
+  '当它取数报 "No read permission" 时，就是这个原因，改用 teaming_analyze_transcript 即可。',
+  '',
+  '【怎么交付：发到哪个账号，取决于用谁的飞书身份】',
+  '· 你自带的飞书能力（lark-im / lark-doc / lark-meeting 等）= 以【当前对话用户】',
+  '  的身份操作，消息就落在当前用户自己的飞书账号里 —— 这是默认该走的路。',
+  '· MCP 自己的推送（teaming_push_report）= 用 MCP 那套独立身份，通常是本机另一个',
+  '  飞书账号，不一定是当前用户 —— 所以不要用它去投递报告。',
+  '',
+  '做法：',
+  '1) 调 teaming_report_card 拿到卡片 JSON。',
+  '2) 用你自己的飞书能力找到【当前账号自己】的单聊会话。',
+  '3) 把卡片原样作为 interactive 消息发出（msg_type=interactive），并回报 message_id。',
+  '',
+  '【卡片样式是固定的，不要自己设计】',
+  '卡片只有三样：蓝色标题栏、「**会议名称：**<标题>」一行、一个「点击查看报告」按钮。',
+  '不要加指标块、分区块或报告正文 —— 详情走按钮跳转的报告页。',
+  '自己拼样式会让卡片和线上团队 bot 发的不一致。',
+  '',
+  '【边界】',
+  '· 报告只讲团队层面的互动结构，**不评价任何个人**。',
+  '· 不做会议摘要、不做待办整理 —— 那是宿主自己的会议纪要能力；用户要这些时不要套用本服务。',
+  '· 逐字稿不合格就不出结论（引擎也会拒绝）。宁可不分析，也不编造。',
+].join('\n');
 const SUPPORTED = ['2024-11-05', '2025-03-26', '2025-06-18', '2025-11-25'];
 
 const TOOLS = [
@@ -191,7 +236,11 @@ const TOOLS = [
       '把一场会议的分析报告作为**交互卡片**推送到飞书。'
       + '什么时候用：用户说「把报告发我」「推送到飞书」「发我私信」时。'
       + '不传 chat_id 就推给用户自己（自动查和自己的单聊）。'
-      + '推送是幂等的，重复调用不会产生重复消息。',
+      + '推送是幂等的，重复调用不会产生重复消息。'
+      + '**重要：本工具用的是 MCP 自己那套 lark-cli 授权，也就是【本机那个飞书账号】，'
+      + '它和当前对话的用户可能不是同一个人。**'
+      + '如果推送后用户说没收到，几乎一定是这个原因——'
+      + '此时改用【你自己的】飞书发消息能力把报告发给用户，不要反复重试本工具。',
     inputSchema: {
       type: 'object',
       properties: {
@@ -202,6 +251,28 @@ const TOOLS = [
       additionalProperties: false,
     },
     annotations: { readOnlyHint: false },
+  },
+  {
+    name: 'teaming_report_card',
+    description:
+      '取一份报告的【飞书交互卡片 JSON】——这是本产品统一的消息卡片样式。'
+      + '**本工具不发送任何消息**，只把卡片交给你。'
+      + '什么时候用：你要把报告以卡片形式发给用户，但 MCP 自己那套 lark-cli 授权'
+      + '不是当前用户（例如用户用豆包账号、本机 lark-cli 是另一个人），'
+      + '于是 teaming_push_report 推不到他。'
+      + '拿到 card 后，用【你自己的】飞书发消息能力把它作为 interactive 消息发出去。'
+      + '**不要自己设计卡片样式**——那样做出来的卡片和线上团队 bot 发的不一致。'
+      + '能用 teaming_push_report 直接发（本机 lark-cli 就是当前用户）时，优先用那个。',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        meeting_id: { type: 'string', description: '会议 ID' },
+        report_url: { type: 'string', description: '可选：报告页链接。不传则自动发布到服务器取链接' },
+      },
+      required: ['meeting_id'],
+      additionalProperties: false,
+    },
+    annotations: { readOnlyHint: true },
   },
   {
     name: 'teaming_job_status',
@@ -440,6 +511,45 @@ async function callTool(name, args) {
     };
   }
 
+  if (name === 'teaming_report_card') {
+    const found = readReport(args.meeting_id);
+    if (!found) {
+      return {
+        ok: false,
+        hint: '这场会议还没有分析报告。请先用 teaming_analyze_transcript 或 teaming_analyze_meeting 生成。',
+      };
+    }
+    const meetingTitle = /^(.+)-\d+\.report\.json$/.exec(found.path.split('/').pop())?.[1] || undefined;
+    const built = await buildReportCard(found.report, {
+      meetingTitle, reportUrl: args.report_url, reportPath: found.path,
+    });
+    return {
+      ok: true,
+      meeting_id: args.meeting_id,
+      meeting_title: meetingTitle,
+      report_url: built.reportUrl,
+      report_url_source: built.reportUrlSource,
+      card: built.card,
+      how_to_send: 'msg_type=interactive，content=JSON.stringify(card)。'
+        + '原样发送，不要改动 card 的结构与文案。',
+      deliver_to: '★ 发给【当前对话用户自己】。'
+        + '注意：那个会话要用【你自己的】飞书能力去找，别用 MCP —— '
+        + 'MCP 用的 lark-cli 授权可能是另一个账号，找不到当前用户的会话。',
+      delivery_steps: [
+        '1) 用你自己的飞书能力列出当前账号的单聊会话（lark-cli 里是 '
+          + '`im +chat-list --types=p2p`，用你自己的身份/租户）。',
+        '2) 选中属于【当前账号自己】的那条自聊会话（你的自聊，不是别人的）。',
+        '3) 把上面 card 原样作为 interactive 消息发出（msg_type=interactive）。',
+        '4) 发送后把 message_id 回报给用户。',
+      ],
+      hint: '★ 卡片样式是固定的（蓝色标题栏 + 一行会议名称 + 一个按钮），'
+        + '**不要自己设计**，不要加指标块、分区块或报告正文。'
+        + (built.reportUrlSource === 'server'
+          ? ' 按钮指向服务器报告页（含图表）。'
+          : ' 注意：按钮指向飞书文档兜底页（服务器报告页不可用），图表无法呈现。'),
+    };
+  }
+
   if (name === 'teaming_job_status') {
     const j = readJob(args.job_id);
     if (!j) return { found: false, hint: `没有这个 job_id：${args.job_id}` };
@@ -471,6 +581,7 @@ async function handle(msg) {
           protocolVersion: SUPPORTED.includes(want) ? want : '2025-06-18',
           capabilities: { tools: { listChanged: false } },
           serverInfo: SERVER_INFO,
+          instructions: INSTRUCTIONS,
         },
       });
       return;

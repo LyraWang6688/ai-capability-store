@@ -57,6 +57,25 @@ test('MCP 握手 + 工具清单 + stdout 纯净性', async () => {
     assert.equal(init.result.protocolVersion, '2025-06-18');
     assert.equal(init.result.serverInfo.name, 'teaming');
 
+    // instructions 是【产品级说明书】：每个宿主连接时都会收到它。
+    // 「谁取数、卡片由谁投递、卡片长什么样」都写在这里——一旦为空，
+    // 换个用户（换个宿主、换个飞书账号）就会做错，所以拿测试锁住。
+    const ins = init.result.instructions;
+    assert.ok(ins && ins.length > 200, 'initialize 必须带 instructions（给宿主的产品说明书）');
+    for (const must of [
+      'teaming_analyze_transcript',   // 宿主自己取数时该用哪个工具
+      'teaming_report_card',          // 卡片由 MCP 出
+      'interactive',                  // 投递方式
+      '单聊',                          // 发到当前账号自己的会话
+      '当前对话用户',                   // 用谁的飞书身份决定发到哪个账号
+      '用谁的飞书身份',                 // 交付段的立论：身份决定落点
+      '不要自己设计',                   // 卡片样式固定
+      '不评价任何个人',                 // 产品红线：报告只讲团队层面
+      '不做会议摘要',                   // 边界：摘要/待办是宿主自己的事
+    ]) {
+      assert.ok(ins.includes(must), `instructions 里应说明「${must}」`);
+    }
+
     s.send({ jsonrpc: '2.0', method: 'notifications/initialized' });
     s.send({ jsonrpc: '2.0', id: 2, method: 'tools/list' });
     const listed = await s.waitFor(2);
@@ -67,7 +86,8 @@ test('MCP 握手 + 工具清单 + stdout 纯净性', async () => {
 
     const names = tools.map((t) => t.name);
     for (const required of ['teaming_doctor', 'teaming_list_meetings', 'teaming_read_report',
-      'teaming_analyze_meeting', 'teaming_job_status', 'teaming_push_report']) {
+      'teaming_analyze_meeting', 'teaming_analyze_transcript', 'teaming_report_card',
+      'teaming_push_report', 'teaming_job_status']) {
       assert.ok(names.includes(required), `缺少工具 ${required}`);
     }
 
