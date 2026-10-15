@@ -12,7 +12,7 @@
  *   豆包工作 → 技能·连接器·伙伴 → 添加 → 新建自定义连接器 → STDIO
  *     command: /usr/local/bin/node  （必须绝对路径，GUI 不继承 PATH）
  *     args:    <本文件绝对路径>
- *     环境变量: DOUBAO_API_KEY=...
+ *     环境变量: TEAMING_HOST_TOKEN=...（或先跑 setup 用接入码换）
  *   WorkBuddy → ~/.workbuddy/mcp.json 的 mcpServers 里加一条
  */
 const realWrite = process.stdout.write.bind(process.stdout);
@@ -65,8 +65,9 @@ trace('mcp_server_started', {
   cwd: process.cwd(),
   protocol: process.argv.slice(2).join(' '),
   // 只记"有没有"，不记值
-  hasDoubaoKey: Boolean(process.env.DOUBAO_API_KEY || process.env.LLM_API_KEY || process.env.ARK_API_KEY),
-  hasBaseUrl: Boolean(process.env.DOUBAO_BASE_URL || process.env.LLM_BASE_URL || process.env.ARK_BASE_URL),
+  // 2026-10-15 起不再需要模型凭证：分析在服务器跑，本机只要有 host token
+  hasHostToken: Boolean(process.env.TEAMING_HOST_TOKEN || process.env.TEAMING_TOKEN_FILE),
+  apiBaseUrl: process.env.TEAMING_API_BASE_URL || null,
   hasLarkCli: Boolean(process.env.LARK_CLI),
 });
 

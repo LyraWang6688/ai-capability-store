@@ -63,7 +63,7 @@ export function htmlToTranscript(html) {
 /**
  * 判断"像不像逐字稿"。
  *
- * **解析的权威永远是引擎**（`engine-src/lib/analysis/transcript.ts` 的 matchSpeakerLine），
+ * **解析的权威永远是引擎**（服务器侧 `src/lib/analysis/transcript.ts` 的 matchSpeakerLine），
  * 这里只做一道**粗筛**，目的是把「AI 摘要 / 会议纪要」这类东西挡在模型调用之前。
  *
  * 为什么不直接复制引擎的正则：它有十几个排除规则（日期、章节标题、文档元数据标签…），
