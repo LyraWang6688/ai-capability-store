@@ -29,6 +29,18 @@ const safeName = (s) => String(s).replace(/[^\w\u4e00-\u9fa5-]/g, '_').slice(0, 
 
 /** 报告落盘路径（约定：<标题>-<meetingId>.report.json），MCP 靠它反查 */
 export function reportPathFor(meetingId) {
+  // 没有合法 id 就不要猜——猜错会把【别人的报告】发出去。
+  //
+  // 曾经的写法少了这一道：meetingId 为 undefined 时，
+  //   ① 文件名比对退化成 "undefined.report.json"，匹配不到（无害）；
+  //   ② 但接着遍历报告读 meetingRef，`ref.id === meetingId` 就变成
+  //      `ref.id === undefined`——只要某份报告缺 meetingRef（ref = {}），
+  //      它就成立了，于是静默返回那份报告。
+  // 后果：宿主漏传 meeting_id 时不会报错，而是拿到另一场会的报告并据此发卡片。
+  // 2026-10-15 实测复现：调 teaming_report_card 不传 meeting_id，
+  // 它返回了目录里另一份报告的链接。
+  if (typeof meetingId !== 'string' || meetingId.trim() === '') return null;
+
   if (!existsSync(OUT_DIR)) return null;
 
   // ① 文件名约定：<标题>-<id>.report.json

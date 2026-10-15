@@ -39,7 +39,7 @@ capabilities:
     type: mcp
     status: limited
     provider_path: external-capabilities/providers/lyrawang/README.md
-    version: 0.1.2
+    version: 0.1.3
     implementation_path: external-capabilities/mcp/teaming-mcp
     auth: "三层，均只记录元数据。(1) 宿主 → MCP：stdio，无认证，进程由宿主在本机以 command+args 拉起；(2) MCP → 分析大模型：方舟/豆包 API key，存在用户本机 ~/.teaming-mcp/config.json（权限 0600），环境变量优先；(3) MCP → teaming-bot 服务器：Bearer 宿主凭证，由 `teaming setup --code <接入码>` 兑换，服务端只存 SHA-256 且可单独吊销。**取飞书数据不经 MCP**——由宿主自己的飞书能力完成，所以 MCP 本身不需要飞书授权"
     capabilities: "对一场会议做团队动力分析并交付报告：接收【调用方提供的】逐字稿，产出四部分报告（团队状态定位／互动概览／未完成的对话与非共识／给领导者的建议），自动上传服务器换取带图表的网页报告页；另有列出可分析会议、读取已有报告、推送飞书交互卡片、运行诊断等。共 7 个 MCP 工具"
