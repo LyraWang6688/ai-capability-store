@@ -195,8 +195,48 @@ python3 <store>/scripts/validate_store.py
 
 **首次上传也要打 tag。** 它是这个资产「第 1 版从哪里开始」的锚点。
 
+### ⚠️ 先读这条：版本号必须在**同一个 PR** 里更新
+
+```
+内容变更 和 注册表 version 更新  →  必须在同一个 PR
+        ↓
+否则【没有任何提交】同时满足"内容是 vX.Y.Z"和"注册表说 vX.Y.Z"
+      → tag 打在哪个提交上都不自洽
+      → 事后再开一个"对齐版本"的 PR 也【修不了】——
+        它修的是当下，修不了 tag 已经指向的那个提交
+```
+
+**2026-10 真实发生过 4 次**：`store-publish` 有版本却没有 tag；`teaming-mcp-v0.2.0`、
+`teaming-meeting-analysis-v0.1.1` 与 `v0.1.2` 的 tag 指向的提交里，注册表还写着旧版本。
+期间开过两次"对齐已打的 tag"的补丁 PR —— **它们都没能修好那几个 tag**，因为历史改不了。
+
+### 打之前先跑自查
+
+```bash
+python3 <store>/skills/store-publish/scripts/check_tag_version.py <asset-name> <version> [<commit>]
+```
+
+它检查四件事，逐条报告：
+
+```
+① tag 名还没被占用      —— 版本 tag 不可重用；内容变了就升版本，不要重指
+② 资产在两个域注册表之一里登记了
+③ 在目标提交上，注册表说的版本 == 你要打的版本   ← 就是上面那条
+④ 目标提交从 main 可达  —— 不要在 feature 分支上打，分支删了 tag 会悬空
+```
+
+- 退出 `0` = 可以打；退出 `10` = **不能打**（逐条说明原因）；`2` = 用法/环境错误
+- 想体检全仓已有的 tag：`check_tag_version.py --audit`
+
+**为什么不做进 `validate_store.py`**：那支验证器是**纯文件系统**的（不调 git、不调子进程），
+所以 tarball、浅克隆、`.git` 被剥掉的副本都能校验。tag 是 git 问题，属于另一个工具 ——
+而 PR 的 CI 里也做不了（那时 tag 还没打，会 100% 误报）。见 Issue #23。
+
+### 打 tag
+
 ```bash
 git checkout main && git pull
+python3 <store>/skills/store-publish/scripts/check_tag_version.py <asset-name> <version>
 git tag -a <asset-name>-v<X.Y.Z> <合并后的提交> -m "<asset-name> v<X.Y.Z>
 
 <一两句：这是什么资产、status 是什么、有什么前提>"
@@ -240,4 +280,8 @@ git push origin repo-hygiene-v0.1.0
 ### 打在哪个提交上
 
 **打在「PR 合并进 main 之后」的 main 上** —— 也就是承载这次上传的那个提交。
+
+⚠️ 前提是那个提交里**注册表已经写对了版本**。所以版本更新要么在同一个 PR 里，
+要么那个"对齐版本"的 PR 先合、再打 tag。`check_tag_version.py` 就是替你确认这一点。
+
 不要在 feature 分支上打：分支会被删除，tag 会跟着变成一个悬空引用。

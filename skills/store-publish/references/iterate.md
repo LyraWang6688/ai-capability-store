@@ -111,6 +111,8 @@ python3 <store>/scripts/validate_store.py
 - **合并后**打名字空间 tag —— 用**附注 tag**（`-a`）：
 
 ```bash
+git checkout main && git pull
+python3 <store>/skills/store-publish/scripts/check_tag_version.py <asset-name> <version>
 git tag -a <asset-name>-v<X.Y.Z> <合并后的提交> -m "<asset-name> v<X.Y.Z>
 
 <一两句：这次发布了什么、status 是什么>"
@@ -118,6 +120,13 @@ git push origin <asset-name>-v<X.Y.Z>
 ```
 
 ```
+⚠️ 版本号必须在【同一个 PR】里改（第 3 步），不能事后再补一个"对齐版本"的 PR。
+   拆开之后，没有任何提交同时满足"内容是 vX.Y.Z"和"注册表说 vX.Y.Z"，
+   tag 打在哪个提交上都不自洽 —— 而事后补的 PR 修不了 tag 已指向的那个提交。
+   （first-publish.md §9 有完整说明；2026-10 真实发生过 4 次。）
+
+⚠️ 打之前先跑上面那条 check_tag_version.py；退出 10 就不要打。
+
 ⚠️ 不要用 v0.1.0 这种全仓通用的 tag —— 一个仓库装多个资产，会撞车。
    （VERSIONING.md §6）
 
