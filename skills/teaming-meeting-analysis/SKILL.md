@@ -24,18 +24,31 @@ compatibility: "需要 bash 与 curl；需要能访问 https://meeting.bamamei.o
 
 ## 准备：拿到 host token（每个用户只做一次）
 
-向管理员索取一个 8 位接入码（形如 `ABCD2345`），兑换成 token：
+### 第一步：先看用户有没有给接入码
+
+**没有就直接问他**——不要自己猜、不要到处翻找。问他这一句：
+
+> 这个分析需要一个 8 位接入码（形如 `ABCD2345`），是管理员单独发给你的。
+> 你手上有吗？没有的话我告诉你去哪要。
+
+**拿到码之前不要往下走**，后面的步骤全都需要它。
+
+> 不要试图从环境变量、历史文件或记忆里"找"一个凭证——那可能是别人的，
+> 用了会把报告归到别人名下。
+
+### 第二步：用码换 token
 
 ```bash
 curl -s -X POST https://meeting.bamamei.online/api/host/v1/enroll \
   -H 'Content-Type: application/json' \
-  -d '{"code":"<你的接入码>"}'
+  -d '{"code":"<用户给的接入码>"}'
 ```
 
-返回里的 **`hostToken`** 就是要用的凭证。**它只返回这一次**，记下来。
-后续请求都带上 `Authorization: Bearer <hostToken>`。
+返回里的 **`hostToken`** 就是要用的凭证。**它只返回这一次**。
+换到之后告诉用户"凭证已就绪"，后续请求都带上 `Authorization: Bearer <hostToken>`。
 
 > 接入码是发到每个人手里的，**不要互相借用**——它决定了报告归到谁名下。
+> 用户手上有多个时，用**他自己**那个。
 
 ---
 
