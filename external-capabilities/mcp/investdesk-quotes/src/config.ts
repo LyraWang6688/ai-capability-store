@@ -50,6 +50,22 @@ export const PLATFORMS_TABLE = process.env.INVESTDESK_PLATFORMS_TABLE ?? '';
 /** MCP 服务端口 */
 export const MCP_PORT = Number(process.env.MCP_PORT ?? 8787);
 
+/**
+ * 飞书自建应用凭据。
+ *
+ * 填了 → 走 OpenAPI（tenant_access_token），可在云端 / CI 跑；
+ * 不填 → 走本机 lark-cli（用户令牌在 keychain 里）。
+ *
+ * 切换后端只改环境变量，代码不动。
+ */
+export const FEISHU_APP_ID = process.env.FEISHU_APP_ID ?? '';
+export const FEISHU_APP_SECRET = process.env.FEISHU_APP_SECRET ?? '';
+export const FEISHU_BASE_URL = process.env.FEISHU_BASE_URL ?? 'https://open.feishu.cn';
+
+export function hasAppCredentials(): boolean {
+  return Boolean(FEISHU_APP_ID && FEISHU_APP_SECRET);
+}
+
 export function assertFeishuConfigured(): void {
   const missing: string[] = [];
   if (!BASE_TOKEN) missing.push('INVESTDESK_BASE_TOKEN');
