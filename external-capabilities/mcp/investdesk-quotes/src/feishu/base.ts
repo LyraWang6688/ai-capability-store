@@ -45,8 +45,11 @@ export function backendName(): string {
   return hasAppCredentials() ? 'openapi' : 'lark-cli';
 }
 
-function firstOf(value: string[] | null | undefined): string {
-  return Array.isArray(value) ? (value[0] ?? '') : '';
+/** 单选字段：lark-cli 返回数组，OpenAPI 返回字符串，两种都要兼容 */
+function firstOf(value: unknown): string {
+  if (Array.isArray(value)) return String(value[0] ?? '');
+  if (typeof value === 'string') return value;
+  return '';
 }
 
 function toNumber(value: unknown): number | null {
