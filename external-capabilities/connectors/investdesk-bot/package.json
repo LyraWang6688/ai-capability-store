@@ -1,0 +1,16 @@
+{
+  "name": "investdesk-bot",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "飞书投资助手：对话式查询持仓与行情，并把灵感写入多维表格",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "node --env-file-if-exists=.env src/index.js",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "@larksuiteoapi/node-sdk": "^1.76.0",
+    "investdesk-quotes": "^0.4.0"
+  }
+}
