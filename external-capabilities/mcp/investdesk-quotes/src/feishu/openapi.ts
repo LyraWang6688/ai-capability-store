@@ -83,6 +83,36 @@ export class OpenApiBackend implements FeishuBackend {
     return payload.data as T;
   }
 
+  /**
+   * OpenAPI 的记录形状和 lark-cli 的 ndjson 不一样：
+   *   - 字段值包在 `fields` 里
+   *   - 单选返回字符串（不是数组）
+   *   - 数字返回字符串
+   *   - 关联字段是 `[{record_ids: [...], text}]`（不是 `[{id}]`）
+   * 这里统一归一化成 lark-cli 的形状，让上层 base.ts 不用关心后端。
+   */
+  private static normalize(record: Record<string, unknown>): RawRecord {
+    const rawFields = record.fields;
+    const fields =
+      rawFields && typeof rawFields === 'object'
+        ? { ...(rawFields as Record<string, unknown>) }
+        : { ...record };
+
+    // 关联字段 → [{ id }]
+    for (const [key, value] of Object.entries(fields)) {
+      if (!Array.isArray(value) || value.length === 0) continue;
+      const first = value[0] as Record<string, unknown> | null;
+      if (first && Array.isArray(first.record_ids)) {
+        fields[key] = (value as Array<Record<string, unknown>>).map((item) => ({
+          id: Array.isArray(item.record_ids) ? (item.record_ids[0] ?? '') : '',
+        }));
+      }
+    }
+
+    const recordId = (record.record_id ?? record.id ?? '') as string;
+    return { ...fields, record_id: recordId } as RawRecord;
+  }
+
   async listRecords(tableId: string, limit: number): Promise<RawRecord[]> {
     const records: RawRecord[] = [];
     let pageToken = '';
@@ -90,12 +120,12 @@ export class OpenApiBackend implements FeishuBackend {
       const query = new URLSearchParams({ page_size: '500' });
       if (pageToken) query.set('page_token', pageToken);
       const data = await this.request<{
-        items?: RawRecord[];
+        items?: Array<Record<string, unknown>>;
         has_more?: boolean;
         page_token?: string;
       }>(`/open-apis/bitable/v1/apps/${this.options.appToken}/tables/${tableId}/records?${query}`);
 
-      for (const item of data.items ?? []) records.push(item);
+      for (const item of data.items ?? []) records.push(OpenApiBackend.normalize(item));
       if (records.length >= limit || !data.has_more || !data.page_token) break;
       pageToken = data.page_token;
     }

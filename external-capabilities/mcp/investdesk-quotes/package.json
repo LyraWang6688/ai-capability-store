@@ -1,6 +1,6 @@
 {
   "name": "investdesk-quotes",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "A 股与场外公募基金行情查询 + 飞书多维表格持仓读写的 MCP 服务。可装进豆包工作 / Claude Desktop 等支持 MCP 的 AI 宿主。",
   "type": "module",
   "license": "MIT",
