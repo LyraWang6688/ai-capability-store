@@ -430,5 +430,72 @@ class TestGithubIdentityGuard(unittest.TestCase):
         self.assertEqual(meta["login"], "Test-User")
 
 
+class TestFieldListPagination(unittest.TestCase):
+    """`GET .../fields` 不带 offset/limit 会返回空列表且不报错。
+
+    2026-10-18 首次 CI dry-run 因此把 13 个已有字段全判成缺失；真实运行会给表
+    加 13 个重复列。这一组测试钉住「必须传分页参数」和「必须读全」。
+    """
+
+    def setUp(self):
+        self._orig = snap.feishu
+        self.calls = []
+
+    def tearDown(self):
+        snap.feishu = self._orig
+
+    def _fake(self, pages):
+        """pages: 每页的 fields 列表；最后一页的 total 是总数。"""
+        queue = list(pages)
+
+        def fake(method, path, *, params=None, body=None):
+            self.calls.append({"method": method, "path": path, "params": params})
+            fields = queue.pop(0)
+            total = sum(len(p) for p in pages)
+            return {"fields": fields, "total": total}
+
+        snap.feishu = fake
+
+    def test_pagination_params_are_sent(self):
+        self._fake([[{"name": "a"}]])
+        snap.table_field_map("tblX")
+        params = dict(self.calls[0]["params"])
+        self.assertIn("offset", params, "必须传 offset")
+        self.assertIn("limit", params, "必须传 limit")
+        self.assertEqual(params["offset"], "0")
+
+    def test_all_pages_are_collected(self):
+        page1 = [{"name": f"f{i}"} for i in range(300)]
+        page2 = [{"name": "last"}]
+        self._fake([page1, page2])
+        got = snap.table_field_map("tblX")
+        self.assertEqual(len(got), 301, "两页都要读到")
+        self.assertIn("last", got)
+        self.assertEqual(len(self.calls), 2, "满页后应继续翻页")
+
+    def test_single_short_page_stops_immediately(self):
+        self._fake([[{"name": "a"}, {"name": "b"}]])
+        got = snap.table_field_map("tblX")
+        self.assertEqual(set(got), {"a", "b"})
+        self.assertEqual(len(self.calls), 1)
+
+    def test_total_positive_but_zero_parsed_raises(self):
+        """形状变了就报错，而不是返回空 map 让调用方以为表是空的。"""
+        def fake(method, path, *, params=None, body=None):
+            return {"fields": [], "total": 33}
+
+        snap.feishu = fake
+        with self.assertRaises(snap.SnapshotError) as ctx:
+            snap.table_field_map("tblX")
+        self.assertIn("33", str(ctx.exception))
+
+    def test_genuinely_empty_table_does_not_raise(self):
+        def fake(method, path, *, params=None, body=None):
+            return {"fields": [], "total": 0}
+
+        snap.feishu = fake
+        self.assertEqual(snap.table_field_map("tblX"), {})
+
+
 if __name__ == "__main__":
     sys.exit(0 if unittest.main(exit=False, verbosity=2).result.wasSuccessful() else 1)
