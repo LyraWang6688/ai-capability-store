@@ -129,7 +129,19 @@ ALLOWED_AUTOMATION_STATUSES = {"draft", "testing", "active", "deprecated", "arch
 # Classification ONLY. The authoritative cron lives in the bound workflow file;
 # duplicating it here would create a second source of truth that silently drifts
 # from what GitHub actually schedules. See automations/README.md.
-ALLOWED_TRIGGER_KINDS = {"daily", "weekly", "manual", "event"}
+# `monthly` exists because a monthly cadence is a real clock, not a degenerate
+# daily: nothing schedules it from a workflow for us, and its catch-up behaviour
+# (launchd fires on wake) differs from a daily job's.
+ALLOWED_TRIGGER_KINDS = {"daily", "weekly", "monthly", "manual", "event"}
+# WHO runs it. The Automation Domain originally assumed GitHub Actions only, so
+# `workflow` was unconditionally required; that made a launchd-driven job
+# unrepresentable. Executor is a separate axis from trigger_kind:
+#   trigger_kind = how often      executor = what runs it
+ALLOWED_EXECUTORS = {"github-actions", "launchd", "human"}
+# WHERE the output lands. A `git-branch` target writes machine output to a branch
+# that never merges (the data branch); an `external-system` target writes into
+# something we do not own (e.g. a Feishu Base) and cannot be validated here.
+ALLOWED_OUTPUT_TARGETS = {"git-branch", "external-system"}
 # Automation output is high-frequency machine data; committing it to main would
 # bury the Store's asset history (one year of daily snapshots ~= 365 commits).
 AUTOMATION_OUTPUT_BRANCH = "data"
@@ -563,12 +575,32 @@ def validate_capability_entries(reg: dict):
     return collected
 
 
+def _executor_descriptor_ok(executor, entry: dict) -> bool:
+    """Each executor requires exactly its own runner descriptor, and no other.
+
+    Why "exactly": a github-actions automation that also carries a launchd block
+    is two jobs described as one — the registry would answer "what runs this?"
+    with two incompatible answers. Extra descriptors are stale metadata waiting
+    to be trusted by the next reader.
+    """
+    has_workflow = isinstance(entry.get("workflow"), str) and entry.get("workflow")
+    has_launchd = entry.get("launchd") is not None
+    if executor == "github-actions":
+        return bool(has_workflow) and not has_launchd
+    if executor == "launchd":
+        return bool(has_launchd) and not has_workflow
+    if executor == "human":
+        return not has_workflow and not has_launchd
+    return False
+
+
 def validate_automation_entries(reg: dict):
     """Validate automation record schema. Returns list of (key, entry).
 
-    Every field is required: an automation that omits `workflow` or `output`
-    would pass a looser validator while pointing at nothing runnable, and the
-    failure would only surface when the schedule silently stops producing data.
+    Common fields are required unconditionally. `workflow` and `launchd` are
+    required *conditionally* by `executor`: an automation that omits both would
+    pass a looser validator while pointing at nothing runnable, and the failure
+    would only surface when the schedule silently stops producing data.
     """
     automations = reg.get("automations")
     if automations is None:
@@ -585,7 +617,7 @@ def validate_automation_entries(reg: dict):
         collected.append((key, entry))
         check(f"automation {key} identifier kebab-case", bool(KEBAB_RE.match(key)), f"key={key!r}")
         for field in ("name", "path", "entrypoint", "status", "version", "updated",
-                      "trigger_kind", "workflow", "description"):
+                      "trigger_kind", "executor", "description"):
             value = entry.get(field)
             check(f"automation {key} has required field: {field}", value is not None,
                   f"value={value!r}")
@@ -604,6 +636,10 @@ def validate_automation_entries(reg: dict):
         if trigger is not None:
             check(f"automation {key} trigger_kind legal", trigger in ALLOWED_TRIGGER_KINDS,
                   f"trigger_kind={trigger!r}")
+        executor = entry.get("executor")
+        if executor is not None:
+            check(f"automation {key} executor legal", executor in ALLOWED_EXECUTORS,
+                  f"executor={executor!r}")
         version = entry.get("version")
         if version is not None:
             check(f"automation {key} version X.Y.Z",
@@ -635,6 +671,39 @@ def validate_automation_entries(reg: dict):
             entry_file = os.path.join(ROOT, path, entrypoint)
             check(f"automation {key} entrypoint exists", os.path.isfile(entry_file),
                   f"{path}/{entrypoint}")
+
+        # executor decides which runner descriptor is required.
+        check(f"automation {key} declares exactly the descriptor its executor needs",
+              _executor_descriptor_ok(executor, entry), f"executor={executor!r}")
+        if executor == "launchd":
+            launchd = entry.get("launchd")
+            if not isinstance(launchd, dict):
+                check(f"automation {key} launchd is a mapping", False, type(launchd).__name__)
+            else:
+                unknown = set(launchd.keys()) - {"label", "template"}
+                check(f"automation {key} launchd has only allowed keys", not unknown,
+                      f"unknown fields: {sorted(unknown)}")
+                label = launchd.get("label")
+                check(f"automation {key} launchd label is non-empty string",
+                      isinstance(label, str) and len(label) > 0, f"label={label!r}")
+                template = launchd.get("template")
+                check(f"automation {key} launchd template is non-empty string",
+                      isinstance(template, str) and len(template) > 0, f"template={template!r}")
+                if isinstance(template, str) and template:
+                    tparts = template.split("/")
+                    check(f"automation {key} launchd template relative",
+                          not os.path.isabs(template) and ".." not in tparts, template)
+                    template_file = os.path.join(ROOT, template)
+                    texists = os.path.isfile(template_file)
+                    check(f"automation {key} launchd template exists", texists, template)
+                    if texists and isinstance(label, str) and label:
+                        # The plist's own Label must match the declaration, or the
+                        # installed job and the registry describe different jobs.
+                        with open(template_file, encoding="utf-8") as handle:
+                            plist_body = handle.read()
+                        check(f"automation {key} launchd label matches plist",
+                              f"<string>{label}</string>" in plist_body,
+                              f"{template} does not declare Label {label!r}")
 
         # workflow must live under .github/workflows/ and exist.
         workflow = entry.get("workflow")
@@ -668,23 +737,38 @@ def validate_automation_entries(reg: dict):
         elif not isinstance(output, dict):
             check(f"automation {key} output is a mapping", False, type(output).__name__)
         else:
-            unknown = set(output.keys()) - {"branch", "path_pattern"}
-            check(f"automation {key} output has only allowed keys", not unknown,
-                  f"unknown fields: {sorted(unknown)}")
-            branch = output.get("branch")
-            check(f"automation {key} output branch is {AUTOMATION_OUTPUT_BRANCH}",
-                  branch == AUTOMATION_OUTPUT_BRANCH, f"branch={branch!r}")
-            pattern = output.get("path_pattern")
-            check(f"automation {key} output path_pattern is non-empty string",
-                  isinstance(pattern, str) and len(pattern) > 0, f"pattern={pattern!r}")
-            if isinstance(pattern, str) and pattern:
-                # NOTE: path_pattern is the location INSIDE the data branch, which
-                # has its own namespace and is unrelated to main's directory
-                # layout. Requiring it under automations/ would be wrong — the
-                # only constraints are relative + no traversal.
-                pattern_parts = pattern.split("/")
-                check(f"automation {key} output path_pattern is relative with no '..'",
-                      not os.path.isabs(pattern) and ".." not in pattern_parts, pattern)
+            target = output.get("target")
+            check(f"automation {key} output target legal",
+                  target in ALLOWED_OUTPUT_TARGETS, f"target={target!r}")
+            if target == "git-branch":
+                unknown = set(output.keys()) - {"target", "branch", "path_pattern"}
+                check(f"automation {key} output has only allowed keys", not unknown,
+                      f"unknown fields: {sorted(unknown)}")
+                branch = output.get("branch")
+                check(f"automation {key} output branch is {AUTOMATION_OUTPUT_BRANCH}",
+                      branch == AUTOMATION_OUTPUT_BRANCH, f"branch={branch!r}")
+                pattern = output.get("path_pattern")
+                check(f"automation {key} output path_pattern is non-empty string",
+                      isinstance(pattern, str) and len(pattern) > 0, f"pattern={pattern!r}")
+                if isinstance(pattern, str) and pattern:
+                    # NOTE: path_pattern is the location INSIDE the output branch,
+                    # which has its own namespace unrelated to main's layout.
+                    # Requiring it under automations/ would be wrong — the only
+                    # constraints are relative + no traversal.
+                    pattern_parts = pattern.split("/")
+                    check(f"automation {key} output path_pattern is relative with no '..'",
+                          not os.path.isabs(pattern) and ".." not in pattern_parts, pattern)
+            elif target == "external-system":
+                unknown = set(output.keys()) - {"target", "destination"}
+                check(f"automation {key} output has only allowed keys", not unknown,
+                      f"unknown fields: {sorted(unknown)}")
+                destination = output.get("destination")
+                # Not machine-checkable from this repository: the destination is
+                # another system. Requiring it to be specific is the most the
+                # validator can honestly do.
+                check(f"automation {key} output destination names a real place",
+                      isinstance(destination, str) and len(destination.strip()) >= 8,
+                      f"destination={destination!r}")
     return collected
 
 
@@ -825,7 +909,7 @@ def main() -> int:
         check("dependency registry schema_version", deps_reg.get("schema_version") == 1,
               f"got {deps_reg.get('schema_version')!r}")
     if autos_ok:
-        check("automation registry schema_version", autos_reg.get("schema_version") == 1,
+        check("automation registry schema_version", autos_reg.get("schema_version") == 2,
               f"got {autos_reg.get('schema_version')!r}")
         check("automation registry domain", autos_reg.get("domain") == "automations",
               repr(autos_reg.get("domain")))
@@ -833,8 +917,11 @@ def main() -> int:
         check("automation registry keeps 5 lifecycle statuses",
               allowed_auto == ALLOWED_AUTOMATION_STATUSES, f"allowed={sorted(allowed_auto)}")
         allowed_trigger = set(autos_reg.get("allowed_trigger_kinds") or [])
-        check("automation registry keeps 4 trigger kinds",
+        check("automation registry keeps 5 trigger kinds",
               allowed_trigger == ALLOWED_TRIGGER_KINDS, f"kinds={sorted(allowed_trigger)}")
+        allowed_execs = set(autos_reg.get("allowed_executors") or [])
+        check("automation registry keeps 3 executors",
+              allowed_execs == ALLOWED_EXECUTORS, f"executors={sorted(allowed_execs)}")
         check("dependency registry dependencies is a list",
               isinstance(deps_reg.get("dependencies"), list),
               type(deps_reg.get("dependencies")).__name__)

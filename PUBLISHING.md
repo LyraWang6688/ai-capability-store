@@ -82,19 +82,33 @@ Tag / Release when applicable (namespaced Git Tag; Release for distributable art
 4. **Decide the domain honestly.** An Automation is triggered by a clock or an
    event; a Capability is *called*. If a human or a model decides *when* to run
    it, it is a Skill, not an Automation (`DOMAIN_MISMATCH` — see Stop Conditions).
-5. Register in `automations/registry.yaml`:
+5. **Choose `executor` independently of `trigger_kind`.** `trigger_kind` says how
+   often (`daily` / `weekly` / `monthly` / `manual` / `event`); `executor` says
+   what runs it (`github-actions` / `launchd` / `human`). Each requires exactly
+   its own descriptor and forbids the other's:
+   - `github-actions` → `workflow:`
+   - `launchd` → `launchd: {label, template}`, template committed under
+     `automations/<name>/deploy/`
+   - `human` → neither
+   Do not reach for `github-actions` by default. A runner needing a credential in
+   the operator's own keychain cannot run on a hosted runner; declare `launchd`
+   instead of pretending otherwise.
+6. Register in `automations/registry.yaml`:
    - Required: name / path / entrypoint / status / version / updated /
-     trigger_kind / workflow / output
-   - `trigger_kind` is `daily` / `weekly` / `manual` / `event`
-6. **Never record the cron expression in the registry.** It lives only in the
-   bound workflow's `on:` block — a cron copied into two files drifts. The
-   validator checks that `workflow:` exists, is bound to this directory, and
-   carries a `schedule:` trigger whenever `trigger_kind` is not `manual`.
-7. Output goes to the `data` branch, never to `main`. The `output` contract names
-   that branch and the validator enforces it.
-8. Bring tests for the entrypoint. An Automation runs unattended — nobody is
+     trigger_kind / executor / output
+7. **Never record the schedule expression in the registry.** A `github-actions`
+   cron lives only in its workflow's `on:` block; a `launchd` schedule lives only
+   in its plist template. A schedule copied into two files drifts. The validator
+   checks that the descriptor exists, is bound, and carries a schedule trigger
+   whenever `trigger_kind` is not `manual`.
+8. Declare `output.target`:
+   - `git-branch` — `branch` must be `data` plus a `path_pattern`. Machine output
+     never goes to `main`.
+   - `external-system` — a `destination` naming the outside system. The validator
+     can only record that claim; it cannot verify an external write.
+9. Bring tests for the entrypoint. An Automation runs unattended — nobody is
    watching the first failure, so a passing local run is the only cheap signal.
-9. **Tag it like any other asset** (`VERSIONING.md` §6). Being scheduled does not
+10. **Tag it like any other asset** (`VERSIONING.md` §6). Being scheduled does not
    exempt it; it is precisely the asset that most needs to be rollable back.
 
 ## Stop Conditions
