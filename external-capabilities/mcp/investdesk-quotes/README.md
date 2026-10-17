@@ -74,7 +74,15 @@ npm run quote -- 510300 600028          # 手动查场内
 npm run quote -- f:008284               # 手动查场外（f: 前缀）
 ```
 
-零运行时依赖：Node 22.6+ 原生支持 TypeScript 类型擦除，不需要 `npm install`、不需要构建。
+**源码是 TypeScript，但发布到 npm 的是编译后的 JS（`dist/`）。** 这不是洁癖：
+
+> Node 拒绝为 `node_modules` 下的文件做类型擦除
+> （`ERR_UNSUPPORTED_NODE_MODULES_TYPE_STRIPPING`）。
+> 直接发布 `.ts` 在本地源码目录能跑，`npm install` 之后却起不来——
+> 而 `npm pack --dry-run` 不会暴露这个问题，只有真装一次才会。
+
+所以 `prepare` 会在发布前自动 `tsc`，`bin` 指向 `dist/`。运行时零依赖，构建期只需要 `typescript`。
+本地开发仍然可以直接 `node src/mcp/server.ts`（不在 `node_modules` 下，类型擦除可用）。
 
 ## 在豆包工作中接入
 
