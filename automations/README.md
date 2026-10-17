@@ -32,6 +32,13 @@ automations/
 status, version, trigger kind, bound workflow, and output contract. Nothing is
 duplicated into `registry.yaml` at the repository root — the root file routes only.
 
+An automation is a **peer Domain**, so it carries the same version discipline as a
+Skill or an External Capability: every published version gets an annotated
+`<automation-name>-vX.Y.Z` tag (`VERSIONING.md` §6), and the version bump ships in
+the same PR as the change. Being scheduled does not exempt it — a job that runs
+unattended is exactly the thing you may need to roll back. Run
+`skills/store-publish/scripts/check_tag_version.py` before tagging.
+
 ## The cron lives in exactly one place
 
 `registry.yaml` records **`trigger_kind`** (`daily` / `weekly` / `manual` /

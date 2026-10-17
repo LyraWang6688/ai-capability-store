@@ -30,7 +30,8 @@ Modes:
 
 Checks (default mode):
     1. the tag <asset-name>-v<version> does not already exist
-    2. the asset is registered in one of the two domain registries
+    2. the asset is registered in one of the peer Domain registries
+       (Skills / External Capabilities / Automations)
     3. at <commit>, that registry already carries this version
     4. <commit> is reachable from main — tags belong on merged history
 
@@ -62,6 +63,14 @@ try:
     from store_root import resolve as resolve_store
 except ImportError:  # pragma: no cover - the script ships next to it
     sys.stderr.write("ERROR: store_root.py not found next to this script.\n")
+    sys.exit(2)
+
+try:
+    # Shared with reuse_scan.py on purpose: when a Domain is added, both tools
+    # must learn it, and one hardcoded list per script guarantees one is missed.
+    from domains import asset_sections
+except ImportError:  # pragma: no cover - the script ships next to it
+    sys.stderr.write("ERROR: domains.py not found next to this script.\n")
     sys.exit(2)
 
 
@@ -97,7 +106,7 @@ def load_yaml_text(text: str):
 
 
 def registry_paths(store: str, commit):
-    """Resolve the two domain registry paths, through the router at <commit>.
+    """Resolve the peer Domain registry paths, through the router at <commit>.
 
     The router is authoritative, and reading it at the commit keeps the answer
     correct for older tags (paths have been reorganised before).
@@ -113,19 +122,22 @@ def registry_paths(store: str, commit):
 
 
 def registered_version(store: str, commit, asset: str):
-    """Return (domain, registry_path, version) for <asset> at <commit>, or None."""
-    for domain in ("skills", "external_capabilities"):
-        paths = registry_paths(store, commit)
-        rel = paths.get(domain)
-        if not rel:
-            continue
+    """Return (domain, registry_path, version) for <asset> at <commit>, or None.
+
+    Every peer Domain that carries versioned assets must appear in
+    DOMAIN_ENTRY_KEYS. A domain routed in registry.yaml but missing here is a
+    hard error rather than a silent skip: a checker that quietly ignores the
+    newest Domain reports success for something it never looked at, which is the
+    exact failure mode this script exists to prevent.
+    """
+    paths = registry_paths(store, commit)
+
+    def load(rel):
         code, text = git(["show", f"{commit}:{rel}"], store)
-        if code != 0:
-            continue
-        data = load_yaml_text(text) or {}
-        key = "skills" if domain == "skills" else "capabilities"
-        entries = data.get(key) or {}
-        if asset in entries and isinstance(entries[asset], dict):
+        return load_yaml_text(text) if code == 0 else None
+
+    for domain, rel, entries in asset_sections(paths, load, fail):
+        if isinstance(entries.get(asset), dict):
             return domain, rel, entries[asset].get("version")
     return None
 
@@ -160,7 +172,7 @@ def check_one(store: str, asset: str, version: str, commit: str) -> list:
     found = registered_version(store, commit, asset)
     if found is None:
         problems.append(
-            f"{asset} is not registered in either domain registry at {commit}"
+            f"{asset} is not registered in any peer Domain registry at {commit}"
         )
         return problems
 

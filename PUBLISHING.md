@@ -15,9 +15,10 @@ Read Store Rules (AGENTS.md → CONTRIBUTING_AI.md → PUBLISHING.md → VERSION
                   → registry.yaml → Domain README → Domain Policy)
         ↓
 Reuse Scan (check skills/registry.yaml, external-capabilities/registry.yaml,
-           dependencies/capability-map.yaml for existing entities)
+           automations/registry.yaml, dependencies/capability-map.yaml
+           for existing entities)
         ↓
-Identify Asset Type (Skill | External Capability)
+Identify Asset Type (Skill | External Capability | Automation)
         ↓
 Choose Canonical Placement (see Placement rules below)
         ↓
@@ -71,6 +72,30 @@ Tag / Release when applicable (namespaced Git Tag; Release for distributable art
    - Optional: auth metadata / capabilities / permissions / notes
 6. Never register credential values — Authentication Metadata ≠ Credential Storage (`external-capabilities/SECURITY.md`).
 7. Bring or link tests and evidence for the capability.
+
+## C. Automation Asset Publishing
+
+1. Confirm Human approval to publish the Automation.
+2. Reuse Scan against `automations/registry.yaml`.
+3. Placement: `automations/<automation-name>/` — entrypoint, tests and `README.md`
+   stay together (`automations/README.md` explains why the directory is the unit).
+4. **Decide the domain honestly.** An Automation is triggered by a clock or an
+   event; a Capability is *called*. If a human or a model decides *when* to run
+   it, it is a Skill, not an Automation (`DOMAIN_MISMATCH` — see Stop Conditions).
+5. Register in `automations/registry.yaml`:
+   - Required: name / path / entrypoint / status / version / updated /
+     trigger_kind / workflow / output
+   - `trigger_kind` is `daily` / `weekly` / `manual` / `event`
+6. **Never record the cron expression in the registry.** It lives only in the
+   bound workflow's `on:` block — a cron copied into two files drifts. The
+   validator checks that `workflow:` exists, is bound to this directory, and
+   carries a `schedule:` trigger whenever `trigger_kind` is not `manual`.
+7. Output goes to the `data` branch, never to `main`. The `output` contract names
+   that branch and the validator enforces it.
+8. Bring tests for the entrypoint. An Automation runs unattended — nobody is
+   watching the first failure, so a passing local run is the only cheap signal.
+9. **Tag it like any other asset** (`VERSIONING.md` §6). Being scheduled does not
+   exempt it; it is precisely the asset that most needs to be rollable back.
 
 ## Stop Conditions
 
