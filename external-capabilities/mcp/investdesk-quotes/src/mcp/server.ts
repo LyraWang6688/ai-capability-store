@@ -11,6 +11,7 @@
  */
 
 import { createServer } from 'node:http';
+import { createRequire } from 'node:module';
 import { createInterface } from 'node:readline';
 
 import { MCP_PORT } from '../config.ts';
@@ -23,7 +24,8 @@ if (process.argv.includes('--stdio')) {
 }
 
 const SERVER_NAME = 'investdesk-quotes';
-const SERVER_VERSION = '0.1.0';
+// 版本号从 package.json 读，避免发版时忘了改这里导致握手信息与实际版本不一致
+const SERVER_VERSION = createRequire(import.meta.url)('../../package.json').version as string;
 const PROTOCOL_VERSIONS = ['2025-06-18', '2025-03-26', '2024-11-05'];
 const MCP_PATH = process.env.MCP_PATH ?? '/mcp';
 
@@ -199,6 +201,14 @@ function startHttpServer(): void {
 function startStdioServer(): void {
   console.error(`[mcp] ${SERVER_NAME} v${SERVER_VERSION} 以 stdio 模式启动`);
   const rl = createInterface({ input: process.stdin });
+  let pending = 0;
+  let closed = false;
+
+  /** 只有「stdin 已关闭」且「没有在途请求」时才退出 */
+  const exitIfDrained = () => {
+    if (closed && pending === 0) process.exit(0);
+  };
+
   rl.on('line', (line) => {
     const trimmed = line.trim();
     if (!trimmed) return;
@@ -209,6 +219,7 @@ function startStdioServer(): void {
       process.stdout.write(JSON.stringify(failure(null, -32700, 'Parse error')) + '\n');
       return;
     }
+    pending += 1;
     dispatch(payload)
       .then((result) => {
         if (result === null) return;
@@ -218,10 +229,24 @@ function startStdioServer(): void {
       .catch((error: unknown) => {
         const message = error instanceof Error ? error.message : String(error);
         process.stdout.write(JSON.stringify(failure(null, -32603, message)) + '\n');
+      })
+      .finally(() => {
+        pending -= 1;
+        exitIfDrained();
       });
   });
-  rl.on('close', () => process.exit(0));
+
+  // 不能用 `rl.on('close', () => process.exit(0))`：
+  // 管道用法下 stdin 会在请求返回前关闭，直接退出会把在途的取价请求杀掉。
+  // 这里改为等待在途请求完成；事件循环清空后进程自然退出。
+  rl.on('close', () => {
+    closed = true;
+    exitIfDrained();
+    // 兜底：万一有请求永远不返回，20 秒后强制退出
+    setTimeout(() => process.exit(0), 20_000).unref();
+  });
 }
+
 
 if (process.argv.includes('--stdio')) {
   startStdioServer();
