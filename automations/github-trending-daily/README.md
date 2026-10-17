@@ -33,6 +33,28 @@ One JSON document on stdout:
 `topic_frequency` is the field an Agent reads first: it answers *what the AI
 ecosystem is paying attention to today* without any interpretation.
 
+## Consumer side: sync_from_cloud.py
+
+`sync_from_cloud.py` is the reader for this automation's `output.target: git-branch`
+contract. It pulls `trending/<date>.json` from the `data` branch into a local
+directory so an agent can read scheduled output — including on days the local
+machine was off.
+
+```bash
+python3 sync_from_cloud.py --days 7 --json
+```
+
+Properties that matter:
+
+- **Never fatal.** The caller falls back to reporting "cloud data missing"; a sync
+  failure must not become a task failure.
+- **Never overwrites.** Only missing days are fetched, so a locally produced
+  snapshot is never silently replaced by a cloud one.
+- Uses `gh api` rather than raw HTTP: it works for private repositories and
+  reuses the CLI's existing auth, so no token handling lives here.
+
+The weekly automation reads the same branch and uses this same script.
+
 ## Local use
 
 ```bash
