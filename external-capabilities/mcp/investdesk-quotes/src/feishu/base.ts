@@ -66,6 +66,12 @@ export interface HoldingRecord {
   unitCost: number | null;
   price: number | null;
   marketValue: number | null;
+  /** 昨收价 / 昨日净值 */
+  previousPrice: number | null;
+  /** 日涨跌幅（%） */
+  changePct: number | null;
+  /** 日盈亏（表内公式字段） */
+  dailyPnl: number | null;
 }
 
 /** 读取「最新持仓」全部记录 */
@@ -84,6 +90,9 @@ export async function listHoldings(): Promise<HoldingRecord[]> {
     unitCost: toNumber(record.单位成本),
     price: toNumber(record.最新价格),
     marketValue: toNumber(record.最新市值),
+    previousPrice: toNumber(record.昨收价),
+    changePct: toNumber(record['日涨跌幅(%)']),
+    dailyPnl: toNumber(record.日盈亏),
   }));
 }
 
