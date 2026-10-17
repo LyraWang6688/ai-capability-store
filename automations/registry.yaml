@@ -86,13 +86,11 @@ automations:
     path: automations/github-portfolio-snapshot
     entrypoint: snapshot.py
     status: testing
-    version: 0.1.0
-    updated: "2026-10-17"
+    version: 0.2.0
+    updated: "2026-10-18"
     trigger_kind: monthly
-    executor: launchd
-    launchd:
-      label: com.lyra.github-portfolio-snapshot
-      template: automations/github-portfolio-snapshot/deploy/com.lyra.github-portfolio-snapshot.plist.template
+    executor: github-actions
+    workflow: .github/workflows/automation-github-portfolio-snapshot.yml
     output:
       target: external-system
       destination: "Feishu Base「项目管理」的多维表格：Repo Snapshot History / Snapshot Runs / Deleted Repos"
@@ -100,10 +98,18 @@ automations:
       每月对 GitHub 账号下的仓库做一次状态快照：存在哪些仓库、相对上一期有什么变化、
       各自处于什么活性档位与可发现性得分，写入飞书 Base。
     notes: >
-      代码在 Store，状态（config.json + logs）在工作目录 GITHUB_SNAPSHOT_HOME，默认
-      ~/github-portfolio-snapshot。之所以是 launchd 而不是 github-actions：lark-cli
-      的用户令牌在操作者本机 keychain 里，hosted runner 没有 keychain，而 bot 身份
-      缺少 base:record:read 权限（实测 app_scope_not_applied）。
+      0.2.0 起从 launchd 迁到 github-actions，同时把传输层从 lark-cli 子进程改成
+      直连飞书 OpenAPI（tenant_access_token，凭据走 FEISHU_APP_ID / FEISHU_APP_SECRET）。
+
+      迁移前不可行的原因（0.1.0 的 notes 记录过）：lark-cli 只有 user 身份可用，令牌
+      在操作者本机 keychain 里，hosted runner 没有 keychain；而 bot 身份缺
+      base:record:read（实测 app_scope_not_applied / 99991672）。现在改用专用飞书应用
+      + 6 个 base scope（block:read / record:read / record:create / record:delete /
+      field:read / field:create），runner 上不再需要任何本机状态。
+
+      credentials 边界：app_id 可以写进 config（非密钥）；app_secret 只从环境变量
+      FEISHU_APP_SECRET 读，绝不落盘到 config 或仓库。tenant_access_token 在进程内
+      缓存、提前 3 分钟过期，收到 99991661 / 99991663 时重取一次。
 
       本自动化只读 GitHub、只写自己的飞书表。它写的 lifecycle_action
       （Keep / Archive / Delete）是建议标签，不是执行动作 —— 无人值守的作业

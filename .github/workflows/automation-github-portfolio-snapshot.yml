@@ -1,0 +1,102 @@
+# Monthly execution of automations/github-portfolio-snapshot.
+#
+# Contract (see automations/README.md):
+#   * the cron lives HERE and only here — registry.yaml records trigger_kind only
+#   * output is an EXTERNAL system (Feishu Base), so this job writes nothing back
+#     to the repository and needs no data branch
+#   * the automation talks to the Feishu OpenAPI directly (tenant_access_token),
+#     so no lark-cli and no operator keychain is involved
+#
+# Secrets required:
+#   FEISHU_APP_ID         — the dedicated Feishu app (not the operator's CLI app)
+#   FEISHU_APP_SECRET     — that app's secret; never stored in config or repo
+#   SNAPSHOT_CONFIG_JSON  — config.json contents (github_login / base_token /
+#                           registry_table / feishu_app_id). Not secrets, but they
+#                           identify the operator's Base, so they stay out of a
+#                           public repository.
+#
+# The Feishu app also needs two things done in the Feishu console, neither of
+# which this workflow can do: the 6 base:* scopes must be granted AND the app
+# version published, and the app must be added as an editor of the target Base.
+name: automation-github-portfolio-snapshot
+
+on:
+  schedule:
+    # 20:17 Asia/Shanghai on the 1st. Replaces the launchd job that ran at
+    # Day=1 Hour=20 Minute=0. Minute 17 rather than 0: GitHub defers schedules
+    # queued at the top of the hour under load.
+    - cron: "17 20 1 * *"
+      timezone: "Asia/Shanghai"
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: "Read GitHub + Feishu, resolve tables, but write nothing"
+        type: boolean
+        default: true
+      no-base:
+        description: "Skip Feishu entirely (pure GitHub self-check, no scope needed)"
+        type: boolean
+        default: false
+
+# Nothing is written back to the repository, so read-only is enough.
+permissions:
+  contents: read
+
+concurrency:
+  group: automation-github-portfolio-snapshot
+  cancel-in-progress: false
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout automation code (main)
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Materialize the work-dir config
+        env:
+          SNAPSHOT_CONFIG_JSON: ${{ secrets.SNAPSHOT_CONFIG_JSON }}
+        run: |
+          set -euo pipefail
+          work="${RUNNER_TEMP}/snapshot-home"
+          mkdir -p "$work"
+          printf '%s' "$SNAPSHOT_CONFIG_JSON" > "$work/config.json"
+          # Fail fast and loudly if the secret is malformed, rather than three
+          # steps later inside the snapshot.
+          python3 - "$work/config.json" <<'PY'
+          import json, sys
+          path = sys.argv[1]
+          cfg = json.load(open(path, encoding="utf-8"))
+          missing = [k for k in ("github_login", "base_token", "registry_table")
+                     if not str(cfg.get(k) or "").strip()]
+          if missing:
+              raise SystemExit(f"SNAPSHOT_CONFIG_JSON is missing: {missing}")
+          print(f"config ok — base_token={str(cfg['base_token'])[:6]}… "
+                f"registry_table={cfg['registry_table']}")
+          PY
+          echo "GITHUB_SNAPSHOT_HOME=$work" >> "$GITHUB_ENV"
+
+      - name: Offline test suite (no network, no credentials)
+        run: python3 automations/github-portfolio-snapshot/test_snapshot.py
+
+      - name: Run snapshot
+        env:
+          FEISHU_APP_ID: ${{ secrets.FEISHU_APP_ID }}
+          FEISHU_APP_SECRET: ${{ secrets.FEISHU_APP_SECRET }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          args="--trigger github-actions"
+          if [ "${{ inputs.no-base }}" = "true" ]; then
+            args="$args --no-base"
+          elif [ "${{ inputs.dry-run }}" = "true" ]; then
+            args="$args --dry-run"
+          fi
+          echo "running: snapshot.py $args"
+          python3 automations/github-portfolio-snapshot/snapshot.py $args

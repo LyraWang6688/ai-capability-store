@@ -29,7 +29,8 @@ Delete）放在一起，并且**和上一次快照做差分**，回答一个只�
     python3 snapshot.py --force                # 覆盖当月已有快照
     python3 snapshot.py --no-base              # 跳过所有飞书写入（离线自检）
 
-依赖：gh（已登录）、lark-cli（user 身份已授权 base 读写）、Python 3.9+ 标准库。
+依赖：gh（已登录）、飞书应用凭据（FEISHU_APP_ID / FEISHU_APP_SECRET）、
+Python 3.9+ 标准库（不依赖 lark-cli，也不依赖本机 keychain）。
 """
 
 from __future__ import annotations
@@ -42,6 +43,10 @@ import re
 import shutil
 import subprocess
 import sys
+import time
+import urllib.error
+import urllib.parse
+import urllib.request
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -96,8 +101,10 @@ DEFAULT_CONFIG = {
         "Noise": "Delete",
     },
     # 留空即从 PATH 解析（launchd 的 PATH 极窄，install.sh 会显式注入）
-    "lark_cli": "",
     "gh_cli": "",
+    # 飞书应用 app_id（非密钥，可以写进 config）。app_secret 永远只从环境变量
+    # FEISHU_APP_SECRET 读取，绝不落盘到 config / 仓库。
+    "feishu_app_id": "",
 }
 
 ACTIVITY = {"active": "活跃", "cooling": "降温", "stale": "停滞", "dormant": "休眠"}
@@ -166,14 +173,6 @@ def bin_path(cfg_key: str, name: str) -> str:
         raise SnapshotError(f"找不到可执行文件 {name}（config.{cfg_key} 和 PATH 都没有）")
     _BIN_CACHE[cfg_key] = resolved
     return resolved
-
-
-def _extract_json(text: str) -> dict:
-    """lark-cli 偶尔会在 stdout 前混入提示行，取第一个 '{' 开始解析。"""
-    i = text.find("{")
-    if i < 0:
-        raise SnapshotError(f"未找到 JSON 输出：{text[:300]!r}")
-    return json.loads(text[i:])
 
 
 # --------------------------------------------------------------------------- #
@@ -333,23 +332,109 @@ def attach_readme_flags(repos: list[dict]) -> None:
 # 飞书 Base —— 读写
 # --------------------------------------------------------------------------- #
 
-def lark(args: list[str], *, expect_ok: bool = True) -> dict:
-    p = _exec([bin_path("lark_cli", "lark-cli")] + args + ["--as", "user"])
-    if p.returncode != 0:
-        raise SnapshotError(f"lark-cli 退出码 {p.returncode}：{p.stderr.strip()[:400]}")
-    out = _extract_json(p.stdout or "{}")
-    if expect_ok and not out.get("ok"):
-        err = out.get("error", {})
-        raise SnapshotError(
-            f"lark-cli 报错 [{err.get('type')}/{err.get('subtype')}] "
-            f"{err.get('message')}\n提示：{err.get('hint', '')}"
+FEISHU_BASE = (os.environ.get("FEISHU_BASE") or "https://open.feishu.cn").rstrip("/")
+
+# tenant_access_token 缓存：token 有效期 2h，提前 3 分钟过期，运行期内复用。
+_TOKEN_CACHE: dict[str, object] = {"value": "", "expires_at": 0.0}
+
+
+class FeishuAuthError(SnapshotError):
+    """拿不到 tenant_access_token（凭据缺失或被拒）。"""
+
+
+class FeishuError(SnapshotError):
+    """飞书 OpenAPI 返回非 0 code。"""
+
+
+def _app_credentials() -> tuple[str, str]:
+    """应用凭据：环境变量优先，其次 config.json 的 feishu_app_id（只放 app_id，不放密钥）。"""
+    app_id = (os.environ.get("FEISHU_APP_ID") or str(CFG.get("feishu_app_id") or "")).strip()
+    app_secret = (os.environ.get("FEISHU_APP_SECRET") or "").strip()
+    if not app_id or not app_secret:
+        raise FeishuAuthError(
+            "缺少飞书应用凭据：需要环境变量 FEISHU_APP_ID 与 FEISHU_APP_SECRET。"
+            "自动化走「应用身份」(tenant_access_token)，不读本机 keychain。"
         )
-    return out.get("data", {})
+    return app_id, app_secret
+
+
+def _http_json(req, what: str) -> dict:
+    try:
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            raw = resp.read().decode("utf-8", "replace")
+    except urllib.error.HTTPError as exc:  # 4xx/5xx 也带 JSON body，继续解析
+        raw = exc.read().decode("utf-8", "replace")
+    except Exception as exc:  # noqa: BLE001 —— 网络层任何异常都转成 SnapshotError
+        raise SnapshotError(f"{what} 请求失败：{exc}") from exc
+    try:
+        payload = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise SnapshotError(f"{what} 返回非 JSON：{raw[:300]}") from exc
+    if not isinstance(payload, dict):
+        raise SnapshotError(f"{what} 返回结构异常：{raw[:300]}")
+    return payload
+
+
+def tenant_token(*, refresh: bool = False) -> str:
+    now = time.time()
+    cached = str(_TOKEN_CACHE["value"] or "")
+    if cached and not refresh and now < float(_TOKEN_CACHE["expires_at"] or 0):
+        return cached
+    app_id, app_secret = _app_credentials()
+    req = urllib.request.Request(
+        FEISHU_BASE + "/open-apis/auth/v3/tenant_access_token/internal",
+        data=json.dumps({"app_id": app_id, "app_secret": app_secret}).encode("utf-8"),
+        headers={"Content-Type": "application/json; charset=utf-8"},
+        method="POST",
+    )
+    payload = _http_json(req, "tenant_access_token")
+    if int(payload.get("code") or 0) != 0:
+        raise FeishuAuthError(
+            f"tenant_access_token 被拒 [{payload.get('code')}] {payload.get('msg')}"
+        )
+    token = str(payload.get("tenant_access_token") or "")
+    if not token:
+        raise FeishuAuthError(f"tenant_access_token 响应缺字段：{str(payload)[:300]}")
+    _TOKEN_CACHE["value"] = token
+    _TOKEN_CACHE["expires_at"] = now + max(60, int(payload.get("expire") or 7200) - 180)
+    return token
+
+
+def feishu(method: str, path: str, *, params=None, body=None) -> dict:
+    """调飞书 Base v3，剥掉 {code,msg,data} 信封后返回内层 data。"""
+    url = FEISHU_BASE + path
+    if params:
+        url += "?" + urllib.parse.urlencode(params, doseq=True)
+    payload = (
+        json.dumps(body, ensure_ascii=False).encode("utf-8") if body is not None else None
+    )
+    last_code, last_msg = 0, ""
+    for attempt in (0, 1):
+        req = urllib.request.Request(url, data=payload, method=method)
+        req.add_header("Authorization", "Bearer " + tenant_token(refresh=attempt == 1))
+        if payload is not None:
+            req.add_header("Content-Type", "application/json; charset=utf-8")
+        resp = _http_json(req, f"{method} {path}")
+        code = int(resp.get("code") or 0)
+        if code == 0:
+            data = resp.get("data")
+            return data if isinstance(data, dict) else {}
+        last_code, last_msg = code, str(resp.get("msg") or "")
+        # 99991661 / 99991663 = tenant_access_token 失效 ⇒ 重取一次再试
+        if attempt == 0 and code in (99991661, 99991663):
+            continue
+        break
+    raise FeishuError(f"飞书 API 报错 [{last_code}] {last_msg}（{method} {path}）")
+
+
+def base_path(*parts: str) -> str:
+    """拼 /open-apis/base/v3/bases/{base_token}/... 路径。"""
+    tail = "/".join(str(p) for p in parts)
+    return f"/open-apis/base/v3/bases/{CFG['base_token']}/{tail}"
 
 
 def base_blocks() -> list[dict]:
-    return lark(["base", "+base-block-list", "--base-token", CFG["base_token"],
-                 "--format", "json"]).get("blocks", [])
+    return feishu("POST", base_path("blocks", "list")).get("blocks", []) or []
 
 
 def resolve_table(name: str) -> str | None:
@@ -364,12 +449,13 @@ def read_records(table_id: str, field_names: list[str] | None = None) -> list[di
     rows: list[dict] = []
     offset = 0
     while True:
-        args = ["base", "+record-list", "--base-token", CFG["base_token"],
-                "--table-id", table_id, "--limit", "200", "--offset", str(offset),
-                "--format", "json"]
+        params: list[tuple[str, str]] = [
+            ("limit", "200"),
+            ("offset", str(offset)),
+        ]
         for f in (field_names or []):
-            args += ["--field-id", f]
-        data = lark(args)
+            params.append(("field_id", f))
+        data = feishu("GET", base_path("tables", table_id, "records"), params=params)
         fields = data.get("fields", [])
         for rid, row in zip(data.get("record_id_list", []), data.get("data", [])):
             rec = {"_record_id": rid}
@@ -386,9 +472,8 @@ def batch_create(table_id: str, records: list[dict]) -> list[str]:
     created: list[str] = []
     for i in range(0, len(records), 200):
         chunk = records[i:i + 200]
-        payload = json.dumps({"create_records": chunk}, ensure_ascii=False)
-        data = lark(["base", "+record-batch-create", "--base-token", CFG["base_token"],
-                     "--table-id", table_id, "--json", payload, "--format", "json"])
+        data = feishu("POST", base_path("tables", table_id, "records", "batch_create"),
+                      body={"create_records": chunk})
         created += data.get("record_id_list", [])
     return created
 
@@ -396,11 +481,8 @@ def batch_create(table_id: str, records: list[dict]) -> list[str]:
 def delete_records(table_id: str, record_ids: list[str]) -> None:
     for i in range(0, len(record_ids), 200):
         chunk = record_ids[i:i + 200]
-        args = ["base", "+record-delete", "--base-token", CFG["base_token"],
-                "--table-id", table_id]
-        for rid in chunk:
-            args += ["--record-id", rid]
-        lark(args + ["--yes", "--format", "json"])
+        feishu("POST", base_path("tables", table_id, "records", "batch_delete"),
+               body={"record_id_list": chunk})
 
 
 # ---- 表结构 ---------------------------------------------------------------- #
@@ -507,8 +589,7 @@ def runs_fields() -> list[dict]:
 
 
 def table_field_map(table_id: str) -> dict[str, dict]:
-    data = lark(["base", "+field-list", "--base-token", CFG["base_token"],
-                 "--table-id", table_id, "--format", "json"])
+    data = feishu("GET", base_path("tables", table_id, "fields"))
     return {f["name"]: f for f in data.get("fields", [])}
 
 
@@ -519,9 +600,8 @@ def ensure_table(name: str, fields: list[dict], dry_run: bool) -> str:
         existing = table_field_map(tid)
         missing = [f for f in fields if f["name"] not in existing]
         if missing and not dry_run:
-            lark(["base", "+field-create", "--base-token", CFG["base_token"],
-                  "--table-id", tid, "--json", json.dumps(missing, ensure_ascii=False),
-                  "--format", "json"])
+            for field_def in missing:
+                feishu("POST", base_path("tables", tid, "fields"), body=field_def)
         elif missing:
             print(f"    [dry-run] 将为「{name}」补 {len(missing)} 个字段："
                   f"{[m['name'] for m in missing]}")
@@ -531,9 +611,7 @@ def ensure_table(name: str, fields: list[dict], dry_run: bool) -> str:
         print(f"    [dry-run] 将创建表「{name}」（{len(fields)} 字段）")
         return f"dryrun-{name}"
 
-    data = lark(["base", "+table-create", "--base-token", CFG["base_token"],
-                 "--name", name, "--fields", json.dumps(fields, ensure_ascii=False),
-                 "--format", "json"])
+    data = feishu("POST", base_path("tables"), body={"name": name, "fields": fields})
     tid = (data.get("table_id") or data.get("id")
            or (data.get("table") or {}).get("table_id"))
     if not tid:
@@ -995,7 +1073,8 @@ def main() -> int:
     ap.add_argument("--no-base", action="store_true", help="不读也不写飞书，纯本地自检")
     ap.add_argument("--period", help="快照期间，默认当月（YYYY-MM）")
     ap.add_argument("--force", action="store_true", help="覆盖当月已有快照")
-    ap.add_argument("--trigger", default="manual", help="触发来源：manual / launchd")
+    ap.add_argument("--trigger", default="manual",
+                    help="触发来源：manual / github-actions / launchd（历史值）")
     ap.add_argument("--today", help="把'现在'覆盖成指定时间（调试用，ISO8601）")
     args = ap.parse_args()
 

@@ -237,5 +237,142 @@ class TestNormalizeRepo(unittest.TestCase):
         self.assertEqual(snap.discoverability_score(fact), 4)
 
 
+class TestFeishuTransport(unittest.TestCase):
+    """直连飞书 OpenAPI 的传输层。
+
+    这层替代了原来的 `lark-cli` 子进程调用，因此必须证明三件事：
+    ① 凭据只从环境变量来（不碰 keychain）；
+    ② 响应信封被正确剥掉（{code,msg,data} → data）；
+    ③ 失败会变成可读的异常，而不是静默返回空。
+    全部离线：`_http_json` 被替换成脚本化的假实现。
+    """
+
+    def setUp(self):
+        snap._TOKEN_CACHE["value"] = ""
+        snap._TOKEN_CACHE["expires_at"] = 0.0
+        self._saved = {k: os.environ.get(k) for k in ("FEISHU_APP_ID", "FEISHU_APP_SECRET")}
+        os.environ["FEISHU_APP_ID"] = "cli_test_app"
+        os.environ["FEISHU_APP_SECRET"] = "test_secret"
+        self._orig_http = snap._http_json
+
+    def tearDown(self):
+        for key, value in self._saved.items():
+            if value is None:
+                os.environ.pop(key, None)
+            else:
+                os.environ[key] = value
+        snap._http_json = self._orig_http
+        snap._TOKEN_CACHE["value"] = ""
+        snap._TOKEN_CACHE["expires_at"] = 0.0
+
+    def _stub(self, responses):
+        """按顺序返回预设响应，并记录每次请求。"""
+        queue = list(responses)
+        calls = []
+
+        def fake(req, what):
+            calls.append(what)
+            if not queue:
+                raise AssertionError(f"出现计划外的请求：{what}")
+            return queue.pop(0)
+
+        snap._http_json = fake
+        return calls
+
+    # --- 凭据 -------------------------------------------------------------
+    def test_credentials_come_from_environment(self):
+        self.assertEqual(snap._app_credentials(), ("cli_test_app", "test_secret"))
+
+    def test_missing_secret_raises_before_any_request(self):
+        os.environ.pop("FEISHU_APP_SECRET", None)
+        calls = self._stub([])
+        with self.assertRaises(snap.FeishuAuthError):
+            snap.tenant_token()
+        self.assertEqual(calls, [], "凭据缺失时不该发出任何请求")
+
+    def test_app_id_can_fall_back_to_config(self):
+        # 只有 app_id 允许写进 config.json；密钥永远只在环境变量里。
+        os.environ.pop("FEISHU_APP_ID", None)
+        saved = snap.CFG.get("feishu_app_id")
+        snap.CFG["feishu_app_id"] = "cli_from_config"
+        try:
+            self.assertEqual(snap._app_credentials()[0], "cli_from_config")
+        finally:
+            snap.CFG["feishu_app_id"] = saved
+
+    # --- token 生命周期 ---------------------------------------------------
+    def test_token_is_cached(self):
+        calls = self._stub([{"code": 0, "tenant_access_token": "t-1", "expire": 7200}])
+        self.assertEqual(snap.tenant_token(), "t-1")
+        self.assertEqual(snap.tenant_token(), "t-1")
+        self.assertEqual(len(calls), 1, "有效期内第二次调用应命中缓存")
+
+    def test_expired_token_is_refetched(self):
+        self._stub([
+            {"code": 0, "tenant_access_token": "t-1", "expire": 7200},
+            {"code": 0, "tenant_access_token": "t-2", "expire": 7200},
+        ])
+        snap.tenant_token()
+        snap._TOKEN_CACHE["expires_at"] = 0.0
+        self.assertEqual(snap.tenant_token(), "t-2")
+
+    def test_rejected_credentials_name_the_error_code(self):
+        self._stub([{"code": 10003, "msg": "invalid param"}])
+        with self.assertRaises(snap.FeishuAuthError) as ctx:
+            snap.tenant_token()
+        self.assertIn("10003", str(ctx.exception))
+
+    # --- 信封与错误 -------------------------------------------------------
+    def test_envelope_is_stripped(self):
+        self._stub([
+            {"code": 0, "tenant_access_token": "t", "expire": 7200},
+            {"code": 0, "data": {"fields": ["A"], "has_more": False}},
+        ])
+        out = snap.feishu("GET", "/open-apis/base/v3/bases/b/tables/t/records")
+        self.assertEqual(out, {"fields": ["A"], "has_more": False})
+
+    def test_missing_data_becomes_empty_dict(self):
+        self._stub([
+            {"code": 0, "tenant_access_token": "t", "expire": 7200},
+            {"code": 0},
+        ])
+        self.assertEqual(snap.feishu("POST", "/x"), {})
+
+    def test_non_zero_code_raises_with_code_and_path(self):
+        self._stub([
+            {"code": 0, "tenant_access_token": "t", "expire": 7200},
+            {"code": 99991672, "msg": "access denied: app has not applied for scope"},
+        ])
+        with self.assertRaises(snap.FeishuError) as ctx:
+            snap.feishu("POST", "/open-apis/base/v3/bases/b/blocks/list")
+        message = str(ctx.exception)
+        self.assertIn("99991672", message)
+        self.assertIn("blocks/list", message)
+
+    def test_dead_token_is_retried_once(self):
+        self._stub([
+            {"code": 0, "tenant_access_token": "t-1", "expire": 7200},
+            {"code": 99991661, "msg": "token expired"},
+            {"code": 0, "tenant_access_token": "t-2", "expire": 7200},
+            {"code": 0, "data": {"blocks": []}},
+        ])
+        self.assertEqual(snap.feishu("POST", "/x/blocks/list"), {"blocks": []})
+
+    # --- 路径与红线 -------------------------------------------------------
+    def test_base_path_uses_the_configured_base_token(self):
+        self.assertEqual(
+            snap.base_path("tables", "tblX", "records"),
+            "/open-apis/base/v3/bases/test-base-token/tables/tblX/records",
+        )
+
+    def test_no_lark_cli_invocation_remains(self):
+        """红线：传输层不得再 shell out 到 lark-cli，也不得写死 user 身份。"""
+        with open(os.path.join(HERE, "snapshot.py"), encoding="utf-8") as fh:
+            source = fh.read()
+        self.assertNotIn('"+base', source)
+        self.assertNotIn("--as\", \"user\"", source)
+        self.assertNotIn("lark_cli", source)
+
+
 if __name__ == "__main__":
     sys.exit(0 if unittest.main(exit=False, verbosity=2).result.wasSuccessful() else 1)
