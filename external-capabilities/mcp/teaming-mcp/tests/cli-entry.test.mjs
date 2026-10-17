@@ -54,7 +54,10 @@ test('--version 输出版本号，且与 package.json 一致', () => {
   assert.equal(r.out.trim(), version);
 });
 
-test('帮助里说明模型默认值（换服务时用户要看）', () => {
+test('帮助里说明分析在服务器跑，本机不需要模型配置', () => {
   const out = runCli(['--help']).out;
-  assert.match(out, /deepseek/i, '应写清默认模型服务');
+  // 2026-10-15 起分析由服务器完成。帮助里若还提 deepseek/API key，
+  // 会让人以为"本机也要配模型"，从而照着一个不存在的步骤去做。
+  assert.match(out, /服务器/, '应写清分析在服务器侧完成');
+  assert.ok(!/DOUBAO_API_KEY|LLM_API_KEY/.test(out), '不该再让用户配本机模型凭证');
 });

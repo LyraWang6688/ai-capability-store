@@ -42,11 +42,21 @@ for (const [name, rel] of Object.entries(pkg.bin || {})) {
   });
 }
 
-test('files 白名单包含运行必需的目录', () => {
+test('files 白名单包含运行必需的目录，且不再打包引擎', () => {
   const files = pkg.files || [];
-  for (const need of ['src', 'dist/engine']) {
-    assert.ok(files.includes(need), `files 里缺少 ${need}——用户装完跑不起来`);
+  assert.ok(files.includes('src'), 'files 里缺少 src——用户装完跑不起来');
+
+  // 2026-10-15 起引擎只在服务器上，本包不再 vendored 一份。
+  // 两份副本的漂移当天真实发生过一次，且没有任何机制会发现。
+  for (const forbidden of ['dist/engine', 'src/engine-src']) {
+    assert.ok(!files.includes(forbidden), `${forbidden} 不该再打包——引擎只有服务器那一份`);
   }
+});
+
+test('★ 没有构建步骤（引擎不在本包，构建无从谈起）', () => {
+  const scripts = pkg.scripts || {};
+  assert.equal(scripts.build, undefined, '不该再有 build：引擎不在本包');
+  assert.equal(scripts.sync, undefined, '不该再有 sync：没有副本要同步');
 });
 
 test('npm 的 repository 指向 Store 实现目录（不单独建仓库）', () => {
