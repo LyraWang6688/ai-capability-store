@@ -374,5 +374,61 @@ class TestFeishuTransport(unittest.TestCase):
         self.assertNotIn("lark_cli", source)
 
 
+class TestGithubIdentityGuard(unittest.TestCase):
+    """`fetch_repos` 必须拒绝「token 归属 ≠ config.github_login」。
+
+    没有这道守卫时，CI 里用 job-scoped GITHUB_TOKEN 会静默把
+    github-actions[bot] 的 1 个仓库当成操作者的 14 个写进快照。
+    """
+
+    def _payload(self, login):
+        return {
+            "data": {
+                "viewer": {
+                    "login": login,
+                    "createdAt": "2020-01-01T00:00:00Z",
+                    "repositories": {
+                        "nodes": [],
+                        "totalCount": 0,
+                        "pageInfo": {"hasNextPage": False, "endCursor": None},
+                    },
+                }
+            }
+        }
+
+    def _with_login(self, login):
+        original = snap.gh_graphql
+        snap.gh_graphql = lambda query, variables: self._payload(login)
+        return original
+
+    def test_mismatched_login_aborts(self):
+        original = self._with_login("github-actions[bot]")
+        try:
+            with self.assertRaises(snap.SnapshotError) as ctx:
+                snap.fetch_repos()
+        finally:
+            snap.gh_graphql = original
+        message = str(ctx.exception)
+        self.assertIn("github-actions[bot]", message, "错误里要指出 token 实际属于谁")
+        self.assertIn("test-user", message, "错误里要指出配置期望的账号")
+
+    def test_matching_login_passes(self):
+        original = self._with_login("test-user")
+        try:
+            nodes, meta = snap.fetch_repos()
+        finally:
+            snap.gh_graphql = original
+        self.assertEqual(meta["login"], "test-user")
+        self.assertEqual(nodes, [])
+
+    def test_login_comparison_is_case_insensitive(self):
+        original = self._with_login("Test-User")
+        try:
+            _, meta = snap.fetch_repos()
+        finally:
+            snap.gh_graphql = original
+        self.assertEqual(meta["login"], "Test-User")
+
+
 if __name__ == "__main__":
     sys.exit(0 if unittest.main(exit=False, verbosity=2).result.wasSuccessful() else 1)
