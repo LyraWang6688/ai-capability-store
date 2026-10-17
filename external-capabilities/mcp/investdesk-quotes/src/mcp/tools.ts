@@ -160,6 +160,29 @@ async function portfolioOverview(args: Record<string, unknown>): Promise<ToolRes
   const totalRate = totalCost > 0 ? `${((totalPnl / totalCost) * 100).toFixed(2)}%` : '-';
   lines.push(`| **合计** | **${rows.length}** | **${formatNumber(totalValue)}** | **${formatNumber(totalCost)}** | **${formatNumber(totalPnl)}** | **${totalRate}** |`);
 
+  // 今日维度：只有同步过昨收价的记录才有日盈亏
+  const withDaily = rows.filter((row) => row.dailyPnl !== null && (row.quantity ?? 0) > 0);
+  if (withDaily.length > 0) {
+    const dailyTotal = withDaily.reduce((sum, row) => sum + (row.dailyPnl ?? 0), 0);
+    const yesterdayValue = totalValue - dailyTotal;
+    const dailyRate = yesterdayValue > 0 ? `${((dailyTotal / yesterdayValue) * 100).toFixed(2)}%` : '-';
+    lines.push('', '## 今日', '', '| 指标 | 值 |', '|---|---:|');
+    lines.push(`| 今日盈亏 | ${formatNumber(dailyTotal)} |`);
+    lines.push(`| 今日涨幅 | ${dailyRate} |`);
+    lines.push(`| 覆盖标的 | ${withDaily.length} 只有持仓数量 |`);
+
+    const movers = [...withDaily].sort((a, b) => (b.dailyPnl ?? 0) - (a.dailyPnl ?? 0));
+    const gainers = movers.filter((row) => (row.dailyPnl ?? 0) > 0).slice(0, 3);
+    const losers = movers.filter((row) => (row.dailyPnl ?? 0) < 0).slice(-3).reverse();
+    if (gainers.length > 0) {
+      lines.push('', '**今日贡献**：' + gainers.map((r) => `${r.code} ${r.name} ${formatNumber(r.dailyPnl ?? 0)}（${r.changePct?.toFixed(2) ?? '-'}%）`).join('；'));
+    }
+    if (losers.length > 0) {
+      lines.push('', '**今日拖累**：' + losers.map((r) => `${r.code} ${r.name} ${formatNumber(r.dailyPnl ?? 0)}（${r.changePct?.toFixed(2) ?? '-'}%）`).join('；'));
+    }
+    lines.push('', '> 场内为当日收盘价；场外基金为 T 日净值（QDII 更晚），「今日」为混合时点。');
+  }
+
   lines.push('', `## 市值前 ${top} 只`, '', '| 代码 | 名称 | 平台 | 市值 | 盈亏 | 收益率 |', '|---|---|---|---:|---:|---:|');
   const sorted = [...rows].sort((a, b) => b.marketValue - a.marketValue).slice(0, top);
   for (const row of sorted) {
