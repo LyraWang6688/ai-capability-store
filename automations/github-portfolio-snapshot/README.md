@@ -86,7 +86,15 @@ Set three repository secrets:
 |---|---|
 | `FEISHU_APP_ID` | the dedicated Feishu app's `app_id` |
 | `FEISHU_APP_SECRET` | that app's secret |
+| `SNAPSHOT_GH_TOKEN` | a **PAT owned by the operator** — see the warning below |
 | `SNAPSHOT_CONFIG_JSON` | the contents of `config.json` (start from `config.example.json`) |
+
+> **`SNAPSHOT_GH_TOKEN` must not be `secrets.GITHUB_TOKEN`.** The snapshot walks
+> the *token owner's* repositories (GraphQL `viewer`), so the job-scoped bot token
+> would snapshot `github-actions[bot]`'s single repository instead of the
+> operator's account. `fetch_repos()` now aborts on that mismatch rather than
+> writing wrong data, but the real fix is a PAT. It needs `repo` (private
+> repositories) and `read:org` (organization membership).
 
 Then trigger `.github/workflows/automation-github-portfolio-snapshot.yml` via
 **Run workflow**. The dispatch form has two switches:

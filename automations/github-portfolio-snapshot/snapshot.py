@@ -235,6 +235,18 @@ def fetch_repos() -> tuple[list[dict], dict]:
     while True:
         payload = gh_graphql(REPO_QUERY, {"cursor": cursor})
         viewer = payload["data"]["viewer"]
+        # 身份守卫：viewer 是"token 属于谁"，不一定等于要快照的账号。
+        # 没有这道守卫时会静默记录错误账号的数据 —— 2026-10-17 首次 CI 试跑，
+        # GH_TOKEN 用了 job-scoped GITHUB_TOKEN，于是拿 github-actions[bot] 的
+        # 1 个仓库当成了操作者的 14 个，且只打印一行就继续往下写。
+        expected = str(CFG.get("github_login") or "").strip()
+        if expected and viewer["login"].lower() != expected.lower():
+            raise SnapshotError(
+                f"GitHub 身份不匹配：token 属于「{viewer['login']}」，"
+                f"但 config.github_login 是「{expected}」。"
+                "继续下去会把错误的账号写成快照，因此中止。"
+                "（CI 里最常见的原因是用了 GITHUB_TOKEN 而不是操作者的 PAT）"
+            )
         meta = {"login": viewer["login"], "account_created_at": viewer["createdAt"]}
         repo_block = viewer["repositories"]
         nodes.extend(repo_block["nodes"])

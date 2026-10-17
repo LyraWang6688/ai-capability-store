@@ -10,6 +10,11 @@
 # Secrets required:
 #   FEISHU_APP_ID         — the dedicated Feishu app (not the operator's CLI app)
 #   FEISHU_APP_SECRET     — that app's secret; never stored in config or repo
+#   SNAPSHOT_GH_TOKEN     — a PAT owned by the operator. MUST NOT be
+#                           secrets.GITHUB_TOKEN: the snapshot walks the token
+#                           owner's repositories, so the bot token would snapshot
+#                           the bot's single repo. Needs `repo` (private repos)
+#                           and `read:org` (org membership).
 #   SNAPSHOT_CONFIG_JSON  — config.json contents (github_login / base_token /
 #                           registry_table / feishu_app_id). Not secrets, but they
 #                           identify the operator's Base, so they stay out of a
@@ -89,7 +94,12 @@ jobs:
         env:
           FEISHU_APP_ID: ${{ secrets.FEISHU_APP_ID }}
           FEISHU_APP_SECRET: ${{ secrets.FEISHU_APP_SECRET }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # NOT secrets.GITHUB_TOKEN: that token belongs to github-actions[bot],
+          # and the snapshot reads the *token owner's* repositories. Using it
+          # snapshots the bot's single repo instead of the operator's account.
+          # snapshot.py now hard-fails on this mismatch, but the right fix is a
+          # PAT owned by the operator.
+          GH_TOKEN: ${{ secrets.SNAPSHOT_GH_TOKEN }}
         run: |
           set -euo pipefail
           args="--trigger github-actions"
