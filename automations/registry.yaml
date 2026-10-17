@@ -86,7 +86,7 @@ automations:
     path: automations/github-portfolio-snapshot
     entrypoint: snapshot.py
     status: testing
-    version: 0.2.0
+    version: 0.3.0
     updated: "2026-10-18"
     trigger_kind: monthly
     executor: github-actions
@@ -110,6 +110,13 @@ automations:
       credentials 边界：app_id 可以写进 config（非密钥）；app_secret 只从环境变量
       FEISHU_APP_SECRET 读，绝不落盘到 config 或仓库。tenant_access_token 在进程内
       缓存、提前 3 分钟过期，收到 99991661 / 99991663 时重取一次。
+
+      0.3.0 补齐三件（0.2.0 之后分三次合并）：① GitHub 身份守卫 —— fetch_repos
+      走 GraphQL viewer，token 属于谁就快照谁，CI 里误用 GITHUB_TOKEN 会把
+      github-actions[bot] 的 1 个仓库当成操作者的全部，且原本只打印一行就继续，
+      现在直接中止；② field-list 补 offset/limit —— 不带分页参数时接口返回空
+      列表且不报错，此前把已有的 13 个字段全判成缺失，真实运行会给表加重复列；
+      ③ workflow_dispatch 新增 force 输入，用于重跑同一期间。
 
       本自动化只读 GitHub、只写自己的飞书表。它写的 lifecycle_action
       （Keep / Archive / Delete）是建议标签，不是执行动作 —— 无人值守的作业
