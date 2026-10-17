@@ -601,8 +601,37 @@ def runs_fields() -> list[dict]:
 
 
 def table_field_map(table_id: str) -> dict[str, dict]:
-    data = feishu("GET", base_path("tables", table_id, "fields"))
-    return {f["name"]: f for f in data.get("fields", [])}
+    """读整表的字段定义，按字段名索引。
+
+    ⚠️ 必须带 offset / limit：`GET .../fields` 在**不带分页参数**时返回空列表
+    且**不报错**。2026-10-18 首次 CI dry-run 就栽在这里——13 个已存在的字段全被
+    判成「缺失」，如果直接放真实运行，会给表加 13 个重复列。
+    （对照：larksuite/cli 的 listAllFields 固定传 offset=0&limit=300。）
+
+    另外，若接口报 total > 0 却一个字段都没解析出来，说明响应形状变了 ——
+    这里直接抛错，而不是返回空 map 让调用方误以为表是空的。
+    """
+    out: list[dict] = []
+    offset = 0
+    limit = 300
+    while True:
+        data = feishu(
+            "GET",
+            base_path("tables", table_id, "fields"),
+            params=[("offset", str(offset)), ("limit", str(limit))],
+        )
+        page = [f for f in (data.get("fields") or []) if isinstance(f, dict)]
+        total = int(data.get("total") or 0)
+        if total > 0 and not page and not out:
+            raise SnapshotError(
+                f"读字段列表返回 total={total} 但解析出 0 个字段，"
+                f"响应形状可能已变化：{str(data)[:300]}"
+            )
+        out.extend(page)
+        if len(page) < limit or (total and len(out) >= total):
+            break
+        offset += len(page)
+    return {f["name"]: f for f in out if f.get("name")}
 
 
 def ensure_table(name: str, fields: list[dict], dry_run: bool) -> str:
