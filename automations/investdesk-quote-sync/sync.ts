@@ -12,6 +12,7 @@
  *   1  成功率低于阈值（场外净值 21:30 前未公布属正常，但仍上报）
  */
 
+import { backendName } from '../../external-capabilities/mcp/investdesk-quotes/src/feishu/base.ts';
 import { syncPortfolioPrices } from '../../external-capabilities/mcp/investdesk-quotes/src/sync.ts';
 
 /** 低于这个成功率视为异常退出，便于从日志/监控发现数据源故障 */
@@ -19,7 +20,7 @@ const MIN_SUCCESS_RATE = 0.8;
 
 async function main(): Promise<number> {
   const startedAt = Date.now();
-  console.log(`[sync] 开始 ${new Date().toISOString()}`);
+  console.log(`[sync] 开始 ${new Date().toISOString()} | 飞书后端: ${backendName()}`);
 
   let lastLogged = 0;
   const summary = await syncPortfolioPrices({
