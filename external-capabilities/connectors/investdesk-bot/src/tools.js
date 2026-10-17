@@ -1,5 +1,5 @@
 import { callTool } from 'investdesk-quotes/dist/mcp/tools.js';
-import { saveIdea } from './ideas.js';
+import { callTool as callIdeaTool } from 'investdesk-ideas/dist/mcp/tools.js';
 
 export const TOOLS = [
   {
@@ -40,6 +40,38 @@ export const TOOLS = [
   {
     type: 'function',
     function: {
+      name: 'list_ideas',
+      description:
+        '列出想法池的历史记录（问答与灵感），最近的在前。' +
+        '用户问「我之前问过什么」「我记录过哪些想法」时调用。',
+      parameters: {
+        type: 'object',
+        properties: {
+          days: { type: 'number', description: '只看最近 N 天' },
+          topic: { type: 'string', description: '按话题过滤' },
+          limit: { type: 'number', description: '条数，默认 10' },
+        },
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'search_ideas',
+      description: '在想法池里按关键词搜索历史记录。用户问「我之前是不是提过 XXX」时调用。',
+      parameters: {
+        type: 'object',
+        properties: {
+          keyword: { type: 'string' },
+          limit: { type: 'number' },
+        },
+        required: ['keyword'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
       name: 'save_idea',
       description:
         '把一条投资灵感 / 关注点写入多维表格。用户说「记一下」「帮我记住」「记录这个想法」时调用。',
@@ -70,13 +102,29 @@ export async function runTool(name, args) {
       const result = await callTool('lookup_quotes', { codes: args.codes ?? [] });
       return result.content?.[0]?.text ?? '查询失败';
     }
-    case 'save_idea': {
-      const id = await saveIdea({
-        topic: args.topic ?? '其他',
-        content: args.content ?? '',
-        relatedCodes: args.relatedCodes ?? [],
+    case 'list_ideas': {
+      const result = await callIdeaTool('list_ideas', {
+        days: args.days ? Number(args.days) : undefined,
+        topic: args.topic ? String(args.topic) : undefined,
+        limit: args.limit ? Number(args.limit) : 10,
       });
-      return id ? `已记录到想法池（record_id: ${id}）` : '想法池未配置，记录失败。';
+      return result.content?.[0]?.text ?? '查询失败';
+    }
+    case 'search_ideas': {
+      const result = await callIdeaTool('search_ideas', {
+        keyword: String(args.keyword ?? ''),
+        limit: args.limit ? Number(args.limit) : 5,
+      });
+      return result.content?.[0]?.text ?? '查询失败';
+    }
+    case 'save_idea': {
+      const result = await callIdeaTool('save_idea', {
+        question: args.content ?? '',
+        topic: args.topic ?? '其他',
+        relatedCodes: args.relatedCodes ?? [],
+        type: '灵感',
+      });
+      return result.content?.[0]?.text ?? '记录失败';
     }
     default:
       return `未知工具：${name}`;
