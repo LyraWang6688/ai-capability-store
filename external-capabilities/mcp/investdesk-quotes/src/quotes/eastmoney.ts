@@ -13,6 +13,8 @@ export interface FundNav {
   code: string;
   /** 单位净值 */
   nav: number;
+  /** 上一日单位净值（用于算日盈亏）；只有一条记录时为 null */
+  previousNav: number | null;
   /** 净值日期 yyyy-MM-dd */
   date: string;
   changePct: number | null;
@@ -32,7 +34,7 @@ export async function fetchFundNav(
   code: string,
   timeoutMs = DEFAULT_TIMEOUT_MS,
 ): Promise<FundNav | null> {
-  const url = `${ENDPOINT}?fundCode=${encodeURIComponent(code)}&pageIndex=1&pageSize=1`;
+  const url = `${ENDPOINT}?fundCode=${encodeURIComponent(code)}&pageIndex=1&pageSize=2`;
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
@@ -45,14 +47,17 @@ export async function fetchFundNav(
     });
     if (!res.ok) throw new Error(`东财净值 HTTP ${res.status}`);
     const payload = (await res.json()) as { Data?: { LSJZList?: LsjzRow[] } };
-    const row = payload.Data?.LSJZList?.[0];
+    const rows = payload.Data?.LSJZList ?? [];
+    const row = rows[0];
     if (!row?.DWJZ || !row.FSRQ) return null;
     const nav = Number(row.DWJZ);
     if (!Number.isFinite(nav) || nav <= 0) return null;
     const pct = Number(row.JZZZL);
+    const prevNav = Number(rows[1]?.DWJZ);
     return {
       code,
       nav,
+      previousNav: Number.isFinite(prevNav) && prevNav > 0 ? prevNav : null,
       date: row.FSRQ,
       changePct: Number.isFinite(pct) ? pct : null,
     };

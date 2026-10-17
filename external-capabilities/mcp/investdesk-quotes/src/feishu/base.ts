@@ -112,13 +112,26 @@ export async function listPlatformNames(): Promise<Map<string, string>> {
 export interface PriceUpdate {
   recordId: string;
   price: number;
+  /** 昨收价 / 昨日净值；为空则不改动该字段 */
+  previousPrice?: number | null;
+  /** 日涨跌幅（%）；为空则不改动该字段 */
+  changePct?: number | null;
 }
 
-/** 把价格写回「最新持仓」的「最新价格」字段（写入后「最新市值」公式自动重算） */
+/**
+ * 把行情写回「最新持仓」：
+ *   最新价格 / 昨收价 / 日涨跌幅(%)
+ * 「最新市值」「日盈亏」是公式字段，写完后自动重算。
+ */
 export async function updateLatestPrices(updates: PriceUpdate[]): Promise<number> {
   if (updates.length === 0) return 0;
   return getBackend().batchUpdateRecords(
     HOLDINGS_TABLE,
-    updates.map((update) => ({ recordId: update.recordId, fields: { 最新价格: update.price } })),
+    updates.map((update) => {
+      const fields: Record<string, unknown> = { 最新价格: update.price };
+      if (update.previousPrice != null) fields.昨收价 = update.previousPrice;
+      if (update.changePct != null) fields['日涨跌幅(%)'] = update.changePct;
+      return { recordId: update.recordId, fields };
+    }),
   );
 }
