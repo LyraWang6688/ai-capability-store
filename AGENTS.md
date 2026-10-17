@@ -12,9 +12,11 @@ Any Agent (human or AI) modifying this repository MUST read, in order, before ma
 7. The README of the Domain being touched:
    - `skills/README.md` for Skill Domain work
    - `external-capabilities/README.md` for External Capability Domain work
+   - `automations/README.md` for Automation Domain work
    - `dependencies/capability-map.yaml` for dependency work
 8. The Domain Policy files of the touched area
-   (e.g. `skills/LIFECYCLE.md`, `skills/ACCEPTANCE.md`, `external-capabilities/SECURITY.md`)
+   (e.g. `skills/LIFECYCLE.md`, `skills/ACCEPTANCE.md`, `external-capabilities/SECURITY.md`,
+   `automations/LIFECYCLE.md`)
 9. The current target entity (skill / capability / dependency record) before editing it
 
 AGENTS.md is the Control Plane / Router. It does NOT duplicate policy.
@@ -26,10 +28,13 @@ Domain-specific policy lives in the Domain directories.
 |---|---|
 | Add / change a Skill (how-to procedure / workflow) | `skills/` |
 | Add / change an External Capability (plugin / MCP / connector / CLI / API / integration) | `external-capabilities/` |
+| Add / change an Automation (scheduled or event-driven job) | `automations/` |
 | Record a Skill ↔ External Capability dependency | `dependencies/capability-map.yaml` |
 | Change store-wide policy | top-level policy files |
 
-Skills and External Capabilities are **peer Domains**. A Plugin is NOT a sub-entity of a Skill.
+Skills, External Capabilities and Automations are **peer Domains**. A Plugin is NOT a
+sub-entity of a Skill. An Automation is NOT a Capability: a capability is called, an
+automation is triggered by a clock.
 
 ## Source of Truth
 
@@ -38,6 +43,7 @@ Skills and External Capabilities are **peer Domains**. A Plugin is NOT a sub-ent
 | Skill identity / path / lifecycle / version | `skills/registry.yaml` |
 | External capability identity / provider / type / availability / auth / permissions / version / implementation | `external-capabilities/registry.yaml` |
 | Skill ↔ External Capability dependencies | `dependencies/capability-map.yaml` |
+| Automation identity / path / lifecycle / trigger / workflow / output | `automations/registry.yaml` |
 | Store registry routing | `registry.yaml` (top level, router only) |
 
 A single core fact is maintained in exactly one registry. Do not duplicate Domain state into the top level.

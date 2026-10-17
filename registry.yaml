@@ -11,3 +11,4 @@ registries:
   skills: skills/registry.yaml
   external_capabilities: external-capabilities/registry.yaml
   dependencies: dependencies/capability-map.yaml
+  automations: automations/registry.yaml

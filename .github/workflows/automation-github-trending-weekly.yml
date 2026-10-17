@@ -1,0 +1,73 @@
+# Scheduled execution of automations/github-trending-weekly.
+#
+# Contract (see automations/README.md):
+#   * the cron lives HERE and only here — registry.yaml records trigger_kind only
+#   * reads the last 7 daily snapshots from the `data` branch
+#   * output is committed to the `data` branch, never to `main`
+name: automation-github-trending-weekly
+
+on:
+  schedule:
+    # Sundays 20:47 Asia/Shanghai — after the same-day daily snapshot lands.
+    - cron: "47 20 * * 0"
+      timezone: "Asia/Shanghai"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: automation-data-branch
+  cancel-in-progress: false
+
+jobs:
+  aggregate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout automation code (main)
+        uses: actions/checkout@v4
+        with:
+          path: code
+
+      - name: Checkout data branch
+        uses: actions/checkout@v4
+        with:
+          ref: data
+          path: out
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Aggregate last 7 days
+        run: |
+          set -euo pipefail
+          mkdir -p out/trending
+          STAMP="$(TZ=Asia/Shanghai date +%F)"
+          python3 code/automations/github-trending-weekly/aggregate.py --data-dir out/trending \
+            > "out/trending/weekly-${STAMP}.json"
+          echo "wrote out/trending/weekly-${STAMP}.json"
+          python3 -c "
+          import json,sys
+          d=json.load(open('out/trending/weekly-${STAMP}.json'))
+          print('days_with_data :', d['days_with_data'])
+          print('days_missing   :', d['days_missing'])
+          print('trustworthy    :', d['trustworthy'])
+          print('note           :', d['note'])
+          "
+
+      - name: Commit aggregate to data branch
+        working-directory: out
+        run: |
+          set -euo pipefail
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "no change to commit"
+            exit 0
+          fi
+          git commit -m "trending-weekly: $(TZ=Asia/Shanghai date +%F)"
+          git push origin HEAD:data

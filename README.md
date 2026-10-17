@@ -33,16 +33,23 @@ Skill               = How to do
 External Capability = What can be called
 ```
 
-Two **peer Domains**:
+Three **peer Domains**:
 
 | Domain | Owns | Examples |
 |---|---|---|
 | Skills | How to do | Method / SOP / Workflow / Decision Rule / Know-how |
 | External Capabilities | What can be called | MCP / Plugin / CLI / Connector / API / Integration |
+| Automations | What runs by itself | Scheduled collection / recurring aggregation / event-driven maintenance |
 
 A Plugin is NOT a sub-entity of a Skill. Formal Domain remains
 **External Capability**, which also covers plugin / mcp / connector / cli /
 external-api / integration.
+
+The Skill/Capability split is **who triggers it**: a Skill runs because an Agent
+decided to, a Capability is called because something asked for it. An Automation
+runs because **a clock fired** — it is execution, not capability. Automation
+output is committed to the `data` branch and never to `main`, so machine data
+cannot bury the Store's asset history.
 
 ## Dependency Layer
 
@@ -96,6 +103,11 @@ ai-capability-store/
 │   ├── mcp/                        # Store-managed MCP implementations (created as needed)
 │   ├── providers/
 │   └── use-cases/
+├── automations/                    # Domain C: Automations (what runs by itself)
+│   ├── README.md
+│   ├── registry.yaml
+│   ├── LIFECYCLE.md
+│   └── <automation-name>/          # implementation + test_*.py, one per automation
 ├── dependencies/
 │   └── capability-map.yaml
 ├── tests/                          # Development / Evaluation Layer

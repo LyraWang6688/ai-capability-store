@@ -7,3 +7,7 @@
 # this venv inside the checkout so it survives across sessions (unlike /tmp),
 # and it must never be committed.
 .venv/
+
+# Python bytecode (automation tests import modules by path)
+__pycache__/
+*.pyc

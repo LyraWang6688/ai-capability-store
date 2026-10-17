@@ -1,0 +1,68 @@
+# Scheduled execution of automations/github-trending-daily.
+#
+# Contract (see automations/README.md):
+#   * the cron lives HERE and only here — registry.yaml records trigger_kind only
+#   * output is committed to the `data` branch, never to `main`
+#   * this job needs no secrets beyond the job-scoped GITHUB_TOKEN
+name: automation-github-trending-daily
+
+on:
+  schedule:
+    # 09:17 Asia/Shanghai. Deliberately not minute 0: GitHub defers schedules
+    # queued at the top of the hour under load.
+    - cron: "17 9 * * *"
+      timezone: "Asia/Shanghai"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+# Serialized with the weekly job: both push to `data`.
+concurrency:
+  group: automation-data-branch
+  cancel-in-progress: false
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout automation code (main)
+        uses: actions/checkout@v4
+        with:
+          path: code
+
+      - name: Checkout data branch
+        uses: actions/checkout@v4
+        with:
+          ref: data
+          path: out
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Scan GitHub trending
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          mkdir -p out/trending
+          STAMP="$(TZ=Asia/Shanghai date +%F)"
+          python3 code/automations/github-trending-daily/scan.py > "out/trending/${STAMP}.json"
+          echo "wrote out/trending/${STAMP}.json ($(wc -c < "out/trending/${STAMP}.json") bytes)"
+
+      - name: Commit snapshot to data branch
+        working-directory: out
+        run: |
+          set -euo pipefail
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "no change to commit"
+            exit 0
+          fi
+          git commit -m "trending-daily: $(TZ=Asia/Shanghai date +%F)"
+          git push origin HEAD:data
