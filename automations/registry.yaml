@@ -1,10 +1,19 @@
 # Automation Domain Registry
 # Source of Truth for: automation identity / path / lifecycle status / version /
-# trigger kind / bound workflow / output contract.
+# trigger kind / executor / runner descriptor / output contract.
 #
-# The cron expression is NOT recorded here. It lives only in the bound workflow
-# file — see automations/README.md §"The cron lives in exactly one place".
-schema_version: 1
+# The cron expression is NOT recorded here. For a github-actions automation it
+# lives only in the bound workflow file — see automations/README.md
+# §"The cron lives in exactly one place".
+#
+# schema_version 2 (breaking): `workflow` was unconditionally required, which made
+# a launchd-driven automation unrepresentable. `executor` now names WHO runs it and
+# each executor requires exactly its own descriptor:
+#   github-actions -> workflow
+#   launchd        -> launchd {label, template}
+#   human          -> neither
+# `output` gained `target`, because not every automation writes to the data branch.
+schema_version: 2
 
 domain: automations
 description: Automation identity, path, lifecycle status, version, trigger kind, bound workflow, output contract.
@@ -19,8 +28,15 @@ allowed_statuses:
 allowed_trigger_kinds:
   - daily
   - weekly
+  - monthly
   - manual
   - event
+
+# WHO runs it. Distinct from trigger_kind (how often).
+allowed_executors:
+  - github-actions
+  - launchd
+  - human
 
 automations:
   github-trending-daily:
@@ -31,8 +47,10 @@ automations:
     version: 0.1.0
     updated: "2026-10-17"
     trigger_kind: daily
+    executor: github-actions
     workflow: .github/workflows/automation-github-trending-daily.yml
     output:
+      target: git-branch
       branch: data
       path_pattern: "trending/{date}.json"
     description: >
@@ -50,8 +68,10 @@ automations:
     version: 0.1.0
     updated: "2026-10-17"
     trigger_kind: weekly
+    executor: github-actions
     workflow: .github/workflows/automation-github-trending-weekly.yml
     output:
+      target: git-branch
       branch: data
       path_pattern: "trending/weekly-{date}.json"
     description: >
