@@ -80,3 +80,34 @@ automations:
     notes: >
       消费 github-trending-daily 的快照。不足 3 天数据时只报 note，不硬下趋势结论。
       weekly 不得在 daily 仍为 active/testing 时被归档。
+
+  github-portfolio-snapshot:
+    name: github-portfolio-snapshot
+    path: automations/github-portfolio-snapshot
+    entrypoint: snapshot.py
+    status: testing
+    version: 0.1.0
+    updated: "2026-10-17"
+    trigger_kind: monthly
+    executor: launchd
+    launchd:
+      label: com.lyra.github-portfolio-snapshot
+      template: automations/github-portfolio-snapshot/deploy/com.lyra.github-portfolio-snapshot.plist.template
+    output:
+      target: external-system
+      destination: "Feishu Base「项目管理」的多维表格：Repo Snapshot History / Snapshot Runs / Deleted Repos"
+    description: >
+      每月对 GitHub 账号下的仓库做一次状态快照：存在哪些仓库、相对上一期有什么变化、
+      各自处于什么活性档位与可发现性得分，写入飞书 Base。
+    notes: >
+      代码在 Store，状态（config.json + logs）在工作目录 GITHUB_SNAPSHOT_HOME，默认
+      ~/github-portfolio-snapshot。之所以是 launchd 而不是 github-actions：lark-cli
+      的用户令牌在操作者本机 keychain 里，hosted runner 没有 keychain，而 bot 身份
+      缺少 base:record:read 权限（实测 app_scope_not_applied）。
+
+      本自动化只读 GitHub、只写自己的飞书表。它写的 lifecycle_action
+      （Keep / Archive / Delete）是建议标签，不是执行动作 —— 无人值守的作业
+      只应做不可能后悔的事，真正的归档/删除仍由人执行。
+
+      output.target 为 external-system：目标不在本仓库控制范围内，校验器只能记录
+      这个声明，无法验证外部写入。通过校验不等于写入成功。

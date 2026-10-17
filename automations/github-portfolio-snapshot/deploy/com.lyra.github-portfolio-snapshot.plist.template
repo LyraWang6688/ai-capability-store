@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Template. deploy/install.sh substitutes the double-@ placeholders and writes the
+  result to ~/Library/LaunchAgents/. Do not load this file directly.
+
+  The Label below is literal (not a placeholder) because
+  scripts/validate_store.py cross-checks it against registry.yaml — an installed
+  job whose Label disagrees with the registry is a job nobody is tracking.
+  install.sh may override it with LABEL=... and rewrites both occurrences.
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.lyra.github-portfolio-snapshot</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>@@PYTHON@@</string>
+        <string>@@CODE_DIR@@/snapshot.py</string>
+        <string>--trigger</string>
+        <string>launchd</string>
+    </array>
+
+    <!-- The code lives in the Store checkout; the state (config.json + logs)
+         lives in the work dir. Pointing WorkingDirectory at the work dir keeps
+         every relative path the operator expects. -->
+    <key>WorkingDirectory</key>
+    <string>@@WORK_DIR@@</string>
+
+    <!-- launchd provides an extremely narrow PATH. lark-cli is an
+         `#!/usr/bin/env node` script and gh may live under /opt/homebrew, so the
+         directories of python/node/gh/lark-cli are injected explicitly. -->
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>@@TASK_PATH@@</string>
+        <key>LANG</key>
+        <string>zh_CN.UTF-8</string>
+        <key>GITHUB_SNAPSHOT_HOME</key>
+        <string>@@WORK_DIR@@</string>
+    </dict>
+
+    <!-- Monthly on the 1st at 20:00 local time. Multiple keys inside one
+         StartCalendarInterval dict are AND, not OR. If the machine is asleep or
+         off at that instant, launchd runs the job once on the next wake —
+         cron would skip it entirely. -->
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Day</key>
+        <integer>1</integer>
+        <key>Hour</key>
+        <integer>20</integer>
+        <key>Minute</key>
+        <integer>0</integer>
+    </dict>
+
+    <key>RunAtLoad</key>
+    <false/>
+
+    <key>StandardOutPath</key>
+    <string>@@WORK_DIR@@/logs/launchd.out.log</string>
+    <key>StandardErrorPath</key>
+    <string>@@WORK_DIR@@/logs/launchd.err.log</string>
+</dict>
+</plist>

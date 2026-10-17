@@ -1,0 +1,8 @@
+# Per-operator state. The real config carries a Feishu Base token and a personal
+# GitHub login; logs are launchd's stdout/stderr. Neither belongs in a public repo.
+# The work dir itself normally lives outside the checkout (GITHUB_SNAPSHOT_HOME),
+# but a user may point it here while experimenting — this keeps that safe.
+config.json
+logs/
+__pycache__/
+*.pyc

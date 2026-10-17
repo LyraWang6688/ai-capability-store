@@ -1,0 +1,32 @@
+{
+  "_comment": [
+    "Copy this file to <work-dir>/config.json and fill the REQUIRED keys.",
+    "Work dir defaults to ~/github-portfolio-snapshot; override with GITHUB_SNAPSHOT_HOME.",
+    "This file must NOT be committed with real values — .gitignore already excludes config.json."
+  ],
+
+  "_required": "github_login / base_token / registry_table have no defaults in code on purpose: this repository is public, and a shipped default would point a new operator at someone else's data.",
+  "github_login": "YOUR_GITHUB_LOGIN",
+  "base_token": "YOUR_FEISHU_BASE_TOKEN",
+  "registry_table": "tblXXXXXXXXXXXXXX",
+
+  "_optional_structural": "The following have generic defaults in snapshot.py. Override only if your Base differs.",
+  "base_title": "项目管理",
+  "inventory_table": null,
+  "baseline_table": null,
+  "history_table_name": "Repo Snapshot History",
+  "runs_table_name": "Snapshot Runs",
+
+  "activity_buckets": { "active": 30, "cooling": 90, "stale": 180 },
+  "status_to_action": {
+    "Core Infrastructure": "Keep",
+    "Flagship Product": "Keep",
+    "Historical / Superseded": "Archive",
+    "Historical / Paused": "Archive",
+    "Noise": "Delete"
+  },
+
+  "_binaries": "Leave empty to resolve from PATH. launchd's PATH is extremely narrow, so deploy/install.sh injects the directories of node/gh/lark-cli explicitly.",
+  "lark_cli": "",
+  "gh_cli": ""
+}
