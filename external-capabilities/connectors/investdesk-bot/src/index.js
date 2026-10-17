@@ -34,7 +34,10 @@ async function handle(chatId, text, messageId) {
     await sendText(chatId, answer);
     console.log(`[done] ${Date.now() - started}ms reply=${answer.length}字`);
     callIdeaTool('save_idea', { question: text, answer, type: '问答' })
-      .then((id) => console.log(`[idea] 已写入想法池 record=${id ?? '跳过(未配置表)'}`))
+      .then((result) => {
+        const text = result?.content?.[0]?.text ?? '未知结果';
+        console.log(`[idea] ${result?.isError ? '写入失败: ' : ''}${text}`);
+      })
       .catch((error) => console.error('[idea] 写入失败:', error.message));
     appendHistory(chatId, [
       { role: 'user', content: text },
