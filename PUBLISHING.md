@@ -43,6 +43,10 @@ Human Approval
 Merge
         ↓
 Tag / Release when applicable (namespaced Git Tag; Release for distributable artifacts)
+        ↓
+[SEPARATE DECISION] Distribution via npm — only for runnable, installable assets.
+                    Its own preconditions live in §D. Being in the Store does NOT
+                    mean being published, and tagging does NOT publish.
 ```
 
 ## A. Skill Asset Publishing
@@ -110,6 +114,76 @@ Tag / Release when applicable (namespaced Git Tag; Release for distributable art
    watching the first failure, so a passing local run is the only cheap signal.
 10. **Tag it like any other asset** (`VERSIONING.md` §6). Being scheduled does not
    exempt it; it is precisely the asset that most needs to be rollable back.
+
+## D. Distribution — npm (and Releases)
+
+**Entering the Store is not distribution.** §A–§C describe how an asset becomes
+governed. This section describes how it reaches a machine that is not this repo.
+They are separate decisions with separate preconditions, and the second one can
+break things the first one cannot.
+
+### Which assets may go to npm
+
+Only assets a consumer can actually **run on their own machine**:
+
+| Shape | npm? | Why |
+|---|---|---|
+| stdio MCP / CLI | yes | `npx <package>` is the point of publishing it |
+| HTTP / hosted service | **no** | it needs a deployment, not an install; npm only distributes its configuration — including whatever that configuration names |
+| Automation | no | triggered on someone's machine or CI, not installed by a consumer |
+
+A hosted service published "for completeness" is worse than unpublished: every
+consumer installs something that cannot start, and the package leaks the shape of
+the deployment.
+
+> `feishu-cli-mcp-server` is the current example of the **no** row. It is an HTTP
+> server (nginx + pm2 + OAuth), has no `bin`, and its `deploy/` directory holds
+> production infrastructure identifiers. It is deliberately **not** published; its
+> registry `notes` say so.
+
+### Preconditions — all six, before `npm publish`
+
+```text
+1. `files` whitelist          Without it npm publishes everything not gitignored:
+                              deploy/, .agents/, .github/, .env.example. This is the
+                              one that leaks rather than merely embarrasses.
+2. `license` and `repository` npm surfaces both; a missing repository is an
+                              invisible broken link on the package page.
+3. build artifacts exist      `dist/` must be produced. A `prepare` script that runs
+                              `build` is the reliable way — it cannot be forgotten.
+4. `bin` points at runnable JS
+                              A `.ts` bin only runs where Node's type stripping is on
+                              by default (>=22.18 / >=23.6). Ship compiled JS or raise
+                              `engines` to match.
+5. `npm pack --dry-run` reviewed by eye
+                              The last cheap moment to notice a leak.
+6. published version == registry version
+```
+
+Preconditions 1–5 are checked locally; 6 is checked after the fact:
+
+```bash
+npm view <package> version
+# must equal external-capabilities/registry.yaml → capabilities.<package>.version
+```
+
+### The published version must equal the registry version
+
+These drift for the same reason tags drifted (`VERSIONING.md` §6): the registry
+bump and the publish happen at different times, so a version can exist on npm that
+git never labelled, or a tag can exist for a version never published.
+
+**Publish from the commit you tagged.** Then the tag, the registry and npm all name
+the same thing, and "pin to X.Y.Z" is true whichever of the three a consumer uses.
+
+### What distribution is NOT
+
+- It does **not** change `status`. A published asset can still be `limited`; npm
+  says it is downloadable, not that it is ready.
+- It does **not** replace the tag. The tag is the immutable history; npm is a
+  delivery channel and allows re-publishing.
+- It does **not** imply the Store recommends that version — the registry does that
+  (`VERSIONING.md` §5).
 
 ## Stop Conditions
 
