@@ -36,6 +36,8 @@ export interface Quote {
   price: number;
   /** 涨跌幅（%）；来源未提供时为 null */
   changePct: number | null;
+  /** 昨收价 / 昨日单位净值；用于算日盈亏，来源未提供时为 null */
+  previousPrice: number | null;
   /** 数据时间：场内为 yyyyMMddHHmmss，场外为 yyyy-MM-dd */
   tradeTime: string;
   source: 'tencent' | 'eastmoney-fund';

@@ -40,6 +40,8 @@ export async function syncPortfolioPrices(options: SyncOptions = {}): Promise<Sy
   const updates = [...byRecord.entries()].map(([recordId, quote]) => ({
     recordId,
     price: quote.price,
+    previousPrice: quote.previousPrice,
+    changePct: quote.changePct,
   }));
   const written = await updateLatestPrices(updates);
 

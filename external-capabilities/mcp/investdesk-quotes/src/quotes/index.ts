@@ -111,6 +111,7 @@ export async function fetchQuotes(
           name: target.name || q.name,
           price: q.price,
           changePct: q.changePct,
+          previousPrice: Number.isFinite(q.prevClose) && q.prevClose > 0 ? q.prevClose : null,
           tradeTime: q.tradeTime,
           source: 'tencent',
         });
@@ -150,6 +151,7 @@ export async function fetchQuotes(
         name: target.name,
         price: nav.nav,
         changePct: nav.changePct,
+        previousPrice: nav.previousNav,
         tradeTime: nav.date,
         source: 'eastmoney-fund',
       });

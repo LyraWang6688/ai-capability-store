@@ -65,12 +65,12 @@ capabilities:
     type: mcp
     status: limited
     provider_path: external-capabilities/providers/lyrawang/README.md
-    version: 0.3.0
+    version: 0.4.0
     implementation_path: external-capabilities/mcp/investdesk-quotes
     auth: "客户端到 MCP 无认证，服务绑定 127.0.0.1 仅供本机客户端使用；MCP 到飞书支持两种后端，由环境变量切换：默认复用部署机上已认证的 lark-cli profile（凭据在 lark-cli 自己的凭据库，不经过 MCP 参数）；配置 FEISHU_APP_ID / FEISHU_APP_SECRET 时改用自建应用的 tenant_access_token（用于云端/CI）。行情接口免认证"
     capabilities: "lookup_quotes 查场内标的（个股 / ETF / LOF / REITs）价格或场外公募基金净值；portfolio_overview 读飞书持仓并按平台汇总市值 / 成本 / 盈亏；sync_prices 抓取全部持仓最新价格并写回飞书表格"
     permissions: "飞书 base 资源域的读写授权。lark-cli 后端以 profile 实际授权为准；OpenAPI 后端需在开发者后台开通 bitable:app，并把应用加为该 Base 的协作者（可编辑）"
-    notes: "自研、Store-managed。provider 取 lyrawang：行情源是腾讯与东方财富的公开网页接口，没有授权与配额模型，真正约束这个能力边界的是我们自己的持仓数据模型与取价路由规则，而非某个平台的 API 合约。公开接口无 SLA，限频与改版都可能导致取价失败，实现里做了批量请求、失败重试，并且抓不到就保持原值、绝不写 0。status 取 limited：依赖本机已认证的 lark-cli profile，并非装上即用。npm 上发布的是 dist/ 编译产物——0.1.0 误发了 .ts，Node 拒绝为 node_modules 下的文件做类型擦除，装下来无法启动；0.1.1 修复为 tsc 构建后发布。0.2.0 增加 OpenAPI 后端：配置 FEISHU_APP_ID/FEISHU_APP_SECRET 即切换到自建应用 tenant_access_token，可在云端/CI 运行；0.2.1 修正 OpenAPI 记录结构归一化。0.3.0 移除 lark-cli 后端，收敛为 OpenAPI 单一认证：迁移期两套并存导致行为差异（OpenAPI 与 lark-cli 记录形状不同，曾使字段全部解析为空），现本机与云端走同一条路径"
+    notes: "自研、Store-managed。provider 取 lyrawang：行情源是腾讯与东方财富的公开网页接口，没有授权与配额模型，真正约束这个能力边界的是我们自己的持仓数据模型与取价路由规则，而非某个平台的 API 合约。公开接口无 SLA，限频与改版都可能导致取价失败，实现里做了批量请求、失败重试，并且抓不到就保持原值、绝不写 0。status 取 limited：依赖本机已认证的 lark-cli profile，并非装上即用。npm 上发布的是 dist/ 编译产物——0.1.0 误发了 .ts，Node 拒绝为 node_modules 下的文件做类型擦除，装下来无法启动；0.1.1 修复为 tsc 构建后发布。0.2.0 增加 OpenAPI 后端：配置 FEISHU_APP_ID/FEISHU_APP_SECRET 即切换到自建应用 tenant_access_token，可在云端/CI 运行；0.2.1 修正 OpenAPI 记录结构归一化。0.3.0 移除 lark-cli 后端，收敛为 OpenAPI 单一认证：迁移期两套并存导致行为差异（OpenAPI 与 lark-cli 记录形状不同，曾使字段全部解析为空），现本机与云端走同一条路径。0.4.0 同步任务额外写入「昨收价」「日涨跌幅(%)」，配合「日盈亏」公式字段可直接回答「今天赚了多少」"
 
 # External Capability Registry Schema (v1)
 # capabilities is a mapping keyed by capability identifier (map key == name).
