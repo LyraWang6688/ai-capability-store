@@ -13,7 +13,7 @@
  * 下一次调用都会看到 creating 并拒绝重试，由人工去草稿箱核对。
  */
 import { createHash } from "node:crypto";
-import { mkdir, open, readFile, unlink, writeFile } from "node:fs/promises";
+import { mkdir, open, readdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import path from "node:path";
 
@@ -23,7 +23,16 @@ export type DeliveryState = {
   updatedAt: string;
   mediaId?: string;
   imageCount?: number;
+  /** 该条目对应的草稿已被「更新」覆盖（同一 mediaId 有了更新的内容），不可再复用。 */
+  supersededAt?: string;
+  /** 该条目对应的草稿已被删除，不可再复用。 */
+  deletedAt?: string;
 };
+
+/** 该条目是否还能作为"已投递"复用。 */
+export function isReusable(state: DeliveryState | undefined): boolean {
+  return Boolean(state?.status === "created" && state.mediaId && !state.supersededAt && !state.deletedAt);
+}
 
 export class DeliveryLockedError extends Error {
   readonly code = "DELIVERY_LOCKED";
@@ -100,4 +109,40 @@ export async function withDeliveryLock<T>(file: string, run: () => Promise<T>): 
     await handle.close().catch(() => undefined);
     await unlink(lockPath).catch(() => undefined);
   }
+}
+
+/**
+ * 列出账本里所有条目（不含锁、备份、审计）。
+ * 供「更新/删除后把指向同一 mediaId 的旧条目标记为失效」使用 —— 只标记、不删除本地文件。
+ */
+export async function listDeliveryStateFiles(env: NodeJS.ProcessEnv = process.env): Promise<string[]> {
+  const dir = stateDir(env);
+  try {
+    const names = await readdir(dir);
+    return names
+      .filter((name) => name.endsWith(".json") && !name.startsWith("."))
+      .map((name) => path.join(dir, name));
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return [];
+    throw error;
+  }
+}
+
+/**
+ * 把某个 mediaId 关联的所有账本条目打上标记（supersededAt / deletedAt）。
+ * 返回被改动的条目数。只改本地账本，不动公众号内容。
+ */
+export async function markDeliveryStates(
+  mediaId: string,
+  patch: { supersededAt?: string; deletedAt?: string },
+  env: NodeJS.ProcessEnv = process.env
+): Promise<string[]> {
+  const changed: string[] = [];
+  for (const file of await listDeliveryStateFiles(env)) {
+    const state = await readDeliveryState(file);
+    if (!state || state.mediaId !== mediaId) continue;
+    await writeDeliveryState(file, { ...state, ...patch, updatedAt: new Date().toISOString() });
+    changed.push(file);
+  }
+  return changed;
 }
