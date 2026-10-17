@@ -126,10 +126,8 @@ automations:
     version: 0.1.0
     updated: "2026-10-17"
     trigger_kind: daily
-    executor: launchd
-    launchd:
-      label: com.investdesk.quotes
-      template: automations/investdesk-quote-sync/deploy/com.investdesk.quotes.plist.template
+    executor: github-actions
+    workflow: .github/workflows/automation-investdesk-quote-sync.yml
     output:
       target: external-system
       destination: "飞书多维表格：持仓价格表"
@@ -137,9 +135,15 @@ automations:
       每个交易日两次，把全部持仓的最新价格写回飞书多维表格：15:35 A 股收盘后取场内
       标的收盘价，21:30 场外基金净值陆续公布后再取一次。市值由表格公式自动重算。
     notes: >
-      代码在 Store 检出目录，状态（.env / .cache / 日志）在工作目录 INVESTDESK_HOME，
-      默认 ~/.investdesk。之所以是 launchd 而不是 github-actions：lark-cli 的用户令牌
-      在操作者本机 keychain 里，hosted runner 没有 keychain。
+      代码在 Store 检出目录，状态（.cache 等）在工作目录 INVESTDESK_HOME，
+      默认 ~/.investdesk。执行器是 github-actions：认证走飞书自建应用的
+      tenant_access_token（FEISHU_APP_ID / FEISHU_APP_SECRET），不再依赖
+      操作者本机 keychain，因此云端可跑、不要求任何一台机器开机。
+
+      2026-10-18 从 launchd 迁移过来。迁移前 launchd 是本机唯一执行器，
+      关机即断；迁移后云端为主。过渡期内本机仍可保留一份 launchd 作备份：
+      用 automations/investdesk-quote-sync/deploy/install.sh 安装，两端写入幂等，
+      互不冲突。云端稳定运行两周后可卸载本机那份，并把 deploy/ 目录标为历史。
 
       入口 sync.ts 是薄壳，真正的取价与写库逻辑在
       external-capabilities/mcp/investdesk-quotes，与 MCP 的 sync_prices 工具共用同一个
