@@ -11,7 +11,7 @@
   },
   "dependencies": {
     "@larksuiteoapi/node-sdk": "^1.76.0",
-    "investdesk-quotes": "^0.4.0",
+    "investdesk-quotes": "^0.5.0",
     "investdesk-ideas": "^0.1.0"
   }
 }
