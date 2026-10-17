@@ -1,11 +1,9 @@
 /**
- * 飞书后端接口。
+ * 飞书后端的记录形状定义。
  *
- * 两种实现，按环境变量自动选择：
- *   - larkCliBackend  ：复用本机已登录的 lark-cli，零配置，但只能在本机跑
- *   - openapiBackend  ：飞书自建应用 + tenant_access_token，可在云端/CI 跑
- *
- * 上层（base.ts）只依赖这个接口，不关心背后是谁。
+ * 0.3.0 起只有一种实现（OpenAPI + tenant_access_token）。
+ * 保留这个接口是为了约束「后端返回的记录长什么样」，
+ * 上层（base.ts）直接消费 RawRecord。
  */
 
 export interface RawRecord {

@@ -12,7 +12,7 @@
 
 ## 触发
 
-`executor: launchd`，周一至周五两次：
+`executor: github-actions`，周一至周五两次（北京时间）：
 
 | 时间 | 目的 |
 |---|---|
@@ -44,24 +44,29 @@
 |---|---|---|
 | 退出码 1 | 成功率低于 80% | 查 `.cache/quotes.err.log`，通常是数据源改版或被限频 |
 | 场外 21:30 仍有失败 | 净值尚未公布 | 正常，次日 15:35 会补上 |
-| `lark-cli 执行失败` | launchd 的 PATH 里没有 node | 重跑 `deploy/install.sh`，它会显式注入解释器目录 |
 | 全部标的都是「未返回行情」 | 代码与「定价方式」不匹配 | 检查表里的「定价方式」是否填对 |
 
 ## 部署
 
+**主执行器是 GitHub Actions**，配置在 `.github/workflows/automation-investdesk-quote-sync.yml`，
+凭据走仓库 Secrets，无需任何机器开机。
+
+本机 launchd 已停用（2026-10-18 卸载）。`deploy/` 保留为可选的本机备份方案：
+需要在本机也跑一份时，用 `deploy/install.sh` 安装，两端写入幂等、互不冲突。
+
 ```bash
 deploy/install.sh --dry-run     # 渲染 plist 看看
-deploy/install.sh --run-now     # 安装并立刻跑一次，验证 launchd 环境
+deploy/install.sh --run-now     # 安装并立刻跑一次
 deploy/uninstall.sh             # 卸载（工作目录与日志保留）
 ```
 
-代码在 Store 检出目录，状态（`.env` / `.cache` / 日志）在工作目录，默认 `~/.investdesk`。
+代码在 Store 检出目录，状态（`.cache` / 日志）在工作目录，默认 `~/.investdesk`。
 更新代码不会碰凭证。
 
 ## 依赖
 
 - Node.js 22.6+（原生执行 TypeScript，无需构建）
-- 已认证的 `lark-cli`（用户令牌在操作者本机 keychain，这也是它不能放 github-actions 的原因）
+- 飞书自建应用（`FEISHU_APP_ID` / `FEISHU_APP_SECRET`），并已加为 Base 协作者
 - `external-capabilities/mcp/investdesk-quotes`
 
 ## 与能力层的边界

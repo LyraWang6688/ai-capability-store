@@ -1,11 +1,12 @@
 /**
- * 飞书多维表格访问层 —— 对上层暴露稳定的记录接口，底层可切换后端。
+ * 飞书多维表格访问层。
  *
- * 后端选择只看环境变量：
- *   有 FEISHU_APP_ID + FEISHU_APP_SECRET → OpenAPI（云端 / CI 可用）
- *   没有                                 → 本机 lark-cli（用户令牌在 keychain）
+ * **只使用飞书 OpenAPI**（自建应用 tenant_access_token）：
+ * 不依赖任何本机凭据，所以本机、云端、CI 走的是同一条路径，
+ * 不存在「两套后端行为不一致」的问题。
  *
- * 上层代码（quotes / sync / mcp）完全不需要知道用的是哪种。
+ * 历史：0.2.x 曾保留 lark-cli（本机用户令牌）作为迁移期后备，
+ * 0.3.0 起移除。
  */
 
 import {
@@ -16,36 +17,32 @@ import {
   HOLDINGS_TABLE,
   PLATFORMS_TABLE,
   assertFeishuConfigured,
-  hasAppCredentials,
 } from '../config.ts';
 import type { AssetType, PricingRoute, QuoteTarget } from '../quotes/types.ts';
-import type { FeishuBackend, RawRecord } from './backend.ts';
-import { LarkCliBackend } from './larkCli.ts';
+import type { RawRecord } from './backend.ts';
 import { OpenApiBackend } from './openapi.ts';
 
-let cachedBackend: FeishuBackend | null = null;
+let cachedBackend: OpenApiBackend | null = null;
 
-/** 当前生效的后端（按环境变量选择，结果缓存） */
-export function getBackend(): FeishuBackend {
+/** 当前后端（只有一种，结果缓存） */
+export function getBackend(): OpenApiBackend {
   if (cachedBackend) return cachedBackend;
   assertFeishuConfigured();
-  cachedBackend = hasAppCredentials()
-    ? new OpenApiBackend({
-        appId: FEISHU_APP_ID,
-        appSecret: FEISHU_APP_SECRET,
-        appToken: BASE_TOKEN,
-        baseUrl: FEISHU_BASE_URL,
-      })
-    : new LarkCliBackend();
+  cachedBackend = new OpenApiBackend({
+    appId: FEISHU_APP_ID,
+    appSecret: FEISHU_APP_SECRET,
+    appToken: BASE_TOKEN,
+    baseUrl: FEISHU_BASE_URL,
+  });
   return cachedBackend;
 }
 
-/** 后端名，用于日志 */
+/** 后端名，用于日志（固定值，保留是为了让日志继续可读） */
 export function backendName(): string {
-  return hasAppCredentials() ? 'openapi' : 'lark-cli';
+  return 'openapi';
 }
 
-/** 单选字段：lark-cli 返回数组，OpenAPI 返回字符串，两种都要兼容 */
+/** 单选字段：OpenAPI 返回字符串，兼容数组形态 */
 function firstOf(value: unknown): string {
   if (Array.isArray(value)) return String(value[0] ?? '');
   if (typeof value === 'string') return value;

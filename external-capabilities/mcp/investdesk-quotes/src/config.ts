@@ -40,8 +40,6 @@ loadDotEnv();
 mkdirSync(WORK_DIR, { recursive: true });
 mkdirSync(CACHE_DIR, { recursive: true });
 
-export const LARK_CLI = process.env.LARK_CLI ?? 'lark-cli';
-
 /** 飞书多维表格坐标。换库时用环境变量覆盖。 */
 export const BASE_TOKEN = process.env.INVESTDESK_BASE_TOKEN ?? '';
 export const HOLDINGS_TABLE = process.env.INVESTDESK_HOLDINGS_TABLE ?? '';
@@ -53,21 +51,17 @@ export const MCP_PORT = Number(process.env.MCP_PORT ?? 8787);
 /**
  * 飞书自建应用凭据。
  *
- * 填了 → 走 OpenAPI（tenant_access_token），可在云端 / CI 跑；
- * 不填 → 走本机 lark-cli（用户令牌在 keychain 里）。
- *
- * 切换后端只改环境变量，代码不动。
+ * 0.3.0 起这是**唯一**的认证方式：用 tenant_access_token 调 OpenAPI，
+ * 不依赖任何本机凭据，本机与云端行为一致。
  */
 export const FEISHU_APP_ID = process.env.FEISHU_APP_ID ?? '';
 export const FEISHU_APP_SECRET = process.env.FEISHU_APP_SECRET ?? '';
 export const FEISHU_BASE_URL = process.env.FEISHU_BASE_URL ?? 'https://open.feishu.cn';
 
-export function hasAppCredentials(): boolean {
-  return Boolean(FEISHU_APP_ID && FEISHU_APP_SECRET);
-}
-
 export function assertFeishuConfigured(): void {
   const missing: string[] = [];
+  if (!FEISHU_APP_ID) missing.push('FEISHU_APP_ID');
+  if (!FEISHU_APP_SECRET) missing.push('FEISHU_APP_SECRET');
   if (!BASE_TOKEN) missing.push('INVESTDESK_BASE_TOKEN');
   if (!HOLDINGS_TABLE) missing.push('INVESTDESK_HOLDINGS_TABLE');
   if (missing.length > 0) {
