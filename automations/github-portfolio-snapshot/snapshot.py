@@ -58,7 +58,7 @@ from zoneinfo import ZoneInfo
 # moves no data.
 WORK_DIR = Path(
     os.environ.get("GITHUB_SNAPSHOT_HOME")
-    or (Path.home() / "github-portfolio-snapshot")
+    or (Path.home() / ".automation-state" / "github-portfolio-snapshot")
 )
 CONFIG_PATH = WORK_DIR / "config.json"
 TZ = ZoneInfo("Asia/Shanghai")

@@ -29,7 +29,7 @@ regret. Acting on those recommendations stays with a human.
 | | lives in | why |
 |---|---|---|
 | code | this directory (Store checkout) | reviewable, versioned, tested |
-| `config.json` | `$GITHUB_SNAPSHOT_HOME` (default `~/github-portfolio-snapshot`) | carries a Base token and a personal login — must not be public |
+| `config.json` | `$GITHUB_SNAPSHOT_HOME` (default `~/.automation-state/github-portfolio-snapshot/`) | carries a Base token and a personal login — must not be public |
 | `logs/` | same work dir | launchd stdout/stderr |
 
 `deploy/install.sh` renders the plist so that `WorkingDirectory` points at the
@@ -51,7 +51,8 @@ user token lives in the operator's keychain, and a hosted runner has no keychain
 ## Install
 
 ```bash
-cp config.example.json ~/github-portfolio-snapshot/config.json
+mkdir -p ~/.automation-state/github-portfolio-snapshot
+cp config.example.json ~/.automation-state/github-portfolio-snapshot/config.json
 # fill github_login / base_token / registry_table
 ./deploy/install.sh                 # install the launchd job
 ./deploy/install.sh --run-now       # install and fire once, to prove PATH is right
