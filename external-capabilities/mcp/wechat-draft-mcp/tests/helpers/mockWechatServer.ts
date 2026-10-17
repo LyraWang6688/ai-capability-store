@@ -17,9 +17,14 @@ export type Endpoint =
   | "stable_token"
   | "media/uploadimg"
   | "material/add_material"
+  | "material/del_material"
   | "draft/add"
+  | "draft/update"
   | "draft/get"
-  | "draft/count";
+  | "draft/delete"
+  | "draft/count"
+  | "freepublish/getarticle"
+  | "freepublish/delete";
 
 export type Failure =
   /** 微信风格的业务错误（HTTP 200 + errcode）。 */
@@ -57,14 +62,45 @@ const ENDPOINTS: Endpoint[] = [
   "stable_token",
   "media/uploadimg",
   "material/add_material",
+  "material/del_material",
   "draft/add",
+  "draft/update",
   "draft/get",
-  "draft/count"
+  "draft/delete",
+  "draft/count",
+  "freepublish/getarticle",
+  "freepublish/delete"
 ];
+
+/** mock 里保存的草稿形状（尽量贴近微信真实返回，便于断言"哪些字段被保留"）。 */
+export type MockDraft = {
+  title?: string;
+  author?: string;
+  digest?: string;
+  content?: string;
+  content_source_url?: string;
+  thumb_media_id?: string;
+  show_cover_pic?: 0 | 1;
+  cover_info?: Record<string, unknown>;
+  need_open_comment?: 0 | 1;
+  only_fans_can_comment?: 0 | 1;
+  article_type?: string;
+};
+
+export type MockPublished = {
+  article_id: string;
+  title?: string;
+  content?: string;
+  index?: number;
+};
 
 export class MockWechatServer {
   readonly requests: RecordedRequest[] = [];
-  readonly drafts = new Map<string, { title?: string; author?: string; digest?: string; content?: string; thumb_media_id?: string }>();
+  readonly drafts = new Map<string, MockDraft>();
+  readonly published = new Map<string, MockPublished>();
+  /** 已删除的永久素材 / 已删除的草稿 id，便于断言"真的删了"。 */
+  readonly deletedMaterials: string[] = [];
+  readonly deletedPublished: string[] = [];
 
   private readonly sockets = new Set<Socket>();
   private server?: ReturnType<typeof createServer>;
@@ -103,6 +139,16 @@ export class MockWechatServer {
 
   clearRequests(): void {
     this.requests.length = 0;
+  }
+
+  /** 预置一条草稿（模拟"用户已经在编辑器里编辑过"的线上状态）。 */
+  seedDraft(mediaId: string, draft: MockDraft): void {
+    this.drafts.set(mediaId, draft);
+  }
+
+  /** 预置一篇已发布文章。 */
+  seedPublished(article: MockPublished): void {
+    this.published.set(article.article_id, article);
   }
 
   async start(): Promise<string> {
@@ -183,6 +229,11 @@ export class MockWechatServer {
         const id = `MOCK_COVER_MEDIA_${this.mediaCounter}`;
         return sendJson(res, 200, { media_id: id, url: `${this.base}/mock/material-${this.mediaCounter}.jpg` });
       }
+      case "material/del_material": {
+        const mediaId = (request.json as { media_id?: string } | undefined)?.media_id ?? "";
+        this.deletedMaterials.push(mediaId);
+        return sendJson(res, 200, { errcode: 0, errmsg: "ok" });
+      }
       case "draft/add": {
         const articles = (request.json as { articles?: Array<Record<string, unknown>> } | undefined)?.articles ?? [];
         const article = articles[0] ?? {};
@@ -196,14 +247,42 @@ export class MockWechatServer {
         });
         return sendJson(res, 200, { media_id: mediaId });
       }
+      case "draft/update": {
+        const body = request.json as { media_id?: string; index?: number; articles?: MockDraft | MockDraft[] } | undefined;
+        const mediaId = body?.media_id ?? "";
+        if (!this.drafts.has(mediaId)) return sendJson(res, 200, { errcode: 40007, errmsg: "invalid media_id" });
+        const articles = Array.isArray(body?.articles) ? body!.articles! : [body?.articles as MockDraft];
+        // 微信 update 是"替换这一篇的全部字段"，因此这里也整体覆盖（能验证调用方有没有把要保留的字段传回来）
+        this.drafts.set(mediaId, { ...(articles[0] ?? {}) });
+        return sendJson(res, 200, { errcode: 0, errmsg: "ok" });
+      }
       case "draft/get": {
         const mediaId = (request.json as { media_id?: string } | undefined)?.media_id ?? "";
         const draft = this.drafts.get(mediaId);
         if (!draft) return sendJson(res, 200, { errcode: 40007, errmsg: "invalid media_id" });
+        return sendJson(res, 200, { media_id: mediaId, news_item: [{ ...draft }] });
+      }
+      case "draft/delete": {
+        const mediaId = (request.json as { media_id?: string } | undefined)?.media_id ?? "";
+        if (!this.drafts.has(mediaId)) return sendJson(res, 200, { errcode: 40007, errmsg: "invalid media_id" });
+        this.drafts.delete(mediaId);
+        return sendJson(res, 200, { errcode: 0, errmsg: "ok" });
+      }
+      case "freepublish/getarticle": {
+        const articleId = (request.json as { article_id?: string } | undefined)?.article_id ?? "";
+        const article = this.published.get(articleId);
+        if (!article) return sendJson(res, 200, { errcode: 40007, errmsg: "invalid article_id" });
         return sendJson(res, 200, {
-          media_id: mediaId,
-          news_item: [{ title: draft.title ?? "", author: draft.author ?? "", digest: draft.digest ?? "", content: draft.content ?? "" }]
+          article_id: articleId,
+          news_item: [{ title: article.title ?? "", content: article.content ?? "" }]
         });
+      }
+      case "freepublish/delete": {
+        const articleId = (request.json as { article_id?: string } | undefined)?.article_id ?? "";
+        if (!this.published.has(articleId)) return sendJson(res, 200, { errcode: 40007, errmsg: "invalid article_id" });
+        this.published.delete(articleId);
+        this.deletedPublished.push(articleId);
+        return sendJson(res, 200, { errcode: 0, errmsg: "ok" });
       }
       case "draft/count":
         return sendJson(res, 200, { total_count: this.drafts.size });

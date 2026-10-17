@@ -1,8 +1,8 @@
 {
   "name": "wechat-draft-mcp",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "type": "module",
-  "description": "本地 MCP 服务：把磁盘上的文章创建成微信公众号草稿。只创建草稿，不发布。",
+  "description": "本地 MCP 服务：把磁盘上的文章创建或原地更新为微信公众号草稿；更新/删除属破坏性操作，默认关闭。",
   "license": "MIT",
   "keywords": [
     "mcp",

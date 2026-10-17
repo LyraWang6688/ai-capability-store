@@ -13,7 +13,17 @@ import { StdioMcpClient, assertStdoutPristine, nodeEnv, srcFile } from "./helper
 import { makeTempDir, writeBundle, type TempDir } from "./helpers/fixtures.js";
 
 const SERVER = srcFile("mcpServer.js");
-const TOOL_NAMES = ["get_wechat_draft", "inspect_wechat_article", "upload_wechat_draft", "wechat_draft_status"];
+const TOOL_NAMES = [
+  "delete_wechat_draft",
+  "delete_wechat_material",
+  "delete_wechat_published",
+  "get_wechat_audit",
+  "get_wechat_draft",
+  "inspect_wechat_article",
+  "update_wechat_draft",
+  "upload_wechat_draft",
+  "wechat_draft_status"
+].sort();
 const PACKAGE_VERSION = (
   JSON.parse(
     await readFile(fileURLToPath(new URL("../../package.json", import.meta.url)), "utf8")
@@ -45,7 +55,7 @@ describe("mcpServer：stdio 协议", () => {
     await temp.cleanup();
   });
 
-  test("握手 + tools/list：暴露 4 个工具，stdout 全程纯净", async () => {
+  test("握手 + tools/list：暴露 9 个工具，stdout 全程纯净", async () => {
     const client = await startClient();
     try {
       const response = await client.request("tools/list");
@@ -134,6 +144,38 @@ describe("mcpServer：stdio 协议", () => {
       assert.equal(result.isError, true);
       assert.match(JSON.parse(result.text).message, /缺少公众号凭证/);
       assert.deepEqual(await readdir(stateDir), [], "失败时不能留下账本文件");
+      assertStdoutPristine(client);
+    } finally {
+      await client.close();
+    }
+  });
+});
+
+describe("mcpServer：审计可读", () => {
+  let temp: TempDir;
+  before(async () => {
+    temp = await makeTempDir("wdmcp-mcp-audit-");
+  });
+  after(async () => {
+    await temp.cleanup();
+  });
+
+  test("get_wechat_audit：返回最近的更新/删除记录，只读且不碰网络", async () => {
+    const stateDir = await temp.sub("state-audit");
+    const { appendAudit } = await import("../src/destructive.js");
+    await appendAudit(
+      { operation: "draft/delete", targetId: "DRAFT_X", outcome: "ok", backupPath: "/tmp/backup.json" },
+      { WECHAT_DRAFT_STATE_DIR: stateDir }
+    );
+    const client = await startClient({ WECHAT_DRAFT_STATE_DIR: stateDir });
+    try {
+      const result = await client.callTool("get_wechat_audit", { limit: 5 });
+      assert.equal(result.isError, undefined);
+      const payload = JSON.parse(result.text) as { ok: boolean; count: number; records: Array<{ operation: string; targetId: string; outcome: string }> };
+      assert.equal(payload.ok, true);
+      assert.equal(payload.count, 1);
+      assert.equal(payload.records[0]?.operation, "draft/delete");
+      assert.equal(payload.records[0]?.targetId, "DRAFT_X");
       assertStdoutPristine(client);
     } finally {
       await client.close();
