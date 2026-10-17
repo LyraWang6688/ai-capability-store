@@ -11,8 +11,17 @@ import { join } from 'node:path';
 
 import { isGitCheckout, resolveOutDir, resolveStateDir, resolveJobsDir } from '../src/paths.mjs';
 
-test('git 检出时数据落在仓库内（沿用旧行为，两个目录已在 .gitignore）', () => {
-  assert.equal(isGitCheckout(), true, '本仓库测试时应当识别为 git 检出');
+test('git 检出时数据落在仓库内（沿用旧行为，两个目录已在 .gitignore）', (t) => {
+  // 这条只在**源仓库**里成立：`isGitCheckout()` 只认「包根目录下有没有 .git」。
+  //
+  // Store 镜像里 .git 在仓库上层、不在包目录内，所以这里必然是 false——
+  // 那不是缺陷，是这个检测本来只服务于「从 git 检出直接运行」这一种场景。
+  // 早先这里断言「必然为 true」，于是 Store 镜像里那条测试永远红着，
+  // 让人误以为镜像坏了。改成不适用就跳过，并写清为什么。
+  if (!isGitCheckout()) {
+    t.skip('非源仓库检出（如 Store 镜像），该检测不适用');
+    return;
+  }
   assert.ok(!resolveOutDir().includes('node_modules'), '绝不能落进 node_modules');
 });
 
