@@ -57,7 +57,7 @@ capabilities:
     auth: "两层认证。(1) 客户端到 MCP 服务：Auth0 签发的 RS256 access token（OAuth 2.1），scope 为 docs:read / docs:write / base:read / base:write，服务端按工具二次校验；(2) MCP 服务到飞书：复用部署机上已认证的 lark-cli profile，凭据存放在 lark-cli 自己的凭据库里，从不通过 MCP 参数传入或返回"
     capabilities: "把飞书云文档与多维表格的受控操作暴露为 MCP 工具：文档读取 / 创建 / 更新，Base 创建 / 建字段 / 解析链接 / 列 block / 列记录 / 批量建记录 / 批量改记录"
     permissions: "飞书侧需要 docs 与 base 两个资源域的读写授权（以 lark-cli profile 实际授权为准）；MCP 侧按工具分别要求 docs:read、docs:write、base:read、base:write。写操作另需 confirm=true"
-    notes: "自研、Store-managed。来源仓库为独立 git 仓库，已通过 git subtree 导入并保留完整提交历史。status 取 limited：需要 lark-cli 1.0.93+ 与一个已认证的 profile，远端模式还需 Auth0 + HTTPS，并非装上即用。包内 .agents/skills/feishu-mcp-tool-extension/ 为开发资料，不在 Store Skill 域登记"
+    notes: "自研、Store-managed。来源仓库为独立 git 仓库，已通过 git subtree 导入并保留完整提交历史。status 取 limited：需要 lark-cli 1.0.93+ 与一个已认证的 profile，远端模式还需 Auth0 + HTTPS，并非装上即用。包内 .agents/skills/feishu-mcp-tool-extension/ 为开发资料，不在 Store Skill 域登记。不经 npm 分发：它是自托管 HTTP 服务（nginx + pm2 + OAuth），没有 bin，deploy/ 含生产基础设施标识 —— 见 PUBLISHING.md §D"
 
   investdesk-quotes:
     name: investdesk-quotes
