@@ -1,6 +1,6 @@
 ---
 name: store-publish
-description: 把王颖的能力资产（Skill / MCP / Plugin / CLI）按 AI Capability Store 的契约完成首次上传、迭代或引用。当用户明确说「上传这个到 Store」「把这个沉淀进商店」「更新 Store 里的 XX」「去 Store 找一下」时使用。不主动触发——必须先有明确指令。
+description: 把王颖的能力资产（Skill / MCP / Plugin / CLI / Automation）按 AI Capability Store 的契约完成首次上传、迭代或引用。当用户明确说「上传这个到 Store」「把这个沉淀进商店」「更新 Store 里的 XX」「去 Store 找一下」时使用。不主动触发——必须先有明确指令。
 ---
 
 # Store Publish

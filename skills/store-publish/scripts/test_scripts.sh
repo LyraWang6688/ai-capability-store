@@ -15,7 +15,7 @@ fixture=$(mktemp -d "$tmpbase/store-publish-test.XXXXXX")
 trap 'rm -rf -- "$fixture"' EXIT
 
 store="$fixture/store"
-mkdir -p "$store/skills" "$store/external-capabilities" "$store/dependencies"
+mkdir -p "$store/skills" "$store/external-capabilities" "$store/dependencies" "$store/automations"
 
 cat > "$store/registry.yaml" <<'YAML'
 schema_version: 2
@@ -25,6 +25,7 @@ store:
 registries:
   skills: skills/registry.yaml
   external_capabilities: external-capabilities/registry.yaml
+  automations: automations/registry.yaml
   dependencies: dependencies/capability-map.yaml
 YAML
 
@@ -51,6 +52,16 @@ capabilities:
     version: 0.1.0
     implementation_path: external-capabilities/mcp/demo-mcp
     provider_path: external-capabilities/providers/tester/README.md
+YAML
+
+cat > "$store/automations/registry.yaml" <<'YAML'
+schema_version: 1
+automations:
+  demo-automation:
+    name: demo-automation
+    path: automations/demo-automation
+    status: testing
+    version: 0.1.0
 YAML
 
 cat > "$store/dependencies/capability-map.yaml" <<'YAML'
@@ -111,6 +122,7 @@ fi
 echo "reuse_scan.py"
 expect 10 "flags an already-registered skill" "$PY" "$script_dir/reuse_scan.py" demo-skill
 expect 10 "flags an already-registered capability" "$PY" "$script_dir/reuse_scan.py" demo-mcp
+expect 10 "flags an already-registered automation" "$PY" "$script_dir/reuse_scan.py" demo-automation
 expect 0  "passes a brand-new name" "$PY" "$script_dir/reuse_scan.py" brand-new-thing
 expect 10 "mixed batch fails if any name exists" \
   "$PY" "$script_dir/reuse_scan.py" brand-new-thing demo-skill
@@ -173,6 +185,34 @@ expect 10 "audit reports drift" \
   "$PY" "$script_dir/check_tag_version.py" --audit
 expect 10 "rejects a commit that is not on main" \
   "$PY" "$script_dir/check_tag_version.py" demo-skill 0.1.0 "$side_sha"
+expect 0  "resolves an asset in the automation domain" \
+  "$PY" "$script_dir/check_tag_version.py" demo-automation 0.1.0 main
+expect 10 "applies the same version rule to automations" \
+  "$PY" "$script_dir/check_tag_version.py" demo-automation 0.1.1 main
+
+# A domain routed in registry.yaml but unknown to the check must fail LOUDLY.
+# Reporting success for a domain it never looked at is the failure this whole
+# script exists to prevent, so silently skipping the newest domain is worse than
+# not checking at all.
+unknown="$fixture/unknown-domain"
+cp -R "$gitsrc" "$unknown"
+"$PY" - "$unknown/registry.yaml" <<'PYEOF'
+import sys
+path = sys.argv[1]
+text = open(path, encoding="utf-8").read()
+text = text.replace(
+    "  dependencies: dependencies/capability-map.yaml",
+    "  dependencies: dependencies/capability-map.yaml\n  widgets: widgets/registry.yaml",
+    1,
+)
+open(path, "w", encoding="utf-8").write(text)
+PYEOF
+mkdir -p "$unknown/widgets"
+printf 'schema_version: 1\nwidgets: {}\n' > "$unknown/widgets/registry.yaml"
+( cd "$unknown" && git add -A && git commit -q -m "route a domain the check does not know" ) >/dev/null 2>&1
+expect 2  "fails loudly on a routed domain it does not know" \
+  env AI_CAPABILITY_STORE="$unknown" "$PY" "$script_dir/check_tag_version.py" demo-skill 0.1.0 main
+
 export AI_CAPABILITY_STORE="$store"
 
 echo

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Reuse Scan — is this asset already registered in the Store?
 
-Reads the three domain registries **through the top-level router**, so the
+Reads every peer Domain registry **through the top-level router**, so the
 router stays the single source of truth for where the registries live.
 Deterministic and read-only.
 
@@ -40,6 +40,15 @@ except ImportError:  # pragma: no cover
     sys.stderr.write("ERROR: store_root.py must sit next to reuse_scan.py\n")
     sys.exit(2)
 
+try:
+    # Shared with check_tag_version.py: one list of Domains, so adding a Domain
+    # cannot update one tool and silently leave the other answering about a
+    # domain it never read.
+    from domains import asset_sections
+except ImportError:  # pragma: no cover
+    sys.stderr.write("ERROR: domains.py must sit next to reuse_scan.py\n")
+    sys.exit(2)
+
 
 def fail(message: str, code: int = 2) -> None:
     sys.stderr.write(f"ERROR: {message}\n")
@@ -71,18 +80,11 @@ def read_store(root: str):
         if not os.path.isfile(path):
             fail(f"router points at a missing file: {rel}")
 
-        data = load_yaml(path) or {}
-        if domain == "dependencies":
-            # Dependencies reference assets; they do not define one.
-            continue
-        section = None
-        for key in ("skills", "capabilities"):
-            if isinstance(data.get(key), dict):
-                section = data[key]
-                break
-        if section is None:
-            continue
-        for name, entry in section.items():
+    def load(rel):
+        return load_yaml(os.path.join(root, rel))
+
+    for domain, _rel, entries in asset_sections(routes, load, fail):
+        for name, entry in entries.items():
             index[name] = (domain, entry)
     return index, routes
 
