@@ -8,8 +8,9 @@ name: automation-github-trending-weekly
 
 on:
   schedule:
-    # Sundays 20:47 Asia/Shanghai — after the same-day daily snapshot lands.
-    - cron: "47 20 * * 0"
+    # Sundays 19:17 Asia/Shanghai — 43 min before the DSH consumer task at
+    # 20:00, and after the same-day daily snapshot (08:17) lands.
+    - cron: "17 19 * * 0"
       timezone: "Asia/Shanghai"
   workflow_dispatch:
 

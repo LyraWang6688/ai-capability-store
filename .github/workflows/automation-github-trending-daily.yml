@@ -8,9 +8,10 @@ name: automation-github-trending-daily
 
 on:
   schedule:
-    # 09:17 Asia/Shanghai. Deliberately not minute 0: GitHub defers schedules
-    # queued at the top of the hour under load.
-    - cron: "17 9 * * *"
+    # 08:17 Asia/Shanghai — 43 min before the DSH consumer task at 09:00.
+    # Deliberately not minute 0: GitHub defers schedules queued at the top of
+    # the hour under load, and the consumer needs the file already committed.
+    - cron: "17 8 * * *"
       timezone: "Asia/Shanghai"
   workflow_dispatch:
 
