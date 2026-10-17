@@ -1,0 +1,40 @@
+{
+  "name": "investdesk-quotes",
+  "version": "0.1.0",
+  "description": "A 股与场外公募基金行情查询 + 飞书多维表格持仓读写的 MCP 服务。可装进豆包工作 / Claude Desktop 等支持 MCP 的 AI 宿主。",
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22.6.0"
+  },
+  "bin": {
+    "investdesk-quotes": "src/mcp/stdio.ts",
+    "investdesk-quotes-http": "src/mcp/server.ts"
+  },
+  "files": [
+    "src/",
+    "README.md",
+    "tsconfig.json"
+  ],
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "stock",
+    "etf",
+    "fund",
+    "portfolio",
+    "feishu",
+    "investment"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/LyraWang6688/ai-capability-store.git",
+    "directory": "external-capabilities/mcp/investdesk-quotes"
+  },
+  "scripts": {
+    "mcp": "node src/mcp/server.ts",
+    "mcp:stdio": "node src/mcp/stdio.ts",
+    "quote": "node src/cli/quote.ts",
+    "check:pack": "npm pack --dry-run"
+  }
+}
