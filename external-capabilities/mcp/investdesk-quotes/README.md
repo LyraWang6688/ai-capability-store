@@ -84,6 +84,37 @@ npm run quote -- f:008284               # 手动查场外（f: 前缀）
 所以 `prepare` 会在发布前自动 `tsc`，`bin` 指向 `dist/`。运行时零依赖，构建期只需要 `typescript`。
 本地开发仍然可以直接 `node src/mcp/server.ts`（不在 `node_modules` 下，类型擦除可用）。
 
+## 云端运行（脱离本机）
+
+本机跑依赖 `lark-cli` 的用户令牌——它躺在 macOS keychain 里，**云端没有 keychain，也就拿不到**。
+所以要把定时任务搬到服务器 / CI，必须换成飞书**自建应用**：
+
+1. 在[飞书开发者后台](https://open.feishu.cn/app)创建企业自建应用，记下 `app_id` / `app_secret`
+2. 「权限管理」开通多维表格权限：`bitable:app`（包含记录读写）
+3. 在该 Base 的「协作者」里把应用加为**可编辑**——只开通 scope 不加协作者，调用会报权限错误
+4. 配置环境变量：
+
+```dotenv
+FEISHU_APP_ID=cli_xxxxxxxxxxxx
+FEISHU_APP_SECRET=xxxxxxxxxxxxxxxx
+```
+
+**代码不需要改。** 访问层按环境变量自动切换后端：
+
+| 环境变量 | 后端 | 能跑在哪 |
+|---|---|---|
+| 不设置 | `lark-cli`（用户令牌） | 仅本机 |
+| `FEISHU_APP_ID` + `FEISHU_APP_SECRET` | OpenAPI（`tenant_access_token`） | 云端 / CI / 容器 |
+
+验证当前生效的后端：
+
+```bash
+node -e "import('./dist/feishu/base.js').then(async m=>{console.log('backend:',m.backendName());console.log('records:',(await m.listHoldings()).length)})"
+```
+
+> `tenant_access_token` 是应用身份，看到的数据范围由「应用被授权访问哪些资源」决定，
+> 与某个人的可见范围无关。换 Base 或换表时，协作者授权要同步更新。
+
 ## 在豆包工作中接入
 
 `技能 · 连接器 · 伙伴` → 「新建」→「新建自定义连接器」→ 传输类型 `HTTP` →
