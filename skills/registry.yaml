@@ -45,13 +45,21 @@ skills:
     path: skills/store-publish
     scope: shared
     status: testing
-    version: 0.2.0
-    updated: "2026-10-03"
+    version: 0.2.1
+    updated: "2026-10-18"
     notes: >
       The procedure this Store uses to onboard its own assets. Used end to end
       to register all four assets; v0.2.0 adds the subtree-pull workflow
       (source repo lives elsewhere), environment setup, and the tag rules that
-      those runs showed were missing. Still `testing`: 0.2.0 cannot be
+      those runs showed were missing. v0.2.1 closes a trap in that workflow:
+      "was imported with `git subtree add`" does not mean "is still synced by
+      subtree" — an asset can be declared Store-native later (upstream retired
+      or deleted), yet commit history keeps the subtree traces and cannot reveal
+      the change. §0b now requires reading the registry `notes` for a declared
+      sync mode first. It also records a claim we got wrong: subtree pull does
+      NOT conflict (git uses merge-base and self-heals; verified zero-conflict on
+      2026-10-18), so "would conflict" must not be used as the test — only
+      "is there a usable upstream" counts. Still `testing`: 0.2.x cannot be
       `active` — VERSIONING.md §4 requires major >= 1 — and no trigger harness
       exists yet.
 
