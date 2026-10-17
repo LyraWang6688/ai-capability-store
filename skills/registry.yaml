@@ -45,7 +45,7 @@ skills:
     path: skills/store-publish
     scope: shared
     status: testing
-    version: 0.2.1
+    version: 0.2.2
     updated: "2026-10-18"
     notes: >
       The procedure this Store uses to onboard its own assets. Used end to end
@@ -59,9 +59,14 @@ skills:
       sync mode first. It also records a claim we got wrong: subtree pull does
       NOT conflict (git uses merge-base and self-heals; verified zero-conflict on
       2026-10-18), so "would conflict" must not be used as the test — only
-      "is there a usable upstream" counts. Still `testing`: 0.2.x cannot be
-      `active` — VERSIONING.md §4 requires major >= 1 — and no trigger harness
-      exists yet.
+      "is there a usable upstream" counts. v0.2.2 adds the third mode
+      `check_tag_version.py --missing`: default mode asks "is this tag safe",
+      --audit asks "does every tag tell the truth", and only --missing asks
+      "does every truth have a tag" — the blind spot that let three releases go
+      out untagged in October 2026. It runs weekly (.github/workflows/tag-audit.yml)
+      rather than in PR CI, where an untagged version bump is correct work.
+      Still `testing`: 0.2.x cannot be `active` — VERSIONING.md §4 requires
+      major >= 1 — and no trigger harness exists yet.
 
 allowed_statuses:
   - draft

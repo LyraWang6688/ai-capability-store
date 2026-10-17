@@ -232,6 +232,21 @@ python3 <store>/skills/store-publish/scripts/check_tag_version.py <asset-name> <
 
 - 退出 `0` = 可以打；退出 `10` = **不能打**（逐条说明原因）；`2` = 用法/环境错误
 - 想体检全仓已有的 tag：`check_tag_version.py --audit`
+- 想查有没有"登记了却没打 tag"的：`check_tag_version.py --missing`
+
+**三个模式问的是三个不同问题，缺一个就有一类缺口永远看不见：**
+
+```text
+默认模式    "我要打的这个 tag 安全吗"         只问你正要创建的那个
+--audit     "已有的每个 tag 说的是真话吗"     只看已经存在的 tag
+--missing   "每个登记版本都有 tag 吗"         只有它看得见【没人创建的 tag】
+```
+
+第三条是最容易漏的：默认模式根本没听说过那个 tag，`--audit` 也只遍历已存在的 tag。
+2026 年 10 月有三次发布是这样漏掉 tag 的（store-publish / teaming-*、
+github-portfolio-snapshot、wechat-draft-mcp 0.3.0），每次都是人工对两个清单才发现的。
+`--missing` 每周跑一次（`.github/workflows/tag-audit.yml`），**不放 PR CI** ——
+PR 里"升了版本还没打 tag"是正常状态，放进去会对正确的改动报错。
 
 **为什么不做进 `validate_store.py`**：那支验证器是**纯文件系统**的（不调 git、不调子进程），
 所以 tarball、浅克隆、`.git` 被剥掉的副本都能校验。tag 是 git 问题，属于另一个工具 ——

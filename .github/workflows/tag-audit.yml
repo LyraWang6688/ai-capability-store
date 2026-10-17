@@ -1,0 +1,42 @@
+# Tag coverage audit — the question `validate-store` cannot ask.
+#
+# `validate-store` runs on every PR and every push. This one runs on a schedule,
+# because its question is false by design inside a PR: "every version declared in
+# the registries must have its tag" is *supposed* to fail while a version bump is
+# sitting in an unmerged branch. Run there, it would fail on correct work.
+#
+# Run after the fact instead, it catches the real thing: an asset that was
+# uploaded, registered, and even published to npm, and never tagged. That happened
+# three times in October 2026 (store-publish / teaming-*, github-portfolio-snapshot,
+# wechat-draft-mcp 0.3.0) and each time was found by comparing two lists by hand.
+#
+# `--audit` is deliberately NOT here: three tags disagree with the registry at
+# their own commit, and that is being kept as an honest historical record
+# (Issue #23). A standing red build would train everyone to ignore it.
+#
+# Checkout defaults would silently defeat this job: fetch-depth: 1 with
+# fetch-tags: false makes every version look untagged, so the job would fail
+# loudly for the wrong reason. Both are set explicitly below.
+name: tag-audit
+
+on:
+  schedule:
+    # Mondays 09:00 Asia/Shanghai
+    - cron: "0 1 * * 1"
+  workflow_dispatch:
+
+jobs:
+  tag-coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dev dependencies
+        run: pip install -r requirements-dev.txt
+      - name: Every registered version has its tag
+        run: python3 skills/store-publish/scripts/check_tag_version.py --missing main

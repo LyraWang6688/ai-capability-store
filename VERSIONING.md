@@ -136,6 +136,18 @@ Three rules that only work together:
    points at is immutable. This cost three drifted tags in October 2026 and is
    exactly why (1) and (2) exist.
 
+The mirror image is just as quiet: **a version with no tag at all.** Default mode
+cannot see it — it is asked about a tag you are about to create, so the tags
+nobody created are exactly the ones it never hears about. `--audit` cannot see it
+either, because it only inspects tags that already exist. That blind spot produced
+three untagged releases in October 2026, each found by comparing two lists by hand.
+
+`--missing` asks the other question — for every `(asset, version)` in every peer
+Domain registry, does `<asset-name>-v<version>` exist? It runs on a schedule
+(`.github/workflows/tag-audit.yml`, weekly) rather than in PR CI, because inside a
+PR an untagged version bump is the normal state and the check would fail on
+correct work.
+
 If a new peer Domain is added, the check must learn it **in the same change**.
 `check_tag_version.py` fails loudly on a domain it does not recognise rather than
 skipping it — a checker that silently ignores the newest Domain is worse than no
