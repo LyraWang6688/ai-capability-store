@@ -109,10 +109,16 @@ deprecate(skill): deprecate <skill-name>
 archive(skill): archive <skill-name>
 feat(capability): add <capability-name>
 update(capability): update <capability-name>
+feat(automation): add <automation-name>
+update(automation): update <automation-name>
 chore(registry): update <domain> registry
 feat(store): <store-level change>
 docs(store): <store-level documentation>
 ```
+
+Tool-generated commits are exempt from this list. `git subtree add` writes its own
+message (`Add '<prefix>/' from commit '<sha>'`) and it must not be reworded — the
+trailers it carries are the sync anchor (see `skills/store-publish/references/iterate.md` §0c).
 
 ## Human Approval
 
