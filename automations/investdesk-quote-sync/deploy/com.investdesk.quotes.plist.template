@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Template. deploy/install.sh substitutes the @@ placeholders and writes the
+  result to ~/Library/LaunchAgents/. Do not load this file directly.
+
+  The Label below is literal (not a placeholder) because
+  scripts/validate_store.py cross-checks it against automations/registry.yaml —
+  an installed job whose Label disagrees with the registry is a job nobody is
+  tracking. install.sh may override it with LABEL=... and rewrites every
+  occurrence.
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.investdesk.quotes</string>
+
+  <!-- 入口是 automations/investdesk-quote-sync/sync.ts，Node 22.6+ 直接跑 TS -->
+  <key>ProgramArguments</key>
+  <array>
+    <string>@@NODE@@</string>
+    <string>@@CODE_DIR@@/sync.ts</string>
+  </array>
+
+  <!-- launchd 不继承 shell 的 PATH；lark-cli 是 `#!/usr/bin/env node` 脚本，
+       缺了 PATH 会在凌晨静默失败，所以解释器目录必须显式注入。 -->
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>@@TASK_PATH@@</string>
+    <key>LANG</key>
+    <string>zh_CN.UTF-8</string>
+    <!-- 代码在 Store 检出目录，状态（.env / .cache / inbox）在工作目录 -->
+    <key>INVESTDESK_HOME</key>
+    <string>@@WORK_DIR@@</string>
+  </dict>
+
+  <key>WorkingDirectory</key>
+  <string>@@WORK_DIR@@</string>
+
+  <!-- 每个 dict 是一次触发，多个 dict 之间是 OR。周一到周五 15:35 取场内收盘价，
+       21:30 再取一次以覆盖场外基金净值（QDII 更晚，属正常）。 -->
+  <key>StartCalendarInterval</key>
+  <array>
+    <dict><key>Weekday</key><integer>1</integer><key>Hour</key><integer>15</integer><key>Minute</key><integer>35</integer></dict>
+    <dict><key>Weekday</key><integer>2</integer><key>Hour</key><integer>15</integer><key>Minute</key><integer>35</integer></dict>
+    <dict><key>Weekday</key><integer>3</integer><key>Hour</key><integer>15</integer><key>Minute</key><integer>35</integer></dict>
+    <dict><key>Weekday</key><integer>4</integer><key>Hour</key><integer>15</integer><key>Minute</key><integer>35</integer></dict>
+    <dict><key>Weekday</key><integer>5</integer><key>Hour</key><integer>15</integer><key>Minute</key><integer>35</integer></dict>
+    <dict><key>Weekday</key><integer>1</integer><key>Hour</key><integer>21</integer><key>Minute</key><integer>30</integer></dict>
+    <dict><key>Weekday</key><integer>2</integer><key>Hour</key><integer>21</integer><key>Minute</key><integer>30</integer></dict>
+    <dict><key>Weekday</key><integer>3</integer><key>Hour</key><integer>21</integer><key>Minute</key><integer>30</integer></dict>
+    <dict><key>Weekday</key><integer>4</integer><key>Hour</key><integer>21</integer><key>Minute</key><integer>30</integer></dict>
+    <dict><key>Weekday</key><integer>5</integer><key>Hour</key><integer>21</integer><key>Minute</key><integer>30</integer></dict>
+  </array>
+
+  <key>StandardOutPath</key>
+  <string>@@WORK_DIR@@/.cache/quotes.log</string>
+  <key>StandardErrorPath</key>
+  <string>@@WORK_DIR@@/.cache/quotes.err.log</string>
+
+  <key>RunAtLoad</key>
+  <false/>
+  <key>ProcessType</key>
+  <string>Background</string>
+</dict>
+</plist>
