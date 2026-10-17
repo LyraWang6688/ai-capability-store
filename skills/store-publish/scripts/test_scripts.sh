@@ -190,6 +190,20 @@ expect 0  "resolves an asset in the automation domain" \
 expect 10 "applies the same version rule to automations" \
   "$PY" "$script_dir/check_tag_version.py" demo-automation 0.1.1 main
 
+# The other direction, and the one default mode is structurally blind to: it is
+# asked about a tag that is about to be created, so a tag nobody created is
+# exactly the case it never hears about. In the fixture, demo-mcp is tagged but
+# demo-skill and demo-automation are registered at 0.1.0 with no tag at all.
+expect 10 "missing mode finds registered versions with no tag" \
+  "$PY" "$script_dir/check_tag_version.py" --missing
+(
+  cd "$gitsrc"
+  git tag -a demo-skill-v0.1.0 -m "demo-skill v0.1.0"
+  git tag -a demo-automation-v0.1.0 -m "demo-automation v0.1.0"
+) >/dev/null 2>&1
+expect 0  "missing mode passes once every registered version is tagged" \
+  "$PY" "$script_dir/check_tag_version.py" --missing
+
 # A domain routed in registry.yaml but unknown to the check must fail LOUDLY.
 # Reporting success for a domain it never looked at is the failure this whole
 # script exists to prevent, so silently skipping the newest domain is worse than

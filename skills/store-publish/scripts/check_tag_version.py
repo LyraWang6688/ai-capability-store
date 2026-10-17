@@ -19,14 +19,20 @@ is a git question, and it belongs in its own tool — see Issue #23.
 Usage:
     python3 check_tag_version.py <asset-name> <version> [<commit>]
     python3 check_tag_version.py --audit
+    python3 check_tag_version.py --missing [<commit>]
 
     <version>  X.Y.Z or vX.Y.Z
-    <commit>   any rev; defaults to HEAD
+    <commit>   any rev; defaults to HEAD (— audit reads each tag; --missing
+               defaults to main)
 
 Modes:
     default   check one tag you are about to create
     --audit   check every existing tag in the repository (this is what catches
               drift after the fact)
+    --missing the other direction: every version declared in the registries must
+              have its tag. Default mode cannot catch this — it is asked about
+              one tag that is about to be created, so the tags nobody created
+              are exactly the ones it never hears about.
 
 Checks (default mode):
     1. the tag <asset-name>-v<version> does not already exist
@@ -34,6 +40,19 @@ Checks (default mode):
        (Skills / External Capabilities / Automations)
     3. at <commit>, that registry already carries this version
     4. <commit> is reachable from main — tags belong on merged history
+
+Checks (--audit mode):
+    for every tag: the registry at the commit the tag points to names that version
+
+Checks (--missing mode):
+    for every (asset, version) in every peer Domain registry at <commit>:
+    the tag <asset-name>-v<version> exists
+
+    This one has to be run deliberately — it belongs at the end of a release, not
+    in PR CI, where a version bump without a tag yet is the normal state. Its
+    absence from CI is why the same gap appeared three times in October 2026:
+    an asset was uploaded, registered, published to npm, and never tagged, and
+    nothing noticed until someone compared the two lists by hand.
 
 Exit codes:
     0   all checks passed — safe to tag
@@ -247,6 +266,56 @@ def audit(store: str) -> int:
     return 0
 
 
+def missing(store: str, commit: str = "main") -> int:
+    """Every version declared in the registries must have its tag.
+
+    Returns the number of registered versions with no tag.
+
+    This is the inverse of `audit()`. Audit asks "does every tag tell the
+    truth?"; this asks "does every truth have a tag?". Only the second question
+    notices an asset that was uploaded, registered and even published to npm but
+    never tagged — which is the failure mode `VERSIONING.md` §6 is written
+    against, and the one that recurred three times in October 2026. Default mode
+    cannot see it either: it is asked about a tag that is about to be created, so
+    the tags nobody created are exactly the ones it never hears about.
+    """
+    code, out = git(["tag", "-l"], store)
+    if code != 0:
+        fail("could not list tags")
+    tags = {t for t in out.splitlines() if t.strip()}
+
+    paths = registry_paths(store, commit)
+
+    def load(rel):
+        code, text = git(["show", f"{commit}:{rel}"], store)
+        return load_yaml_text(text) if code == 0 else None
+
+    checked = 0
+    absent = []
+    for domain, rel, entries in asset_sections(paths, load, fail):
+        for asset, record in sorted(entries.items()):
+            if not isinstance(record, dict):
+                continue
+            version = record.get("version")
+            if version is None:
+                continue
+            checked += 1
+            want = f"{asset}-v{normalise_version(str(version))}"
+            if want not in tags:
+                absent.append((domain, rel, asset, str(version)))
+
+    print(f"checked {checked} registered version(s) at {commit}")
+    if absent:
+        print()
+        for domain, rel, asset, version in absent:
+            print(f"  FAIL {asset}-v{version}: registered in {rel} ({domain}), but no such tag")
+        print(f"\n{len(absent)} registered version(s) have no tag")
+        return len(absent)
+
+    print("every registered version has its tag")
+    return 0
+
+
 def main() -> int:
     args = sys.argv[1:]
 
@@ -260,6 +329,10 @@ def main() -> int:
 
     if args and args[0] == "--audit":
         return 10 if audit(store) else 0
+
+    if args and args[0] == "--missing":
+        commit = args[1] if len(args) > 1 else "main"
+        return 10 if missing(store, commit) else 0
 
     if len(args) < 2:
         sys.stderr.write(__doc__)
