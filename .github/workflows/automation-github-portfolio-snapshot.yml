@@ -42,6 +42,10 @@ on:
         description: "Skip Feishu entirely (pure GitHub self-check, no scope needed)"
         type: boolean
         default: false
+      force:
+        description: "Overwrite an existing snapshot for the same period (DESTRUCTIVE: replaces that period's rows)"
+        type: boolean
+        default: false
 
 # Nothing is written back to the repository, so read-only is enough.
 permissions:
@@ -107,6 +111,15 @@ jobs:
             args="$args --no-base"
           elif [ "${{ inputs.dry-run }}" = "true" ]; then
             args="$args --dry-run"
+          fi
+          # --force only makes sense with a real write: pairing it with dry-run
+          # just prints the "already exists" note and writes nothing.
+          if [ "${{ inputs.force }}" = "true" ]; then
+            if [ "${{ inputs.dry-run }}" = "true" ] || [ "${{ inputs.no-base }}" = "true" ]; then
+              echo "::error::force requires dry-run=false and no-base=false"
+              exit 1
+            fi
+            args="$args --force"
           fi
           echo "running: snapshot.py $args"
           python3 automations/github-portfolio-snapshot/snapshot.py $args
