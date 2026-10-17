@@ -1,7 +1,8 @@
 /**
  * 飞书 OpenAPI 后端 —— 用自建应用的 tenant_access_token 直接调接口。
  *
- * 相比 lark-cli 后端，它不依赖本机 keychain，因此可以在云端 / CI / 定时函数里跑。
+ * 用自建应用的 tenant_access_token，不依赖本机 keychain，
+ * 因此本机 / 云端 / CI / 定时函数用的是同一条路径。
  * 代价是需要一次性配置：
  *   1. 在飞书开发者后台创建自建应用，拿到 app_id / app_secret
  *   2. 开通多维表格权限（bitable:app 或对应的记录读写 scope）
@@ -84,12 +85,12 @@ export class OpenApiBackend implements FeishuBackend {
   }
 
   /**
-   * OpenAPI 的记录形状和 lark-cli 的 ndjson 不一样：
+   * OpenAPI 返回的原始记录不能直接给上层用：
    *   - 字段值包在 `fields` 里
    *   - 单选返回字符串（不是数组）
    *   - 数字返回字符串
    *   - 关联字段是 `[{record_ids: [...], text}]`（不是 `[{id}]`）
-   * 这里统一归一化成 lark-cli 的形状，让上层 base.ts 不用关心后端。
+   * 这里归一化成扁平、稳定的形状，让 base.ts 不用关心平台细节。
    */
   private static normalize(record: Record<string, unknown>): RawRecord {
     const rawFields = record.fields;
