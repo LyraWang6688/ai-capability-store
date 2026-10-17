@@ -43,14 +43,22 @@ test('读回的字段与写入一致', () => {
 test('★ 配置文件补齐环境变量，但不覆盖已显式设置的', () => {
   const before = process.env.TEAMING_SERVER_URL;
   process.env.TEAMING_SERVER_URL = 'https://from-connector.test';   // 连接器里显式配的
-  delete process.env.DOUBAO_MODEL;
   try {
     applyStoredConfigToEnv();
     assert.equal(process.env.TEAMING_SERVER_URL, 'https://from-connector.test', '不该覆盖连接器里的值');
-    assert.equal(process.env.DOUBAO_MODEL, 'ep-test', '空缺的应当被补齐');
   } finally {
     if (before === undefined) delete process.env.TEAMING_SERVER_URL;
     else process.env.TEAMING_SERVER_URL = before;
+  }
+});
+
+test('★ 不再往环境里注入模型配置（分析在服务器跑，注入了反而误导）', () => {
+  for (const k of ['DOUBAO_MODEL', 'DOUBAO_API_KEY', 'DOUBAO_BASE_URL']) delete process.env[k];
+  applyStoredConfigToEnv();
+  // 旧行为会从 config.json 里把服务器下发的 model/baseUrl 写进 env，
+  // 让人以为"本机配了模型"。现在分析在服务器侧，本机不需要这些。
+  for (const k of ['DOUBAO_MODEL', 'DOUBAO_API_KEY', 'DOUBAO_BASE_URL']) {
+    assert.equal(process.env[k], undefined, `${k} 不该被注入`);
   }
 });
 
