@@ -1,0 +1,52 @@
+name: automation-investdesk-quote-sync
+
+# 每个交易日两次把持仓最新价格写回飞书多维表格。
+#
+# 为什么放在云端：本机 launchd 在关机/睡眠时不会执行。云端由 GitHub 托管，
+# 不依赖任何一台机器开机。执行器与认证方式的对应关系见
+# automations/registry.yaml 与 automations/investdesk-quote-sync/README.md。
+
+on:
+  schedule:
+    # GitHub cron 一律用 UTC。中国无夏令时，所以是固定偏移：
+    #   UTC 07:35 = 北京 15:35（A 股收盘后取场内价）
+    #   UTC 13:30 = 北京 21:30（场外基金净值公布后再取一次）
+    - cron: '35 7 * * 1-5'
+    - cron: '30 13 * * 1-5'
+  # 手动触发，用于首次验证和排障
+  workflow_dispatch:
+
+# 只读仓库；不需要写回任何东西（输出走飞书 API）
+permissions:
+  contents: read
+
+# 两次触发如果重叠，后一次等待而不是并发写同一张表
+concurrency:
+  group: investdesk-quote-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    env:
+      # 代码在 Store 检出目录，状态（.cache 等）在 runner 的工作目录下
+      INVESTDESK_HOME: ${{ github.workspace }}/.investdesk
+      # 走 OpenAPI 后端：自建应用凭据，不依赖任何本机 keychain
+      FEISHU_APP_ID: ${{ secrets.FEISHU_APP_ID }}
+      FEISHU_APP_SECRET: ${{ secrets.FEISHU_APP_SECRET }}
+      INVESTDESK_BASE_TOKEN: ${{ secrets.INVESTDESK_BASE_TOKEN }}
+      INVESTDESK_HOLDINGS_TABLE: ${{ secrets.INVESTDESK_HOLDINGS_TABLE }}
+      INVESTDESK_PLATFORMS_TABLE: ${{ secrets.INVESTDESK_PLATFORMS_TABLE }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # 入口是 TypeScript，Node 22.6+ 可原生执行（类型擦除），无需构建
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: 同步持仓价格
+        run: node automations/investdesk-quote-sync/sync.ts
