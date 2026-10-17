@@ -122,6 +122,19 @@ ALLOWED_SKILL_FRONTMATTER = {
 }
 ALLOWED_CAPABILITY_TYPES = {"plugin", "mcp", "connector", "cli", "external-api", "integration"}
 ALLOWED_CAPABILITY_STATUSES = {"available", "limited", "disabled", "unknown"}
+# Automation Domain. An automation is EXECUTION (a clock triggers it); a Skill is
+# a CAPABILITY (an Agent decides to use it). The lifecycle vocabulary mirrors
+# skills on purpose so one mental model covers both domains.
+ALLOWED_AUTOMATION_STATUSES = {"draft", "testing", "active", "deprecated", "archived"}
+# Classification ONLY. The authoritative cron lives in the bound workflow file;
+# duplicating it here would create a second source of truth that silently drifts
+# from what GitHub actually schedules. See automations/README.md.
+ALLOWED_TRIGGER_KINDS = {"daily", "weekly", "manual", "event"}
+# Automation output is high-frequency machine data; committing it to main would
+# bury the Store's asset history (one year of daily snapshots ~= 365 commits).
+AUTOMATION_OUTPUT_BRANCH = "data"
+AUTOMATION_WORKFLOW_PREFIX = ".github/workflows/"
+AUTOMATION_DIR = "automations"
 
 KEBAB_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 VERSION_RE = re.compile(r"^\d+\.\d+\.\d+$")
@@ -144,6 +157,9 @@ REQUIRED_POLICY_FILES = [
     "external-capabilities/registry.yaml",
     "external-capabilities/SECURITY.md",
     "dependencies/capability-map.yaml",
+    "automations/README.md",
+    "automations/registry.yaml",
+    "automations/LIFECYCLE.md",
     "tests/README.md",
     "templates/skill-eval-case.yaml",
     "templates/skill-acceptance-report.md",
@@ -547,6 +563,131 @@ def validate_capability_entries(reg: dict):
     return collected
 
 
+def validate_automation_entries(reg: dict):
+    """Validate automation record schema. Returns list of (key, entry).
+
+    Every field is required: an automation that omits `workflow` or `output`
+    would pass a looser validator while pointing at nothing runnable, and the
+    failure would only surface when the schedule silently stops producing data.
+    """
+    automations = reg.get("automations")
+    if automations is None:
+        check("automation registry has automations section", False, "missing section")
+        return []
+    if not isinstance(automations, dict):
+        check("automation registry automations is a mapping", False, type(automations).__name__)
+        return []
+    collected = []
+    for key, entry in automations.items():
+        if not isinstance(entry, dict):
+            check(f"automation record is a mapping: {key}", False, type(entry).__name__)
+            continue
+        collected.append((key, entry))
+        check(f"automation {key} identifier kebab-case", bool(KEBAB_RE.match(key)), f"key={key!r}")
+        for field in ("name", "path", "entrypoint", "status", "version", "updated",
+                      "trigger_kind", "workflow", "description"):
+            value = entry.get(field)
+            check(f"automation {key} has required field: {field}", value is not None,
+                  f"value={value!r}")
+            if value is not None:
+                check(f"automation {key} required field is non-empty string: {field}",
+                      isinstance(value, str) and len(value) > 0,
+                      f"value={value!r} type={type(value).__name__}")
+        check(f"automation {key} map key == name", key == entry.get("name"),
+              f"key={key!r} name={entry.get('name')!r}")
+
+        status = entry.get("status")
+        if status is not None:
+            check(f"automation {key} status legal", status in ALLOWED_AUTOMATION_STATUSES,
+                  f"status={status!r}")
+        trigger = entry.get("trigger_kind")
+        if trigger is not None:
+            check(f"automation {key} trigger_kind legal", trigger in ALLOWED_TRIGGER_KINDS,
+                  f"trigger_kind={trigger!r}")
+        version = entry.get("version")
+        if version is not None:
+            check(f"automation {key} version X.Y.Z",
+                  isinstance(version, str) and bool(VERSION_RE.match(version)),
+                  f"version={version!r}")
+        updated = entry.get("updated")
+        if updated is not None:
+            check(f"automation {key} updated is YYYY-MM-DD",
+                  isinstance(updated, str) and bool(DATE_RE.match(updated)),
+                  f"updated={updated!r}")
+
+        # path must be exactly automations/<key> and exist as a directory.
+        path = entry.get("path")
+        if isinstance(path, str) and path:
+            expected_path = f"{AUTOMATION_DIR}/{key}"
+            check(f"automation {key} path == {expected_path}", path == expected_path,
+                  f"path={path!r}")
+            parts = path.split("/")
+            check(f"automation {key} path relative",
+                  not os.path.isabs(path) and ".." not in parts, path)
+            check(f"automation {key} path is a directory",
+                  os.path.isdir(os.path.join(ROOT, path)), path)
+
+        # entrypoint must exist inside the automation directory.
+        entrypoint = entry.get("entrypoint")
+        if isinstance(path, str) and path and isinstance(entrypoint, str) and entrypoint:
+            check(f"automation {key} entrypoint has no path separators",
+                  "/" not in entrypoint and "\\" not in entrypoint, entrypoint)
+            entry_file = os.path.join(ROOT, path, entrypoint)
+            check(f"automation {key} entrypoint exists", os.path.isfile(entry_file),
+                  f"{path}/{entrypoint}")
+
+        # workflow must live under .github/workflows/ and exist.
+        workflow = entry.get("workflow")
+        if isinstance(workflow, str) and workflow:
+            parts = workflow.split("/")
+            check(f"automation {key} workflow relative",
+                  not os.path.isabs(workflow) and ".." not in parts, workflow)
+            check(f"automation {key} workflow under {AUTOMATION_WORKFLOW_PREFIX}",
+                  workflow.startswith(AUTOMATION_WORKFLOW_PREFIX), workflow)
+            workflow_file = os.path.join(ROOT, workflow)
+            exists = os.path.isfile(workflow_file)
+            check(f"automation {key} workflow exists", exists, workflow)
+            if exists:
+                # Text-level checks on purpose: PyYAML parses a bare `on:` key as
+                # boolean True (YAML 1.1), so parsing the workflow would need
+                # special-casing for the very block we care about.
+                with open(workflow_file, encoding="utf-8") as handle:
+                    body = handle.read()
+                if trigger != "manual":
+                    check(f"automation {key} workflow declares schedule:",
+                          "schedule:" in body,
+                          f"{workflow} has no schedule: block but trigger_kind={trigger!r}")
+                if isinstance(path, str) and path:
+                    check(f"automation {key} workflow references its directory",
+                          path in body, f"{workflow} never mentions {path}")
+
+        # output contract: the data branch and a path pattern are both required.
+        output = entry.get("output")
+        if output is None:
+            check(f"automation {key} has output contract", False, "missing output")
+        elif not isinstance(output, dict):
+            check(f"automation {key} output is a mapping", False, type(output).__name__)
+        else:
+            unknown = set(output.keys()) - {"branch", "path_pattern"}
+            check(f"automation {key} output has only allowed keys", not unknown,
+                  f"unknown fields: {sorted(unknown)}")
+            branch = output.get("branch")
+            check(f"automation {key} output branch is {AUTOMATION_OUTPUT_BRANCH}",
+                  branch == AUTOMATION_OUTPUT_BRANCH, f"branch={branch!r}")
+            pattern = output.get("path_pattern")
+            check(f"automation {key} output path_pattern is non-empty string",
+                  isinstance(pattern, str) and len(pattern) > 0, f"pattern={pattern!r}")
+            if isinstance(pattern, str) and pattern:
+                # NOTE: path_pattern is the location INSIDE the data branch, which
+                # has its own namespace and is unrelated to main's directory
+                # layout. Requiring it under automations/ would be wrong — the
+                # only constraints are relative + no traversal.
+                pattern_parts = pattern.split("/")
+                check(f"automation {key} output path_pattern is relative with no '..'",
+                      not os.path.isabs(pattern) and ".." not in pattern_parts, pattern)
+    return collected
+
+
 def discover_skill_packages():
     """Find skill packages on disk that contain SKILL.md.
 
@@ -628,7 +769,7 @@ def main() -> int:
     refs = check_mapping(top.get("registries"), "top-level registries")
     if refs is None:
         return report(1)
-    expected_domains = ("skills", "external_capabilities", "dependencies")
+    expected_domains = ("skills", "external_capabilities", "dependencies", "automations")
     check("top-level registry routes all domains", set(refs.keys()) == set(expected_domains),
           f"routes: {sorted(refs.keys())}")
     routed = {}
@@ -663,6 +804,11 @@ def main() -> int:
     if deps_ok:
         deps_reg = check_mapping(deps_reg, "dependency registry")
         deps_ok = deps_reg is not None
+    autos_rel = _routed("automations")
+    autos_reg, autos_ok = load_yaml(autos_rel) if autos_rel else (None, False)
+    if autos_ok:
+        autos_reg = check_mapping(autos_reg, "automation registry")
+        autos_ok = autos_reg is not None
 
     # ---- 3. Domain registry headers ----
     if skills_ok:
@@ -678,6 +824,17 @@ def main() -> int:
     if deps_ok:
         check("dependency registry schema_version", deps_reg.get("schema_version") == 1,
               f"got {deps_reg.get('schema_version')!r}")
+    if autos_ok:
+        check("automation registry schema_version", autos_reg.get("schema_version") == 1,
+              f"got {autos_reg.get('schema_version')!r}")
+        check("automation registry domain", autos_reg.get("domain") == "automations",
+              repr(autos_reg.get("domain")))
+        allowed_auto = set(autos_reg.get("allowed_statuses") or [])
+        check("automation registry keeps 5 lifecycle statuses",
+              allowed_auto == ALLOWED_AUTOMATION_STATUSES, f"allowed={sorted(allowed_auto)}")
+        allowed_trigger = set(autos_reg.get("allowed_trigger_kinds") or [])
+        check("automation registry keeps 4 trigger kinds",
+              allowed_trigger == ALLOWED_TRIGGER_KINDS, f"kinds={sorted(allowed_trigger)}")
         check("dependency registry dependencies is a list",
               isinstance(deps_reg.get("dependencies"), list),
               type(deps_reg.get("dependencies")).__name__)
@@ -797,6 +954,30 @@ def main() -> int:
                         required = req.get("required")
                         check(f"dependency {i}.requires[{j}] required is a boolean",
                               isinstance(required, bool), repr(required))
+
+    # ---- 13. Automation schema + registry <-> filesystem symmetry ----
+    auto_entries = validate_automation_entries(autos_reg) if autos_ok else []
+    registered_auto_paths = set()
+    for key, entry in auto_entries:
+        entry_path = entry.get("path")
+        if isinstance(entry_path, str) and entry_path:
+            registered_auto_paths.add(entry_path.rstrip("/"))
+    automations_base = os.path.join(ROOT, AUTOMATION_DIR)
+    if os.path.isdir(automations_base):
+        for name in sorted(os.listdir(automations_base)):
+            if name.startswith("."):
+                continue
+            if not os.path.isdir(os.path.join(automations_base, name)):
+                continue  # metadata files (README.md, registry.yaml) are not automations
+            rel = f"{AUTOMATION_DIR}/{name}"
+            check(f"filesystem automation directory kebab-case: {rel}",
+                  bool(KEBAB_RE.match(name)), name)
+            check(f"filesystem automation is registered: {rel}", rel in registered_auto_paths,
+                  "automation directory exists but has no registry entry")
+    for rel in sorted(registered_auto_paths):
+        check(f"registered automation exists on disk: {rel}",
+              os.path.isdir(os.path.join(ROOT, rel)),
+              "registry entry points at a missing directory")
 
     # ---- Required policy / asset files ----
     for rel in REQUIRED_POLICY_FILES:

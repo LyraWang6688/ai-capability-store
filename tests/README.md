@@ -4,6 +4,7 @@
 
 - `tests/skills/` — evaluation harnesses and fixtures for the Skill Domain
 - `tests/external-capabilities/` — evaluation harnesses and fixtures for the External Capability Domain
+- `tests/automations/` — evaluation cases for the Automation Domain (executable tests live in `automations/<name>/test_*.py`)
 
 ## Skill Test Layout
 

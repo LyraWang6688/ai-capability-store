@@ -1,0 +1,62 @@
+# Automation Domain Registry
+# Source of Truth for: automation identity / path / lifecycle status / version /
+# trigger kind / bound workflow / output contract.
+#
+# The cron expression is NOT recorded here. It lives only in the bound workflow
+# file — see automations/README.md §"The cron lives in exactly one place".
+schema_version: 1
+
+domain: automations
+description: Automation identity, path, lifecycle status, version, trigger kind, bound workflow, output contract.
+
+allowed_statuses:
+  - draft
+  - testing
+  - active
+  - deprecated
+  - archived
+
+allowed_trigger_kinds:
+  - daily
+  - weekly
+  - manual
+  - event
+
+automations:
+  github-trending-daily:
+    name: github-trending-daily
+    path: automations/github-trending-daily
+    entrypoint: scan.py
+    status: testing
+    version: 0.1.0
+    updated: "2026-10-17"
+    trigger_kind: daily
+    workflow: .github/workflows/automation-github-trending-daily.yml
+    output:
+      branch: data
+      path_pattern: "trending/{date}.json"
+    description: >
+      采集 GitHub Trending 日榜与周榜、以及近 7 天新建的高星仓库，附话题频次直方图，
+      以 JSON 快照写入 data 分支。
+    notes: >
+      云端采集端，解决「DSH 未运行或电脑关机时数据断档」。只采集事实，不产出结论：
+      话题判断、可复用分析、与项目的关联仍由 DSH 会话内完成。只读网络，不写 main。
+
+  github-trending-weekly:
+    name: github-trending-weekly
+    path: automations/github-trending-weekly
+    entrypoint: aggregate.py
+    status: testing
+    version: 0.1.0
+    updated: "2026-10-17"
+    trigger_kind: weekly
+    workflow: .github/workflows/automation-github-trending-weekly.yml
+    output:
+      branch: data
+      path_pattern: "trending/weekly-{date}.json"
+    description: >
+      读取 data 分支最近 7 天的日快照，聚合出话题持续度、仓库一周净增星、
+      一日热度与常驻项目，写入 data 分支。
+    notes: >
+      消费 github-trending-daily 的快照。不足 3 天数据时只报 note，不硬下趋势结论。
+      weekly 不得在 daily 仍为 active/testing 时被归档。

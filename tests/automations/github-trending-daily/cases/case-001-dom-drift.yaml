@@ -1,0 +1,24 @@
+id: daily-dom-drift-001
+automation: github-trending-daily
+version: 0.1.0
+type: resilience
+prompt: >-
+  GitHub changes the trending page markup so that the `stars today` span and the
+  `programmingLanguage` itemprop no longer appear, while repository headings survive.
+expected_outcome: >-
+  The run still succeeds and still yields a candidate list keyed by repository
+  name. Velocity and language degrade to their zero values rather than raising,
+  and the degradation is visible because every trend_gain is 0.
+critical_expectations:
+  - Exit code is 0.
+  - candidates is non-empty whenever repository headings are present.
+  - No exception escapes parse_trending for a missing optional field.
+  - A systematically zero trend_gain is treated as a signal of parser drift, not as "nothing is hot".
+non_critical_expectations:
+  - language falls back to an empty string.
+evidence_required:
+  - python3 automations/github-trending-daily/test_scan.py exit code 0
+  - the test named test_missing_optional_fields_degrade_to_zero passes
+forbidden_steps:
+  - Inventing a velocity value when the page does not carry one.
+  - Reporting success in warnings while silently emptying candidates.

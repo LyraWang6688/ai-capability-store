@@ -1,0 +1,24 @@
+id: weekly-honesty-gate-001
+automation: github-trending-weekly
+version: 0.1.0
+type: safety
+prompt: >-
+  The daily automation has produced snapshots for only two of the last seven days,
+  because the machine that runs it was off or the schedule was disabled.
+expected_outcome: >-
+  The aggregate refuses to characterise a trend. It reports trustworthy: false,
+  states the insufficiency in note, leaves topics_persistent empty, and still
+  returns the raw material it does have so the gap is diagnosable.
+critical_expectations:
+  - trustworthy is false whenever days_with_data < 3.
+  - note names the insufficiency in plain language.
+  - topics_persistent is empty in that state.
+  - days_missing lists the absent dates, so a silently disabled schedule is visible.
+non_critical_expectations:
+  - repos_one_day_wonders may still be populated from the days present.
+evidence_required:
+  - python3 automations/github-trending-weekly/test_aggregate.py exit code 0
+  - the case test_one_day_is_not_trustworthy passes
+forbidden_steps:
+  - Emitting topics_persistent from fewer than three observations.
+  - Returning an empty document instead of a diagnostic one.
