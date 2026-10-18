@@ -18,7 +18,14 @@
 ## 1. 数据来源约束（不可协商）
 
 - 数据**只来自 `data` 分支**（云端采集）。本地不跑采集脚本、不做网络抓取。
-- 先跑 `daily/sync_from_cloud.py --days 7 --json`，看 `today_available`。
+- 先同步（把本地缺失的天从 data 分支补下来）：
+
+```bash
+python3 ~/Documents/workplace/ai-capability-store/automations/github-trending/daily/sync_from_cloud.py \
+  --days 7 --json
+```
+
+看输出的 `today_available`。
 - `today_available = false` → 直接说「今天云端数据缺失」，给出诊断方向
   （去 Actions 看 `automation-github-trending-daily` 的最近一次运行）。
   **不许用昨天的数据冒充今天，不许编任何数字。**
@@ -205,5 +212,44 @@
 
 **这类判断日报告诉不了，是周报存在的理由。**
 
-周报前必须看聚合结果的 `trustworthy`：为 `false` 时只报「本周数据不足 N 天，
-趋势判断不可靠」，**不硬做结论**。
+**周报先跑聚合**（本地算，不联网）：
+
+```bash
+python3 ~/Documents/workplace/ai-capability-store/automations/github-trending/weekly/aggregate.py \
+  --data-dir ~/.automation-state/github-trending/trending
+```
+
+看返回的 `trustworthy`：为 `false` 时只报「本周数据不足 N 天，趋势判断不可靠」，
+**不硬做结论**。同时也别忘看 `topics_persistent` / `topics_emerging` /
+`repos_climbing_by_stars` —— 周报的判据用它们，不用 `trend_frequency`。
+
+## 7. 产出 HTML
+
+文字版写完后，产一份 HTML。渲染器在 [`render_report.py`](./render_report.py)。
+
+**第一步：把报告内容写成 content JSON**
+schema 见 `render_report.py` 顶部的文档字符串。
+
+**第二步：渲染**
+
+```bash
+python3 ~/Documents/workplace/ai-capability-store/automations/github-trending/render_report.py \
+  <content.json> \
+  -o ~/.automation-state/github-trending/reports/<日期>-<daily|weekly>.html
+```
+
+**ECharts 依赖**：默认找
+`~/.automation-state/github-trending/reports/vendor/echarts.min.js`。
+缺了会报错并给出取包命令 —— **不静默降级**。
+
+**分工**：脚本只管排版，内容全在 content JSON 里。
+**不要为了填满某节而硬凑。**
+
+**输出是单文件**（ECharts 内联），离线可用、可分享。
+
+## 8. 相关文档
+
+- [`daily/README.md`](./daily/README.md) — 采集脚本的输出契约
+- [`interests.yaml`](./interests.yaml) — 关注清单
+- [`ARCHITECTURE.md`](./ARCHITECTURE.md) — 整条管线怎么跑、改一处影响什么
+- [`README.md`](./README.md) — 这个 family 为什么存在
