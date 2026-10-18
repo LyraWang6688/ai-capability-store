@@ -63,11 +63,13 @@ the operator's interests), the interests mapping, the 2×2 positioning matrix, a
 the anti-fabrication rules — is a separate contract:
 
 - [`REPORT-CONTRACT.md`](./REPORT-CONTRACT.md) — the structure, non-negotiable rules
-- [`interests.example.yaml`](./interests.example.yaml) — the interests schema
+- [`interests.yaml`](./interests.yaml) — what the operator currently cares about,
+  with the schema documented inline
 
-The real interests file is **not** in this repository (it is personal context and
-this repo is public); it lives at
-`~/.automation-state/github-trending/interests.yaml`.
+`interests.yaml` **is** in this repository on purpose: its content is technical
+directions plus already-public project names, so it is not sensitive — and
+keeping it here makes it versioned (you can see how the focus evolved),
+reviewable, and portable across machines.
 
 The contract is here rather than only in the agent's schedule prompt so the
 structure is versioned and reviewable — a prompt living in a local

@@ -1,0 +1,86 @@
+# 关注清单 — 每日 / 周度报告的维度二就靠这个文件
+#
+# 报告的权威结构在 [`REPORT-CONTRACT.md`](./REPORT-CONTRACT.md)：
+#   · 维度一 1.3「这些和我的关注有什么关联」要读本文件
+#   · 维度二「我关注的方向上，有没有人在做相似的事」整段要读本文件
+#
+# 为什么在仓库里而不是本地：内容是技术方向 + 已公开的项目名，不涉隐私；
+# 放进仓库才能版本化（能看到关注怎么演变）、才能 review、才能随机器迁移。
+#
+# 维护约定：
+#   1. 用户表达新的关注方向 → 加一条，并把 updated 改成当天
+#   2. 某个 core 连续多周「没看到有人在做 + 我也没进展」→ 降级或删除
+#   3. 方向做完了 → 直接删，不要在 open_questions 里留僵尸条目
+
+updated: "2026-10-18"
+
+# 三级，决定报告里给多少注意力
+levels:
+  core: "直接相关 —— 必须给结论（有/没有进展 + 有没有人在做相似的事），没有就明写没有"
+  watch: "在关注 —— 有值得看的就说，没有就整条跳过，不写占位"
+  observe: "留意 —— 只在特别相关时提一句"
+
+# 字段说明：
+#   name            必填。方向名，报告里直接用这个标题
+#   level           必填。core / watch / observe
+#   question        必填。待解的问题，不是领域名词
+#   keywords        建议填。用于匹配 topic_frequency 和仓库 topics
+#   current_state   建议填。已经做到哪了；报告判断处境时要用
+#   open_questions  建议填。还缺什么；周报「下周值得盯」从这里挑
+
+interests:
+  - name: 自动化分层与稳定性
+    level: core
+    question: "API → 协议/CLI → UI 元素树 → 截图视觉，怎么选、怎么定优先级"
+    keywords: [computer-use, gui-agent, browser-automation, cdp, applescript, accessibility, ui-automation]
+    current_state: "已确认四层优先级原则；已收集 UI-TARS-desktop / browser-use / OmniParser / macos-automator-mcp / Hammerspoon"
+    open_questions: "Mac 上哪些场景该用 AppleScript/CLI 而不是 GUI agent；GUI 方案什么时候该迁走"
+
+  - name: AI Capability Store
+    level: core
+    question: "能力资产怎么组织、分发、版本化；registry 该长什么样"
+    keywords: [agent-skills, skill, registry, plugin, mcp, distribution, marketplace]
+    current_state: "Store 已分三域（skills / external-capabilities / automations），有 store-publish 与 registry 契约；技能约 36 个；优质项目收录表 20 条"
+    open_questions: "36 个 skill 之后要不要分层（对照 android/skills 的三层结构）；插件分发要不要做"
+
+  - name: DSH 插件与 MCP
+    level: core
+    question: "什么能力值得做成 DSH 插件、什么只配做成 MCP；边界在哪"
+    keywords: [dsh, dsh-plugin, cordis, mcp, mcp-server, computer-use]
+    current_state: "本机装了 chrome-devtools / playwright 两个 MCP；尚未做任何 DSH 插件"
+    open_questions: "Store 查询要不要做成 DSH 插件；MCP 与插件的能力边界"
+
+  - name: 飞书自动化
+    level: core
+    question: "飞书能自动化到什么程度：Base / 消息 / 审批 / 文档"
+    keywords: [feishu, lark, bitable, base, openapi, approval]
+    current_state: "lark-cli + 专用飞书应用（6 个 base scope）；已有月度快照 / 优质项目收录 / 日周报三类自动化"
+    open_questions: "还有哪些飞书能力值得自动化"
+
+  - name: 移动端自动化
+    level: watch
+    question: "手机能不能像 PC 一样被编排；哪些场景真值得做"
+    keywords: [mobile, android, ios, appium, maestro, mobile-mcp, adb, xcuitest]
+    current_state: "已了解 mobile-next/mobile-mcp、callstack/agent-device、Appium、Maestro、Detox；当前没有移动端产品"
+    open_questions: "有没有『手机批量操作某个 App』的合规做法"
+
+  - name: 个人 IP 与项目记忆
+    level: watch
+    question: "跨工具、跨会话的项目记忆怎么持久化"
+    keywords: [memory, context, agents-md, knowledge-base, context-window]
+    current_state: "lyra-project-memory-hub + AGENTS.md 体系"
+    open_questions: "上下文压缩与记忆持久化的分工"
+
+  - name: InvestDesk
+    level: watch
+    question: "投资相关的数据与工作流自动化"
+    keywords: [investment, finance, market-data, quote, backtest]
+    current_state: "investdesk-quote-sync 已迁到 GitHub Actions"
+    open_questions: ""
+
+  - name: 公众号产线
+    level: observe
+    question: "内容生产的自动化：排版、配图、配音、发布"
+    keywords: [wechat, content, publishing, tts, video, html-css]
+    current_state: "wechat-draft-capability + 排版技能"
+    open_questions: ""
