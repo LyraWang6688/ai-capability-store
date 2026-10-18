@@ -26,12 +26,12 @@ capabilities:
     type: mcp
     status: limited
     provider_path: external-capabilities/providers/wechat/README.md
-    version: 0.3.0
+    version: 0.3.1
     implementation_path: external-capabilities/mcp/wechat-draft-mcp
     auth: "宿主注入环境变量 WECHAT_APP_ID / WECHAT_APP_SECRET，用于换取 access_token；调用方出口 IP 必须加入公众号 IP 白名单"
     capabilities: "把磁盘上的文章文件夹创建或**原地更新**为微信草稿：上传前预检、创建/更新草稿、按 media_id 读回核对；另提供受控的删除能力（草稿/永久素材/已发布文章），默认关闭，需宿主显式开启 WECHAT_ALLOW_DESTRUCTIVE=1 并二次确认。**正式发布与群发永不由本能力执行**"
     permissions: "需要公众号的草稿箱、永久素材与发布接口权限：draft/add、draft/get、draft/update、draft/delete、draft/count、media/uploadimg、material/add_material、material/del_material、freepublish/getarticle、freepublish/delete，并需将出口 IP 加入白名单；未认证个人订阅号实测可用。破坏性接口默认关闭，开启后每条删除都会先本地备份并写入审计"
-    notes: "自研、Store-managed。**同步模式：以 Store 为唯一准据（canonical）。本目录是唯一副本。**独立源仓库 `~/Documents/workplace/wechat-draft-mcp` 已于 2026-10-18 退休（代码、测试与文档全部并入本目录，历史经 git subtree 保留）。0.3.0 起：9 个 MCP 工具 + 9 条 CLI 命令，覆盖创建/更新/受控删除；自动化测试数量以 `npm test` 实际输出为准，本文件不记数字"
+    notes: "自研、Store-managed。**同步模式：以 Store 为唯一准据（canonical）。本目录是唯一副本。**独立源仓库 `~/Documents/workplace/wechat-draft-mcp` 已于 2026-10-18 退休（代码、测试与文档全部并入本目录，历史经 git subtree 保留）。0.3.0 起：9 个 MCP 工具 + 9 条 CLI 命令，覆盖创建/更新/受控删除；自动化测试数量以 `npm test` 实际输出为准，本文件不记数字 0.3.1 补上 package.json 的 repository 字段（此前 npm 页面上没有源码链接，`npm repo` 直接报 no repository）。"
 
   teaming-mcp:
     name: teaming-mcp
