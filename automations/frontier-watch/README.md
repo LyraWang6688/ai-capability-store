@@ -38,14 +38,16 @@
 飞书控制台还要做两件事（脚本做不了）：给应用授予 `base:record:read` / `base:record:create` /
 `base:field:read` 等 scope 并发布版本；把该应用加为目标 Base 的**可编辑协作者**。
 
-### 有新条目时发飞书消息（可选）
+### 有新条目时私聊通知（可选）
 
-1. 在一个群里加「自定义机器人」，复制它的 webhook 地址；
-2. 存成仓库 Secret `FEISHU_NOTIFY_WEBHOOK`；
-3. 有新增时 workflow 会推一条文本摘要（最多列 8 条 + Base 链接）；
-4. 想立刻验证：Actions → Run workflow → 勾选 `notify-test`。
+默认走**私聊**：用写 Base 的同一个飞书应用（应用身份）把摘要发到操作者的 p2p 会话。
 
-未配置该 Secret 时通知自动跳过，不影响写入。
+1. Secret `FEISHU_NOTIFY_CHAT_ID` = 机器人与操作者的私聊 `chat_id`（`oc_…`）；
+2. 有新增时推一条文本摘要（最多 8 条 + Base 链接）；
+3. 想立刻验证：Actions → Run workflow → 勾选 `notify-test`；
+4. 若私聊失败，可再配 `FEISHU_NOTIFY_WEBHOOK`（群自定义机器人）作为兜底。
+
+两者都未配置时通知自动跳过，不影响写入。
 
 ## 代码 vs 状态
 
