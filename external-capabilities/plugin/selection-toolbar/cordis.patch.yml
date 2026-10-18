@@ -1,0 +1,3 @@
+- insert:
+    - id: selection-toolbar
+      name: '@local/selection-toolbar'

@@ -60,3 +60,16 @@ capabilities:
     permissions: "飞书侧需要 docs 与 base 两个资源域的读写授权（以 lark-cli profile 实际授权为准）；MCP 侧按工具分别要求 docs:read、docs:write、base:read、base:write。写操作另需 confirm=true"
     notes: "自研、Store-managed。来源仓库为独立 git 仓库，已通过 git subtree 导入并保留完整提交历史。status 取 limited：需要 lark-cli 1.0.93+ 与一个已认证的 profile，远端模式还需 Auth0 + HTTPS，并非装上即用。包内 .agents/skills/feishu-mcp-tool-extension/ 为开发资料，不在 Store Skill 域登记。不经 npm 分发：它是自托管 HTTP 服务（nginx + pm2 + OAuth），没有 bin，deploy/ 含生产基础设施标识 —— 见 PUBLISHING.md §D"
 
+  selection-toolbar:
+    name: selection-toolbar
+    provider: lyrawang
+    type: plugin
+    status: limited
+    provider_path: external-capabilities/providers/lyrawang/README.md
+    version: 0.1.0
+    implementation_path: external-capabilities/plugin/selection-toolbar
+    auth: "无凭据入仓。写飞书文档复用操作者本机已认证的 lark-cli profile（用户身份）；目标文档 token 与 lark-cli 路径存放在仓库外的 `~/.dsh/selection-toolbar.json`（600 权限），可用环境变量 `DSH_SELECTION_TOOLBAR_CONFIG` 覆盖配置路径。插件自身不接收、不保存、不记录任何凭据值"
+    capabilities: "DSH 对话内的选区工具条：鼠标划选文字后浮出 复制 / 追问 / 注释 三个动作。复制=写入剪贴板；追问=把选中文字插入 DSH 输入框（不自动发送）；注释=把「原文引用 + 注释 + 北京时间」追加到配置指定的飞书文档末尾，并在本机 localStorage 留一份离线副本"
+    permissions: "需要操作者本机安装并授权 lark-cli（用户身份，具备目标文档的编辑权限）以完成飞书写入；复制与追问不需要任何额外权限。宿主侧仅注册一个同源本地接口 `/plugins/selection-toolbar/note`（POST），不开放外部网络监听"
+    notes: "自研、Store-managed。首次登记：全新资产，从未进过版本控制，本次提交为其第一份历史（按 first-publish §0 ② 直接复制）。依赖 DSH 桌面端（提供 `shell.overlay` 槽位与插件安装与管理器）与 lark-cli 1.0.x；未配置 docToken 时注释只写本地并在界面回显原因。status 取 limited：不是装上即用，需按 README 创建一次操作者配置并重启 DSH。2026-10-19 实测证据：宿主路由 `GET /plugins/selection-toolbar/note` 返回 405（已加载）；飞书文档 revision 5 → 6 → 7 各追加一条；时间戳由 `<sub>` 改为纯文本北京时间后显示为 `时间：2026/10/19 02:11`。包名 `@local/selection-toolbar` 为开发期名称，同时是 DSH 插件 id，改名需同步改 client loader id 并重装。"
+

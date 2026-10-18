@@ -10,7 +10,7 @@
 | 平台 | 无（自研自托管：底层服务由本人自建，不存在第三方平台） |
 | 官方开放接口 | 不适用 |
 | 官方 CLI | 不适用 |
-| 本 Store 下的能力 | [`teaming-mcp`](../../mcp/teaming-mcp/) |
+| 本 Store 下的能力 | [`teaming-mcp`](../../mcp/teaming-mcp/) · [`selection-toolbar`](../../plugin/selection-toolbar/) |
 
 ## 为什么自研能力挂 lyrawang
 
@@ -33,6 +33,10 @@
 
 （`provider` **不是**维护方字段：本 Store 只收 Store-managed 能力，
 维护方恒为本人，那样的字段没有信息量。）
+
+`selection-toolbar` 同理：它做的事（划选文字后浮出工具条、把注释追加到飞书文档）是我们自己设计的
+产品形态；飞书只是它调用的下游（经操作者本机的 `lark-cli` 授权），并不是"飞书提供的选区工具条"。
+如果按飞书归类，会让人误以为这是飞书自带的能力。
 
 ## 认证模型（仅元数据）
 
