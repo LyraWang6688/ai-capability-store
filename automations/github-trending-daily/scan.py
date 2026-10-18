@@ -33,23 +33,10 @@ NEW_REPO_DAYS = 7
 NEW_REPO_MIN_STARS = 200
 TOPIC_MIN_REPOS = 2
 
-# Repositories already curated into the owner's "GitHub 优质项目收录" table.
-# Kept here so a scheduled run does not re-surface things already reviewed.
-# This is public, non-sensitive metadata: every entry is a well-known public repo.
-COLLECTED = {
-    "agentsmd/agents.md",
-    "anthropics/skills",
-    "vercel-labs/agent-skills",
-    "vercel-labs/skills",
-    "modelcontextprotocol/registry",
-    "tailscale/tailscale",
-    "rustdesk/rustdesk",
-    "Genymobile/scrcpy",
-    "sumatrapdfreader/sumatrapdf",
-    "ChromeDevTools/chrome-devtools-mcp",
-    "microsoft/playwright-mcp",
-    "AgentDeskAI/browser-tools-mcp",
-}
+# NOTE: this module deliberately knows nothing about the owner's curated list.
+# "Is this repo already collected?" is an *analysis*-side judgement (it needs the
+# Feishu table), so it lives in REPORT-CONTRACT.md §2, not here. Keeping the
+# collector neutral also means the curated list can grow without a code change.
 
 # Noise heuristic: obvious non-fits that would otherwise crowd the top of the
 # velocity ranking. A very high single-day gain overrides the filter.
@@ -209,12 +196,9 @@ def main() -> int:
     warnings: list[str] = []
     merged, scanned = collect(warnings)
 
-    excluded_collected = sorted(r for r in merged if r in COLLECTED)
     excluded_noise: list[str] = []
     candidates: list[dict] = []
     for repo, item in merged.items():
-        if repo in COLLECTED:
-            continue
         blob = f"{repo} {item['desc']}".lower()
         if any(marker in blob for marker in NOISE_MARKERS) and item["trend_gain"] < 300:
             excluded_noise.append(repo)
@@ -242,7 +226,6 @@ def main() -> int:
         "automation": "github-trending-daily",
         "total_scanned": scanned,
         "warnings": warnings,
-        "excluded_already_collected": excluded_collected,
         "excluded_noise": sorted(excluded_noise),
         "topic_frequency": topic_frequency,
         "candidates": candidates,

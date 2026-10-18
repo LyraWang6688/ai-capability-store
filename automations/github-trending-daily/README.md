@@ -23,12 +23,16 @@ One JSON document on stdout:
   "automation": "github-trending-daily",
   "total_scanned": 22,
   "warnings": [],
-  "excluded_already_collected": ["..."],
   "excluded_noise": ["..."],
   "topic_frequency": [{"topic": "mcp", "repos": 5}],
   "candidates": [{"repo": "owner/name", "stars": 1234, "trend_gain": 56, "topics": ["mcp"]}]
 }
 ```
+
+The collector is deliberately **neutral about the curated list**: it does not
+know which repos are already in the owner's Feishu table, so there is no
+"already collected" field. That classification is the analysis side's job — see
+[`REPORT-CONTRACT.md`](./REPORT-CONTRACT.md) §2.
 
 `topic_frequency` is the field an Agent reads first: it answers *what the AI
 ecosystem is paying attention to today* without any interpretation.

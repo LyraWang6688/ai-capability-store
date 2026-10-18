@@ -80,35 +80,48 @@ class TestParseTrending(unittest.TestCase):
 class TestFiltering(unittest.TestCase):
     def _filter(self, merged):
         """Reproduce main()'s filtering without touching the network."""
-        excluded_collected, excluded_noise, candidates = [], [], []
+        excluded_noise, candidates = [], []
         for repo, item in merged.items():
-            if repo in scan.COLLECTED:
-                excluded_collected.append(repo)
-                continue
             blob = f"{repo} {item['desc']}".lower()
             if any(m in blob for m in scan.NOISE_MARKERS) and item["trend_gain"] < 300:
                 excluded_noise.append(repo)
                 continue
             candidates.append(item)
-        return excluded_collected, excluded_noise, candidates
-
-    def test_collected_repository_is_excluded(self):
-        merged = {"tailscale/tailscale": {"repo": "tailscale/tailscale", "desc": "", "trend_gain": 999}}
-        collected, _, candidates = self._filter(merged)
-        self.assertEqual(collected, ["tailscale/tailscale"])
-        self.assertEqual(candidates, [])
+        return excluded_noise, candidates
 
     def test_noise_below_threshold_is_excluded(self):
         merged = {"someone/ai-job-search": {"repo": "someone/ai-job-search", "desc": "", "trend_gain": 10}}
-        _, noise, candidates = self._filter(merged)
+        noise, candidates = self._filter(merged)
         self.assertEqual(noise, ["someone/ai-job-search"])
         self.assertEqual(candidates, [])
 
     def test_noise_with_big_gain_survives(self):
         merged = {"someone/ai-job-search": {"repo": "someone/ai-job-search", "desc": "", "trend_gain": 900}}
-        _, noise, candidates = self._filter(merged)
+        noise, candidates = self._filter(merged)
         self.assertEqual(noise, [])
         self.assertEqual(len(candidates), 1)
+
+
+class TestCollectorNeutrality(unittest.TestCase):
+    """The collector must not know about the curated list.
+
+    Which candidates are already collected is an analysis-side judgement
+    (REPORT-CONTRACT.md §2) — keeping it out of the collector means the curated
+    list can grow without a code change, and block 2 of the report can still
+    see the repos it needs.
+    """
+
+    def test_module_has_no_collected_list(self):
+        self.assertFalse(
+            hasattr(scan, "COLLECTED"),
+            "scan must stay neutral: the curated list belongs to the analysis side",
+        )
+
+    def test_curated_repo_still_reaches_candidates(self):
+        merged = {"tailscale/tailscale": {"repo": "tailscale/tailscale", "desc": "", "trend_gain": 999}}
+        noise, candidates = TestFiltering()._filter(merged)
+        self.assertEqual(noise, [])
+        self.assertEqual([c["repo"] for c in candidates], ["tailscale/tailscale"])
 
 
 if __name__ == "__main__":
