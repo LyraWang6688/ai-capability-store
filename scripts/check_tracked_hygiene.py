@@ -5,12 +5,15 @@
 subprocess, so a tarball or a shallow checkout still validates. That property is
 worth keeping, which is why "is this file tracked?" lives in its own tool.
 
-Why this exists. `external-capabilities/mcp/investdesk-ideas` committed its
-`node_modules/`: 671 files, 74% of everything tracked in the repository. Every
-asset was registered, every tag agreed with its registry, the validator reported
-a clean run — and nothing was asking this question. The cost is not disk (it
-compressed well); it is that three quarters of the file list became someone
-else's source, so grepping, walking and reviewing all drown.
+Why this exists. `external-capabilities/mcp/investdesk-ideas` (since retired and
+deleted) once committed its `node_modules/`: 671 files, 74% of everything tracked
+at the time. Every asset was registered, every tag agreed with its registry, the
+validator reported a clean run — and nothing was asking this question. The cost is
+not disk (it compressed well); it is that three quarters of the file list became
+someone else's source, so grepping, walking and reviewing all drown.
+
+The asset is gone; the lesson is the reason this gate exists, so it stays written
+down here rather than being tidied away with the directory.
 
 Forbidden anywhere in the tracked tree:
     node_modules/   __pycache__/   .venv/   dist-test/
