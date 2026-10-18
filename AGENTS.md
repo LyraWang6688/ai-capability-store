@@ -8,16 +8,17 @@ Any Agent (human or AI) modifying this repository MUST read, in order, before ma
 4. `VERSIONING.md` (store-wide versioning contract)
 5. `SKILL-FORMAT.md` (asset format contract — the whitelist the external
    standards impose, plus what the Store adds on top)
-6. `registry.yaml` (top-level store router)
-7. The README of the Domain being touched:
+6. `RETIREMENT.md` (how to end an asset — the one operation that shrinks the Store)
+7. `registry.yaml` (top-level store router)
+8. The README of the Domain being touched:
    - `skills/README.md` for Skill Domain work
    - `external-capabilities/README.md` for External Capability Domain work
    - `automations/README.md` for Automation Domain work
    - `dependencies/capability-map.yaml` for dependency work
-8. The Domain Policy files of the touched area
+9. The Domain Policy files of the touched area
    (e.g. `skills/LIFECYCLE.md`, `skills/ACCEPTANCE.md`, `external-capabilities/SECURITY.md`,
    `automations/LIFECYCLE.md`)
-9. The current target entity (skill / capability / dependency record) before editing it
+10. The current target entity (skill / capability / dependency record) before editing it
 
 AGENTS.md is the Control Plane / Router. It does NOT duplicate policy.
 Domain-specific policy lives in the Domain directories.

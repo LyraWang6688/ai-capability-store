@@ -126,7 +126,8 @@ High-risk operations require explicit human approval:
 
 - lifecycle promotions
 - capability status changes
-- moving / archiving / deleting entities
+- moving / archiving / deleting entities (see `RETIREMENT.md` — these are three
+  separate decisions, not one)
 - any change affecting permissions or authentication
 - any change to the dependency contract
 

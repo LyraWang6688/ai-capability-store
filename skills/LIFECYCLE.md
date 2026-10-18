@@ -42,6 +42,8 @@ When possible, document the replacement skill in the registry.
 ## 5. archived
 
 Use when maintenance has stopped and the skill is retained only for historical reference.
+Archiving is the cheap end of retirement: it changes one word and destroys nothing.
+Removing the skill afterwards is a separate decision — see `RETIREMENT.md`.
 
 Archived skills should not be selected for new work.
 

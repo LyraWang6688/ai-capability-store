@@ -89,6 +89,7 @@ ai-capability-store/
 ├── PUBLISHING.md                  # Asset Publishing Protocol
 ├── VERSIONING.md                  # Store-wide versioning contract
 ├── SKILL-FORMAT.md                # Asset format contract (external spec + Store additions)
+├── RETIREMENT.md                  # How to retire an asset without losing the record
 ├── registry.yaml                  # Top-level Store Router
 ├── skills/                         # Domain A: Skills (how to do)
 │   ├── README.md
