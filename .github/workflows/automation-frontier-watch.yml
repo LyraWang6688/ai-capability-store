@@ -72,6 +72,9 @@ jobs:
           print(f"config ok — base_token={str(cfg['base_token'])[:6]}… table_id={cfg['table_id']}")
           PY
 
+      - name: Offline test suite (no network, no credentials)
+        run: python3 automations/frontier-watch/test_watch.py
+
       - name: Run frontier-watch
         env:
           FEISHU_APP_ID: ${{ secrets.FEISHU_APP_ID }}
