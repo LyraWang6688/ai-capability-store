@@ -1,0 +1,21 @@
+{
+  "name": "investdesk-market",
+  "version": "0.1.0",
+  "description": "A 股市场宽度 MCP：板块涨跌排行、个股/ETF 主力资金流、财经快讯、指数快照。全部来自腾讯与东方财富公开接口。",
+  "type": "module",
+  "license": "MIT",
+  "engines": { "node": ">=20" },
+  "bin": { "investdesk-market": "dist/mcp/stdio.js" },
+  "files": ["dist/", "README.md"],
+  "keywords": ["mcp", "a-share", "sector", "fund-flow", "news", "eastmoney"],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/LyraWang6688/ai-capability-store.git",
+    "directory": "external-capabilities/mcp/investdesk-market"
+  },
+  "scripts": {
+    "build": "rm -rf dist && tsc -p tsconfig.build.json",
+    "prepare": "npm run build"
+  },
+  "devDependencies": { "@types/node": "^26.6.5", "typescript": "^7.0.2" }
+}
