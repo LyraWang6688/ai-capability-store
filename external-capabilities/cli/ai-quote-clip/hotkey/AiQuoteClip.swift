@@ -4,9 +4,23 @@ import ApplicationServices
 
 let HOTKEY_SIGNATURE: OSType = 0x4151434C // 'AQCL'
 
+func logLine(_ message: String) {
+    let dir = NSHomeDirectory() + "/.ai-quote-clip/logs"
+    try? FileManager.default.createDirectory(atPath: dir, withIntermediateDirectories: true)
+    let path = dir + "/capture.log"
+    let stamp = ISO8601DateFormatter().string(from: Date())
+    let line = "\(stamp) \(message)\n"
+    if let handle = FileHandle(forWritingAtPath: path) {
+        handle.seekToEndOfFile(); handle.write(line.data(using: .utf8)!); handle.closeFile()
+    } else {
+        try? line.write(toFile: path, atomically: true, encoding: .utf8)
+    }
+}
+
 final class AppDelegate: NSObject, NSApplicationDelegate {
     static var shared: AppDelegate?
     var hotKeyRef: EventHotKeyRef?
+    var clipboardHotKeyRef: EventHotKeyRef?
     var statusItem: NSStatusItem?
     var busy = false
     var launch: [String: String] = [:]
@@ -19,9 +33,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         item.button?.title = "❝"
         let menu = NSMenu()
-        let capture = NSMenuItem(title: "收录到飞书（⌃⌥\(launch["key"]?.uppercased() ?? "Z")）", action: #selector(trigger), keyEquivalent: "")
+        let keyLabel = (launch["key"] ?? "z").uppercased()
+        let capture = NSMenuItem(title: "收录选中文字（⌃⌥\(keyLabel)，需辅助功能）", action: #selector(captureSelectionMenu), keyEquivalent: "")
         capture.target = self
-        menu.addItem(capture)
+        menu.insertItem(capture, at: 0)
+        let clipboardItem = NSMenuItem(title: "收录剪贴板（⌃⌥X，无需权限）", action: #selector(captureClipboardMenu), keyEquivalent: "")
+        clipboardItem.target = self
+        menu.insertItem(clipboardItem, at: 1)
         menu.addItem(NSMenuItem.separator())
         let quit = NSMenuItem(title: "退出", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         menu.addItem(quit)
@@ -53,13 +71,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func registerHotKey() {
-        var hotKeyID = EventHotKeyID(signature: HOTKEY_SIGNATURE, id: 1)
+        var selectionID = EventHotKeyID(signature: HOTKEY_SIGNATURE, id: 1)
+        var clipboardID = EventHotKeyID(signature: HOTKEY_SIGNATURE, id: 2)
         let modifier = UInt32(controlKey | optionKey)
-        RegisterEventHotKey(keyCode(), modifier, hotKeyID, GetApplicationEventTarget(), 0, &hotKeyRef)
-        _ = hotKeyID
+        RegisterEventHotKey(keyCode(), modifier, selectionID, GetApplicationEventTarget(), 0, &hotKeyRef)
+        _ = selectionID
+        RegisterEventHotKey(UInt32(kVK_ANSI_X), modifier, clipboardID, GetApplicationEventTarget(), 0, &clipboardHotKeyRef)
+        _ = clipboardID
         var eventType = EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyPressed))
-        InstallEventHandler(GetApplicationEventTarget(), { (_, _, _) -> OSStatus in
-            DispatchQueue.main.async { AppDelegate.shared?.trigger() }
+        InstallEventHandler(GetApplicationEventTarget(), { (_, event, _) -> OSStatus in
+            var hotKeyID = EventHotKeyID()
+            GetEventParameter(event, EventParamName(kEventParamDirectObject), EventParamType(typeEventHotKeyID), nil,
+                              MemoryLayout<EventHotKeyID>.size, nil, &hotKeyID)
+            let mode: String = hotKeyID.id == 2 ? "clipboard" : "selection"
+            DispatchQueue.main.async { AppDelegate.shared?.trigger(mode: mode) }
             return noErr
         }, 1, &eventType, nil, nil)
     }
@@ -69,18 +94,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         return AXIsProcessTrustedWithOptions(options)
     }
 
-    @objc func trigger() {
+    @objc func captureSelectionMenu() { trigger(mode: "selection") }
+    @objc func captureClipboardMenu() { trigger(mode: "clipboard") }
+
+    func trigger(mode: String = "selection") {
         if busy { return }
         busy = true
         defer { busy = false }
-        if !ensureAccessibility(prompt: true) {
-            notify("需要辅助功能权限", "系统设置 → 隐私与安全性 → 辅助功能，勾选 AiQuoteClip")
+        if mode == "selection" && !ensureAccessibility(prompt: true) {
+            logLine("trigger mode=selection untrusted")
+            notify("需要辅助功能权限", "改用「收录剪贴板」：先 ⌘C 复制，再按 ⌃⌥X（不需要授权）")
             return
         }
+        let front = NSWorkspace.shared.frontmostApplication?.localizedName ?? "?"
+        logLine("trigger front=\(front) trusted=\(AXIsProcessTrusted())")
+        let axText = selectedTextViaAX()
+        logLine("ax len=\(axText?.count ?? -1)")
         guard let text = captureSelection(), !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            logLine("capture failed (front=\(front))")
             notify("没有选中文字", "先用鼠标选中一段文字，再按快捷键")
             return
         }
+        logLine("captured len=\(text.count)")
         let ok = runCli(text)
         notify(ok ? "已收录到飞书" : "收录失败", ok ? String(text.prefix(40)) : "运行 ai-quote-clip status 排查")
     }
@@ -163,6 +198,22 @@ func notify(_ title: String, _ body: String) {
 
 func quoted(_ value: String) -> String {
     return "\"" + value.replacingOccurrences(of: "\"", with: "\\\"") + "\""
+}
+
+// `--capture-once` runs one capture without UI/notification (debugging + scripted use).
+if CommandLine.arguments.contains("--capture-once") {
+    let app = NSApplication.shared
+    app.setActivationPolicy(.accessory)
+    let delegate = AppDelegate()
+    delegate.loadHotkeyConfig()
+    if let text = delegate.captureSelection() {
+        logLine("capture-once ok len=\(text.count)")
+        print(text)
+    } else {
+        logLine("capture-once failed")
+        print("")
+    }
+    exit(0)
 }
 
 let app = NSApplication.shared
