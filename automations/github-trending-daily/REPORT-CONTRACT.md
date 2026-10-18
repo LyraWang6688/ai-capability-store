@@ -94,10 +94,11 @@
 ## 3. 关注清单
 
 维度一 1.3 和维度二 整段都依赖一份**关注清单**，格式见
-[`interests.example.yaml`](./interests.example.yaml)。
+[`interests.yaml`](./interests.yaml)（schema 在文件内注释里）。
 
-- 真实清单**不进仓库**（个人上下文，且仓库公开），放在
-  `~/.automation-state/github-trending/interests.yaml`。
+- 清单**就在本仓库**：内容是技术方向 + 已公开的项目名，不敏感；
+  放这里才能版本化（看得到关注怎么演变）、能 review、能随机器迁移。
+- 改关注 = 改这个文件走 PR。**不要**再在本地维护第二份。
 - 三级：`core`（必须给结论）/ `watch`（有亮点才提）/ `observe`（只在特别相关时提）。
 - **用户表达新的关注方向时，先更新清单，再产报告。**
 - 防腐：某个 `core` 连续多日「没看到有人在做 + 我也没进展」→ 提醒降级或删除。
