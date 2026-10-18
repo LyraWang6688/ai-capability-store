@@ -132,8 +132,12 @@ Only assets a consumer can actually **run on their own machine**:
 | Shape | npm? | Why |
 |---|---|---|
 | stdio MCP / CLI | yes | `npx <package>` is the point of publishing it |
+| DSH plugin (Cordis bundle installed into a Harness profile) | yes | the consumer installs it into their own Harness profile and it runs locally; `plugin_manager` `install_bundle` accepts the package name |
 | HTTP / hosted service | **no** | it needs a deployment, not an install; npm only distributes its configuration — including whatever that configuration names |
 | Automation | no | triggered on someone's machine or CI, not installed by a consumer |
+
+A DSH plugin has no `bin` and normally no build step, so preconditions 3 and 4
+below do not apply to that row; preconditions 1, 2, 5 and 6 do.
 
 A hosted service published "for completeness" is worse than unpublished: every
 consumer installs something that cannot start, and the package leaks the shape of
