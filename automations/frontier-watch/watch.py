@@ -70,12 +70,14 @@ def http_json(req, what):
     return payload
 
 
-def tenant_token(refresh=False):
+def tenant_token(refresh=False, app_id=None, app_secret=None):
     now = time.time()
-    if _TOKEN["value"] and not refresh and now < _TOKEN["expires_at"]:
-        return _TOKEN["value"]
-    app_id = (os.environ.get("FEISHU_APP_ID") or "").strip()
-    app_secret = (os.environ.get("FEISHU_APP_SECRET") or "").strip()
+    cache_key = (app_id or "") + "|" + (app_secret or "")
+    cached = _TOKEN.get(cache_key)
+    if cached and not refresh and now < float(cached.get("expires_at") or 0):
+        return str(cached.get("value"))
+    app_id = (app_id or os.environ.get("FEISHU_APP_ID") or "").strip()
+    app_secret = (app_secret or os.environ.get("FEISHU_APP_SECRET") or "").strip()
     if not app_id or not app_secret:
         raise SystemExit("缺少飞书应用凭据：需要 FEISHU_APP_ID / FEISHU_APP_SECRET")
     req = urllib.request.Request(
@@ -90,8 +92,7 @@ def tenant_token(refresh=False):
     token = str(payload.get("tenant_access_token") or "")
     if not token:
         raise SystemExit("tenant_access_token 响应缺字段")
-    _TOKEN["value"] = token
-    _TOKEN["expires_at"] = now + max(60, int(payload.get("expire") or 7200) - 180)
+    _TOKEN[cache_key] = {"value": token, "expires_at": now + max(60, int(payload.get("expire") or 7200) - 180)}
     return token
 
 
@@ -276,6 +277,10 @@ def notify_dm(chat_id, text):
     """Send a private message with the Feishu app identity (tenant_access_token)."""
     if not chat_id or not text:
         return False
+    # A chat is only reachable by an app that is a member of it. The Base-writing
+    # app and the operator's bot are different apps, so allow a dedicated notifier.
+    notify_app_id = (os.environ.get("FEISHU_NOTIFY_APP_ID") or "").strip() or None
+    notify_secret = (os.environ.get("FEISHU_NOTIFY_APP_SECRET") or "").strip() or None
     payload = json.dumps({
         "receive_id": chat_id,
         "msg_type": "text",
@@ -286,7 +291,7 @@ def notify_dm(chat_id, text):
         data=payload,
         headers={
             "Content-Type": "application/json; charset=utf-8",
-            "Authorization": "Bearer " + tenant_token(),
+            "Authorization": "Bearer " + tenant_token(app_id=notify_app_id, app_secret=notify_secret),
         },
         method="POST",
     )

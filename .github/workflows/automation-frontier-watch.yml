@@ -12,9 +12,10 @@
 #                            automations/github-portfolio-snapshot)
 #   FEISHU_APP_SECRET      — that app's secret; never stored in config or repo
 #   DEEPSEEK_API_KEY       — model key used to extract features from release notes
-#   FEISHU_NOTIFY_CHAT_ID  — optional: the p2p chat_id of the bot used for the Base
-#                            (same app as FEISHU_APP_ID). When set, a text summary is
-#                            DMed to the operator after a run that wrote ≥1 row.
+#   FEISHU_NOTIFY_CHAT_ID  — optional: the p2p chat_id to DM after a run that wrote ≥1 row.
+#   FEISHU_NOTIFY_APP_ID / FEISHU_NOTIFY_APP_SECRET
+#                          — optional: the app whose bot IS a member of that chat
+#                            (the Base-writing app usually is not → [230002]).
 #   FEISHU_NOTIFY_WEBHOOK  — optional fallback: a Feishu group custom-bot webhook.
 #   FRONTIER_CONFIG_JSON   — config.json contents: {"base_token","table_id","model",...}.
 #                            Not secrets, but they identify the operator's Base, so
@@ -90,6 +91,9 @@ jobs:
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
           # 有新条目时私聊发给操作者（应用身份 + 已有 p2p chat_id）；webhook 仅兜底。
           FEISHU_NOTIFY_CHAT_ID: ${{ secrets.FEISHU_NOTIFY_CHAT_ID }}
+          # 通知可用独立应用（机器人需在目标会话里）；缺省回落到 FEISHU_APP_ID/SECRET。
+          FEISHU_NOTIFY_APP_ID: ${{ secrets.FEISHU_NOTIFY_APP_ID }}
+          FEISHU_NOTIFY_APP_SECRET: ${{ secrets.FEISHU_NOTIFY_APP_SECRET }}
           FEISHU_NOTIFY_WEBHOOK: ${{ secrets.FEISHU_NOTIFY_WEBHOOK }}
           NOTIFY_TEST: ${{ inputs.notify-test }}
           FRONTIER_CONFIG_JSON: ${{ secrets.FRONTIER_CONFIG_JSON }}
