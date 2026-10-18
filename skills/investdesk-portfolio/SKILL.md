@@ -1,6 +1,7 @@
 ---
 name: investdesk-portfolio
 description: 持仓分析与复盘。当用户问「我的组合怎么样」「今天赚了多少」「持仓有什么问题」「帮我看看风险」「哪只亏得多」时使用。读飞书多维表格里的持仓，按固定框架分析市值/盈亏/集中度/归因/敞口，输出可复核的结论。不负责推荐新标的（那是 investdesk-research）。
+compatibility: "需要能读飞书多维表格：Base「王颖的财富管理」(TTonwTJEKirrpnk4cRDc14LpnGg) 的「最新持仓」表与「持仓平台」表。不需要 MCP，不需要本机运行时。定时任务模式下需能无人值守取数，取不到时明确报错而不是用旧数据。"
 ---
 
 # InvestDesk 持仓分析
