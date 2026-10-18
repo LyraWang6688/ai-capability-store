@@ -129,7 +129,7 @@ capabilities:
     name: <capability-name>
     provider: <provider>                        # 小写 kebab-case
     type: mcp                                   # plugin|mcp|connector|cli|external-api|integration
-    status: limited                             # available|limited|disabled|unknown
+    status: limited                             # available|limited|disabled|unknown|archived
     provider_path: external-capabilities/providers/<provider>/README.md   # 必须存在
     version: 0.1.0                              # implementation_path 存在时必填
     implementation_path: external-capabilities/mcp/<capability-name>

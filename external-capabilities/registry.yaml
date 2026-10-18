@@ -18,6 +18,7 @@ allowed_statuses:
   - limited
   - disabled
   - unknown
+  - archived
 
 capabilities:
   wechat-draft-mcp:
