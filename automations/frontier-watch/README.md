@@ -38,6 +38,15 @@
 飞书控制台还要做两件事（脚本做不了）：给应用授予 `base:record:read` / `base:record:create` /
 `base:field:read` 等 scope 并发布版本；把该应用加为目标 Base 的**可编辑协作者**。
 
+### 有新条目时发飞书消息（可选）
+
+1. 在一个群里加「自定义机器人」，复制它的 webhook 地址；
+2. 存成仓库 Secret `FEISHU_NOTIFY_WEBHOOK`；
+3. 有新增时 workflow 会推一条文本摘要（最多列 8 条 + Base 链接）；
+4. 想立刻验证：Actions → Run workflow → 勾选 `notify-test`。
+
+未配置该 Secret 时通知自动跳过，不影响写入。
+
 ## 代码 vs 状态
 
 | | 位置 | 说明 |
@@ -61,6 +70,7 @@ python3 automations/frontier-watch/watch.py --dry-run
 | 抓取失败（网络/结构变化） | 该来源跳过，stderr 记录，其他来源继续（豆包工作的两个 RSS 任一变空都不影响 Codex/Claude） |
 | 模型返回非 JSON | 本次该来源丢弃，不写脏数据 |
 | Base 读取失败 | 放弃本次写入（宁可不动，也不重复写，避免重复记录） |
+| 通知失败 | 只打印 stderr，不影响已写入的数据 |
 | 模型 Key 缺失 | 直接退出并提示（环境变量或钥匙串） |
 
 ## 依赖

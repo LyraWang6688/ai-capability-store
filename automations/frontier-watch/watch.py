@@ -244,6 +244,34 @@ def append_records(cfg, items, dry_run):
     return written
 
 
+def format_notification(items, base_url):
+    """Build the Feishu text message for a batch of new entries (None when empty)."""
+    if not items:
+        return None
+    lines = [f"【前沿功能监控】新增 {len(items)} 条"]
+    for item in items[:8]:
+        lines.append(f"· {item.get('feature', '')}（{item.get('tool', '')}，优先级 {item.get('priority', '')}）")
+    if len(items) > 8:
+        lines.append(f"…还有 {len(items) - 8} 条")
+    if base_url:
+        lines.append(base_url)
+    return "\n".join(lines)
+
+
+def notify(webhook, text):
+    """Post a text message to a Feishu custom bot webhook. Never raises."""
+    if not webhook or not text:
+        return False
+    payload = json.dumps({"msg_type": "text", "content": {"text": text}}, ensure_ascii=False).encode()
+    req = urllib.request.Request(webhook, data=payload, headers={"Content-Type": "application/json"})
+    try:
+        with urllib.request.urlopen(req, timeout=20) as response:
+            return response.status == 200
+    except Exception as error:  # noqa: BLE001
+        print("飞书通知失败:", error, file=sys.stderr)
+        return False
+
+
 def main():
     dry_run = "--dry-run" in sys.argv
     cfg = load_config()
@@ -292,7 +320,16 @@ def main():
             unique.append(item)
 
     written = append_records(cfg, unique, dry_run)
-    print(json.dumps({"candidates": len(candidates), "new": len(unique), "written": written, "dry_run": dry_run}, ensure_ascii=False))
+    if os.environ.get("NOTIFY_TEST", "").lower() in ("1", "true", "yes"):
+        base_url = cfg.get("base_url") or f"https://my.feishu.cn/base/{cfg['base_token']}"
+        test_ok = notify(os.environ.get("FEISHU_NOTIFY_WEBHOOK", ""), format_notification(
+            [{"feature": "这是一条测试通知", "tool": "frontier-watch", "priority": "—"}], base_url))
+        print(json.dumps({"notify_test": test_ok}, ensure_ascii=False))
+    notified = False
+    if written > 0 and not dry_run:
+        base_url = cfg.get("base_url") or f"https://my.feishu.cn/base/{cfg['base_token']}"
+        notified = notify(os.environ.get("FEISHU_NOTIFY_WEBHOOK", ""), format_notification(unique, base_url))
+    print(json.dumps({"candidates": len(candidates), "new": len(unique), "written": written, "notified": notified, "dry_run": dry_run}, ensure_ascii=False))
 
 
 if __name__ == "__main__":
