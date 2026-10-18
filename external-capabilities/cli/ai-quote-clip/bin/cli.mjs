@@ -9,6 +9,7 @@ import { stdin as input, stdout as output } from 'node:process';
 import { CONFIG_PATH, HOTKEY_CONFIG_PATH, loadConfig, requireConfig, saveConfig } from '../src/config.mjs';
 import { appendMarkdown, checkDoc, docTokenFromUrl, run } from '../src/feishu.mjs';
 import { hotkeyStatus, installHotkey, isMac, uninstallHotkey } from '../src/hotkey.mjs';
+import { hammerspoonStatus, installHammerspoon, uninstallHammerspoon } from '../src/hammerspoon.mjs';
 
 const CLI_PATH = fileURLToPath(import.meta.url);
 const PKG = JSON.parse(readFileSync(join(dirname(dirname(CLI_PATH)), 'package.json'), 'utf8'));
@@ -20,7 +21,8 @@ const HELP = `ai-quote-clip ${PKG.version} — 把 AI 说得好、值得留下�
   ai-quote-clip add [文字…] [--clipboard] [--source <来源>]
   ai-quote-clip doc                      查看当前目标文档
   ai-quote-clip doc set <URL|token>      切换目标文档
-  ai-quote-clip hotkey [install [--key z] [--force]|uninstall|status]   macOS 全局快捷键（默认 ⌃⌥Z）
+  ai-quote-clip hotkey [install [--key z] [--mode hammerspoon|app]|uninstall|status]
+                                          macOS 全局快捷键（默认 ⌃⌥Z，默认 Hammerspoon 模式）
   ai-quote-clip status
   ai-quote-clip --version | --help
 
@@ -189,15 +191,24 @@ try {
       if (action === 'install') {
         const key = (flag(rest, '--key') || 'z').toLowerCase();
         if (!/^[a-z]$/.test(key)) throw new Error('--key 只接受单个字母，例如 --key z');
-        const result = installHotkey({ nodePath: process.execPath, cliPath: CLI_PATH, key, force: rest.includes('--force') });
-        console.log(`快捷键：⌃⌥${key.toUpperCase()}`);
-        console.log(`✓ 已安装：${result.plist}`);
-        console.log('首次按 ⌃⌥S 会请求辅助功能权限，去系统设置勾选 AiQuoteClip。');
+        const mode = flag(rest, '--mode') || 'hammerspoon';
+        if (mode === 'app') {
+          const result = installHotkey({ nodePath: process.execPath, cliPath: CLI_PATH, key, force: rest.includes('--force') });
+          console.log(`快捷键：⌃⌥${key.toUpperCase()}（自研 App 模式）`);
+          console.log(`✓ 已安装：${result.plist}`);
+        } else {
+          const result = installHammerspoon({ nodePath: process.execPath, cliPath: CLI_PATH, key });
+          console.log(`快捷键：⌃⌥${key.toUpperCase()}（Hammerspoon 模式）`);
+          console.log(`✓ 已写入：${result.lua}`);
+          console.log(result.reloaded ? '✓ Hammerspoon 已重载配置' : '⚠️ 请在菜单栏 Hammerspoon → Reload Config 手动重载');
+          console.log('首次使用请在「系统设置 → 隐私与安全性 → 辅助功能」勾选 Hammerspoon。');
+        }
       } else if (action === 'uninstall') {
-        const result = uninstallHotkey();
-        console.log(result.removed ? `✓ 已卸载：${result.plist}` : '未安装');
+        const a = uninstallHammerspoon();
+        const b = uninstallHotkey();
+        console.log((a.removed || b.removed) ? '✓ 已卸载快捷键' : '未安装');
       } else {
-        console.log(JSON.stringify(hotkeyStatus(), null, 2));
+        console.log(JSON.stringify({ hammerspoon: hammerspoonStatus(), app: hotkeyStatus() }, null, 2));
       }
       break;
     }
