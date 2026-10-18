@@ -126,24 +126,37 @@ def lark(cfg, args, timeout=120):
 
 
 def existing_features(cfg):
-    result = lark(cfg, ["base", "+record-list", "--base-token", cfg["base_token"], "--table-id", cfg["table_id"], "--page-size", "500"])
-    if result.returncode != 0:
-        raise SystemExit("读取 Base 失败：" + (result.stderr or result.stdout)[:300])
-    try:
-        data = json.loads(result.stdout)
-    except json.JSONDecodeError:
-        return set()
+    """Read every existing feature name (columnar JSON, 200 rows per page)."""
     names = set()
-    table = (data.get("data") or {})
-    records = table.get("records") or table.get("items") or []
-    for record in records:
-        fields = record.get("fields") or {}
-        value = fields.get("功能/灵感")
-        if isinstance(value, list) and value:
-            first = value[0]
-            names.add(first.get("text") if isinstance(first, dict) else str(first))
-        elif isinstance(value, str):
-            names.add(value)
+    offset = 0
+    while True:
+        result = lark(cfg, [
+            "base", "+record-list",
+            "--base-token", cfg["base_token"],
+            "--table-id", cfg["table_id"],
+            "--limit", "200",
+            "--offset", str(offset),
+        ])
+        if result.returncode != 0:
+            raise SystemExit("读取 Base 失败：" + (result.stderr or result.stdout)[:300])
+        payload = json.loads(result.stdout)
+        data = payload.get("data") or {}
+        columns = data.get("fields") or []
+        rows = data.get("data") or []
+        index = columns.index("功能/灵感") if "功能/灵感" in columns else 0
+        for row in rows:
+            if index >= len(row):
+                continue
+            value = row[index]
+            if isinstance(value, list) and value:
+                value = value[0]
+            if isinstance(value, dict):
+                value = value.get("text") or value.get("name")
+            if value:
+                names.add(str(value).strip())
+        if not data.get("has_more") or not rows:
+            break
+        offset += len(rows)
     return names
 
 
@@ -226,10 +239,7 @@ def main():
 
     # dedupe: within batch and against Base
     seen = set(state.get("seen", []))
-    try:
-        seen |= existing_features(cfg)
-    except SystemExit as error:
-        print(error, file=sys.stderr)
+    seen |= existing_features(cfg)
     unique = []
     for item in new_items:
         name = item["feature"].strip()
