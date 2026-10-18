@@ -1,0 +1,38 @@
+{
+  "name": "@lyra_wang/dsh-feishu-remote",
+  "version": "0.1.0",
+  "description": "Run tasks on your own computer from Feishu: a Feishu bot to local agent bridge (default backend: dsh headless).",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "dsh-feishu-remote": "./bin/cli.mjs"
+  },
+  "files": [
+    "bin",
+    "src",
+    "templates",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": [
+    "dsh",
+    "deepseek-harness",
+    "feishu",
+    "lark",
+    "remote",
+    "bot",
+    "agent",
+    "automation"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/LyraWang6688/ai-capability-store.git",
+    "directory": "external-capabilities/cli/dsh-feishu-remote"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
