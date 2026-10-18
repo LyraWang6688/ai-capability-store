@@ -40,7 +40,27 @@ window.__ModuleLoader__.load({
         font:12px/1.4 -apple-system,"PingFang SC",sans-serif}
       .${ROOT_CLASS}-note button{all:unset;cursor:pointer;color:var(--dsw-alias-label-primary,#e6e6e9);
         padding:5px 9px;border-radius:7px;font-size:12px}
-      .${ROOT_CLASS}-note button:hover{background:var(--dsw-alias-bg-layer-2,#3a3a41)}`;
+      .${ROOT_CLASS}-note button:hover{background:var(--dsw-alias-bg-layer-2,#3a3a41)}
+      .${ROOT_CLASS}-rw{position:fixed;z-index:2147483002;pointer-events:auto;width:420px;max-width:92vw;
+        background:var(--dsw-alias-bg-overlay,#2b2b2f);border:1px solid var(--dsw-alias-border-l1,#3a3a40);
+        border-radius:10px;padding:10px;box-shadow:0 8px 24px rgba(0,0,0,.35);transform:translate(-50%,-100%);
+        display:flex;flex-direction:column;gap:8px;
+        font:12px/1.5 -apple-system,"PingFang SC",sans-serif;color:var(--dsw-alias-label-primary,#e6e6e9)}
+      .${ROOT_CLASS}-rw-head{font-weight:600;font-size:12px;opacity:.9}
+      .${ROOT_CLASS}-rw-chips{display:flex;gap:6px;flex-wrap:wrap}
+      .${ROOT_CLASS}-rw-chips button{all:unset;cursor:pointer;padding:3px 8px;border-radius:999px;
+        border:1px solid var(--dsw-alias-border-l1,#3a3a40);font-size:11px}
+      .${ROOT_CLASS}-rw-chips button:hover{background:var(--dsw-alias-bg-layer-2,#3a3a41)}
+      .${ROOT_CLASS}-rw input{all:unset;background:var(--dsw-alias-bg-layer-1,#1f1f23);
+        border:1px solid var(--dsw-alias-border-l1,#3a3a40);border-radius:7px;padding:6px 9px;width:auto}
+      .${ROOT_CLASS}-rw-result{max-height:180px;overflow:auto;background:var(--dsw-alias-bg-layer-1,#1f1f23);
+        border:1px solid var(--dsw-alias-border-l1,#3a3a40);border-radius:7px;padding:8px;
+        white-space:pre-wrap;word-break:break-word;user-select:text}
+      .${ROOT_CLASS}-rw-actions{display:flex;gap:6px;justify-content:flex-end}
+      .${ROOT_CLASS}-rw-actions button{all:unset;cursor:pointer;padding:5px 10px;border-radius:7px;
+        border:1px solid var(--dsw-alias-border-l1,#3a3a40);font-size:12px}
+      .${ROOT_CLASS}-rw-actions button:hover{background:var(--dsw-alias-bg-layer-2,#3a3a41)}
+      .${ROOT_CLASS}-rw-actions button[disabled]{opacity:.5;cursor:default}`;
 
     /** Copy with a clipboard API attempt and a legacy selection fallback. */
     async function copyText(text) {
@@ -91,6 +111,10 @@ window.__ModuleLoader__.load({
       const [toast, setToast] = React.useState('');
       const [noteOpen, setNoteOpen] = React.useState(false);
       const [noteValue, setNoteValue] = React.useState('');
+      const [rewriteOpen, setRewriteOpen] = React.useState(false);
+      const [rewriteValue, setRewriteValue] = React.useState('');
+      const [rewriteResult, setRewriteResult] = React.useState('');
+      const [rewriteBusy, setRewriteBusy] = React.useState(false);
       const toastTimer = React.useRef(null);
       const noteInput = React.useRef(null);
       const noteOpenRef = React.useRef(false);
@@ -102,6 +126,18 @@ window.__ModuleLoader__.load({
       const closeNote = React.useCallback(() => {
         noteOpenRef.current = false;
         setNoteOpen(false);
+      }, []);
+      const openRewrite = React.useCallback(() => {
+        noteOpenRef.current = true;
+        setRewriteValue('');
+        setRewriteResult('');
+        setRewriteBusy(false);
+        setRewriteOpen(true);
+      }, []);
+      const closeRewrite = React.useCallback(() => {
+        noteOpenRef.current = false;
+        setRewriteOpen(false);
+        setRewriteBusy(false);
       }, []);
 
       const say = React.useCallback((message) => {
@@ -157,6 +193,7 @@ window.__ModuleLoader__.load({
           if (event.key === 'Escape') {
             setSelection(null);
             closeNote();
+            closeRewrite();
           }
         };
         const onScroll = () => {
@@ -164,7 +201,10 @@ window.__ModuleLoader__.load({
           setSelection(null);
         };
         const onMouseDown = (event) => {
-          if (noteOpenRef.current && !isOwnUi(event.target)) closeNote();
+          if (noteOpenRef.current && !isOwnUi(event.target)) {
+            closeNote();
+            closeRewrite();
+          }
         };
         document.addEventListener('mouseup', onMouseUp);
         document.addEventListener('keyup', readSelection);
@@ -180,7 +220,7 @@ window.__ModuleLoader__.load({
           document.removeEventListener('mousedown', onMouseDown, true);
           window.removeEventListener('scroll', onScroll, true);
         };
-      }, [closeNote]);
+      }, [closeNote, closeRewrite]);
 
       React.useEffect(() => {
         if (noteOpen && noteInput.current) noteInput.current.focus();
@@ -231,6 +271,14 @@ window.__ModuleLoader__.load({
             openNote();
           },
         },
+        {
+          key: 'rewrite',
+          icon: '⇄',
+          label: t('rewrite'),
+          run: () => {
+            openRewrite();
+          },
+        },
       ];
 
       const saveNote = async () => {
@@ -275,9 +323,54 @@ window.__ModuleLoader__.load({
         }
       };
 
+      const runRewrite = async () => {
+        if (selection === null) return;
+        setRewriteBusy(true);
+        setRewriteResult('');
+        try {
+          const response = await fetch('/plugins/selection-toolbar/rewrite', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ text: selection.text, instruction: rewriteValue.trim() }),
+          });
+          const payload = await response.json().catch(() => ({}));
+          if (response.ok && payload && payload.ok === true && typeof payload.text === 'string') {
+            setRewriteResult(payload.text);
+          } else {
+            const reason = payload && payload.message ? String(payload.message) : 'HTTP ' + response.status;
+            say(t('rewriteFailed') + '：' + reason);
+          }
+        } catch (error) {
+          say(t('rewriteFailed') + '：' + (error && error.message ? error.message : String(error)));
+        } finally {
+          setRewriteBusy(false);
+        }
+      };
+
+      const copyRewriteResult = async () => {
+        const ok = await copyText(rewriteResult);
+        say(ok ? t('copied') : t('copyFailed'));
+      };
+
+      const insertRewriteResult = () => {
+        const composer = findComposer();
+        if (composer !== null) {
+          try {
+            composer.focus();
+            if (document.execCommand('insertText', false, rewriteResult)) {
+              say(t('inserted'));
+              return;
+            }
+          } catch (error) {
+            // fall through to copy
+          }
+        }
+        void copyText(rewriteResult).then((ok) => say(ok ? t('pasteHint') : t('copyFailed')));
+      };
+
       return h(React.Fragment, null,
         h('style', { key: 'style' }, CSS),
-        selection !== null && !noteOpen
+        selection !== null && !noteOpen && !rewriteOpen
           ? h('div', {
             key: 'bar',
             className: ROOT_CLASS + '-bar',
@@ -333,6 +426,61 @@ window.__ModuleLoader__.load({
             }, t('cancel')),
           ])
           : null,
+        rewriteOpen && selection !== null
+          ? h('div', {
+            key: 'rewrite',
+            className: ROOT_CLASS + '-rw',
+            style: { left: center + 'px', top: top + 'px' },
+          }, [
+            h('div', { key: 'head', className: ROOT_CLASS + '-rw-head' }, t('rewriteTitle')),
+            h('div', { key: 'chips', className: ROOT_CLASS + '-rw-chips' },
+              [
+                ['chipPolish', t('chipPolish')],
+                ['chipShorter', t('chipShorter')],
+                ['chipXhs', t('chipXhs')],
+                ['chipWechat', t('chipWechat')],
+              ].map(([key, label]) => h('button', {
+                key,
+                type: 'button',
+                onClick: () => setRewriteValue(label),
+              }, label))),
+            h('input', {
+              key: 'input',
+              type: 'text',
+              placeholder: t('rewritePlaceholder'),
+              value: rewriteValue,
+              onChange: (event) => setRewriteValue(event.target.value),
+              onKeyDown: (event) => {
+                if (event.key === 'Enter') {
+                  event.preventDefault();
+                  if (!rewriteBusy) void runRewrite();
+                }
+                if (event.key === 'Escape') {
+                  event.preventDefault();
+                  closeRewrite();
+                }
+              },
+            }),
+            rewriteResult !== ''
+              ? h('div', { key: 'result', className: ROOT_CLASS + '-rw-result' }, rewriteResult)
+              : null,
+            h('div', { key: 'actions', className: ROOT_CLASS + '-rw-actions' }, [
+              h('button', {
+                key: 'run',
+                type: 'button',
+                disabled: rewriteBusy,
+                onClick: () => { if (!rewriteBusy) void runRewrite(); },
+              }, rewriteBusy ? t('rewriteRunning') : t('rewriteRun')),
+              rewriteResult !== ''
+                ? h('button', { key: 'copy', type: 'button', onClick: copyRewriteResult }, t('copyResult'))
+                : null,
+              rewriteResult !== ''
+                ? h('button', { key: 'insert', type: 'button', onClick: insertRewriteResult }, t('insertResult'))
+                : null,
+              h('button', { key: 'close', type: 'button', onClick: () => closeRewrite() }, t('close')),
+            ]),
+          ])
+          : null,
         toast !== ''
           ? h('div', { key: 'toast', className: ROOT_CLASS + '-toast' }, toast)
           : null,
@@ -358,6 +506,19 @@ window.__ModuleLoader__.load({
           savedFeishu: '已写入飞书文档',
           savedLocalOnly: '仅保存到本地（飞书写入失败）',
           notePlaceholder: '给这段文字加注释…',
+          rewrite: '改写',
+          rewriteTitle: '改写选中的文字',
+          rewritePlaceholder: '改写要求（留空=润色）',
+          rewriteRun: '改写',
+          rewriteRunning: '改写中…',
+          rewriteFailed: '改写失败',
+          chipPolish: '润色',
+          chipShorter: '更简洁',
+          chipXhs: '小红书风',
+          chipWechat: '公众号风',
+          copyResult: '复制结果',
+          insertResult: '插入输入框',
+          close: '关闭',
           save: '保存',
           cancel: '取消',
           failed: '出错了，请重试',
@@ -378,6 +539,19 @@ window.__ModuleLoader__.load({
           savedFeishu: 'Written to the Feishu document',
           savedLocalOnly: 'Saved locally only (Feishu write failed)',
           notePlaceholder: 'Add a note to this text…',
+          rewrite: 'Rewrite',
+          rewriteTitle: 'Rewrite the selected text',
+          rewritePlaceholder: 'How should it change? (empty = polish)',
+          rewriteRun: 'Rewrite',
+          rewriteRunning: 'Rewriting…',
+          rewriteFailed: 'Rewrite failed',
+          chipPolish: 'Polish',
+          chipShorter: 'Shorter',
+          chipXhs: 'Xiaohongshu style',
+          chipWechat: 'WeChat article style',
+          copyResult: 'Copy result',
+          insertResult: 'Insert into composer',
+          close: 'Close',
           save: 'Save',
           cancel: 'Cancel',
           failed: 'Something went wrong — try again',

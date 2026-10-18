@@ -9,12 +9,14 @@ DSH（DeepSeek Harness）客户端插件：在对话里用鼠标划选文字后�
 | 复制 | 把选中文字写入剪贴板 |
 | 追问 | 把选中文字插入 DSH 的输入框（不自动发送） |
 | 注释 | 把「原文引用 + 注释 + 北京时间」追加到指定飞书文档末尾；同时在本机 localStorage 留一份离线副本 |
+| **改写** | 选中一段文字 → 说怎么改（润色 / 更简洁 / 小红书风 / 公众号风 / 自定义）→ 只重写这一段，可复制或插入输入框 |
 
 ## 前置条件
 
 - DSH 桌面端（提供 `shell.overlay` 槽位与插件安装能力）
 - 本机已安装并授权 `lark-cli`（用户身份），用于写飞书文档
-- 一个飞书文档（docx）的 token
+- 一个飞书文档（docx）的 token（只用「注释」时需要）
+- 一个模型 API Key（只用「改写」时需要）：环境变量 `DEEPSEEK_API_KEY` 或系统钥匙串同名校验项
 
 ## 安装
 
@@ -38,7 +40,10 @@ DSH（DeepSeek Harness）客户端插件：在对话里用鼠标划选文字后�
 // ~/.dsh/selection-toolbar.json   (chmod 600)
 {
   "docToken": "<飞书文档 token>",
-  "larkCli": "/usr/local/bin/lark-cli"   // 可选，默认用 PATH 中的 lark-cli
+  "larkCli": "/usr/local/bin/lark-cli",   // 可选，默认用 PATH 中的 lark-cli
+  "rewriteModel": "deepseek-flash",       // 可选，「改写」用的模型
+  "rewriteBaseUrl": "https://api.deepseek.com", // 可选，OpenAI 兼容端点
+  "keychainService": "DEEPSEEK_API_KEY"   // 可选，从钥匙串取 key 的条目名
 }
 ```
 
@@ -50,9 +55,10 @@ DSH（DeepSeek Harness）客户端插件：在对话里用鼠标划选文字后�
 
 - 重启 DSH，划选文字 → 应出现工具条；
 - 点「复制」→ 出现「已复制」；
-- 点「注释」→ 写备注 → 保存 → 出现「已写入飞书文档」，目标文档末尾多一条。
+- 点「注释」→ 写备注 → 保存 → 出现「已写入飞书文档」，目标文档末尾多一条；
+- 点「改写」→ 选风格或写要求 → 出现改写结果 → 「复制结果 / 插入输入框」。
 
-开发者自检：`GET /plugins/selection-toolbar/note` → `405`（路由已加载，非 POST 被拒绝）。
+开发者自检：`GET /plugins/selection-toolbar/note` 与 `GET /plugins/selection-toolbar/rewrite` 都应返回 `405`（路由已加载，非 POST 被拒绝）。
 
 ## 已知限制
 
