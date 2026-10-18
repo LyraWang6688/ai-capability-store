@@ -1,0 +1,4 @@
+interface:
+  display_name: "InvestDesk Portfolio"
+  short_description: "Analyze holdings: valuation, concentration, attribution, exposure"
+  default_prompt: "Use $investdesk-portfolio to read my holdings and analyze them across overview, platform distribution, concentration, P&L attribution, exposure and anomalies. Separate today's move from cumulative P&L and label the data timestamp."
