@@ -55,6 +55,12 @@ function toWindCode(code: string, otc: boolean): string {
   return `${clean}.${/^(5|6|9)/.test(clean) ? 'SH' : 'SZ'}`;
 }
 
+/** 当日调用计数（进程内），用于观察积分消耗 */
+const windUsage = { calls: 0 };
+export function windCallCount(): number {
+  return windUsage.calls;
+}
+
 async function fetchGroup(targets: QuoteTarget[], otc: boolean): Promise<Map<string, Quote>> {
   const result = new Map<string, Quote>();
   if (targets.length === 0) return result;
@@ -65,6 +71,8 @@ async function fetchGroup(targets: QuoteTarget[], otc: boolean): Promise<Map<str
     capabilities: {},
     clientInfo: { name: 'investdesk-quotes', version: '0.6.0' },
   });
+  windUsage.calls += 1;
+  console.log(`[wind] 第 ${windUsage.calls} 次调用（${otc ? '场外' : '场内'} ${codes.length} 只）`);
   const call = await mcpRequest('tools/call', {
     name: 'get_fund_price_indicators',
     arguments: { windcode: codes.join(','), indexes: INDEXES },
