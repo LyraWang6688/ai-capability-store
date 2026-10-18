@@ -1,0 +1,86 @@
+# Weekly execution of automations/frontier-watch.
+#
+# Contract (see automations/README.md):
+#   * the cron lives HERE and only here — registry.yaml records trigger_kind only
+#   * output is an EXTERNAL system (Feishu Base), so this job writes nothing back
+#     to the repository and needs no data branch
+#   * the automation talks to the Feishu OpenAPI directly (tenant_access_token),
+#     so no lark-cli and no operator keychain is involved
+#
+# Secrets required:
+#   FEISHU_APP_ID          — the dedicated Feishu app (shared with
+#                            automations/github-portfolio-snapshot)
+#   FEISHU_APP_SECRET      — that app's secret; never stored in config or repo
+#   DEEPSEEK_API_KEY       — model key used to extract features from release notes
+#   FRONTIER_CONFIG_JSON   — config.json contents: {"base_token","table_id","model",...}.
+#                            Not secrets, but they identify the operator's Base, so
+#                            they stay out of a public repository.
+#
+# The Feishu app also needs two things done in the console, neither of which this
+# workflow can do: the base:* scopes must be granted and the app version published,
+# AND the app must be added as an editor of the target Base.
+name: automation-frontier-watch
+
+on:
+  schedule:
+    # 02:00 UTC Monday = 10:00 Asia/Shanghai Monday.
+    # Minute 0 is fine here: GitHub defers top-of-hour schedules under load, and a
+    # deferred weekly digest is harmless.
+    - cron: "0 2 * * 1"
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: "Extract + dedupe, print what would be written, write nothing"
+        type: boolean
+        default: true
+
+# Nothing is written back to the repository, so read-only is enough.
+permissions:
+  contents: read
+
+concurrency:
+  group: automation-frontier-watch
+  cancel-in-progress: false
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout automation code (main)
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Fail fast on a malformed config secret
+        env:
+          FRONTIER_CONFIG_JSON: ${{ secrets.FRONTIER_CONFIG_JSON }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, os
+          raw = os.environ.get("FRONTIER_CONFIG_JSON") or ""
+          if not raw.strip():
+              raise SystemExit("FRONTIER_CONFIG_JSON is empty")
+          cfg = json.loads(raw)
+          missing = [k for k in ("base_token", "table_id") if not str(cfg.get(k) or "").strip()]
+          if missing:
+              raise SystemExit(f"FRONTIER_CONFIG_JSON is missing: {missing}")
+          print(f"config ok — base_token={str(cfg['base_token'])[:6]}… table_id={cfg['table_id']}")
+          PY
+
+      - name: Run frontier-watch
+        env:
+          FEISHU_APP_ID: ${{ secrets.FEISHU_APP_ID }}
+          FEISHU_APP_SECRET: ${{ secrets.FEISHU_APP_SECRET }}
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          FRONTIER_CONFIG_JSON: ${{ secrets.FRONTIER_CONFIG_JSON }}
+        run: |
+          set -euo pipefail
+          args=""
+          if [ "${{ inputs.dry-run }}" = "true" ]; then args="--dry-run"; fi
+          echo "running: watch.py $args"
+          python3 automations/frontier-watch/watch.py $args

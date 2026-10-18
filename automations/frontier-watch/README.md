@@ -22,28 +22,36 @@
 
 ## 触发与执行器
 
-- `trigger_kind: weekly`，cron 只写在 `deploy/com.lyrawang.frontier-watch.plist.tmpl`（周一 10:00）
-- `executor: launchd`：写飞书 Base 复用操作者本机 `lark-cli` 的 **user 令牌**（在钥匙串里），
-  hosted runner 没有钥匙串，所以不用 GitHub Actions
-- 安装：`bash deploy/install.sh`（写入 `~/Library/LaunchAgents/` 并 bootstrap）
+- `trigger_kind: weekly`，cron 只写在 `.github/workflows/automation-frontier-watch.yml`（周一 10:00 北京时间）
+- `executor: github-actions`：走飞书**应用身份** `tenant_access_token`，不读本机钥匙串、不需要 lark-cli，
+  Mac 关机也照跑
+- 手动验证：Actions → automation-frontier-watch → Run workflow（`dry-run` 默认 true，只打印不写）
+
+### 需要的 secrets
+
+| Secret | 说明 |
+|---|---|
+| `FEISHU_APP_ID` / `FEISHU_APP_SECRET` | 与 `github-portfolio-snapshot` 共用同一个飞书自建应用 |
+| `DEEPSEEK_API_KEY` | 提取功能用的模型 Key |
+| `FRONTIER_CONFIG_JSON` | `{"base_token":"…","table_id":"…","model":"deepseek-flash"}` |
+
+飞书控制台还要做两件事（脚本做不了）：给应用授予 `base:record:read` / `base:record:create` /
+`base:field:read` 等 scope 并发布版本；把该应用加为目标 Base 的**可编辑协作者**。
 
 ## 代码 vs 状态
 
 | | 位置 | 说明 |
 |---|---|---|
 | 代码 | 本目录（Store 检出） | 可审阅、可版本化 |
-| `config.json` | `~/.automation-state/frontier-watch/` | Base token / 表 id / 模型，600 权限，**不进仓库** |
-| `state.json` | 同上 | 已处理 Codex 版本、Claude 页面哈希、已写功能名（去重） |
-| 日志 | 同上 | `watch.out.log` / `watch.err.log` |
+| 配置 | `FRONTIER_CONFIG_JSON` secret（CI）或 `~/.automation-state/frontier-watch/config.json`（本机调试） | Base token / 表 id / 模型，**不进仓库** |
+| 去重状态 | 飞书 Base 自身 | 每次运行读取表内全部「功能/灵感」名称，不依赖本地状态文件 |
+| 日志 | GitHub Actions 运行日志 | 每次运行的提取与写入数量 |
 
-初始化：
+本机手动调试（需要自己的飞书应用凭据与模型 Key）：
 
 ```sh
-mkdir -p ~/.automation-state/frontier-watch
-cp config.example.json ~/.automation-state/frontier-watch/config.json
-# 填 base_token / table_id，然后：
-python3 watch.py          # 手动跑一次验证
-bash deploy/install.sh    # 安装周一 10:00 的定时任务
+export FEISHU_APP_ID=… FEISHU_APP_SECRET=… DEEPSEEK_API_KEY=…
+python3 automations/frontier-watch/watch.py --dry-run
 ```
 
 ## 失败模式
@@ -52,7 +60,7 @@ bash deploy/install.sh    # 安装周一 10:00 的定时任务
 |---|---|
 | 抓取失败（网络/结构变化） | 该来源跳过，stderr 记录，另一个来源继续 |
 | 模型返回非 JSON | 本次该来源丢弃，不写脏数据 |
-| Base 读取失败 | 放弃本次写入（宁可不动，也不重复写） |
+| Base 读取失败 | 放弃本次写入（宁可不动，也不重复写，避免重复记录） |
 | 模型 Key 缺失 | 直接退出并提示（环境变量或钥匙串） |
 
 ## 依赖
