@@ -85,9 +85,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         notify(ok ? "已收录到飞书" : "收录失败", ok ? String(text.prefix(40)) : "运行 ai-quote-clip status 排查")
     }
 
-    func captureSelection() -> String? {
+    /// Read the focused element's selected text through the Accessibility API.
+    func selectedTextViaAX() -> String? {
+        let system = AXUIElementCreateSystemWide()
+        var focused: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(system, kAXFocusedUIElementAttribute as CFString, &focused) == .success,
+              let element = focused else { return nil }
+        var value: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(element as! AXUIElement, kAXSelectedTextAttribute as CFString, &value) == .success,
+              let text = value as? String, !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }
+        return text
+    }
+
+    /// Copy the current selection by synthesizing ⌘C, with retries for slow apps.
+    func selectedTextViaCopy() -> String? {
         let pasteboard = NSPasteboard.general
-        let saved = pasteboard.string(forType: .string)
         pasteboard.clearContents()
         let source = CGEventSource(stateID: .hidSystemState)
         let down = CGEvent(keyboardEventSource: source, virtualKey: CGKeyCode(kVK_ANSI_C), keyDown: true)
@@ -96,13 +108,32 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         up?.flags = .maskCommand
         down?.post(tap: .cghidEventTap)
         up?.post(tap: .cghidEventTap)
-        usleep(180_000)
-        let captured = pasteboard.string(forType: .string)
-        if let saved = saved {
-            pasteboard.clearContents()
-            pasteboard.setString(saved, forType: .string)
+        for _ in 0..<4 {
+            usleep(160_000)
+            if let text = pasteboard.string(forType: .string), !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                return text
+            }
         }
-        return captured
+        return nil
+    }
+
+    func captureSelection() -> String? {
+        // 1) Accessibility route (works for native selections, no clipboard churn).
+        if let text = selectedTextViaAX() { return text }
+        let saved = NSPasteboard.general.string(forType: .string)
+        // 2) Synthetic ⌘C (works for most apps, including Electron).
+        if let text = selectedTextViaCopy() { restoreClipboard(saved); return text }
+        restoreClipboard(saved)
+        // 3) Last resort: the user may have copied manually before pressing the hotkey.
+        if let text = saved, !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return text }
+        return nil
+    }
+
+    func restoreClipboard(_ saved: String?) {
+        guard let saved = saved else { return }
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.setString(saved, forType: .string)
     }
 
     func runCli(_ text: String) -> Bool {

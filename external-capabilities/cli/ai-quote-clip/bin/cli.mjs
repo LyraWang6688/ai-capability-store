@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /** ai-quote-clip — 把值得留下的 AI 金句/片段，一键收进飞书文档。 */
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -20,7 +20,7 @@ const HELP = `ai-quote-clip ${PKG.version} — 把 AI 说得好、值得留下�
   ai-quote-clip add [文字…] [--clipboard] [--source <来源>]
   ai-quote-clip doc                      查看当前目标文档
   ai-quote-clip doc set <URL|token>      切换目标文档
-  ai-quote-clip hotkey [install [--key z]|uninstall|status]   macOS 全局快捷键（默认 ⌃⌥Z）
+  ai-quote-clip hotkey [install [--key z] [--force]|uninstall|status]   macOS 全局快捷键（默认 ⌃⌥Z）
   ai-quote-clip status
   ai-quote-clip --version | --help
 
@@ -79,7 +79,9 @@ async function readInput(args) {
 async function init(args) {
   const cfg = loadConfig() || {};
   const lark = flag(args, '--lark-profile');
-  const base = { ...cfg, larkCli: cfg.larkCli || 'lark-cli' };
+  const resolved = spawnSync('/usr/bin/which', ['lark-cli'], { encoding: 'utf8' });
+  const absoluteLark = (resolved.stdout || '').trim() || 'lark-cli';
+  const base = { ...cfg, larkCli: cfg.larkCli && cfg.larkCli !== 'lark-cli' ? cfg.larkCli : absoluteLark };
   if (lark !== undefined) base.larkProfile = lark;
 
   const version = await run({ ...base, larkProfile: base.larkProfile || '' }, ['--version'], undefined, 20000);
@@ -187,7 +189,7 @@ try {
       if (action === 'install') {
         const key = (flag(rest, '--key') || 'z').toLowerCase();
         if (!/^[a-z]$/.test(key)) throw new Error('--key 只接受单个字母，例如 --key z');
-        const result = installHotkey({ nodePath: process.execPath, cliPath: CLI_PATH, key });
+        const result = installHotkey({ nodePath: process.execPath, cliPath: CLI_PATH, key, force: rest.includes('--force') });
         console.log(`快捷键：⌃⌥${key.toUpperCase()}`);
         console.log(`✓ 已安装：${result.plist}`);
         console.log('首次按 ⌃⌥S 会请求辅助功能权限，去系统设置勾选 AiQuoteClip。');
