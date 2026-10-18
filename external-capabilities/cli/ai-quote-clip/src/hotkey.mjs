@@ -82,9 +82,9 @@ export function installHotkey({ nodePath, cliPath, key = 'z', force = false }) {
 <plist version="1.0">
 <dict>
   <key>Label</key><string>${PLIST_LABEL}</string>
-  <key>ProgramArguments</key><array><string>${join(APP_DIR, 'Contents', 'MacOS', 'AiQuoteClip')}</string></array>
+  <key>ProgramArguments</key><array><string>/usr/bin/open</string><string>-a</string><string>${APP_DIR}</string></array>
   <key>RunAtLoad</key><true/>
-  <key>KeepAlive</key><true/>
+  <key>KeepAlive</key><false/>
   <key>ProcessType</key><string>Interactive</string>
   <key>StandardOutPath</key><string>${join(LOG_DIR, 'hotkey.out.log')}</string>
   <key>StandardErrorPath</key><string>${join(LOG_DIR, 'hotkey.err.log')}</string>

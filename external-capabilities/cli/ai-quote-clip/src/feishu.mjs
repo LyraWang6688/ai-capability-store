@@ -13,6 +13,8 @@ export function run(cfg, rest, input, timeoutMs = 90000) {
     const env = {
       ...process.env,
       PATH: ['/usr/local/bin', '/opt/homebrew/bin', process.env.PATH || '/usr/bin:/bin:/usr/sbin:/sbin'].join(':'),
+      LANG: process.env.LANG || 'en_US.UTF-8',
+      LC_ALL: process.env.LC_ALL || process.env.LANG || 'en_US.UTF-8',
     };
     const child = spawn(cfg.larkCli, args(cfg, rest), { stdio: ['pipe', 'pipe', 'pipe'], env });
     let stdout = '', stderr = '', settled = false;
