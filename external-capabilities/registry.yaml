@@ -73,6 +73,18 @@ capabilities:
     permissions: "需要操作者本机安装并授权 lark-cli（用户身份，具备目标文档的编辑权限）以完成飞书写入；复制与追问不需要任何额外权限。宿主侧仅注册一个同源本地接口 `/plugins/selection-toolbar/note`（POST），不开放外部网络监听"
     notes: "自研、Store-managed。首次登记：全新资产，从未进过版本控制，首次提交即其第一份历史（按 first-publish §0 ② 直接复制）。依赖 DSH 桌面端（提供 `shell.overlay` 槽位与插件安装与管理器）与 lark-cli 1.0.x；未配置 docToken 时注释只写本地并在界面回显原因。status 取 limited：不是装上即用，需按 README 创建一次操作者配置并重启 DSH。0.2.0 起可经 npm 分发：公开包名 `@lyra_wang/dsh-selection-toolbar`（0.2.0 与注册表版本一致），消费者在 DSH 插件页输入包名即可安装；npm 上的 `dsh-selection-toolbar`（无 scope）已被第三方占用，故使用作者 scope。0.2.0 同时把包名从开发期 `@local/selection-toolbar` 改为公开包名，并同步 client loader id（改名属破坏性变更，故 minor +1）。2026-10-19 实测证据：宿主路由 `GET /plugins/selection-toolbar/note` 返回 405（已加载）；飞书文档 revision 5 → 6 → 7 各追加一条；时间戳由 `<sub>` 改为纯文本北京时间后显示为 `时间：2026/10/19 02:11`。0.2.1（补丁）：把 `client.js` 的 locale 命名空间常量从遗留的 `@local/selection-toolbar` 统一为公开包名（此前 register/bind 用同一个值所以功能一直正常，属改名未清干净的痕迹；locale 注册只在进程内存在，修改不丢任何数据）；并在插件目录新增 `.gitignore`（`selection-toolbar.json` / `*.local.json` / `.env*` / `node_modules/`），防止任何人把含文档 token 的测试配置误提交——配置文件本身仍在仓库外的 `~/.dsh/selection-toolbar.json`。0.2.2（补丁）：`locale/zh.json` 与 `locale/en.json` 的 meta 描述仍写着已删除的「朗读 / read aloud」，插件页因此显示「复制 / 朗读 / 追问 / 注释」；本次改为「复制 / 追问 / 注释」，并同步修正英文描述。0.3.0（minor）：新增第 4 个动作「改写」——选中一段文字后可指定要求（润色 / 更简洁 / 小红书风 / 公众号风 / 自定义），宿主侧新增 `POST /plugins/selection-toolbar/rewrite`，用配置的模型（默认 deepseek-flash，OpenAI 兼容端点）只重写该段，结果可复制或插入输入框；API Key 从环境变量或系统钥匙串读取，不随包分发。为避免与「注释」冲突，改写结果第一版不直接替换只读消息的 DOM（留作后续）。0.3.1（补丁）：修复改写面板点击即消失——「点击面板外关闭」的判定只认工具条与注释面板，漏掉了改写面板的类名，导致点「小红书风」等按钮被当成点击外部而关闭面板；现补上 `-rw` 类名。"
 
+  ai-quote-clip:
+    name: ai-quote-clip
+    provider: lyrawang
+    type: cli
+    status: limited
+    provider_path: external-capabilities/providers/lyrawang/README.md
+    version: 0.1.0
+    implementation_path: external-capabilities/cli/ai-quote-clip
+    auth: "无凭据入仓。飞书写入复用操作者本机 lark-cli 的 user 令牌（凭据在 lark-cli 自己的凭据库）；目标文档 token 存在 `~/.ai-quote-clip/config.json`（600），快捷方式配置 `hotkey.json` 只记录 node 与 CLI 路径。包内不含任何密钥"
+    capabilities: "把任意 App 里选中的文字（尤其 AI 对话里值得留的表达）一键追加到指定飞书文档：CLI 支持 stdin/参数/剪贴板三种输入；macOS 全局快捷键 ⌃⌥S 自动复制选区并写入。`init` 引导选择文档并校验可读，`doc set` 可切换目标，格式为「引用块 + 收录时间 + 可选来源 + 分隔线」"
+    permissions: "需要本机 lark-cli 已授权（docs 域）且对目标文档有编辑权限；macOS 快捷键需要「辅助功能」权限（模拟 ⌘C 读取选区），可随时在系统设置撤销。CLI 本身跨平台，只有快捷键安装限 macOS"
+    notes: "自研、Store-managed。全新资产，首次提交即其第一份历史。产品定位：AI 金句/素材收录器——现有剪藏工具只覆盖网页，收不了 ChatGPT/Codex/豆包工作这类对话；本工具跨 App 通用。快捷键实现随包分发 Swift 源码、由 `hotkey install` 在本机用 swiftc 编译并按 LaunchAgent 常驻，避免分发预编译 App 的签名问题。0.1.0 仅收录（原文 + 时间 + 来源）；改写（公众号风/小红书风）、按日期分节、MCP 形态（供 Codex/豆包工作 agent 调用）为后续版本。"
   dsh-feishu-remote:
     name: dsh-feishu-remote
     provider: lyrawang
