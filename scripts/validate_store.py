@@ -152,6 +152,12 @@ AUTOMATION_DIR = "automations"
 # start failing because Python dropped a __pycache__ next to a shared module.
 NON_ASSET_DIR_NAMES = {"__pycache__", "node_modules", "dist", ".venv", ".git"}
 
+# Capability implementations live under shelves. These two hold documents, not
+# capabilities, and are reserved on purpose. Every other shelf is CLOSED: each
+# of its child directories must be some entry's `implementation_path`.
+RESERVED_CAPABILITY_DIRS = {"providers", "use-cases"}
+CAPABILITY_SHELVES = {"mcp", "connectors", "cli", "api", "plugin"}
+
 KEBAB_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 VERSION_RE = re.compile(r"^\d+\.\d+\.\d+$")
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
@@ -1065,6 +1071,57 @@ def main() -> int:
                         required = req.get("required")
                         check(f"dependency {i}.requires[{j}] required is a boolean",
                               isinstance(required, bool), repr(required))
+
+    # ---- 12b. Capability shelves: every directory is a registered asset ----
+    # `providers/` and `use-cases/` hold documents, not capabilities, and are
+    # reserved. Every other directory under external-capabilities/ is a shelf
+    # grouping implementations, and is therefore CLOSED: each child must appear
+    # as some entry's `implementation_path`.
+    #
+    # This closes the gap `connectors/investdesk-bot` exposed. Fourteen files
+    # (Dockerfile, compose file, deploy script, sources) sat in the tree with no
+    # registry entry. Every schema check iterates entries, so nothing looked at
+    # it; every tag check iterates entries, so nothing looked at it either; and
+    # the validator reported a clean run. A directory nobody registered is an
+    # asset nobody governs.
+    #
+    # An unrecognised shelf is a hard error, not a skip: adding a shelf is a
+    # policy decision worth reviewing, and it should not arrive by someone
+    # creating a directory.
+    if caps_ok:
+        registered_impls = set()
+        for _cap_key, _cap_entry in cap_entries:
+            _impl = _cap_entry.get("implementation_path")
+            if isinstance(_impl, str) and _impl:
+                registered_impls.add(_impl.rstrip("/"))
+        caps_base = os.path.join(ROOT, "external-capabilities")
+        if os.path.isdir(caps_base):
+            for name in sorted(os.listdir(caps_base)):
+                if name.startswith("."):
+                    continue
+                full = os.path.join(caps_base, name)
+                if not os.path.isdir(full):
+                    continue
+                rel = f"external-capabilities/{name}"
+                if name in RESERVED_CAPABILITY_DIRS:
+                    continue
+                check(f"capability shelf is declared: {rel}", name in CAPABILITY_SHELVES,
+                      f"unknown shelf {name!r} — declare it as a shelf or a reserved "
+                      f"directory in scripts/validate_store.py")
+                if name not in CAPABILITY_SHELVES:
+                    continue
+                for child in sorted(os.listdir(full)):
+                    if child.startswith(".") or child in NON_ASSET_DIR_NAMES:
+                        continue
+                    if not os.path.isdir(os.path.join(full, child)):
+                        continue
+                    child_rel = f"{rel}/{child}"
+                    check(f"capability directory kebab-case: {child_rel}",
+                          bool(KEBAB_RE.match(child)), child)
+                    check(f"capability directory is registered: {child_rel}",
+                          child_rel in registered_impls,
+                          "directory exists under a capability shelf but no registry "
+                          "entry points at it")
 
     # ---- 13. Automation schema + registry <-> filesystem symmetry ----
     auto_entries = validate_automation_entries(autos_reg) if autos_ok else []
