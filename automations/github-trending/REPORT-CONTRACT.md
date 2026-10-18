@@ -51,7 +51,7 @@
     3. 和我的关系         （表）
 二、我在做的事，谁也在做
 三、我收的项目，现在怎么样
-四、打 dsh-plugin 标记的仓库
+四、dsh-plugin 生态
 五、可以做什么
 ```
 
@@ -135,7 +135,7 @@
 
 ---
 
-### 四、打 dsh-plugin 标记的仓库
+### 四、dsh-plugin 生态
 
 数据来自采集层的 **`dsh_plugins` 字段**（`gh search repos --topic dsh-plugin`）——
 这是**观察名单，不是趋势信号**：它能在项目第一天就发现它，而 trending 只暴露已经火了的。
