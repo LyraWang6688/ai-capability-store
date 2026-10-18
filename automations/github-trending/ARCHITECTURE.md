@@ -39,6 +39,7 @@
     ④ 读飞书「GitHub 优质项目收录」表（分类用）
     ⑤ 把候选分成 板块一（新增）/ 板块二（已有项目）
     ⑥ 按契约写报告，直接出现在会话里
+    ⑦ 写 content JSON → render_report.py → HTML（单文件，可交互）
 
 每周日 20:00 ── 本机
   同 09:00，但先跑 weekly/aggregate.py 做一周聚合，
