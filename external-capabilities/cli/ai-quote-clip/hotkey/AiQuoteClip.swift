@@ -33,13 +33,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         item.button?.title = "❝"
         let menu = NSMenu()
-        let keyLabel = (launch["key"] ?? "z").uppercased()
-        let capture = NSMenuItem(title: "收录选中文字（⌃⌥\(keyLabel)，需辅助功能）", action: #selector(captureSelectionMenu), keyEquivalent: "")
+        let capture = NSMenuItem(title: "收录到飞书（⌃⌥X）", action: #selector(captureAutoMenu), keyEquivalent: "")
         capture.target = self
         menu.insertItem(capture, at: 0)
-        let clipboardItem = NSMenuItem(title: "收录剪贴板（⌃⌥X，无需权限）", action: #selector(captureClipboardMenu), keyEquivalent: "")
-        clipboardItem.target = self
-        menu.insertItem(clipboardItem, at: 1)
         menu.addItem(NSMenuItem.separator())
         let quit = NSMenuItem(title: "退出", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         menu.addItem(quit)
@@ -74,17 +70,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         var selectionID = EventHotKeyID(signature: HOTKEY_SIGNATURE, id: 1)
         var clipboardID = EventHotKeyID(signature: HOTKEY_SIGNATURE, id: 2)
         let modifier = UInt32(controlKey | optionKey)
-        RegisterEventHotKey(keyCode(), modifier, selectionID, GetApplicationEventTarget(), 0, &hotKeyRef)
+        RegisterEventHotKey(UInt32(kVK_ANSI_X), modifier, selectionID, GetApplicationEventTarget(), 0, &hotKeyRef)
         _ = selectionID
-        RegisterEventHotKey(UInt32(kVK_ANSI_X), modifier, clipboardID, GetApplicationEventTarget(), 0, &clipboardHotKeyRef)
         _ = clipboardID
         var eventType = EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyPressed))
         InstallEventHandler(GetApplicationEventTarget(), { (_, event, _) -> OSStatus in
             var hotKeyID = EventHotKeyID()
             GetEventParameter(event, EventParamName(kEventParamDirectObject), EventParamType(typeEventHotKeyID), nil,
                               MemoryLayout<EventHotKeyID>.size, nil, &hotKeyID)
-            let mode: String = hotKeyID.id == 2 ? "clipboard" : "selection"
-            DispatchQueue.main.async { AppDelegate.shared?.trigger(mode: mode) }
+            DispatchQueue.main.async { AppDelegate.shared?.trigger(mode: "auto") }
             return noErr
         }, 1, &eventType, nil, nil)
     }
@@ -94,16 +88,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         return AXIsProcessTrustedWithOptions(options)
     }
 
-    @objc func captureSelectionMenu() { trigger(mode: "selection") }
-    @objc func captureClipboardMenu() { trigger(mode: "clipboard") }
+    @objc func captureAutoMenu() { trigger(mode: "auto") }
 
     func trigger(mode: String = "selection") {
         if busy { return }
         busy = true
         defer { busy = false }
-        if mode == "selection" && !ensureAccessibility(prompt: true) {
+        let trusted = ensureAccessibility(prompt: mode != "clipboard")
+        if mode == "selection" && !trusted {
             logLine("trigger mode=selection untrusted")
-            notify("需要辅助功能权限", "改用「收录剪贴板」：先 ⌘C 复制，再按 ⌃⌥X（不需要授权）")
+            notify("需要辅助功能权限", "系统设置 → 隐私与安全性 → 辅助功能，勾选 AiQuoteClip")
             return
         }
         let front = NSWorkspace.shared.frontmostApplication?.localizedName ?? "?"
