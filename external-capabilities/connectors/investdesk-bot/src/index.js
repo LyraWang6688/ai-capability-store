@@ -1,5 +1,5 @@
 import { config, ensureDataDir } from './config.js';
-import { Lark, sendText } from './feishu.js';
+import { Lark, sendMarkdown } from './feishu.js';
 import { chat } from './llm.js';
 import { getHistory, appendHistory } from './session.js';
 import { callTool as callIdeaTool } from 'investdesk-ideas/dist/mcp/tools.js';
@@ -31,7 +31,7 @@ async function handle(chatId, text, messageId) {
     const history = getHistory(chatId);
     const started = Date.now();
     const { text: answer } = await chat(history, text);
-    await sendText(chatId, answer);
+    await sendMarkdown(chatId, answer);
     console.log(`[done] ${Date.now() - started}ms reply=${answer.length}字`);
     callIdeaTool('save_idea', { question: text, answer, type: '问答' })
       .then((result) => {
@@ -45,7 +45,7 @@ async function handle(chatId, text, messageId) {
     ]);
   } catch (error) {
     console.error('[bot] 处理失败:', error);
-    await sendText(chatId, `出错了：${error.message}`).catch(() => {});
+    await sendMarkdown(chatId, `出错了：${error.message}`).catch(() => {});
   }
 }
 
@@ -60,7 +60,7 @@ const dispatcher = new Lark.EventDispatcher({}).register({
     const text = extractText(message);
     console.log(`[recv] chat=${chatId.slice(0,12)}… text=${(text ?? '<非文本>').slice(0, 40)}`);
     if (!text) {
-      sendText(chatId, '目前只支持文字消息。').catch(() => {});
+      sendMarkdown(chatId, '目前只支持文字消息。').catch(() => {});
       return;
     }
     // 立刻返回，异步处理（飞书要求 3 秒内响应，否则会重推）
