@@ -1,19 +1,17 @@
 #!/usr/bin/env node
 /**
- * automations/investdesk-quote-sync 的入口。
+ * 持仓价格同步 —— 每个交易日一次，把最新价写回飞书多维表格。
  *
- * 这是一个**薄壳**：真正的实现在
- * external-capabilities/mcp/investdesk-quotes/src/sync.ts。
- * 定时任务和 MCP 的 sync_prices 工具共用同一个函数，
- * 所以这里不允许出现第二份取价/写库逻辑。
+ * 自包含：取价（Wind）、读写飞书、汇总逻辑都在 ./src/ 下，
+ * 不再引用外部能力包。数据源只有 Wind（免费网页源已移除）。
  *
  * 退出码：
  *   0  成功，或成功率达标
- *   1  成功率低于阈值（场外净值 21:30 前未公布属正常，但仍上报）
+ *   1  成功率低于阈值，或配置缺失（如 WIND_API_KEY）
  */
 
-import { backendName } from '../../external-capabilities/mcp/investdesk-quotes/src/feishu/base.ts';
-import { syncPortfolioPrices } from '../../external-capabilities/mcp/investdesk-quotes/src/sync.ts';
+import { backendName } from './src/feishu/base.ts';
+import { syncPortfolioPrices } from './src/portfolio.ts';
 
 /** 低于这个成功率视为异常退出，便于从日志/监控发现数据源故障 */
 const MIN_SUCCESS_RATE = 0.8;
