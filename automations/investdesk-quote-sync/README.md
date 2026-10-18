@@ -4,10 +4,12 @@
 
 ## 为什么是 automation 而不是 capability
 
-取价和写库的能力本身在 `external-capabilities/mcp/investdesk-quotes` 里，可以被人或 Agent
+取价和写库的实现在本目录的 `src/` 下，自包含（不依赖外部能力包）。原先共用的
+MCP 能力包 `investdesk-quotes` 已按架构调整移除——那个 MCP 形态是给自建机器人用的，
+机器人的职责已经交给豆包工作。
 随时调用。这个自动化的唯一职责是**在时钟响起时触发它**——一个是「能做什么」，一个是「什么时候做」。
 
-入口 `sync.ts` 是薄壳，只调用能力层导出的 `syncPortfolioPrices()`。定时任务和 MCP 的
+入口 `sync.ts` 只做调度与日志，取价逻辑调用 `src/portfolio.ts` 的 `syncPortfolioPrices()`。原先定时任务和 MCP 的
 `sync_prices` 工具共用同一个函数，不存在第二份实现。
 
 ## 触发
@@ -66,7 +68,7 @@ deploy/uninstall.sh             # 卸载（工作目录与日志保留）
 
 - Node.js 22.6+（原生执行 TypeScript，无需构建）
 - 飞书自建应用（`FEISHU_APP_ID` / `FEISHU_APP_SECRET`），并已加为 Base 协作者
-- `external-capabilities/mcp/investdesk-quotes`
+- `automations/investdesk-quote-sync/src/`（取价与写库，自包含）
 
 ## 与能力层的边界
 

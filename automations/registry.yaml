@@ -140,6 +140,8 @@ automations:
       destination: "飞书多维表格：持仓价格表"
     description: >
       每个交易日一次（北京 20:00），把全部持仓的最新价格写回飞书多维表格。
+      自包含实现：取价（Wind）、飞书读写、汇总逻辑都在 automations/investdesk-quote-sync/src/ 下，
+      不再依赖 external-capabilities 里的能力包（原先共用的 MCP 形态已不再需要）。
       20:00 时 A 股收盘价已定、场外基金净值开始公布；QDII 与部分基金净值
       可能更晚，那部分会滞后一天，属正常。市值与日盈亏由表格公式自动重算。
     notes: >
