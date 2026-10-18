@@ -19,7 +19,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         item.button?.title = "❝"
         let menu = NSMenu()
-        let capture = NSMenuItem(title: "收录到飞书（⌃⌥S）", action: #selector(trigger), keyEquivalent: "")
+        let capture = NSMenuItem(title: "收录到飞书（⌃⌥\(launch["key"]?.uppercased() ?? "Z")）", action: #selector(trigger), keyEquivalent: "")
         capture.target = self
         menu.addItem(capture)
         menu.addItem(NSMenuItem.separator())
@@ -37,10 +37,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         launch = json
     }
 
+    func keyCode() -> UInt32 {
+        // Letters the operator may choose through `hotkey install --key <letter>`.
+        let map: [String: Int] = [
+            "a": kVK_ANSI_A, "s": kVK_ANSI_S, "d": kVK_ANSI_D, "f": kVK_ANSI_F,
+            "g": kVK_ANSI_G, "h": kVK_ANSI_H, "j": kVK_ANSI_J, "k": kVK_ANSI_K,
+            "l": kVK_ANSI_L, "z": kVK_ANSI_Z, "x": kVK_ANSI_X, "c": kVK_ANSI_C,
+            "v": kVK_ANSI_V, "b": kVK_ANSI_B, "n": kVK_ANSI_N, "m": kVK_ANSI_M,
+            "q": kVK_ANSI_Q, "w": kVK_ANSI_W, "e": kVK_ANSI_E, "r": kVK_ANSI_R,
+            "t": kVK_ANSI_T, "y": kVK_ANSI_Y, "u": kVK_ANSI_U, "i": kVK_ANSI_I,
+            "o": kVK_ANSI_O, "p": kVK_ANSI_P,
+        ]
+        let letter = (launch["key"] ?? "z").lowercased()
+        return UInt32(map[letter] ?? kVK_ANSI_Z)
+    }
+
     func registerHotKey() {
         var hotKeyID = EventHotKeyID(signature: HOTKEY_SIGNATURE, id: 1)
         let modifier = UInt32(controlKey | optionKey)
-        RegisterEventHotKey(UInt32(kVK_ANSI_S), modifier, hotKeyID, GetApplicationEventTarget(), 0, &hotKeyRef)
+        RegisterEventHotKey(keyCode(), modifier, hotKeyID, GetApplicationEventTarget(), 0, &hotKeyRef)
         _ = hotKeyID
         var eventType = EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyPressed))
         InstallEventHandler(GetApplicationEventTarget(), { (_, _, _) -> OSStatus in
@@ -63,7 +78,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
         guard let text = captureSelection(), !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            notify("没有选中文字", "先用鼠标选中一段文字，再按 ⌃⌥S")
+            notify("没有选中文字", "先用鼠标选中一段文字，再按快捷键")
             return
         }
         let ok = runCli(text)

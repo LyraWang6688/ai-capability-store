@@ -20,7 +20,7 @@ const HELP = `ai-quote-clip ${PKG.version} — 把 AI 说得好、值得留下�
   ai-quote-clip add [文字…] [--clipboard] [--source <来源>]
   ai-quote-clip doc                      查看当前目标文档
   ai-quote-clip doc set <URL|token>      切换目标文档
-  ai-quote-clip hotkey install|uninstall|status   macOS 全局快捷键（⌃⌥S）
+  ai-quote-clip hotkey [install [--key z]|uninstall|status]   macOS 全局快捷键（默认 ⌃⌥Z）
   ai-quote-clip status
   ai-quote-clip --version | --help
 
@@ -164,9 +164,12 @@ async function doc(args) {
 function status() {
   const cfg = loadConfig();
   const hotkey = hotkeyStatus();
+  let hotkeyKey = 'z';
+  try { hotkeyKey = JSON.parse(readFileSync(HOTKEY_CONFIG_PATH, 'utf8')).key || 'z'; } catch { /* not installed */ }
   console.log(JSON.stringify({
     config: CONFIG_PATH,
     initialized: Boolean(cfg && cfg.docToken),
+    hotkeyKey: `⌃⌥${hotkeyKey.toUpperCase()}`,
     docToken: cfg ? cfg.docToken : null,
     hotkey,
     hotkeyConfig: HOTKEY_CONFIG_PATH,
@@ -182,7 +185,10 @@ try {
     case 'hotkey': {
       const action = rest[0];
       if (action === 'install') {
-        const result = installHotkey({ nodePath: process.execPath, cliPath: CLI_PATH });
+        const key = (flag(rest, '--key') || 'z').toLowerCase();
+        if (!/^[a-z]$/.test(key)) throw new Error('--key 只接受单个字母，例如 --key z');
+        const result = installHotkey({ nodePath: process.execPath, cliPath: CLI_PATH, key });
+        console.log(`快捷键：⌃⌥${key.toUpperCase()}`);
         console.log(`✓ 已安装：${result.plist}`);
         console.log('首次按 ⌃⌥S 会请求辅助功能权限，去系统设置勾选 AiQuoteClip。');
       } else if (action === 'uninstall') {
