@@ -48,6 +48,25 @@ function flattenTables(markdown) {
   return out.join('\n').replace(/\n{3,}/g, '\n\n');
 }
 
+/** 把 Markdown 按空行切成段落，每段做成卡片的一个 div（避免挤成一坨） */
+function buildCard(markdown) {
+  const text = flattenTables(markdown).trim();
+  const paragraphs = text.split(/\n{2,}/).filter((p) => p.trim());
+  const elements = [];
+  for (const para of paragraphs) {
+    if (elements.length > 0) elements.push({ tag: 'hr' });
+    elements.push({ tag: 'div', text: { tag: 'lark_md', content: para } });
+  }
+  return {
+    config: { wide_screen_mode: true },
+    header: {
+      template: 'blue',
+      title: { tag: 'plain_text', content: '📊 投资助手' },
+    },
+    elements,
+  };
+}
+
 /** 用卡片消息发送 Markdown（卡片会渲染加粗与列表） */
 export async function sendMarkdown(chatId, markdown) {
   const content = flattenTables(markdown).trim();
@@ -67,10 +86,7 @@ export async function sendMarkdown(chatId, markdown) {
       data: {
         receive_id: chatId,
         msg_type: 'interactive',
-        content: JSON.stringify({
-          config: { wide_screen_mode: true },
-          elements: [{ tag: 'markdown', content: chunk }],
-        }),
+        content: JSON.stringify(buildCard(chunk)),
       },
     });
   }
