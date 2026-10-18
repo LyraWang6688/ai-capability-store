@@ -62,13 +62,17 @@ The weekly automation reads the same branch and uses this same script.
 ### The report itself
 
 `sync_from_cloud.py` only brings the data local. What the **report** must look
-like — the three dimensions (community focus → underlying problem → relation to
-the operator's interests), the interests mapping, the 2×2 positioning matrix, and
-the anti-fabrication rules — is a separate contract:
+like is a separate contract — two blocks (new discoveries analysed on two
+dimensions, plus status tracking for already-collected repos), the interests
+mapping, the anti-fabrication rules, and the daily vs weekly judgement
+differences:
 
 - [`REPORT-CONTRACT.md`](./REPORT-CONTRACT.md) — the structure, non-negotiable rules
 - [`interests.yaml`](./interests.yaml) — what the operator currently cares about,
   with the schema documented inline
+- [`ARCHITECTURE.md`](./ARCHITECTURE.md) — how the whole pipeline runs end to end:
+  what lives where, what a given change affects, and why the schedule prompt is a
+  pointer rather than a copy
 
 `interests.yaml` **is** in this repository on purpose: its content is technical
 directions plus already-public project names, so it is not sensitive — and
