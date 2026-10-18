@@ -1,6 +1,6 @@
 {
   "meta": {
     "title": "Selection Toolbar",
-    "description": "Shows a floating toolbar (copy / follow up / annotate) above selected text in the conversation."
+    "description": "Shows a floating toolbar (copy / follow up / annotate / rewrite) above selected text in the conversation."
   }
 }

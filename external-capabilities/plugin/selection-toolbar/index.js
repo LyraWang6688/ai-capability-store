@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
@@ -14,6 +15,7 @@ import { join } from 'node:path';
  * code can be published without leaking an operator's private doc identity.
  */
 const ROUTE_PATH = '/plugins/selection-toolbar/note';
+const REWRITE_PATH = '/plugins/selection-toolbar/rewrite';
 const DEFAULT_CONFIG_PATH = join(homedir(), '.dsh', 'selection-toolbar.json');
 
 /** Read the operator config from outside the repository on every write. */
@@ -27,9 +29,25 @@ function loadOperatorConfig() {
       larkCli: typeof data.larkCli === 'string' && data.larkCli.trim() !== ''
         ? data.larkCli.trim()
         : 'lark-cli',
+      rewriteModel: typeof data.rewriteModel === 'string' && data.rewriteModel.trim() !== ''
+        ? data.rewriteModel.trim()
+        : 'deepseek-flash',
+      rewriteBaseUrl: typeof data.rewriteBaseUrl === 'string' && data.rewriteBaseUrl.trim() !== ''
+        ? data.rewriteBaseUrl.trim().replace(/\/+$/, '')
+        : 'https://api.deepseek.com',
+      keychainService: typeof data.keychainService === 'string' && data.keychainService.trim() !== ''
+        ? data.keychainService.trim()
+        : 'DEEPSEEK_API_KEY',
     };
   } catch (error) {
-    return { path, docToken: '', larkCli: 'lark-cli' };
+    return {
+      path,
+      docToken: '',
+      larkCli: 'lark-cli',
+      rewriteModel: 'deepseek-flash',
+      rewriteBaseUrl: 'https://api.deepseek.com',
+      keychainService: 'DEEPSEEK_API_KEY',
+    };
   }
 }
 
@@ -152,6 +170,61 @@ function sendJson(res, status, payload) {
   res.end(body);
 }
 
+/** Read the model API key from the environment or the OS keychain (never stored here). */
+function readApiKey(config) {
+  const fromEnv = process.env.DEEPSEEK_API_KEY;
+  if (typeof fromEnv === 'string' && fromEnv.trim() !== '') return fromEnv.trim();
+  try {
+    const value = execFileSync('/usr/bin/security', [
+      'find-generic-password', '-a', process.env.USER || '', '-s', config.keychainService, '-w',
+    ], { encoding: 'utf8' });
+    const trimmed = String(value).trim();
+    return trimmed !== '' ? trimmed : '';
+  } catch (error) {
+    return '';
+  }
+}
+
+/** Rewrite one selected passage with the configured model. */
+export async function rewriteText(config, text, instruction) {
+  const apiKey = readApiKey(config);
+  if (apiKey === '') {
+    throw new Error(`未找到模型 API Key：请设置 DEEPSEEK_API_KEY 环境变量，或把 key 存进钥匙串（-s ${config.keychainService}）`);
+  }
+  const system = '你是中文文字编辑。只输出改写后的文字本身：不要解释、不要加引号、不要标注"改写后"。';
+  const ask = instruction === ''
+    ? '请润色下面这段文字，保持原意，让表达更通顺自然。\n\n原文：\n' + text
+    : '改写要求：' + instruction + '\n\n原文：\n' + text;
+  const response = await fetch(config.rewriteBaseUrl + '/chat/completions', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      authorization: 'Bearer ' + apiKey,
+    },
+    body: JSON.stringify({
+      model: config.rewriteModel,
+      temperature: 0.6,
+      stream: false,
+      messages: [
+        { role: 'system', content: system },
+        { role: 'user', content: ask },
+      ],
+    }),
+    signal: AbortSignal.timeout(90000),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const detail = payload && payload.error && payload.error.message ? payload.error.message : 'HTTP ' + response.status;
+    throw new Error('模型调用失败：' + detail);
+  }
+  const content = payload && payload.choices && payload.choices[0] && payload.choices[0].message
+    ? payload.choices[0].message.content
+    : '';
+  const result = typeof content === 'string' ? content.trim() : '';
+  if (result === '') throw new Error('模型没有返回内容');
+  return result;
+}
+
 /** Append one selection note to the Feishu document. */
 export function apply(ctx) {
   const handler = async (req, res) => {
@@ -181,5 +254,32 @@ export function apply(ctx) {
     kind: 'exact',
     path: ROUTE_PATH,
     handler,
+  }));
+
+  const rewriteHandler = async (req, res) => {
+    if (req.method !== 'POST') {
+      sendJson(res, 405, { ok: false, message: 'method not allowed' });
+      return;
+    }
+    try {
+      const body = await readJsonBody(req);
+      const text = String(body.text ?? '').trim();
+      const instruction = String(body.instruction ?? '').trim();
+      if (text === '') throw new Error('text is required');
+      if (text.length > 12000) throw new Error('选中的文字太长（上限 12000 字符）');
+      const config = loadOperatorConfig();
+      const result = await rewriteText(config, text, instruction);
+      sendJson(res, 200, { ok: true, text: result });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      ctx.logger?.warn?.(`selection-toolbar: rewrite failed: ${message}`);
+      sendJson(res, 500, { ok: false, message });
+    }
+  };
+
+  ctx.effect(() => ctx.webServer.register({
+    kind: 'exact',
+    path: REWRITE_PATH,
+    handler: rewriteHandler,
   }));
 }
