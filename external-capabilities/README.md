@@ -145,10 +145,26 @@ Authentication metadata ≠ credential storage. See [SECURITY.md](./SECURITY.md)
 
 ## Status Values
 
-- `available`
-- `limited`
-- `disabled`
-- `unknown`
+A capability's status answers **"can it be used right now?"** — and, for
+`archived` only, also **"is it still maintained?"**. Those are two different
+questions, and collapsing them is why `disabled` alone was not enough.
+
+| Status | Meaning | Reversible? |
+|---|---|---|
+| `available` | Works for its documented scope, with the declared credentials. | — |
+| `limited` | Works, but bounded — a subset of its surface, an environment requirement (a local runtime, a keychain token, a whitelisted egress IP), or a known-unstable upstream. | yes |
+| `disabled` | Temporarily unusable: a switch is off, a service is down, an account limit is in effect. **The asset is still maintained.** | yes |
+| `unknown` | Not verified yet. Recorded from someone's description rather than from use; treat it as `disabled` when deciding whether to call it. | yes |
+| `archived` | Permanently retired. Not maintained, not to be chosen for new work, kept only so its history stays answerable. **This is a statement about the asset, not about the moment** — do not flip it back; a revived capability is a new asset. | no |
+
+`disabled` → `archived` is the retirement path. Before it, a capability could be
+switched off but never laid to rest, while Skills and Automations had
+`deprecated` / `archived` all along.
+
+Archiving does not delete anything by itself: the tag stays (tags are immutable),
+and the directory stays until a separate decision removes it. Record **why** in
+`notes` — an archived capability with no reason is indistinguishable from one
+that was abandoned by accident.
 
 ## Add or Update Workflow
 

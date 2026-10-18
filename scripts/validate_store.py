@@ -121,7 +121,12 @@ ALLOWED_SKILL_FRONTMATTER = {
     "name", "description", "license", "compatibility", "metadata", "allowed-tools",
 }
 ALLOWED_CAPABILITY_TYPES = {"plugin", "mcp", "connector", "cli", "external-api", "integration"}
-ALLOWED_CAPABILITY_STATUSES = {"available", "limited", "disabled", "unknown"}
+# `archived` is the retirement state: permanently out of service, kept so its
+# history stays answerable. It is NOT `disabled` written twice — `disabled`
+# means "not right now", `archived` means "not any more". Before this, a
+# capability could be switched off but never retired, while a Skill or an
+# Automation had a full lifecycle. See external-capabilities/README.md.
+ALLOWED_CAPABILITY_STATUSES = {"available", "limited", "disabled", "unknown", "archived"}
 # Automation Domain. An automation is EXECUTION (a clock triggers it); a Skill is
 # a CAPABILITY (an Agent decides to use it). The lifecycle vocabulary mirrors
 # skills on purpose so one mental model covers both domains.
@@ -1008,7 +1013,7 @@ def main() -> int:
         allowed_statuses = set(caps_reg.get("allowed_statuses") or [])
         check("capability registry supports 6 types", allowed_types == ALLOWED_CAPABILITY_TYPES,
               f"types={sorted(allowed_types)}")
-        check("capability registry keeps 4 statuses", allowed_statuses == ALLOWED_CAPABILITY_STATUSES,
+        check("capability registry keeps 5 statuses", allowed_statuses == ALLOWED_CAPABILITY_STATUSES,
               f"statuses={sorted(allowed_statuses)}")
     providers_dir = os.path.join(ROOT, "external-capabilities/providers")
     if os.path.isdir(providers_dir):
