@@ -14,6 +14,7 @@
 | [`REPORT-CONTRACT.md`](./REPORT-CONTRACT.md) | **报告长什么样**（权威版本，两个成员都按它执行） |
 | [`interests.yaml`](./interests.yaml) | **关注清单**（报告的维度二靠它） |
 | [`ARCHITECTURE.md`](./ARCHITECTURE.md) | 整条管线怎么跑、改一处影响什么 |
+| [`render_report.py`](./render_report.py) | **渲染器**：content JSON → HTML |
 
 这三份文件之前住在 `github-trending-daily/` 里，weekly 不得不伸进另一个 automation 的
 目录去链接它们 —— 那是这次分成 family 的直接原因。
