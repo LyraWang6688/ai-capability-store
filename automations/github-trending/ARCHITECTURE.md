@@ -121,20 +121,35 @@ table  tblenXNEDtNtVIf4     「GitHub 优质项目收录」
 ## 4. 采集的客观标准
 
 ```
-三个源：
+四个源：
   ① trending?since=daily       当日新增星（stars today）——唯一的日速度来源
   ② trending?since=weekly      一周持续热度
   ③ gh search --created <7d --stars >200   太新还没上 trending 的
+  ④ gh search --topic dsh-plugin            标记为 DSH 插件的仓库（观察名单）
 
 四道过滤：
-  ① 按仓库去重合并，trend_gain 取最大值
+  ① 按仓库去重合并，trend_gain 取「已测到的」最大值（None 不参与比较）
   ② 噪音关键词过滤（job-search / leetcode / tutorial / awesome- …）
-     例外：trend_gain >= 300 时豁免
+     例外：trend_gain >= 300 时豁免；None 不触发豁免（未知不能当高增长）
   ③ 话题门槛：至少 2 个仓库带同一个 topic 才进 topic_frequency
-  ④ 排序：trend_gain 降序 → stars 降序；取前 40 去补 topics
+  ④ 排序：trend_gain 降序（None 排最后）→ stars 降序；取前 40 去补 topics
 
 每条记录 7 个字段：repo / stars / trend_gain / language / desc / topics / source
 ```
+
+**`trend_gain` 是三态**：
+
+```
+None  →  这个源没有日速度字段（weekly 榜、topic 搜索）
+0     →  测到了，确实没涨
+n > 0 →  涨了 n 星
+```
+
+把 `None` 当成 `0`，会让「测不到」看起来像「没涨」——
+`morluto/rea` 两天涨 11,701 星，但只出现在 weekly 榜上，`trend_gain` 一直是 0。
+
+**源 ④ 走独立字段 `dsh_plugins`，不并进 candidates** —— 没上 trending 的仓库
+不该进 `topic_frequency`。它的 topics 只抓前 10 个，控制 API 调用量。
 
 **这些标准里没有任何一个「这条对我有没有用」的判断。** 那是分析层的事。
 

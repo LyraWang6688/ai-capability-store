@@ -92,7 +92,11 @@ def aggregate(snapshots: dict[str, dict], days: int) -> dict:
             entry = seen[candidate["repo"]]
             entry["days"].append(day)
             entry["stars"][day] = candidate.get("stars", 0)
-            entry["gain"] = max(entry["gain"], candidate.get("trend_gain", 0))
+            # trend_gain is None when the source carries no daily velocity
+            # (weekly page, topic search). Unknown must not be read as a peak.
+            gain = candidate.get("trend_gain")
+            if gain is not None:
+                entry["gain"] = max(entry["gain"], gain)
             if candidate.get("topics") and not entry["topics"]:
                 entry["topics"] = candidate["topics"]
             if candidate.get("desc") and not entry["desc"]:

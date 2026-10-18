@@ -68,12 +68,13 @@ class TestParseTrending(unittest.TestCase):
         repos = [row["repo"] for row in self._parse()]
         self.assertNotIn("not-a-repo", repos)
 
-    def test_missing_optional_fields_degrade_to_zero(self):
+    def test_missing_optional_fields_degrade_to_none(self):
         # A repo with no stargazers link and no "stars today" must not raise.
         payload = '<article><h2><a href="/a/b">a / b</a></h2></article>'
         rows = self._parse(payload)
         self.assertEqual(rows[0]["stars"], 0)
-        self.assertEqual(rows[0]["trend_gain"], 0)
+        self.assertIsNone(rows[0]["trend_gain"],
+                          "an unmeasured gain is None, never 0 — 0 means 'measured, no growth'")
         self.assertEqual(rows[0]["language"], "")
 
 
@@ -100,6 +101,45 @@ class TestFiltering(unittest.TestCase):
         noise, candidates = self._filter(merged)
         self.assertEqual(noise, [])
         self.assertEqual(len(candidates), 1)
+
+
+class TestTrendGainTriState(unittest.TestCase):
+    """trend_gain has three states; collapsing them loses information.
+
+    None  = this source carries no daily velocity (weekly page, topic search)
+    0     = measured, and it really did not move today
+    n > 0 = measured growth
+    """
+
+    def test_max_gain_ignores_none(self):
+        self.assertEqual(scan._max_gain(None, 500), 500)
+        self.assertEqual(scan._max_gain(500, None), 500)
+        self.assertEqual(scan._max_gain(500, 300), 500)
+        self.assertIsNone(scan._max_gain(None, None))
+
+    def test_max_gain_keeps_real_zero(self):
+        # 0 is a measurement; it must beat "unknown", not lose to it.
+        self.assertEqual(scan._max_gain(None, 0), 0)
+        self.assertEqual(scan._max_gain(0, None), 0)
+
+    def test_topic_source_reports_no_velocity(self):
+        rows = scan.search_topic("dsh-plugin")
+        if not rows:
+            self.skipTest("gh unavailable")
+        for row in rows:
+            self.assertIsNone(row["trend_gain"])
+            self.assertTrue(row["source"].startswith("topic:"))
+
+
+class TestDshWatchlist(unittest.TestCase):
+    def test_topic_constant_is_the_plugin_marker(self):
+        self.assertEqual(scan.DSH_TOPIC, "dsh-plugin")
+
+    def test_watchlist_is_not_merged_into_candidates(self):
+        # A repo that is not trending must not enter topic_frequency, so the
+        # watchlist has to travel as its own field.
+        source = open(scan.__file__, encoding="utf-8").read()
+        self.assertIn('"dsh_plugins": dsh_plugins', source)
 
 
 class TestCollectorNeutrality(unittest.TestCase):

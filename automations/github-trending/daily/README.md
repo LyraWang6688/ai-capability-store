@@ -25,9 +25,24 @@ One JSON document on stdout:
   "warnings": [],
   "excluded_noise": ["..."],
   "topic_frequency": [{"topic": "mcp", "repos": 5}],
+  "dsh_plugins": [{"repo": "owner/name", "stars": 1754, "trend_gain": null, "topics": ["dsh-plugin"]}],
   "candidates": [{"repo": "owner/name", "stars": 1234, "trend_gain": 56, "topics": ["mcp"]}]
 }
 ```
+
+Two fields carry a deliberate distinction:
+
+- **`trend_gain` is nullable.** `null` means *this source carries no daily
+  velocity* (the weekly page and the topic search have no "stars today"
+  element); `0` means *measured, and it really did not move today*. Collapsing
+  the two would make an unmeasured repo look flat — `morluto/rea` gained 11,701
+  stars over two days while reporting `trend_gain: 0`, because it only ever
+  appeared on the weekly page.
+- **`dsh_plugins` is a watchlist, not a trend signal.** It comes from the
+  `dsh-plugin` topic index, so it surfaces a project on day one instead of on
+  the day it goes viral. It is deliberately **not** merged into `candidates`: a
+  repo that is not trending must not enter `topic_frequency`. The topic is
+  partly self-applied, so star count is the only ranking signal available.
 
 The collector is deliberately **neutral about the curated list**: it does not
 know which repos are already in the owner's Feishu table, so there is no
