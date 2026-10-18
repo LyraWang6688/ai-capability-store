@@ -73,14 +73,33 @@ async function mcpRequest(serverType, method, params) {
   return payload.result;
 }
 
+/** 当日调用计数（进程内），用于观察积分消耗 */
+const usage = { day: '', count: 0 };
+function bumpUsage(toolName) {
+  const today = new Date().toISOString().slice(0, 10);
+  if (usage.day !== today) {
+    usage.day = today;
+    usage.count = 0;
+  }
+  usage.count += 1;
+  console.log(`[wind] ${today} 第 ${usage.count} 次调用（${toolName}）`);
+}
+
+export function windUsage() {
+  return { ...usage };
+}
+
 /** 调一次 Wind 工具，返回原始 content[0].text（里面是 JSON 字符串） */
 export async function windCall(serverType, toolName, args) {
+  const started = Date.now();
   await mcpRequest(serverType, 'initialize', {
     protocolVersion: '2025-03-26',
     capabilities: {},
     clientInfo: { name: 'investdesk-bot', version: '0.1.0' },
   });
   const result = await mcpRequest(serverType, 'tools/call', { name: toolName, arguments: args });
+  bumpUsage(toolName);
+  console.log(`[wind] ${toolName} 完成 ${Date.now() - started}ms`);
   if (result?.isError) {
     const detail = result.content?.[0]?.text ?? 'Wind 返回错误';
     throw new Error(detail);
