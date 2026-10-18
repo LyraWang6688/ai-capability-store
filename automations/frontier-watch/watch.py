@@ -38,7 +38,7 @@ DEFAULTS = {
 PROMPT = """你是 AI 产品功能观察员。下面是一份发布说明/更新日志，请提取「新增或变化的产品功能」，
 忽略纯模型版本发布、价格与营销内容。输出严格 JSON 数组，每项：
 {"feature":"功能名(中文,<=20字)","desc":"一句话说明(<=60字)","tool":"Codex|Claude|豆包工作","feasible":"可以|部分|不适合","difficulty":"小|中|大","priority":"高|中|低"}
-只输出 JSON，不要解释。"""
+只输出 JSON，不要解释。若某个功能与「已有条目」在语义上重复，跳过它。"""
 
 _TOKEN = {"value": "", "expires_at": 0.0}
 
@@ -155,7 +155,7 @@ def doubao_news(cfg):
     return "\n".join(entries)[:16000]
 
 
-def ask_model(cfg, text):
+def ask_model(cfg, text, existing_names=()):
     key = (os.environ.get("DEEPSEEK_API_KEY") or "").strip()
     if not key:
         raise SystemExit("缺少 DEEPSEEK_API_KEY")
@@ -165,7 +165,9 @@ def ask_model(cfg, text):
         "stream": False,
         "messages": [
             {"role": "system", "content": "只输出 JSON。"},
-            {"role": "user", "content": PROMPT + "\n\n材料：\n" + text[:20000]},
+            {"role": "user", "content": PROMPT
+                + ("\n\n已有条目（跳过语义重复）：\n" + "\n".join("- " + n for n in existing_names) if existing_names else "")
+                + "\n\n材料：\n" + text[:20000]},
         ],
     }).encode()
     req = urllib.request.Request(
@@ -248,21 +250,24 @@ def main():
     if not cfg.get("base_token") or not cfg.get("table_id"):
         raise SystemExit("缺少 base_token / table_id（环境变量 FRONTIER_CONFIG_JSON 或本机配置）")
 
+    seen = existing_names(cfg)
+    print(f"Base 现有 {len(seen)} 条记录")
     candidates = []
     try:
         releases = json.loads(fetch(cfg["sources"]["codex"]))
         if releases:
             newest = releases[0]
             text = "版本 " + str(newest.get("tag_name")) + "\n" + (newest.get("body") or "")[:12000]
-            candidates += ask_model(cfg, text)
+            candidates += ask_model(cfg, text, seen)[:15]
     except SystemExit:
         raise
     except Exception as error:  # noqa: BLE001
         print("codex 抓取失败:", error, file=sys.stderr)
 
     try:
-        text = strip_html(fetch(cfg["sources"]["claude"]))
-        candidates += ask_model(cfg, text[-16000:])
+        # 发布说明页是倒序累积的：只取头部（最新几个月），不把历史条目重新抽一遍
+        text = strip_html(fetch(cfg["sources"]["claude"]))[:12000]
+        candidates += ask_model(cfg, text, seen)[:15]
     except SystemExit:
         raise
     except Exception as error:  # noqa: BLE001
@@ -271,7 +276,7 @@ def main():
     try:
         news = doubao_news(cfg)
         if news:
-            for item in ask_model(cfg, news):
+            for item in ask_model(cfg, news, seen)[:15]:
                 item["tool"] = "豆包工作"
                 candidates.append(item)
     except SystemExit:
@@ -279,8 +284,6 @@ def main():
     except Exception as error:  # noqa: BLE001
         print("豆包工作提取失败:", error, file=sys.stderr)
 
-    seen = existing_names(cfg)
-    print(f"Base 现有 {len(seen)} 条记录")
     unique = []
     for item in candidates:
         name = str(item.get("feature") or "").strip()
