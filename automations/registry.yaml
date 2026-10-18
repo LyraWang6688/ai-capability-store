@@ -125,6 +125,33 @@ automations:
       output.target 为 external-system：目标不在本仓库控制范围内，校验器只能记录
       这个声明，无法验证外部写入。通过校验不等于写入成功。
 
+  frontier-watch:
+    name: frontier-watch
+    path: automations/frontier-watch
+    entrypoint: watch.py
+    status: testing
+    version: 0.1.0
+    updated: "2026-10-19"
+    trigger_kind: weekly
+    executor: launchd
+    launchd:
+      label: com.lyrawang.frontier-watch
+      template: automations/frontier-watch/deploy/com.lyrawang.frontier-watch.plist.tmpl
+    output:
+      target: external-system
+      destination: "Feishu Base「AI 工具」多维表格：前沿功能与插件灵感"
+    description: >
+      每周一 10:00（Asia/Shanghai）抓取 Codex Releases 与 Claude 发布说明，用模型提取
+      「新增产品功能」，按功能名去重后写入飞书 Base 的「前沿功能与插件灵感」表，
+      供后续把好用的功能做成 DSH 插件。
+    notes: >
+      为什么是 Automation：触发由时钟决定（周一 10:00），不是人或模型决定。
+      为什么用 launchd：写 Base 复用操作者本机 lark-cli 的 user 令牌（钥匙串），
+      hosted runner 没有钥匙串；换 github-actions 需要专用飞书应用 + base 写权限。
+      豆包工作暂无公开更新日志，本版不自动抓取，表格里历史条目为人工补充。
+      只采集事实与可行性判断，不开发插件、不改仓库、不删已有记录。
+      output.target=external-system：目标是外部 Base，校验器只能记录声明，通过校验不等于写入成功。
+
   investdesk-quote-sync:
     name: investdesk-quote-sync
     path: automations/investdesk-quote-sync
