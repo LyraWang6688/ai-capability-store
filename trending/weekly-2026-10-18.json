@@ -1,0 +1,1098 @@
+{
+  "generated_at": "2026-10-18T14:33:12+00:00",
+  "automation": "github-trending-weekly",
+  "window": {
+    "days": 7,
+    "from": "2026-10-12",
+    "to": "2026-10-18"
+  },
+  "days_with_data": 2,
+  "days_missing": [
+    "2026-10-12",
+    "2026-10-13",
+    "2026-10-14",
+    "2026-10-15",
+    "2026-10-16"
+  ],
+  "trustworthy": false,
+  "note": "insufficient data: 2 day(s) in window; a trend claim would be unfounded",
+  "topics_persistent": [],
+  "topics_emerging": [
+    {
+      "topic": "claude-code",
+      "days_present": 2,
+      "persistence": 1.0,
+      "total_repo_sightings": 17,
+      "verdict": "emerging"
+    },
+    {
+      "topic": "ai-agents",
+      "days_present": 2,
+      "persistence": 1.0,
+      "total_repo_sightings": 16,
+      "verdict": "emerging"
+    },
+    {
+      "topic": "mcp",
+      "days_present": 2,
+      "persistence": 1.0,
+      "total_repo_sightings": 13,
+      "verdict": "emerging"
+    },
+    {
+      "topic": "ai",
+      "days_present": 2,
+      "persistence": 1.0,
+      "total_repo_sightings": 12,
+      "verdict": "emerging"
+    },
+    {
+      "topic": "claude",
+      "days_present": 2,
+      "persistence": 1.0,
+      "total_repo_sightings": 10,
+      "verdict": "emerging"
+    },
+    {
+      "topic": "codex",
+      "days_present": 2,
+      "persistence": 1.0,
+      "total_repo_sightings": 10,
+      "verdict": "emerging"
+    },
+    {
+      "topic": "llm",
+      "days_present": 2,
+      "persistence": 1.0,
+      "total_repo_sightings": 9,
+      "verdict": "emerging"
+    },
+    {
+      "topic": "skills",
+      "days_present": 2,
+      "persistence": 1.0,
+      "total_repo_sightings": 8,
+      "verdict": "emerging"
+    },
+    {
+      "topic": "agent-skills",
+      "days_present": 2,
+      "persistence": 1.0,
+      "total_repo_sightings": 8,
+      "verdict": "emerging"
+    },
+    {
+      "topic": "reverse-engineering",
+      "days_present": 2,
+      "persistence": 1.0,
+      "total_repo_sightings": 8,
+      "verdict": "emerging"
+    },
+    {
+      "topic": "openclaw",
+      "days_present": 2,
+      "persistence": 1.0,
+      "total_repo_sightings": 6,
+      "verdict": "emerging"
+    },
+    {
+      "topic": "dsh-plugin",
+      "days_present": 2,
+      "persistence": 1.0,
+      "total_repo_sightings": 6,
+      "verdict": "emerging"
+    },
+    {
+      "topic": "mcp-server",
+      "days_present": 2,
+      "persistence": 1.0,
+      "total_repo_sightings": 6,
+      "verdict": "emerging"
+    },
+    {
+      "topic": "typescript",
+      "days_present": 2,
+      "persistence": 1.0,
+      "total_repo_sightings": 6,
+      "verdict": "emerging"
+    },
+    {
+      "topic": "anthropic",
+      "days_present": 2,
+      "persistence": 1.0,
+      "total_repo_sightings": 4,
+      "verdict": "emerging"
+    },
+    {
+      "topic": "developer-tools",
+      "days_present": 2,
+      "persistence": 1.0,
+      "total_repo_sightings": 4,
+      "verdict": "emerging"
+    },
+    {
+      "topic": "opencode",
+      "days_present": 2,
+      "persistence": 1.0,
+      "total_repo_sightings": 4,
+      "verdict": "emerging"
+    },
+    {
+      "topic": "claude-skills",
+      "days_present": 2,
+      "persistence": 1.0,
+      "total_repo_sightings": 4,
+      "verdict": "emerging"
+    },
+    {
+      "topic": "vulkan",
+      "days_present": 2,
+      "persistence": 1.0,
+      "total_repo_sightings": 4,
+      "verdict": "emerging"
+    },
+    {
+      "topic": "design-system",
+      "days_present": 2,
+      "persistence": 1.0,
+      "total_repo_sightings": 4,
+      "verdict": "emerging"
+    },
+    {
+      "topic": "react",
+      "days_present": 2,
+      "persistence": 1.0,
+      "total_repo_sightings": 4,
+      "verdict": "emerging"
+    },
+    {
+      "topic": "tailwindcss",
+      "days_present": 2,
+      "persistence": 1.0,
+      "total_repo_sightings": 4,
+      "verdict": "emerging"
+    },
+    {
+      "topic": "macos",
+      "days_present": 1,
+      "persistence": 0.5,
+      "total_repo_sightings": 3,
+      "verdict": "emerging"
+    },
+    {
+      "topic": "decompiler",
+      "days_present": 1,
+      "persistence": 0.5,
+      "total_repo_sightings": 2,
+      "verdict": "emerging"
+    },
+    {
+      "topic": "ghidra",
+      "days_present": 1,
+      "persistence": 0.5,
+      "total_repo_sightings": 2,
+      "verdict": "emerging"
+    },
+    {
+      "topic": "hopper",
+      "days_present": 1,
+      "persistence": 0.5,
+      "total_repo_sightings": 2,
+      "verdict": "emerging"
+    },
+    {
+      "topic": "rea",
+      "days_present": 1,
+      "persistence": 0.5,
+      "total_repo_sightings": 2,
+      "verdict": "emerging"
+    },
+    {
+      "topic": "disassembler",
+      "days_present": 1,
+      "persistence": 0.5,
+      "total_repo_sightings": 2,
+      "verdict": "emerging"
+    },
+    {
+      "topic": "ps5",
+      "days_present": 1,
+      "persistence": 0.5,
+      "total_repo_sightings": 2,
+      "verdict": "emerging"
+    },
+    {
+      "topic": "golang",
+      "days_present": 1,
+      "persistence": 0.5,
+      "total_repo_sightings": 2,
+      "verdict": "emerging"
+    }
+  ],
+  "topics_all": [
+    {
+      "topic": "claude-code",
+      "days_present": 2,
+      "persistence": 1.0,
+      "total_repo_sightings": 17,
+      "verdict": "emerging"
+    },
+    {
+      "topic": "ai-agents",
+      "days_present": 2,
+      "persistence": 1.0,
+      "total_repo_sightings": 16,
+      "verdict": "emerging"
+    },
+    {
+      "topic": "mcp",
+      "days_present": 2,
+      "persistence": 1.0,
+      "total_repo_sightings": 13,
+      "verdict": "emerging"
+    },
+    {
+      "topic": "ai",
+      "days_present": 2,
+      "persistence": 1.0,
+      "total_repo_sightings": 12,
+      "verdict": "emerging"
+    },
+    {
+      "topic": "claude",
+      "days_present": 2,
+      "persistence": 1.0,
+      "total_repo_sightings": 10,
+      "verdict": "emerging"
+    },
+    {
+      "topic": "codex",
+      "days_present": 2,
+      "persistence": 1.0,
+      "total_repo_sightings": 10,
+      "verdict": "emerging"
+    },
+    {
+      "topic": "llm",
+      "days_present": 2,
+      "persistence": 1.0,
+      "total_repo_sightings": 9,
+      "verdict": "emerging"
+    },
+    {
+      "topic": "skills",
+      "days_present": 2,
+      "persistence": 1.0,
+      "total_repo_sightings": 8,
+      "verdict": "emerging"
+    },
+    {
+      "topic": "agent-skills",
+      "days_present": 2,
+      "persistence": 1.0,
+      "total_repo_sightings": 8,
+      "verdict": "emerging"
+    },
+    {
+      "topic": "reverse-engineering",
+      "days_present": 2,
+      "persistence": 1.0,
+      "total_repo_sightings": 8,
+      "verdict": "emerging"
+    },
+    {
+      "topic": "openclaw",
+      "days_present": 2,
+      "persistence": 1.0,
+      "total_repo_sightings": 6,
+      "verdict": "emerging"
+    },
+    {
+      "topic": "dsh-plugin",
+      "days_present": 2,
+      "persistence": 1.0,
+      "total_repo_sightings": 6,
+      "verdict": "emerging"
+    },
+    {
+      "topic": "mcp-server",
+      "days_present": 2,
+      "persistence": 1.0,
+      "total_repo_sightings": 6,
+      "verdict": "emerging"
+    },
+    {
+      "topic": "typescript",
+      "days_present": 2,
+      "persistence": 1.0,
+      "total_repo_sightings": 6,
+      "verdict": "emerging"
+    },
+    {
+      "topic": "anthropic",
+      "days_present": 2,
+      "persistence": 1.0,
+      "total_repo_sightings": 4,
+      "verdict": "emerging"
+    },
+    {
+      "topic": "developer-tools",
+      "days_present": 2,
+      "persistence": 1.0,
+      "total_repo_sightings": 4,
+      "verdict": "emerging"
+    },
+    {
+      "topic": "opencode",
+      "days_present": 2,
+      "persistence": 1.0,
+      "total_repo_sightings": 4,
+      "verdict": "emerging"
+    },
+    {
+      "topic": "claude-skills",
+      "days_present": 2,
+      "persistence": 1.0,
+      "total_repo_sightings": 4,
+      "verdict": "emerging"
+    },
+    {
+      "topic": "vulkan",
+      "days_present": 2,
+      "persistence": 1.0,
+      "total_repo_sightings": 4,
+      "verdict": "emerging"
+    },
+    {
+      "topic": "design-system",
+      "days_present": 2,
+      "persistence": 1.0,
+      "total_repo_sightings": 4,
+      "verdict": "emerging"
+    },
+    {
+      "topic": "react",
+      "days_present": 2,
+      "persistence": 1.0,
+      "total_repo_sightings": 4,
+      "verdict": "emerging"
+    },
+    {
+      "topic": "tailwindcss",
+      "days_present": 2,
+      "persistence": 1.0,
+      "total_repo_sightings": 4,
+      "verdict": "emerging"
+    },
+    {
+      "topic": "macos",
+      "days_present": 1,
+      "persistence": 0.5,
+      "total_repo_sightings": 3,
+      "verdict": "emerging"
+    },
+    {
+      "topic": "automation",
+      "days_present": 1,
+      "persistence": 0.5,
+      "total_repo_sightings": 2,
+      "verdict": "intermittent"
+    },
+    {
+      "topic": "iphone",
+      "days_present": 1,
+      "persistence": 0.5,
+      "total_repo_sightings": 2,
+      "verdict": "intermittent"
+    }
+  ],
+  "repos_sustained": [
+    {
+      "repo": "morluto/rea",
+      "days_seen": 2,
+      "first_seen": "2026-10-17",
+      "last_seen": "2026-10-18",
+      "stars_now": 313330,
+      "star_delta": 15125,
+      "peak_daily_gain": 0,
+      "topics": [
+        "agent-skills",
+        "ai-agents",
+        "binary-analysis",
+        "claude-code",
+        "cli",
+        "codex",
+        "cordis",
+        "decompiler",
+        "developer-tools",
+        "dsh",
+        "dsh-plugin",
+        "ghidra",
+        "hopper",
+        "llm",
+        "mcp",
+        "model-context-protocol",
+        "rea",
+        "reverse-engineering",
+        "static-analysis",
+        "touhou"
+      ],
+      "desc": "Reverse engineer anything with agents, from app behavior down to native binaries.",
+      "class": "recurring"
+    },
+    {
+      "repo": "MadsLorentzen/ai-job-search",
+      "days_seen": 2,
+      "first_seen": "2026-10-17",
+      "last_seen": "2026-10-18",
+      "stars_now": 51151,
+      "star_delta": 2042,
+      "peak_daily_gain": 1397,
+      "topics": [
+        "ai",
+        "ai-agents",
+        "career",
+        "claude-code",
+        "cover-letter",
+        "cv",
+        "interview-preparation",
+        "job-application",
+        "job-hunting",
+        "job-search",
+        "latex",
+        "resume"
+      ],
+      "desc": "The job search that runs on your machine. AI job application framework built on Claude Code: evaluate postings, tailor CVs, write cover letters, prep interviews",
+      "class": "recurring"
+    },
+    {
+      "repo": "boykopovar/AnyPS5",
+      "days_seen": 2,
+      "first_seen": "2026-10-17",
+      "last_seen": "2026-10-18",
+      "stars_now": 42284,
+      "star_delta": 1954,
+      "peak_daily_gain": 0,
+      "topics": [
+        "anyps5",
+        "dynamic-library",
+        "game-porting",
+        "ps5",
+        "ps5-tools",
+        "spir-v",
+        "vulkan"
+      ],
+      "desc": "Tool for automatic PS5 executables porting to Linux and Windows",
+      "class": "recurring"
+    },
+    {
+      "repo": "debpalash/VoiceStudio",
+      "days_seen": 2,
+      "first_seen": "2026-10-17",
+      "last_seen": "2026-10-18",
+      "stars_now": 74005,
+      "star_delta": 1905,
+      "peak_daily_gain": 2135,
+      "topics": [
+        "ai",
+        "audiobook",
+        "cuda",
+        "dubbing",
+        "elevenlabs-alternative",
+        "huggingface",
+        "local-first",
+        "mlx",
+        "omnivoice-studio",
+        "speech-to-text",
+        "text-to-speech",
+        "transcription",
+        "translate",
+        "tts",
+        "voice-ai",
+        "voice-cloning",
+        "voice-generation",
+        "voicestudio",
+        "workflow"
+      ],
+      "desc": "VoiceStudio is the open-source, fully-local ElevenLabs alternative — voice cloning, voice design, video dubbing, dictation, transcription & audiobook creation i",
+      "class": "recurring"
+    },
+    {
+      "repo": "anomalyco/opencode",
+      "days_seen": 2,
+      "first_seen": "2026-10-17",
+      "last_seen": "2026-10-18",
+      "stars_now": 215808,
+      "star_delta": 1271,
+      "peak_daily_gain": 488,
+      "topics": [],
+      "desc": "The open source coding agent.",
+      "class": "recurring"
+    },
+    {
+      "repo": "anthropics/claude-plugins-official",
+      "days_seen": 2,
+      "first_seen": "2026-10-17",
+      "last_seen": "2026-10-18",
+      "stars_now": 42168,
+      "star_delta": 1068,
+      "peak_daily_gain": 1397,
+      "topics": [
+        "claude-code",
+        "mcp",
+        "skills"
+      ],
+      "desc": "Official, Anthropic-managed directory of high quality Claude Code Plugins.",
+      "class": "recurring"
+    },
+    {
+      "repo": "stablyai/orca",
+      "days_seen": 2,
+      "first_seen": "2026-10-17",
+      "last_seen": "2026-10-18",
+      "stars_now": 95810,
+      "star_delta": 1019,
+      "peak_daily_gain": 1102,
+      "topics": [
+        "ade",
+        "agent-ide",
+        "ai-agents",
+        "automation",
+        "bot",
+        "claude-code",
+        "codex",
+        "ghostty",
+        "grok-bot",
+        "hermes-agent",
+        "mobile-app",
+        "muse",
+        "openclaw",
+        "opencode",
+        "orchestration",
+        "pi",
+        "runtime",
+        "terminal",
+        "worktrees",
+        "yc-backed"
+      ],
+      "desc": "Orca is the place for working with a fleet of agents (e.g. Grok Bot, Codex). Run any coding agent with your own subscription. Available on desktop, mobile and r",
+      "class": "recurring"
+    },
+    {
+      "repo": "storytold/artcraft",
+      "days_seen": 2,
+      "first_seen": "2026-10-17",
+      "last_seen": "2026-10-18",
+      "stars_now": 32129,
+      "star_delta": 1004,
+      "peak_daily_gain": 0,
+      "topics": [
+        "3d-graphics",
+        "ai",
+        "aivideo",
+        "filmmaking",
+        "imagegeneration"
+      ],
+      "desc": "ArtCraft is an intentional crafting engine for artists, designers, and filmmakers",
+      "class": "recurring"
+    },
+    {
+      "repo": "mattpocock/skills",
+      "days_seen": 2,
+      "first_seen": "2026-10-17",
+      "last_seen": "2026-10-18",
+      "stars_now": 295488,
+      "star_delta": 1000,
+      "peak_daily_gain": 0,
+      "topics": [],
+      "desc": "Skills for Real Engineers. Straight from my .agents directory.",
+      "class": "recurring"
+    },
+    {
+      "repo": "affaan-m/ECC",
+      "days_seen": 2,
+      "first_seen": "2026-10-17",
+      "last_seen": "2026-10-18",
+      "stars_now": 282841,
+      "star_delta": 946,
+      "peak_daily_gain": 1145,
+      "topics": [
+        "ai-agents",
+        "anthropic",
+        "claude",
+        "claude-code",
+        "developer-tools",
+        "llm",
+        "mcp",
+        "productivity"
+      ],
+      "desc": "The agent harness performance optimization system. Skills, instincts, memory, security, and research-first development for Claude Code, Codex, Opencode, Cursor ",
+      "class": "recurring"
+    },
+    {
+      "repo": "anthropics/claude-code",
+      "days_seen": 2,
+      "first_seen": "2026-10-17",
+      "last_seen": "2026-10-18",
+      "stars_now": 152173,
+      "star_delta": 837,
+      "peak_daily_gain": 179,
+      "topics": [],
+      "desc": "Claude Code is an agentic coding tool that lives in your terminal, understands your codebase, and helps you code faster by executing routine tasks, explaining c",
+      "class": "recurring"
+    },
+    {
+      "repo": "xerj-org/xerj",
+      "days_seen": 2,
+      "first_seen": "2026-10-17",
+      "last_seen": "2026-10-18",
+      "stars_now": 8078,
+      "star_delta": 754,
+      "peak_daily_gain": 1160,
+      "topics": [
+        "ai-search",
+        "ai-search-algorithms",
+        "ai-search-engine",
+        "ai-search-free",
+        "ai-search-module",
+        "ai-search-optimization",
+        "ai-searchengine",
+        "bm25-search",
+        "elastic-search",
+        "elasticsearch",
+        "elasticstack",
+        "graph-search",
+        "graph-semantic-search",
+        "hybrid-search",
+        "hybrid-semantic-search",
+        "search-api",
+        "search-engine",
+        "semantic-search",
+        "vector-database",
+        "vector-search"
+      ],
+      "desc": "XERJ is the new way for AI to search data. Its autoindex capability activates agents to know your data without the token waste of grep and sed. One command inde",
+      "class": "recurring"
+    },
+    {
+      "repo": "cathrynlavery/diagram-design",
+      "days_seen": 2,
+      "first_seen": "2026-10-17",
+      "last_seen": "2026-10-18",
+      "stars_now": 57283,
+      "star_delta": 625,
+      "peak_daily_gain": 0,
+      "topics": [
+        "agent-skills",
+        "claude-code",
+        "codex",
+        "data-visualization",
+        "diagrams",
+        "drawio",
+        "mermaid",
+        "svg"
+      ],
+      "desc": "Editorial diagram design for Claude Code, Codex, GitHub Copilot, Cursor, Factory Droid, and Pi. 44 diagram types. Self-contained HTML + SVG. No shadows. No Merm",
+      "class": "recurring"
+    },
+    {
+      "repo": "heygen-com/hyperframes",
+      "days_seen": 2,
+      "first_seen": "2026-10-17",
+      "last_seen": "2026-10-18",
+      "stars_now": 66209,
+      "star_delta": 619,
+      "peak_daily_gain": 0,
+      "topics": [
+        "ai",
+        "animation",
+        "ffmpeg",
+        "framework",
+        "gsap",
+        "html",
+        "mcp",
+        "puppeteer",
+        "rendering",
+        "typescript",
+        "video"
+      ],
+      "desc": "Write HTML. Render video. Built for agents.",
+      "class": "recurring"
+    },
+    {
+      "repo": "K-Dense-AI/scientific-agent-skills",
+      "days_seen": 2,
+      "first_seen": "2026-10-17",
+      "last_seen": "2026-10-18",
+      "stars_now": 52483,
+      "star_delta": 593,
+      "peak_daily_gain": 879,
+      "topics": [
+        "agent-skills",
+        "ai-scientist",
+        "bioinformatics",
+        "chemoinformatics",
+        "claude",
+        "claude-skills",
+        "claudecode",
+        "clinical-research",
+        "computational-biology",
+        "data-analysis",
+        "drug-discovery",
+        "genomics",
+        "materials-science",
+        "metabolomics",
+        "proteomics",
+        "scientific-computing",
+        "scientific-visualization"
+      ],
+      "desc": "Turn any AI agent into an AI Scientist. The #1 Agent Skills library for science, used by 250,000+ scientists worldwide. 177 ready-to-use validated skills plus 1",
+      "class": "recurring"
+    }
+  ],
+  "repos_climbing_by_stars": [
+    {
+      "repo": "morluto/rea",
+      "days_seen": 2,
+      "first_seen": "2026-10-17",
+      "last_seen": "2026-10-18",
+      "stars_now": 313330,
+      "star_delta": 15125,
+      "peak_daily_gain": 0,
+      "topics": [
+        "agent-skills",
+        "ai-agents",
+        "binary-analysis",
+        "claude-code",
+        "cli",
+        "codex",
+        "cordis",
+        "decompiler",
+        "developer-tools",
+        "dsh",
+        "dsh-plugin",
+        "ghidra",
+        "hopper",
+        "llm",
+        "mcp",
+        "model-context-protocol",
+        "rea",
+        "reverse-engineering",
+        "static-analysis",
+        "touhou"
+      ],
+      "desc": "Reverse engineer anything with agents, from app behavior down to native binaries.",
+      "class": "recurring"
+    },
+    {
+      "repo": "MadsLorentzen/ai-job-search",
+      "days_seen": 2,
+      "first_seen": "2026-10-17",
+      "last_seen": "2026-10-18",
+      "stars_now": 51151,
+      "star_delta": 2042,
+      "peak_daily_gain": 1397,
+      "topics": [
+        "ai",
+        "ai-agents",
+        "career",
+        "claude-code",
+        "cover-letter",
+        "cv",
+        "interview-preparation",
+        "job-application",
+        "job-hunting",
+        "job-search",
+        "latex",
+        "resume"
+      ],
+      "desc": "The job search that runs on your machine. AI job application framework built on Claude Code: evaluate postings, tailor CVs, write cover letters, prep interviews",
+      "class": "recurring"
+    },
+    {
+      "repo": "boykopovar/AnyPS5",
+      "days_seen": 2,
+      "first_seen": "2026-10-17",
+      "last_seen": "2026-10-18",
+      "stars_now": 42284,
+      "star_delta": 1954,
+      "peak_daily_gain": 0,
+      "topics": [
+        "anyps5",
+        "dynamic-library",
+        "game-porting",
+        "ps5",
+        "ps5-tools",
+        "spir-v",
+        "vulkan"
+      ],
+      "desc": "Tool for automatic PS5 executables porting to Linux and Windows",
+      "class": "recurring"
+    },
+    {
+      "repo": "debpalash/VoiceStudio",
+      "days_seen": 2,
+      "first_seen": "2026-10-17",
+      "last_seen": "2026-10-18",
+      "stars_now": 74005,
+      "star_delta": 1905,
+      "peak_daily_gain": 2135,
+      "topics": [
+        "ai",
+        "audiobook",
+        "cuda",
+        "dubbing",
+        "elevenlabs-alternative",
+        "huggingface",
+        "local-first",
+        "mlx",
+        "omnivoice-studio",
+        "speech-to-text",
+        "text-to-speech",
+        "transcription",
+        "translate",
+        "tts",
+        "voice-ai",
+        "voice-cloning",
+        "voice-generation",
+        "voicestudio",
+        "workflow"
+      ],
+      "desc": "VoiceStudio is the open-source, fully-local ElevenLabs alternative — voice cloning, voice design, video dubbing, dictation, transcription & audiobook creation i",
+      "class": "recurring"
+    },
+    {
+      "repo": "anomalyco/opencode",
+      "days_seen": 2,
+      "first_seen": "2026-10-17",
+      "last_seen": "2026-10-18",
+      "stars_now": 215808,
+      "star_delta": 1271,
+      "peak_daily_gain": 488,
+      "topics": [],
+      "desc": "The open source coding agent.",
+      "class": "recurring"
+    },
+    {
+      "repo": "anthropics/claude-plugins-official",
+      "days_seen": 2,
+      "first_seen": "2026-10-17",
+      "last_seen": "2026-10-18",
+      "stars_now": 42168,
+      "star_delta": 1068,
+      "peak_daily_gain": 1397,
+      "topics": [
+        "claude-code",
+        "mcp",
+        "skills"
+      ],
+      "desc": "Official, Anthropic-managed directory of high quality Claude Code Plugins.",
+      "class": "recurring"
+    },
+    {
+      "repo": "stablyai/orca",
+      "days_seen": 2,
+      "first_seen": "2026-10-17",
+      "last_seen": "2026-10-18",
+      "stars_now": 95810,
+      "star_delta": 1019,
+      "peak_daily_gain": 1102,
+      "topics": [
+        "ade",
+        "agent-ide",
+        "ai-agents",
+        "automation",
+        "bot",
+        "claude-code",
+        "codex",
+        "ghostty",
+        "grok-bot",
+        "hermes-agent",
+        "mobile-app",
+        "muse",
+        "openclaw",
+        "opencode",
+        "orchestration",
+        "pi",
+        "runtime",
+        "terminal",
+        "worktrees",
+        "yc-backed"
+      ],
+      "desc": "Orca is the place for working with a fleet of agents (e.g. Grok Bot, Codex). Run any coding agent with your own subscription. Available on desktop, mobile and r",
+      "class": "recurring"
+    },
+    {
+      "repo": "storytold/artcraft",
+      "days_seen": 2,
+      "first_seen": "2026-10-17",
+      "last_seen": "2026-10-18",
+      "stars_now": 32129,
+      "star_delta": 1004,
+      "peak_daily_gain": 0,
+      "topics": [
+        "3d-graphics",
+        "ai",
+        "aivideo",
+        "filmmaking",
+        "imagegeneration"
+      ],
+      "desc": "ArtCraft is an intentional crafting engine for artists, designers, and filmmakers",
+      "class": "recurring"
+    },
+    {
+      "repo": "mattpocock/skills",
+      "days_seen": 2,
+      "first_seen": "2026-10-17",
+      "last_seen": "2026-10-18",
+      "stars_now": 295488,
+      "star_delta": 1000,
+      "peak_daily_gain": 0,
+      "topics": [],
+      "desc": "Skills for Real Engineers. Straight from my .agents directory.",
+      "class": "recurring"
+    },
+    {
+      "repo": "affaan-m/ECC",
+      "days_seen": 2,
+      "first_seen": "2026-10-17",
+      "last_seen": "2026-10-18",
+      "stars_now": 282841,
+      "star_delta": 946,
+      "peak_daily_gain": 1145,
+      "topics": [
+        "ai-agents",
+        "anthropic",
+        "claude",
+        "claude-code",
+        "developer-tools",
+        "llm",
+        "mcp",
+        "productivity"
+      ],
+      "desc": "The agent harness performance optimization system. Skills, instincts, memory, security, and research-first development for Claude Code, Codex, Opencode, Cursor ",
+      "class": "recurring"
+    },
+    {
+      "repo": "anthropics/claude-code",
+      "days_seen": 2,
+      "first_seen": "2026-10-17",
+      "last_seen": "2026-10-18",
+      "stars_now": 152173,
+      "star_delta": 837,
+      "peak_daily_gain": 179,
+      "topics": [],
+      "desc": "Claude Code is an agentic coding tool that lives in your terminal, understands your codebase, and helps you code faster by executing routine tasks, explaining c",
+      "class": "recurring"
+    },
+    {
+      "repo": "xerj-org/xerj",
+      "days_seen": 2,
+      "first_seen": "2026-10-17",
+      "last_seen": "2026-10-18",
+      "stars_now": 8078,
+      "star_delta": 754,
+      "peak_daily_gain": 1160,
+      "topics": [
+        "ai-search",
+        "ai-search-algorithms",
+        "ai-search-engine",
+        "ai-search-free",
+        "ai-search-module",
+        "ai-search-optimization",
+        "ai-searchengine",
+        "bm25-search",
+        "elastic-search",
+        "elasticsearch",
+        "elasticstack",
+        "graph-search",
+        "graph-semantic-search",
+        "hybrid-search",
+        "hybrid-semantic-search",
+        "search-api",
+        "search-engine",
+        "semantic-search",
+        "vector-database",
+        "vector-search"
+      ],
+      "desc": "XERJ is the new way for AI to search data. Its autoindex capability activates agents to know your data without the token waste of grep and sed. One command inde",
+      "class": "recurring"
+    },
+    {
+      "repo": "cathrynlavery/diagram-design",
+      "days_seen": 2,
+      "first_seen": "2026-10-17",
+      "last_seen": "2026-10-18",
+      "stars_now": 57283,
+      "star_delta": 625,
+      "peak_daily_gain": 0,
+      "topics": [
+        "agent-skills",
+        "claude-code",
+        "codex",
+        "data-visualization",
+        "diagrams",
+        "drawio",
+        "mermaid",
+        "svg"
+      ],
+      "desc": "Editorial diagram design for Claude Code, Codex, GitHub Copilot, Cursor, Factory Droid, and Pi. 44 diagram types. Self-contained HTML + SVG. No shadows. No Merm",
+      "class": "recurring"
+    },
+    {
+      "repo": "heygen-com/hyperframes",
+      "days_seen": 2,
+      "first_seen": "2026-10-17",
+      "last_seen": "2026-10-18",
+      "stars_now": 66209,
+      "star_delta": 619,
+      "peak_daily_gain": 0,
+      "topics": [
+        "ai",
+        "animation",
+        "ffmpeg",
+        "framework",
+        "gsap",
+        "html",
+        "mcp",
+        "puppeteer",
+        "rendering",
+        "typescript",
+        "video"
+      ],
+      "desc": "Write HTML. Render video. Built for agents.",
+      "class": "recurring"
+    },
+    {
+      "repo": "K-Dense-AI/scientific-agent-skills",
+      "days_seen": 2,
+      "first_seen": "2026-10-17",
+      "last_seen": "2026-10-18",
+      "stars_now": 52483,
+      "star_delta": 593,
+      "peak_daily_gain": 879,
+      "topics": [
+        "agent-skills",
+        "ai-scientist",
+        "bioinformatics",
+        "chemoinformatics",
+        "claude",
+        "claude-skills",
+        "claudecode",
+        "clinical-research",
+        "computational-biology",
+        "data-analysis",
+        "drug-discovery",
+        "genomics",
+        "materials-science",
+        "metabolomics",
+        "proteomics",
+        "scientific-computing",
+        "scientific-visualization"
+      ],
+      "desc": "Turn any AI agent into an AI Scientist. The #1 Agent Skills library for science, used by 250,000+ scientists worldwide. 177 ready-to-use validated skills plus 1",
+      "class": "recurring"
+    }
+  ],
+  "repos_one_day_wonders": []
+}
