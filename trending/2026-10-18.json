@@ -1,9 +1,8 @@
 {
-  "generated_at": "2026-10-18T04:31:55+00:00",
+  "generated_at": "2026-10-18T09:22:15+00:00",
   "automation": "github-trending-daily",
   "total_scanned": 42,
   "warnings": [],
-  "excluded_already_collected": [],
   "excluded_noise": [],
   "topic_frequency": [
     {
@@ -130,7 +129,7 @@
   "candidates": [
     {
       "repo": "debpalash/VoiceStudio",
-      "stars": 73658,
+      "stars": 74005,
       "trend_gain": 2125,
       "language": "Python",
       "desc": "VoiceStudio is the open-source, fully-local ElevenLabs alternative — voice cloning, voice design, video dubbing, dictation, transcription & audiobook creation in 646 languages.",
@@ -159,7 +158,7 @@
     },
     {
       "repo": "anthropics/claude-plugins-official",
-      "stars": 41928,
+      "stars": 42168,
       "trend_gain": 1397,
       "language": "Python",
       "desc": "Official, Anthropic-managed directory of high quality Claude Code Plugins.",
@@ -172,7 +171,7 @@
     },
     {
       "repo": "MadsLorentzen/ai-job-search",
-      "stars": 50707,
+      "stars": 51151,
       "trend_gain": 1365,
       "language": "Python",
       "desc": "The job search that runs on your machine. AI job application framework built on Claude Code: evaluate postings, tailor CVs, write cover letters, prep interviews. Fork it and own it.",
@@ -194,7 +193,7 @@
     },
     {
       "repo": "xerj-org/xerj",
-      "stars": 7921,
+      "stars": 8078,
       "trend_gain": 1160,
       "language": "Rust",
       "desc": "XERJ is the new way for AI to search data. Its autoindex capability activates agents to know your data without the token waste of grep (1974 tool). One command indexes code, docs, logs and PDFs for search, RAG, security audits and agent memory, using 40x fewer tokens than grep. It’s durable and can replace ElasticSearch saving you x10 infra costs.",
@@ -224,7 +223,7 @@
     },
     {
       "repo": "affaan-m/ECC",
-      "stars": 282648,
+      "stars": 282841,
       "trend_gain": 1145,
       "language": "JavaScript",
       "desc": "The agent harness performance optimization system. Skills, instincts, memory, security, and research-first development for Claude Code, Codex, Opencode, Cursor and beyond.",
@@ -242,7 +241,7 @@
     },
     {
       "repo": "K-Dense-AI/scientific-agent-skills",
-      "stars": 52348,
+      "stars": 52483,
       "trend_gain": 878,
       "language": "Python",
       "desc": "Turn any AI agent into an AI Scientist. The #1 Agent Skills library for science, used by 250,000+ scientists worldwide. 177 ready-to-use validated skills plus 100+ scientific databases covering biology, chemistry, medicine, and drug discovery. Compatible with Cursor, Claude Code, Codex, Pi, Antigravity, and the open Agent Skills standard.",
@@ -269,7 +268,7 @@
     },
     {
       "repo": "stablyai/orca",
-      "stars": 95579,
+      "stars": 95810,
       "trend_gain": 830,
       "language": "TypeScript",
       "desc": "Orca is the place for working with a fleet of agents (e.g. Grok Bot, Claude Code). Run any coding agent with your own subscription. Available on desktop, mobile and remote runtime.",
@@ -299,7 +298,7 @@
     },
     {
       "repo": "HKUDS/CLI-Anything",
-      "stars": 54142,
+      "stars": 54265,
       "trend_gain": 574,
       "language": "Python",
       "desc": "\"CLI-Anything: Making ALL Software Agent-Native\" -- CLI-Hub: https://clianything.cc/",
@@ -308,7 +307,7 @@
     },
     {
       "repo": "anomalyco/opencode",
-      "stars": 215548,
+      "stars": 215808,
       "trend_gain": 438,
       "language": "TypeScript",
       "desc": "The open source coding agent.",
@@ -317,7 +316,7 @@
     },
     {
       "repo": "ruvnet/ruflo",
-      "stars": 76141,
+      "stars": 76241,
       "trend_gain": 420,
       "language": "TypeScript",
       "desc": "🌊 The original agent harness. Deploy intelligent multi-player swarms, coordinate autonomous workflows, and build conversational AI systems. Features adaptive memory, self-learning intelligence, federation, vector RAG integration, and native Claude Code / Codex / Hermes and many more Integrated",
@@ -347,7 +346,7 @@
     },
     {
       "repo": "android/skills",
-      "stars": 8479,
+      "stars": 8561,
       "trend_gain": 355,
       "language": "Kotlin",
       "desc": "",
@@ -358,7 +357,7 @@
     },
     {
       "repo": "anthropics/claude-code",
-      "stars": 151869,
+      "stars": 152173,
       "trend_gain": 179,
       "language": "TypeScript",
       "desc": "Claude Code is an agentic coding tool that lives in your terminal, understands your codebase, and helps you code faster by executing routine tasks, explaining complex code, and handling git workflows - all through natural language commands.",
@@ -367,7 +366,7 @@
     },
     {
       "repo": "akitaonrails/ai-memory",
-      "stars": 10010,
+      "stars": 10132,
       "trend_gain": 178,
       "language": "Rust",
       "desc": "Solution for long term memory for agent coding CLIs and to facilitate handoff between different agent vendors",
@@ -376,7 +375,7 @@
     },
     {
       "repo": "morluto/rea",
-      "stars": 309906,
+      "stars": 313330,
       "trend_gain": 0,
       "language": "TypeScript",
       "desc": "Reverse engineer anything with agents, from app behavior down to native binaries.",
@@ -406,7 +405,7 @@
     },
     {
       "repo": "mattpocock/skills",
-      "stars": 295250,
+      "stars": 295488,
       "trend_gain": 0,
       "language": "Shell",
       "desc": "Skills for Real Engineers. Straight from my .agents directory.",
@@ -415,7 +414,7 @@
     },
     {
       "repo": "NationalSecurityAgency/ghidra",
-      "stars": 90361,
+      "stars": 90474,
       "trend_gain": 0,
       "language": "Java",
       "desc": "Ghidra is a software reverse engineering (SRE) framework",
@@ -428,7 +427,7 @@
     },
     {
       "repo": "heygen-com/hyperframes",
-      "stars": 66085,
+      "stars": 66209,
       "trend_gain": 0,
       "language": "TypeScript",
       "desc": "Write HTML. Render video. Built for agents.",
@@ -449,7 +448,7 @@
     },
     {
       "repo": "cathrynlavery/diagram-design",
-      "stars": 57119,
+      "stars": 57283,
       "trend_gain": 0,
       "language": "HTML",
       "desc": "Editorial diagram design for Claude Code, Codex, GitHub Copilot, Cursor, Factory Droid, and Pi. 44 diagram types. Self-contained HTML + SVG. No shadows. No Mermaid slop.",
@@ -467,7 +466,7 @@
     },
     {
       "repo": "boykopovar/AnyPS5",
-      "stars": 41966,
+      "stars": 42284,
       "trend_gain": 0,
       "language": "C++",
       "desc": "Tool for automatic PS5 executables porting to Linux and Windows",
@@ -484,7 +483,7 @@
     },
     {
       "repo": "storytold/artcraft",
-      "stars": 31910,
+      "stars": 32129,
       "trend_gain": 0,
       "language": "Rust",
       "desc": "ArtCraft is an intentional crafting engine for artists, designers, and filmmakers",
@@ -499,7 +498,7 @@
     },
     {
       "repo": "mksglu/context-mode",
-      "stars": 30545,
+      "stars": 30583,
       "trend_gain": 0,
       "language": "TypeScript",
       "desc": "Context window optimization for AI coding agents. Sandboxes tool output (98% reduction), persists session memory, and enforces routing across 17 platforms via MCP + hooks.",
@@ -529,7 +528,7 @@
     },
     {
       "repo": "jhaizhou-ops/d2r-mobile",
-      "stars": 3737,
+      "stars": 3761,
       "trend_gain": 0,
       "language": "C",
       "desc": "Open-source iOS / macOS compatibility layer for Diablo II: Resurrected with the Reign of the Warlock expansion. Runs your own Switch copy natively on iPhone, iPad and Mac — full touch controls, 60 fps, new endgame modes. Bring your own game files. 开源的《暗黑破坏神 II：狱火重生》术士君临 iOS / macOS 兼容层",
@@ -550,7 +549,7 @@
     },
     {
       "repo": "Arekejoker/qwen21-nsfw-pose-skill",
-      "stars": 2661,
+      "stars": 2682,
       "trend_gain": 0,
       "language": "Python",
       "desc": "Qwen-Image 2.1 NSFW/姿势出图 skill：作者级提示词配方 + NSFW LoRA + 136 姿势 VNCCS 人偶控制；适用 Claude Code / Codex / Cursor / OpenClaw",
@@ -566,7 +565,7 @@
     },
     {
       "repo": "HeyPuter/everything",
-      "stars": 2078,
+      "stars": 2108,
       "trend_gain": 0,
       "language": "JavaScript",
       "desc": "We're rebuilding and open-sourcing the world’s software from scratch.",
@@ -582,7 +581,7 @@
     },
     {
       "repo": "deeplethe/solid-glass",
-      "stars": 1808,
+      "stars": 1929,
       "trend_gain": 0,
       "language": "TypeScript",
       "desc": "A design system for AI applications. Material, physical, tactile, technical.",
@@ -603,7 +602,7 @@
     },
     {
       "repo": "ahwootech/BRUTAL",
-      "stars": 1806,
+      "stars": 1828,
       "trend_gain": 0,
       "language": "C#",
       "desc": "A free, open source C# framework for making games, or your own game engine. Direct access to native APIs and Vulkan, with the low-level libraries around them. The foundation under Kitten Space Agency and RimWorld's Waylith engine.",
@@ -618,7 +617,7 @@
     },
     {
       "repo": "ranxianglei/billion-context",
-      "stars": 1754,
+      "stars": 1808,
       "trend_gain": 0,
       "language": "TypeScript",
       "desc": "A context-compression plugin for small context windows (a 100K context is enough), token savings (5x fewer tokens), and month-long single sessions (billions of tokens).上下文压缩插件，兼顾小窗口(100k上下文足矣)省token(省5倍token)和超长会话(数月级别几十亿token单会话)。billion-context is all you need",
@@ -629,7 +628,7 @@
     },
     {
       "repo": "chenglou/handwired",
-      "stars": 1685,
+      "stars": 1693,
       "trend_gain": 0,
       "language": "TypeScript",
       "desc": "Turn your regular JavaScript code into a neural net.",
@@ -638,7 +637,7 @@
     },
     {
       "repo": "Supermedo/uncharted_pc",
-      "stars": 1282,
+      "stars": 1334,
       "trend_gain": 0,
       "language": "C++",
       "desc": "Uncharted: The Nathan Drake Collection running natively on Windows - by SuperMedo",
@@ -646,24 +645,8 @@
       "source": "new-7d"
     },
     {
-      "repo": "feder-cr/git-ai",
-      "stars": 1146,
-      "trend_gain": 0,
-      "language": "Go",
-      "desc": "Git designed for AI agents.",
-      "topics": [
-        "ai-agents",
-        "coding-agents",
-        "git",
-        "golang",
-        "scion",
-        "version-control"
-      ],
-      "source": "new-7d"
-    },
-    {
       "repo": "Caho1/open-claude-ui",
-      "stars": 1145,
+      "stars": 1166,
       "trend_gain": 0,
       "language": "TypeScript",
       "desc": "基于 REA 深度拆解并高保真还原 Claude 官方桌面端 UI。还原 30 个独立 React 组件与 8 项硬核交互物理算法，附带 3000+ 行逆向分析手册。",
@@ -682,8 +665,24 @@
       "source": "new-7d"
     },
     {
+      "repo": "feder-cr/git-ai",
+      "stars": 1159,
+      "trend_gain": 0,
+      "language": "Go",
+      "desc": "Git designed for AI agents.",
+      "topics": [
+        "ai-agents",
+        "coding-agents",
+        "git",
+        "golang",
+        "scion",
+        "version-control"
+      ],
+      "source": "new-7d"
+    },
+    {
       "repo": "zhuyansen/new-term-radar",
-      "stars": 1086,
+      "stars": 1094,
       "trend_gain": 0,
       "language": "Python",
       "desc": "Daily radar for new AI terms: names of new models, products and repos, caught on X, Hugging Face, GitHub and sitemaps before keyword tools list them.",
@@ -704,7 +703,7 @@
     },
     {
       "repo": "AjncSystem/ShadowOfTheColossus-PC",
-      "stars": 996,
+      "stars": 1016,
       "trend_gain": 0,
       "language": "C++",
       "desc": "Native Windows port of Shadow of the Colossus (PS4, CUSA08809) - bring your own game dump. Port nativo para PC.",
@@ -713,7 +712,7 @@
     },
     {
       "repo": "outcrawlai/scout",
-      "stars": 941,
+      "stars": 945,
       "trend_gain": 0,
       "language": "TypeScript",
       "desc": "Scout: the open-source browser agent, by Outcrawl. Mirrored automatically from Outcrawl's own repository.",
@@ -729,17 +728,8 @@
       "source": "new-7d"
     },
     {
-      "repo": "CoolkHz/gptibo",
-      "stars": 822,
-      "trend_gain": 0,
-      "language": "TypeScript",
-      "desc": "Self-hosted GPTibo storefront, admin and Go backend — sanitized MIT source",
-      "topics": [],
-      "source": "new-7d"
-    },
-    {
       "repo": "rohit267/net-merge",
-      "stars": 821,
+      "stars": 914,
       "trend_gain": 0,
       "language": "Go",
       "desc": "Use all your network adapters at once on Windows/Linux/Mac: per-connection load balancing over Wi-Fi, Ethernet and phone/USB tethers (TUN + Wintun)",
@@ -760,8 +750,17 @@
       "source": "new-7d"
     },
     {
+      "repo": "CoolkHz/gptibo",
+      "stars": 824,
+      "trend_gain": 0,
+      "language": "TypeScript",
+      "desc": "Self-hosted GPTibo storefront, admin and Go backend — sanitized MIT source",
+      "topics": [],
+      "source": "new-7d"
+    },
+    {
       "repo": "xscreensaver-official/xscreensaver",
-      "stars": 743,
+      "stars": 783,
       "trend_gain": 0,
       "language": "",
       "desc": "There is no official XScreenSaver GitHub repository.",
@@ -770,7 +769,7 @@
     },
     {
       "repo": "Leonxlnx/earshot",
-      "stars": 695,
+      "stars": 716,
       "trend_gain": 0,
       "language": "Python",
       "desc": "Ears for coding agents: let AI hear, review and make sound. CPU-only, open source.",
@@ -784,8 +783,26 @@
       "source": "new-7d"
     },
     {
+      "repo": "MyLuxy/overdrive",
+      "stars": 698,
+      "trend_gain": 0,
+      "language": "C++",
+      "desc": "Overdrive, a PS5 homebrew game store with 1,800+ games.",
+      "topics": [
+        "exfat",
+        "game-store",
+        "homebrew",
+        "jailbreak",
+        "ps5",
+        "ps5-homebrew",
+        "reverse-engineering",
+        "shadowmountplus"
+      ],
+      "source": "new-7d"
+    },
+    {
       "repo": "Zfinix/eleven",
-      "stars": 677,
+      "stars": 696,
       "trend_gain": 0,
       "language": "TypeScript",
       "desc": "Agent-first reverse engineering for macOS, Windows and Linux: any ACP agent reads, renames and patches binaries, Android apps and GPU kernels next to you.",
@@ -804,38 +821,20 @@
       "source": "new-7d"
     },
     {
-      "repo": "MyLuxy/overdrive",
-      "stars": 674,
+      "repo": "LiCinCan/blender-ai-mcp-addon",
+      "stars": 692,
       "trend_gain": 0,
-      "language": "C++",
-      "desc": "Overdrive, a PS5 homebrew game store with 1,800+ games.",
-      "topics": [
-        "exfat",
-        "game-store",
-        "homebrew",
-        "jailbreak",
-        "ps5",
-        "ps5-homebrew",
-        "reverse-engineering",
-        "shadowmountplus"
-      ],
-      "source": "new-7d"
-    },
-    {
-      "repo": "threerocks/sweety-handdraw-video",
-      "stars": 672,
-      "trend_gain": 0,
-      "language": "JavaScript",
-      "desc": "从主题或文章制作完整手绘讲解视频：按部位描线、逐字书写、VoiceStudio 配音、五项内置制作依赖。",
+      "language": "Python",
+      "desc": "AI assistant and MCP server for Blender: visual chat, scene tools, multi-agent workflows. Works with OpenAI, ChatGPT, Claude, Gemini, Ollama, OpenCode. Blender AI addon and plugin, copilot for 3D, bpy Python scripting, MCP integration.",
       "topics": [],
       "source": "new-7d"
     },
     {
-      "repo": "anujasid/blender-ai-mcp-addon",
-      "stars": 646,
+      "repo": "threerocks/sweety-handdraw-video",
+      "stars": 674,
       "trend_gain": 0,
-      "language": "Python",
-      "desc": "AI assistant and MCP server for Blender: visual chat, scene tools, multi-agent workflows. Works with OpenAI, ChatGPT, Claude, Gemini, Ollama, OpenCode. Blender AI addon and plugin, copilot for 3D, bpy Python scripting, MCP integration.",
+      "language": "JavaScript",
+      "desc": "从主题或文章制作完整手绘讲解视频：按部位描线、逐字书写、VoiceStudio 配音、五项内置制作依赖。",
       "topics": [],
       "source": "new-7d"
     }
