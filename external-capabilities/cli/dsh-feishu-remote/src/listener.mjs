@@ -133,9 +133,23 @@ export function startListener(cfg) {
     const previous = reuse ? state.sessions[chatId] : null;
     audit('info', 'start', { taskId, chatId, text, session: previous || 'new' });
     let result = await runAgent(cfg, text, previous);
-    if (previous && result.code !== 0 && /unknown|not found|不存在|无效/i.test(`${result.stderr} ${result.stdout}`)) {
+    const output = () => `${result.stderr} ${result.stdout}`;
+    // Session deleted → start a new one.
+    if (previous && result.code !== 0 && /unknown|not found|不存在|无效/i.test(output())) {
       audit('warn', 'session-lost', { chatId, session: previous });
       result = await runAgent(cfg, text, null);
+    }
+    // Session open in the desktop UI holds a write handle → retry, then start a new one.
+    if (previous && result.code !== 0 && /already owned|active write handle|写入句柄/i.test(output())) {
+      for (let attempt = 1; attempt <= 2 && result.code !== 0; attempt += 1) {
+        audit('warn', 'session-busy-retry', { chatId, session: previous, attempt });
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+        result = await runAgent(cfg, text, previous);
+      }
+      if (result.code !== 0 && /already owned|active write handle|写入句柄/i.test(output())) {
+        audit('warn', 'session-busy-fallback', { chatId, session: previous });
+        result = await runAgent(cfg, text, null);
+      }
     }
     if (reuse && result.code === 0 && result.sessionId) {
       state.sessions[chatId] = result.sessionId;
