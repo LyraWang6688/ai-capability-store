@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Selection Toolbar",
+    "description": "Shows a floating toolbar (copy / read aloud / follow up / annotate) above selected text in the conversation."
+  }
+}
