@@ -9,7 +9,12 @@ function args(cfg, rest) {
 
 export function run(cfg, rest, input, timeoutMs = 90000) {
   return new Promise((resolve) => {
-    const child = spawn(cfg.larkCli, args(cfg, rest), { stdio: ['pipe', 'pipe', 'pipe'] });
+    // GUI/launchd processes start with a minimal PATH; lark-cli is a node shim.
+    const env = {
+      ...process.env,
+      PATH: ['/usr/local/bin', '/opt/homebrew/bin', process.env.PATH || '/usr/bin:/bin:/usr/sbin:/sbin'].join(':'),
+    };
+    const child = spawn(cfg.larkCli, args(cfg, rest), { stdio: ['pipe', 'pipe', 'pipe'], env });
     let stdout = '', stderr = '', settled = false;
     const finish = (code) => { if (settled) return; settled = true; clearTimeout(timer); resolve({ code, stdout, stderr }); };
     const timer = setTimeout(() => { try { child.kill('SIGTERM'); } catch { /* ignore */ } finish('timeout'); }, timeoutMs);

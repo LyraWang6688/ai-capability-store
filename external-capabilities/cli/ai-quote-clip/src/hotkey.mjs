@@ -1,5 +1,6 @@
 /** Build, install and control the macOS hotkey helper (compiled locally with swiftc). */
 import { execFileSync, spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { copyFileSync, existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -33,7 +34,7 @@ export function hotkeyStatus() {
   return { supported: true, installed: true, running: Boolean(pid), detail: pid ? `running pid=${pid[1]}` : 'unknown' };
 }
 
-export function installHotkey({ nodePath, cliPath, key = 'z' }) {
+export function installHotkey({ nodePath, cliPath, key = 'z', force = false }) {
   if (!isMac()) throw new Error('快捷键安装仅支持 macOS');
   const swift = spawnSync('/usr/bin/xcrun', ['--find', 'swiftc'], { encoding: 'utf8' });
   const compiler = swift.status === 0 ? '/usr/bin/xcrun' : null;
@@ -43,9 +44,20 @@ export function installHotkey({ nodePath, cliPath, key = 'z' }) {
   mkdirSync(join(APP_DIR, 'Contents', 'MacOS'), { recursive: true });
   const source = readFileSync(join(PKG_ROOT, 'hotkey', 'AiQuoteClip.swift'), 'utf8');
   const sourcePath = join(ROOT, 'AiQuoteClip.swift');
-  writeFileSync(sourcePath, source);
   const binary = join(APP_DIR, 'Contents', 'MacOS', 'AiQuoteClip');
-  execFileSync(compiler, ['swiftc', '-O', sourcePath, '-o', binary, '-framework', 'Cocoa', '-framework', 'Carbon'], { stdio: 'inherit' });
+  const buildInfoPath = join(ROOT, 'build.json');
+  const hash = createHash('sha256').update(source).digest('hex');
+  // Recompiling changes the ad-hoc cdHash and invalidates the Accessibility grant,
+  // so only rebuild when the source actually changed (or --force).
+  let previousHash = '';
+  try { previousHash = JSON.parse(readFileSync(buildInfoPath, 'utf8')).hash || ''; } catch { /* first install */ }
+  if (!force && previousHash === hash && existsSync(binary)) {
+    console.log('二进制未变化，跳过重新编译（保留辅助功能授权）');
+  } else {
+    writeFileSync(sourcePath, source);
+    execFileSync(compiler, ['swiftc', '-O', sourcePath, '-o', binary, '-framework', 'Cocoa', '-framework', 'Carbon'], { stdio: 'inherit' });
+    writeFileSync(buildInfoPath, JSON.stringify({ hash, builtAt: new Date().toISOString() }, null, 2) + '\n');
+  }
 
   writeFileSync(join(APP_DIR, 'Contents', 'Info.plist'), `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
