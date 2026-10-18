@@ -26,3 +26,11 @@ jobs:
       # "Is this file tracked?" is a git question and belongs in its own tool.
       - name: Nothing generated is tracked
         run: python3 scripts/check_tracked_hygiene.py
+      # The registry says what version an asset is; the artifact a consumer
+      # actually installs declares its own version in its own package.json.
+      # Nothing compared them. `selection-toolbar` was registered at 0.1.0 while
+      # its package.json said 1.0.0, and every other check was green — the tag
+      # agreed with the registry, --missing agreed, --audit agreed. Only the
+      # thing that gets installed was wrong, which is the one place nobody looks.
+      - name: Artifact versions agree with the registry
+        run: python3 skills/store-publish/scripts/check_tag_version.py --package HEAD

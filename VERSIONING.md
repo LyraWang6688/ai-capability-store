@@ -148,6 +148,23 @@ Domain registry, does `<asset-name>-v<version>` exist? It runs on a schedule
 PR an untagged version bump is the normal state and the check would fail on
 correct work.
 
+**And a fourth question, about a different pair of things.** The registry is the
+Store's answer to "what version is this asset" — but the artifact a consumer
+installs declares its own version, in its own `package.json`. Nothing compared
+them. `selection-toolbar` was registered at 0.1.0 while its `package.json` said
+1.0.0, and every other check was green: the tag agreed with the registry,
+`--missing` agreed, `--audit` agreed. Only the thing that gets installed was
+wrong, which is the one place the Store was not looking.
+
+`--package` compares the two, for every registered asset whose implementation
+directory carries a `package.json`. It runs in PR CI
+(`.github/workflows/validate-store.yml`) because unlike `--missing` it asks about
+state that both sides already hold, so there is no "not yet tagged" false positive
+to design around.
+
+Absence is not failure here: a Skill has no `package.json`, and neither does a
+plain-script automation. Only disagreement is.
+
 If a new peer Domain is added, the check must learn it **in the same change**.
 `check_tag_version.py` fails loudly on a domain it does not recognise rather than
 skipping it — a checker that silently ignores the newest Domain is worse than no

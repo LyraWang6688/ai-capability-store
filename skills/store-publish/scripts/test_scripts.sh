@@ -161,6 +161,20 @@ cp -R "$store" "$gitsrc"
   # script exists to catch, and the shape of the four real occurrences.
   git tag -a demo-skill-v0.9.9 -m "claims 0.9.9, registry says 0.1.0"
 
+  # --package: the registry and the artifact must agree about the version.
+  # Two commits so both directions are testable: one where a package.json agrees
+  # with the registry, then one where it does not.
+  mkdir -p external-capabilities/mcp/demo-mcp
+  printf '{"name":"demo-mcp","version":"0.1.0"}\n' \
+    > external-capabilities/mcp/demo-mcp/package.json
+  git add -A
+  git commit -q -m "package.json agrees with the registry"
+  git rev-parse HEAD > "$gitsrc/../aligned_sha"
+  printf '{"name":"demo-mcp","version":"9.9.9"}\n' \
+    > external-capabilities/mcp/demo-mcp/package.json
+  git add -A
+  git commit -q -m "package.json disagrees with the registry (fixture)"
+
   # a commit that exists but is NOT on main, for the reachability check
   git checkout -q -b side
   git commit -q --allow-empty -m "unmerged work"
@@ -203,6 +217,18 @@ expect 10 "missing mode finds registered versions with no tag" \
 ) >/dev/null 2>&1
 expect 0  "missing mode passes once every registered version is tagged" \
   "$PY" "$script_dir/check_tag_version.py" --missing
+
+# The fourth question: the registry and the artifact a consumer installs must
+# agree about what version it is. The tag can be right, --missing can be right,
+# --audit can be right, and the installed thing can still be the wrong version.
+#
+# Demo note: the aligned commit carries a package.json at 0.1.0; the tip carries
+# one at 9.9.9 while the registry still says 0.1.0.
+aligned_sha=$(cat "$fixture/aligned_sha")
+expect 0  "package mode passes when the artifact agrees" \
+  "$PY" "$script_dir/check_tag_version.py" --package "$aligned_sha"
+expect 10 "package mode catches an artifact that disagrees" \
+  "$PY" "$script_dir/check_tag_version.py" --package
 
 # A domain routed in registry.yaml but unknown to the check must fail LOUDLY.
 # Reporting success for a domain it never looked at is the failure this whole

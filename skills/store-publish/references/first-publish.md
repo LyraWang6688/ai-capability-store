@@ -234,13 +234,19 @@ python3 <store>/skills/store-publish/scripts/check_tag_version.py <asset-name> <
 - 想体检全仓已有的 tag：`check_tag_version.py --audit`
 - 想查有没有"登记了却没打 tag"的：`check_tag_version.py --missing`
 
-**三个模式问的是三个不同问题，缺一个就有一类缺口永远看不见：**
+**四个模式问的是四个不同问题，缺一个就有一类缺口永远看不见：**
 
 ```text
 默认模式    "我要打的这个 tag 安全吗"         只问你正要创建的那个
 --audit     "已有的每个 tag 说的是真话吗"     只看已经存在的 tag
 --missing   "每个登记版本都有 tag 吗"         只有它看得见【没人创建的 tag】
+--package   "消费者装到的东西，版本对吗"      比的是【注册表】和【package.json】
 ```
+
+第四条比的是另一对东西：注册表说这个资产是哪个版本，而真正被安装的
+`package.json` 里写着自己的版本 —— 两者可以永远不一致，而 tag、`--audit`、
+`--missing` 全都对得上。`selection-toolbar` 就撞上过（注册表 0.1.0，
+package.json 1.0.0），所有检查当时全绿。
 
 第三条是最容易漏的：默认模式根本没听说过那个 tag，`--audit` 也只遍历已存在的 tag。
 2026 年 10 月有三次发布是这样漏掉 tag 的（store-publish / teaming-*、
