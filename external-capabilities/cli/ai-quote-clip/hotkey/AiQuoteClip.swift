@@ -33,7 +33,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         item.button?.title = "❝"
         let menu = NSMenu()
-        let capture = NSMenuItem(title: "收录到飞书（⌃⌥X）", action: #selector(captureAutoMenu), keyEquivalent: "")
+        let capture = NSMenuItem(title: "收录到飞书（⌃⌥Z 或 ⌃⌥X）", action: #selector(captureAutoMenu), keyEquivalent: "")
         capture.target = self
         menu.insertItem(capture, at: 0)
         menu.addItem(NSMenuItem.separator())
@@ -70,7 +70,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         var selectionID = EventHotKeyID(signature: HOTKEY_SIGNATURE, id: 1)
         var clipboardID = EventHotKeyID(signature: HOTKEY_SIGNATURE, id: 2)
         let modifier = UInt32(controlKey | optionKey)
-        RegisterEventHotKey(UInt32(kVK_ANSI_X), modifier, selectionID, GetApplicationEventTarget(), 0, &hotKeyRef)
+        let status = RegisterEventHotKey(keyCode(), modifier, selectionID, GetApplicationEventTarget(), 0, &hotKeyRef)
+        logLine("register hotkey key=\(launch["key"] ?? "z") status=\(status)")
+        let aliasStatus = RegisterEventHotKey(UInt32(kVK_ANSI_X), modifier, clipboardID, GetApplicationEventTarget(), 0, &clipboardHotKeyRef)
+        logLine("register hotkey alias key=x status=\(aliasStatus)")
         _ = selectionID
         _ = clipboardID
         var eventType = EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyPressed))
@@ -78,6 +81,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             var hotKeyID = EventHotKeyID()
             GetEventParameter(event, EventParamName(kEventParamDirectObject), EventParamType(typeEventHotKeyID), nil,
                               MemoryLayout<EventHotKeyID>.size, nil, &hotKeyID)
+            logLine("hotkey fired id=\(hotKeyID.id)")
             DispatchQueue.main.async { AppDelegate.shared?.trigger(mode: "auto") }
             return noErr
         }, 1, &eventType, nil, nil)
@@ -167,7 +171,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func runCli(_ text: String) -> Bool {
         guard let node = launch["node"], let cli = launch["cli"],
-              FileManager.default.fileExists(atPath: node), FileManager.default.fileExists(atPath: cli) else { return false }
+              FileManager.default.fileExists(atPath: node), FileManager.default.fileExists(atPath: cli) else {
+            logLine("runCli: missing node=\(launch["node"] ?? "-") cli=\(launch["cli"] ?? "-")")
+            return false
+        }
         let process = Process()
         process.executableURL = URL(fileURLWithPath: node)
         process.arguments = [cli, "add"]
@@ -175,10 +182,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         process.standardInput = input
         process.standardOutput = Pipe()
         process.standardError = Pipe()
-        do { try process.run() } catch { return false }
+        do { try process.run() } catch {
+            logLine("runCli spawn error: \(error)")
+            return false
+        }
         if let data = text.data(using: .utf8) { input.fileHandleForWriting.write(data) }
         try? input.fileHandleForWriting.close()
         process.waitUntilExit()
+        logLine("runCli exit=\(process.terminationStatus) node=\(node) cli=\(cli)")
         return process.terminationStatus == 0
     }
 }

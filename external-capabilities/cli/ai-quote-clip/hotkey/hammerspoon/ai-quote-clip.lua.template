@@ -1,0 +1,43 @@
+-- ai-quote-clip: 选中文字 → Ctrl+Opt+__KEY__ → 追加到飞书文档
+-- 由 `ai-quote-clip hotkey install` 生成；重新安装会覆盖本文件。
+require("hs.ipc")
+
+local CLI = "__CLI__"
+local NODE = "__NODE__"
+local LOG = os.getenv("HOME") .. "/.ai-quote-clip/logs/hammerspoon.log"
+local TMP = "/tmp/ai-quote-clip-hammerspoon.txt"
+
+local function log(msg)
+  local f = io.open(LOG, "a")
+  if f then f:write(os.date("%Y-%m-%dT%H:%M:%S") .. " " .. msg .. "\n"); f:close() end
+end
+
+local function notify(msg) hs.alert.show(msg, 1.0) end
+
+local function runCli(text)
+  local f = io.open(TMP, "w"); f:write(text); f:close()
+  hs.task.new("/bin/sh", function(code)
+    log("cli exit=" .. tostring(code) .. " len=" .. tostring(#text))
+    notify(code == 0 and "已收录到飞书" or "收录失败")
+  end, {"-c", "PATH=/usr/local/bin:/opt/homebrew/bin:$PATH " .. NODE .. " " .. CLI .. " add < " .. TMP}):start()
+end
+
+local function capture()
+  local old = hs.pasteboard.getContents()
+  hs.pasteboard.clearContents()          -- 先清空，确保只可能拿到"本次选中"的内容
+  hs.eventtap.keyStroke({"cmd"}, "c", 0)
+  hs.timer.doAfter(0.45, function()
+    local text = hs.pasteboard.getContents()
+    if old then hs.pasteboard.setContents(old) end   -- 还原用户剪贴板
+    if text == nil or #text == 0 then
+      log("capture failed (no selection or missing Accessibility permission)")
+      notify("没有选中文字")
+      return
+    end
+    log("captured len=" .. tostring(#text))
+    runCli(text)
+  end)
+end
+
+local ok = hs.hotkey.bind({"ctrl", "alt"}, "__KEY__", capture)
+if ok then log("hotkey bound ctrl+alt+__KEY__") else log("hotkey bind FAILED") end
