@@ -1,3 +1,3 @@
 - insert:
     - id: selection-toolbar
-      name: '@local/selection-toolbar'
+      name: '@lyra_wang/dsh-selection-toolbar'

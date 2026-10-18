@@ -6,7 +6,7 @@
  * conversation, with copy / read-aloud / follow-up / annotate actions.
  */
 window.__ModuleLoader__.load({
-  id: '@local/selection-toolbar',
+  id: '@lyra_wang/dsh-selection-toolbar',
   factory(require) {
     const React = require('react');
     const h = React.createElement;
