@@ -25,6 +25,7 @@ export const FEISHU_APP_ID = process.env.FEISHU_APP_ID ?? '';
 export const FEISHU_APP_SECRET = process.env.FEISHU_APP_SECRET ?? '';
 export const BASE_TOKEN = process.env.INVESTDESK_BASE_TOKEN ?? '';
 export const IDEAS_TABLE = process.env.INVESTDESK_IDEAS_TABLE ?? '';
+export const WATCH_TABLE = process.env.INVESTDESK_WATCH_TABLE ?? '';
 
 export function assertConfigured(): void {
   const missing: string[] = [];
@@ -32,6 +33,7 @@ export function assertConfigured(): void {
   if (!FEISHU_APP_SECRET) missing.push('FEISHU_APP_SECRET');
   if (!BASE_TOKEN) missing.push('INVESTDESK_BASE_TOKEN');
   if (!IDEAS_TABLE) missing.push('INVESTDESK_IDEAS_TABLE');
+  if (!WATCH_TABLE) missing.push('INVESTDESK_WATCH_TABLE');
   if (missing.length) {
     throw new Error(`缺少环境变量：${missing.join(', ')}（配置文件 ${path.join(WORK_DIR, '.env')}）`);
   }

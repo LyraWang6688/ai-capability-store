@@ -41,16 +41,16 @@ export const TOOLS = [
   {
     type: 'function',
     function: {
-      name: 'list_ideas',
+      name: 'list_watchlist',
       description:
-        '列出想法池的历史记录（问答与灵感），最近的在前。' +
-        '用户问「我之前问过什么」「我记录过哪些想法」时调用。',
+        '查看备选池：每个标的的提及次数、首次/最近提及、状态、最近推荐理由，按提及次数排序。' +
+        '用户问「备选池里有什么」「之前推荐过哪些标的」时调用。',
       parameters: {
         type: 'object',
         properties: {
-          days: { type: 'number', description: '只看最近 N 天' },
-          topic: { type: 'string', description: '按话题过滤' },
-          limit: { type: 'number', description: '条数，默认 10' },
+          status: { type: 'string', enum: ['观察中', '已买入', '已忽略'] },
+          keyword: { type: 'string', description: '按代码/名称/理由过滤' },
+          limit: { type: 'number', description: '条数，默认 20' },
         },
       },
     },
@@ -58,8 +58,8 @@ export const TOOLS = [
   {
     type: 'function',
     function: {
-      name: 'search_ideas',
-      description: '在想法池里按关键词搜索历史记录。用户问「我之前是不是提过 XXX」时调用。',
+      name: 'search_inspirations',
+      description: '搜索历史灵感记录（我问过什么、你答了什么）。用户问「我之前问过什么」时调用。',
       parameters: {
         type: 'object',
         properties: {
@@ -73,21 +73,48 @@ export const TOOLS = [
   {
     type: 'function',
     function: {
-      name: 'save_idea',
+      name: 'save_recommendation',
       description:
-        '把一条投资灵感 / 关注点写入多维表格。用户说「记一下」「帮我记住」「记录这个想法」时调用。',
+        '**当你推荐了具体的股票或 ETF 时，必须调用这个工具**，把标的沉淀进备选池。' +
+        '会记录本次提问（灵感记录），并更新每个标的的提及次数、最近提及、推荐理由，建立双向关联。' +
+        '回答完后调用一次即可，不要对普通查询调用。',
       parameters: {
         type: 'object',
         properties: {
-          topic: { type: 'string', description: '关注话题，例如 AI算力 / 红利 / 人口老龄化' },
-          content: { type: 'string', description: '灵感原文或要点' },
-          relatedCodes: {
+          question: { type: 'string', description: '用户的原问题' },
+          answer: { type: 'string', description: '你给出的完整回复' },
+          topic: { type: 'string', description: '话题：AI / 人口老龄化 / 红利 / 其他' },
+          instruments: {
             type: 'array',
-            items: { type: 'string' },
-            description: '相关标的代码（可选）',
+            description: '推荐的具体标的',
+            items: {
+              type: 'object',
+              properties: {
+                code: { type: 'string', description: '6 位代码' },
+                name: { type: 'string' },
+                type: { type: 'string', enum: ['股票', 'ETF', 'LOF', 'REIT', '场外基金', '其他'] },
+                reason: { type: 'string', description: '这次推荐它的理由' },
+              },
+              required: ['code'],
+            },
           },
         },
-        required: ['topic', 'content'],
+        required: ['question', 'instruments'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'update_watchlist',
+      description: '修改备选池里某个标的的状态（观察中 / 已买入 / 已忽略）。',
+      parameters: {
+        type: 'object',
+        properties: {
+          code: { type: 'string' },
+          status: { type: 'string', enum: ['观察中', '已买入', '已忽略'] },
+        },
+        required: ['code', 'status'],
       },
     },
   },
@@ -103,29 +130,36 @@ export async function runTool(name, args) {
       const result = await callTool('lookup_quotes', { codes: args.codes ?? [] });
       return result.content?.[0]?.text ?? '查询失败';
     }
-    case 'list_ideas': {
-      const result = await callIdeaTool('list_ideas', {
-        days: args.days ? Number(args.days) : undefined,
-        topic: args.topic ? String(args.topic) : undefined,
-        limit: args.limit ? Number(args.limit) : 10,
+    case 'list_watchlist': {
+      const result = await callIdeaTool('list_watchlist', {
+        status: args.status,
+        keyword: args.keyword,
+        limit: args.limit ? Number(args.limit) : undefined,
       });
       return result.content?.[0]?.text ?? '查询失败';
     }
-    case 'search_ideas': {
-      const result = await callIdeaTool('search_ideas', {
+    case 'search_inspirations': {
+      const result = await callIdeaTool('search_inspirations', {
         keyword: String(args.keyword ?? ''),
-        limit: args.limit ? Number(args.limit) : 5,
+        limit: args.limit ? Number(args.limit) : undefined,
       });
       return result.content?.[0]?.text ?? '查询失败';
     }
-    case 'save_idea': {
-      const result = await callIdeaTool('save_idea', {
-        question: args.content ?? '',
-        topic: args.topic ?? '其他',
-        relatedCodes: args.relatedCodes ?? [],
-        type: '灵感',
+    case 'save_recommendation': {
+      const result = await callIdeaTool('save_recommendation', {
+        question: String(args.question ?? ''),
+        answer: args.answer,
+        topic: args.topic,
+        instruments: args.instruments ?? [],
       });
       return result.content?.[0]?.text ?? '记录失败';
+    }
+    case 'update_watchlist': {
+      const result = await callIdeaTool('update_watchlist', {
+        code: args.code,
+        status: args.status,
+      });
+      return result.content?.[0]?.text ?? '更新失败';
     }
     default:
       return `未知工具：${name}`;

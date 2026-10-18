@@ -65,12 +65,12 @@ capabilities:
     type: mcp
     status: limited
     provider_path: external-capabilities/providers/lyrawang/README.md
-    version: 0.1.0
+    version: 0.2.0
     implementation_path: external-capabilities/mcp/investdesk-ideas
     auth: "客户端到 MCP 无认证；MCP 到飞书走自建应用 tenant_access_token，凭据从 INVESTDESK_HOME/.env 读取（FEISHU_APP_ID / FEISHU_APP_SECRET）"
-    capabilities: "save_idea 写入问答记录或灵感；list_ideas 按状态/类型/话题/天数筛选；search_ideas 关键词搜索；update_idea 更新状态（待复核→已采纳/已忽略）"
+    capabilities: "save_recommendation 记录一次推荐：写灵感记录（问题+回复）+ 把标的 upsert 进备选池（提及次数+1、最近提及、追加理由）+ 双向关联；list_watchlist 查看备选池（按提及次数排序）；search_inspirations 搜索历史提问；update_watchlist 改标的状态（观察中/已买入/已忽略）"
     permissions: "飞书 base 资源域读写授权：开发者后台开通 bitable:app，并把应用加为 Base 协作者（可编辑）"
-    notes: "自研、Store-managed。与 investdesk-quotes 按领域拆分：quotes 管客观行情与持仓估值，ideas 管主观问答与灵感记录。两域 schema 演进节奏不同，合并会让想法池的字段改动拖累行情版本。目标表「想法池」字段见包内 README。已知限制：飞书 sort 参数报 InvalidSort，改为内存排序；无全文检索，search 拉最近 200 条本地过滤；仅 stdio 传输。"
+    notes: "自研、Store-managed。与 investdesk-quotes 按领域拆分：quotes 管客观行情与持仓估值，ideas 管「我问了什么/推荐过什么」。0.1.x 是对话日志模型（每条问答都记），0.2.0 改成标的沉淀模型：灵感记录（提问）+ 备选池（标的，含提及次数/首次/最近/理由）+ 双向关联，重复推荐同一标的会累加次数。已知限制：飞书 GET /records 的 filter 参数会被拒（InvalidFilter），改用 POST /records/search；sort 参数报 InvalidSort，改内存排序；无全文检索，search 拉最近 200 条本地过滤；仅 stdio 传输。"
 
   investdesk-quotes:
     name: investdesk-quotes
