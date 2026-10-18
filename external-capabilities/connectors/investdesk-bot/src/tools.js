@@ -1,5 +1,6 @@
 import { callTool } from 'investdesk-quotes/dist/mcp/tools.js';
 import { callTool as callIdeaTool } from 'investdesk-ideas/dist/mcp/tools.js';
+import { fundProfile, fundSnapshot, searchFunds, searchStocks } from './wind.js';
 
 export const TOOLS = [
   {
@@ -35,6 +36,61 @@ export const TOOLS = [
           },
         },
         required: ['codes'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'wind_search_funds',
+      description:
+        '用自然语言筛选全市场基金/ETF（万得权威数据）。推荐 ETF 前先调这个，拿到真实在售的标的与跟踪指数。' +
+        '例：question="跟踪人工智能主题的ETF"。**每次调用消耗 Wind 积分**，不要滥用。',
+      parameters: {
+        type: 'object',
+        properties: { question: { type: 'string', description: '自然语言筛选条件' } },
+        required: ['question'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'wind_fund_snapshot',
+      description:
+        '批量查询 ETF/LOF 行情快照：最新价、涨跌幅、成交额、换手率、当日与近5日主力净流入。' +
+        '筛选出候选后用它对比流动性与资金流向。',
+      parameters: {
+        type: 'object',
+        properties: {
+          codes: { type: 'array', items: { type: 'string' }, description: '6 位代码，最多 10 个' },
+        },
+        required: ['codes'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'wind_fund_profile',
+      description: '查询单只基金的档案：投资类型、跟踪指数、管理费率、基金经理、成立日期。推荐时用它核实标的。',
+      parameters: {
+        type: 'object',
+        properties: { code: { type: 'string', description: '6 位代码' } },
+        required: ['code'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'wind_search_stocks',
+      description:
+        '用自然语言筛选 A 股个股（万得权威数据）。推荐个股前先调这个。**消耗 Wind 积分**，不要滥用。',
+      parameters: {
+        type: 'object',
+        properties: { question: { type: 'string', description: '自然语言筛选条件' } },
+        required: ['question'],
       },
     },
   },
@@ -129,6 +185,34 @@ export async function runTool(name, args) {
     case 'lookup_quotes': {
       const result = await callTool('lookup_quotes', { codes: args.codes ?? [] });
       return result.content?.[0]?.text ?? '查询失败';
+    }
+    case 'wind_search_funds': {
+      try {
+        return await searchFunds(String(args.question ?? ''));
+      } catch (error) {
+        return `Wind 暂时不可用（${error.message}），请基于已有信息回答，并说明数据来源受限。`;
+      }
+    }
+    case 'wind_fund_snapshot': {
+      try {
+        return await fundSnapshot(Array.isArray(args.codes) ? args.codes.map(String) : []);
+      } catch (error) {
+        return `Wind 暂时不可用（${error.message}）`;
+      }
+    }
+    case 'wind_fund_profile': {
+      try {
+        return await fundProfile(String(args.code ?? ''));
+      } catch (error) {
+        return `Wind 暂时不可用（${error.message}）`;
+      }
+    }
+    case 'wind_search_stocks': {
+      try {
+        return await searchStocks(String(args.question ?? ''));
+      } catch (error) {
+        return `Wind 暂时不可用（${error.message}），请基于已有信息回答，并说明数据来源受限。`;
+      }
     }
     case 'list_watchlist': {
       const result = await callIdeaTool('list_watchlist', {
