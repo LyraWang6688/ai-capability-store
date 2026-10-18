@@ -130,13 +130,11 @@ automations:
     path: automations/frontier-watch
     entrypoint: watch.py
     status: testing
-    version: 0.1.1
+    version: 0.2.0
     updated: "2026-10-19"
     trigger_kind: weekly
-    executor: launchd
-    launchd:
-      label: com.lyrawang.frontier-watch
-      template: automations/frontier-watch/deploy/com.lyrawang.frontier-watch.plist.tmpl
+    executor: github-actions
+    workflow: .github/workflows/automation-frontier-watch.yml
     output:
       target: external-system
       destination: "Feishu Base「AI 工具」多维表格：前沿功能与插件灵感"
@@ -146,11 +144,15 @@ automations:
       供后续把好用的功能做成 DSH 插件。
     notes: >
       为什么是 Automation：触发由时钟决定（周一 10:00），不是人或模型决定。
-      为什么用 launchd：写 Base 复用操作者本机 lark-cli 的 user 令牌（钥匙串），
-      hosted runner 没有钥匙串；换 github-actions 需要专用飞书应用 + base 写权限。
+      0.2.0 从 launchd 迁到 github-actions：0.1.x 用 launchd + 本机 lark-cli 的 user 令牌
+      写 Base（钥匙串在宿主 runner 上不存在），因此 Mac 关机即断档。迁移后走飞书
+      「应用身份」tenant_access_token（与 github-portfolio-snapshot 共用同一个自建应用），
+      CI 上不需要任何本机状态；去重改为每次读取 Base 内全部「功能/灵感」名称，不再依赖本地 state 文件。
       豆包工作暂无公开更新日志，本版不自动抓取，表格里历史条目为人工补充。
       只采集事实与可行性判断，不开发插件、不改仓库、不删已有记录。
       output.target=external-system：目标是外部 Base，校验器只能记录声明，通过校验不等于写入成功。
+      凭据边界：FEISHU_APP_ID 可公开；FEISHU_APP_SECRET 与 DEEPSEEK_API_KEY 只放 GitHub Secrets；
+      Base token/表 id 放 FRONTIER_CONFIG_JSON secret（非密钥但标识操作者的 Base）。
 
   investdesk-quote-sync:
     name: investdesk-quote-sync
