@@ -27,8 +27,19 @@ Skills and External Capabilities are **peer Domains**. A Plugin is NOT a sub-ent
 ```text
 external-capabilities/providers/<provider-name>/README.md
 external-capabilities/use-cases/<use-case>.md
-external-capabilities/mcp/<capability-name>/     # Store-managed MCP implementations
+external-capabilities/mcp/<capability-name>/          # Store-managed MCP implementations
+external-capabilities/connectors/<capability-name>/   # Store-managed connectors (deployments)
 ```
+
+`providers/` and `use-cases/` hold **documents**. Every other directory here is a
+**shelf**, and shelves are **closed**: each of its subdirectories must appear as
+some registry entry's `implementation_path`.
+
+A shelf is created when a real asset needs it — `connectors/` exists because
+`investdesk-bot` is a deployment, not a package. A new shelf name must be declared
+in `scripts/validate_store.py` (`CAPABILITY_SHELVES` or
+`RESERVED_CAPABILITY_DIRS`); it should not arrive by someone creating a directory,
+because adding a shelf is a policy decision worth reviewing.
 
 Use lowercase kebab-case for provider identifiers.
 
@@ -42,12 +53,19 @@ If that policy ever changes, the schema must gain an **explicit hosting
 declaration** (a required enum field). Do not infer intent from a missing
 `implementation_path` — that is precisely the ambiguity this policy removes.
 
-Store-managed implementations live under
-`external-capabilities/mcp/<capability-name>/`. Shelves for other types
-(`cli/` / `connector/` / `api/` / `plugin/`) are created only when a real asset
-needs them. The Store fixes the asset ROOT location only; it does NOT prescribe
-the internal source layout of an MCP (Node / Python / Go projects keep their own
+Store-managed implementations live under a **shelf**: `mcp/` for MCP servers,
+`connectors/` for deployments that connect two systems rather than expose tools,
+and `cli/` / `api/` / `plugin/` when a real asset of that shape appears. The
+Store fixes the asset ROOT location only; it does NOT prescribe the internal
+source layout of an implementation (Node / Python / Go projects keep their own
 native structure).
+
+Shelves are closed on purpose. Before this rule, `connectors/investdesk-bot` —
+fourteen files including a Dockerfile, a compose file and a deploy script — sat
+in the tree with no registry entry. Every schema check iterates entries, so
+nothing looked at it; every tag check does too. The validator reported a clean
+run. A directory nobody registered is an asset nobody governs, which is the one
+thing this Store exists to prevent.
 
 ## Registry
 
