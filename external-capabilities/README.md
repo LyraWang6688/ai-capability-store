@@ -162,9 +162,10 @@ switched off but never laid to rest, while Skills and Automations had
 `deprecated` / `archived` all along.
 
 Archiving does not delete anything by itself: the tag stays (tags are immutable),
-and the directory stays until a separate decision removes it. Record **why** in
-`notes` — an archived capability with no reason is indistinguishable from one
-that was abandoned by accident.
+and the directory stays until a separate decision removes it — `RETIREMENT.md`
+describes that ladder and what survives it. Record **why** in `notes` — an archived
+capability with no reason is indistinguishable from one that was abandoned by
+accident.
 
 ## Add or Update Workflow
 

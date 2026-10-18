@@ -44,6 +44,9 @@ reference or migration. When possible, document the replacement in the registry.
 Use when the automation is retired. Disable or remove its workflow; do **not**
 leave a scheduled workflow running against archived code.
 
+For the rest of the procedure — what stays, what to check first, and why the tag is
+never deleted — see `RETIREMENT.md`.
+
 ## Rule
 
 An automation that produces data another automation consumes must not be moved
