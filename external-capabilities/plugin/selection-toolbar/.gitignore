@@ -1,0 +1,10 @@
+# Operator-side configuration and local files must never enter the repository.
+#
+# The plugin reads `~/.dsh/selection-toolbar.json` (outside any checkout), but a
+# copy made for testing inside this directory must not be committed — it holds a
+# Feishu document token.
+selection-toolbar.json
+*.local.json
+.env
+.env.*
+node_modules/

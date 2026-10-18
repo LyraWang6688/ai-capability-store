@@ -3,7 +3,7 @@
  *
  * Registers one `shell.overlay` entry: a frame-wide floating layer that shows
  * a small toolbar above the text the user has just selected in the
- * conversation, with copy / read-aloud / follow-up / annotate actions.
+ * conversation, with copy / follow-up / annotate actions.
  */
 window.__ModuleLoader__.load({
   id: '@lyra_wang/dsh-selection-toolbar',
@@ -11,7 +11,7 @@ window.__ModuleLoader__.load({
     const React = require('react');
     const h = React.createElement;
 
-    const NS = '@local/selection-toolbar';
+    const NS = '@lyra_wang/dsh-selection-toolbar';
     const ROOT_CLASS = 'dsh-sel-toolbar';
 
     const CSS = `
