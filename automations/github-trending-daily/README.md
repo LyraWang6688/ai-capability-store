@@ -55,6 +55,24 @@ Properties that matter:
 
 The weekly automation reads the same branch and uses this same script.
 
+### The report itself
+
+`sync_from_cloud.py` only brings the data local. What the **report** must look
+like — the three dimensions (community focus → underlying problem → relation to
+the operator's interests), the interests mapping, the 2×2 positioning matrix, and
+the anti-fabrication rules — is a separate contract:
+
+- [`REPORT-CONTRACT.md`](./REPORT-CONTRACT.md) — the structure, non-negotiable rules
+- [`interests.example.yaml`](./interests.example.yaml) — the interests schema
+
+The real interests file is **not** in this repository (it is personal context and
+this repo is public); it lives at
+`~/.automation-state/github-trending/interests.yaml`.
+
+The contract is here rather than only in the agent's schedule prompt so the
+structure is versioned and reviewable — a prompt living in a local
+`~/.dsh/storages/schedule.json` disappears with the machine.
+
 ## Local use
 
 ```bash
