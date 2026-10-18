@@ -130,7 +130,7 @@ automations:
     path: automations/frontier-watch
     entrypoint: watch.py
     status: testing
-    version: 0.5.1
+    version: 0.5.2
     updated: "2026-10-19"
     trigger_kind: weekly
     executor: github-actions
@@ -158,6 +158,7 @@ automations:
       群 webhook（FEISHU_NOTIFY_WEBHOOK）降级为兜底；通知失败不影响写入。
       0.5.1：通知可用独立应用（FEISHU_NOTIFY_APP_ID / FEISHU_NOTIFY_APP_SECRET）——
       发消息的应用必须是目标会话成员，写 Base 的专用应用通常不在私聊里（实测 230002）。
+      0.5.2：按操作者要求移除群 webhook 兜底，通知只走私聊一条通道。
       只采集事实与可行性判断，不开发插件、不改仓库、不删已有记录。
       output.target=external-system：目标是外部 Base，校验器只能记录声明，通过校验不等于写入成功。
       凭据边界：FEISHU_APP_ID 可公开；FEISHU_APP_SECRET 与 DEEPSEEK_API_KEY 只放 GitHub Secrets；

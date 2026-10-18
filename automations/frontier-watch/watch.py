@@ -259,20 +259,6 @@ def format_notification(items, base_url):
     return "\n".join(lines)
 
 
-def notify(webhook, text):
-    """Post a text message to a Feishu custom bot webhook. Never raises."""
-    if not webhook or not text:
-        return False
-    payload = json.dumps({"msg_type": "text", "content": {"text": text}}, ensure_ascii=False).encode()
-    req = urllib.request.Request(webhook, data=payload, headers={"Content-Type": "application/json"})
-    try:
-        with urllib.request.urlopen(req, timeout=20) as response:
-            return response.status == 200
-    except Exception as error:  # noqa: BLE001
-        print("飞书通知失败:", error, file=sys.stderr)
-        return False
-
-
 def notify_dm(chat_id, text):
     """Send a private message with the Feishu app identity (tenant_access_token)."""
     if not chat_id or not text:
@@ -303,18 +289,15 @@ def notify_dm(chat_id, text):
 
 
 def deliver_notification(cfg, text):
-    """Prefer the bot DM (same app as the Base writer); fall back to a webhook."""
+    """Send the summary as a private Feishu message (the only delivery channel)."""
     chat_id = (os.environ.get("FEISHU_NOTIFY_CHAT_ID") or "").strip()
-    if chat_id:
-        try:
-            if notify_dm(chat_id, text):
-                return "dm"
-        except SystemExit as error:
-            print("私聊通知失败:", error, file=sys.stderr)
-    webhook = (os.environ.get("FEISHU_NOTIFY_WEBHOOK") or "").strip()
-    if webhook and notify(webhook, text):
-        return "webhook"
-    return "none"
+    if not chat_id:
+        return "none"
+    try:
+        return "dm" if notify_dm(chat_id, text) else "failed"
+    except SystemExit as error:
+        print("私聊通知失败:", error, file=sys.stderr)
+        return "failed"
 
 
 def main():

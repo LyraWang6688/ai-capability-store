@@ -46,8 +46,8 @@ class NotificationTest(unittest.TestCase):
         self.assertIn("…还有 2 条", text)
         self.assertIn("https://example/base", text)
 
-    def test_notify_without_webhook_is_false(self):
-        self.assertFalse(watch.notify("", "hello"))
+    def test_notify_dm_without_chat_is_false(self):
+        self.assertFalse(watch.notify_dm("", "hello"))
 
 
 class DeliverNotificationTest(unittest.TestCase):
@@ -61,34 +61,27 @@ class DeliverNotificationTest(unittest.TestCase):
             os.environ.clear()
             os.environ.update(original)
 
-    def test_dm_wins_when_it_succeeds(self):
+    def test_dm_success_reports_dm(self):
         original = dict(os.environ)
         original_dm = watch.notify_dm
-        original_webhook = watch.notify
         try:
             os.environ["FEISHU_NOTIFY_CHAT_ID"] = "oc_test"
             watch.notify_dm = lambda chat_id, text: True
-            watch.notify = lambda webhook, text: True
             self.assertEqual(watch.deliver_notification({}, "hi"), "dm")
         finally:
             watch.notify_dm = original_dm
-            watch.notify = original_webhook
             os.environ.clear()
             os.environ.update(original)
 
-    def test_webhook_fallback(self):
+    def test_dm_failure_reports_failed(self):
         original = dict(os.environ)
         original_dm = watch.notify_dm
-        original_webhook = watch.notify
         try:
             os.environ["FEISHU_NOTIFY_CHAT_ID"] = "oc_test"
-            os.environ["FEISHU_NOTIFY_WEBHOOK"] = "https://example"
             watch.notify_dm = lambda chat_id, text: False
-            watch.notify = lambda webhook, text: True
-            self.assertEqual(watch.deliver_notification({}, "hi"), "webhook")
+            self.assertEqual(watch.deliver_notification({}, "hi"), "failed")
         finally:
             watch.notify_dm = original_dm
-            watch.notify = original_webhook
             os.environ.clear()
             os.environ.update(original)
 
