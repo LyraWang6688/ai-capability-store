@@ -27,8 +27,8 @@ that mismatch reviewable.
 ## Running
 
 ```bash
-python3 automations/github-trending-daily/test_scan.py
-python3 automations/github-trending-weekly/test_aggregate.py
+python3 automations/github-trending/daily/test_scan.py
+python3 automations/github-trending/weekly/test_aggregate.py
 ```
 
 Neither test touches the network or the `data` branch.

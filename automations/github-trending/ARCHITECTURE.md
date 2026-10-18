@@ -25,7 +25,7 @@
 ```
 每天 05:17 ── 云端（不需要本机开机）
   GitHub Actions 触发 automation-github-trending-daily.yml
-    run: python3 automations/github-trending-daily/scan.py > out.json
+    run: python3 automations/github-trending/daily/scan.py > out.json
       三个源 → 四道过滤 → 排序取前 40 → 补 topics
     commit out.json → data 分支的 trending/<date>.json
     push
@@ -41,7 +41,7 @@
     ⑥ 按契约写报告，直接出现在会话里
 
 每周日 20:00 ── 本机
-  同 09:00，但先跑 github-trending-weekly/aggregate.py 做一周聚合，
+  同 09:00，但先跑 weekly/aggregate.py 做一周聚合，
   先看 trustworthy，false 就只说数据不足、不硬做结论
 ```
 
@@ -55,12 +55,12 @@
 | --- | --- |
 | `.github/workflows/automation-github-trending-daily.yml` | cron `17 5 * * *` + tz；跑 scan.py；提交到 data 分支 |
 | `.github/workflows/automation-github-trending-weekly.yml` | cron 周日 + tz；跑 aggregate.py |
-| `automations/github-trending-daily/scan.py` | **采集器**。只按客观标准筛，不知道飞书表 |
-| `automations/github-trending-daily/sync_from_cloud.py` | **取数器**。从 data 分支拉缺失的天 |
-| `automations/github-trending-daily/aggregate.py`（在 `github-trending-weekly/`） | 周度聚合，算 `star_delta` |
-| `automations/github-trending-daily/README.md` | 采集脚本的 **输出契约**（脚本产出什么 JSON） |
-| `automations/github-trending-daily/REPORT-CONTRACT.md` | 报告的 **内容契约**（报告长什么样）★ |
-| `automations/github-trending-daily/interests.yaml` | **关注清单**（为谁分析）★ |
+| `automations/github-trending/daily/scan.py` | **采集器**。只按客观标准筛，不知道飞书表 |
+| `automations/github-trending/daily/sync_from_cloud.py` | **取数器**。从 data 分支拉缺失的天 |
+| `automations/github-trending/weekly/aggregate.py` | 周度聚合，算 `star_delta` |
+| `automations/github-trending/daily/README.md` | 采集脚本的 **输出契约**（脚本产出什么 JSON） |
+| `automations/github-trending/daily/REPORT-CONTRACT.md` | 报告的 **内容契约**（报告长什么样）★ |
+| `automations/github-trending/daily/interests.yaml` | **关注清单**（为谁分析）★ |
 | `automations/registry.yaml` | 所有自动化的身份 / 版本 / 绑定关系 |
 
 **这三个文件决定了整套系统的行为**：
@@ -191,10 +191,10 @@ report structure ──→ 仓库的 REPORT-CONTRACT.md   ← 唯一来源
 ═══ ② 读两份文件，按契约产报告 ═══
 
 **报告结构（权威，必须读）**
-`~/Documents/workplace/ai-capability-store/automations/github-trending-daily/REPORT-CONTRACT.md`
+`~/Documents/workplace/ai-capability-store/automations/github-trending/daily/REPORT-CONTRACT.md`
 
 **我的关注清单**
-`~/Documents/workplace/ai-capability-store/automations/github-trending-daily/interests.yaml`
+`~/Documents/workplace/ai-capability-store/automations/github-trending/daily/interests.yaml`
 
 **严格按 REPORT-CONTRACT.md 产报告。**
 ...
@@ -263,7 +263,7 @@ data 分支 = 产物（每天自动写，不需要 review）
 
 ## 8. 相关文档
 
-- [`README.md`](./README.md) —— 采集脚本的输出契约
+- [`README.md`](./daily/README.md) —— 采集脚本的输出契约
 - [`REPORT-CONTRACT.md`](./REPORT-CONTRACT.md) —— 报告的内容契约（权威）
 - [`interests.yaml`](./interests.yaml) —— 关注清单
 - [`../registry.yaml`](../registry.yaml) —— 自动化注册表（版本 / 绑定关系）

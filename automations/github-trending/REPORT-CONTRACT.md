@@ -3,7 +3,7 @@
 这个文件规定**消费端拿到云端快照后，报告必须长什么样**。
 
 它约束的是 **DSH 会话里生成报告的那个 agent**，不是本目录的采集脚本
-（采集脚本的契约在 [`README.md`](./README.md) 的 "Output contract"）。
+（采集脚本的契约在 [`README.md`](./daily/README.md) 的 "Output contract"）。
 
 > **这个文件是权威版本。**
 > 定时任务里的提示词（本机 `~/.dsh/storages/schedule.json`）只负责说「读这个文件并照做」——

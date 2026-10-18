@@ -1,4 +1,4 @@
-# Scheduled execution of automations/github-trending-daily.
+# Scheduled execution of automations/github-trending/daily.
 #
 # Contract (see automations/README.md):
 #   * the cron lives HERE and only here — registry.yaml records trigger_kind only
@@ -58,7 +58,7 @@ jobs:
           set -euo pipefail
           mkdir -p out/trending
           STAMP="$(TZ=Asia/Shanghai date +%F)"
-          python3 code/automations/github-trending-daily/scan.py > "out/trending/${STAMP}.json"
+          python3 code/automations/github-trending/daily/scan.py > "out/trending/${STAMP}.json"
           echo "wrote out/trending/${STAMP}.json ($(wc -c < "out/trending/${STAMP}.json") bytes)"
 
       - name: Commit snapshot to data branch

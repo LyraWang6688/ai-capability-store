@@ -17,7 +17,7 @@ critical_expectations:
 non_critical_expectations:
   - language falls back to an empty string.
 evidence_required:
-  - python3 automations/github-trending-daily/test_scan.py exit code 0
+  - python3 automations/github-trending/daily/test_scan.py exit code 0
   - the test named test_missing_optional_fields_degrade_to_zero passes
 forbidden_steps:
   - Inventing a velocity value when the page does not carry one.
