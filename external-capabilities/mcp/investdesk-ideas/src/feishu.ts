@@ -2,7 +2,7 @@
  * 飞书多维表格极小客户端：只做「想法池」需要的事。
  * 认证走自建应用 tenant_access_token，依赖凭证在 ~/.investdesk/.env。
  */
-import { BASE_TOKEN, FEISHU_APP_ID, FEISHU_APP_SECRET, FEISHU_BASE_URL, IDEAS_TABLE } from './config.ts';
+import { BASE_TOKEN, FEISHU_APP_ID, FEISHU_APP_SECRET, FEISHU_BASE_URL, IDEAS_TABLE, WATCH_TABLE } from './config.ts';
 
 let cachedToken: { value: string; expiresAt: number } | null = null;
 
@@ -46,37 +46,74 @@ async function request<T>(pathname: string, init: RequestInit = {}): Promise<T> 
 
 export type IdeaRecord = Record<string, unknown>;
 
-const tablePath = () => `/open-apis/bitable/v1/apps/${BASE_TOKEN}/tables/${IDEAS_TABLE}/records`;
+/** 表名 → table_id */
+export const TABLES = {
+  ideas: IDEAS_TABLE,
+  watch: WATCH_TABLE,
+} as const;
+export type TableKey = keyof typeof TABLES;
+const tablePath = (table: TableKey | string = 'ideas') =>
+  `/open-apis/bitable/v1/apps/${BASE_TOKEN}/tables/${TABLES[table as TableKey] ?? table}/records`;
 
-/** 读取记录，可按条件过滤 */
+export interface BitableFilter {
+  conjunction: 'and' | 'or';
+  conditions: Array<{ field_name: string; operator: string; value?: unknown[] }>;
+}
+
+/**
+ * 读取记录。
+ *
+ * - 不带条件：GET /records（分页列表）
+ * - 带条件：POST /records/search（GET 接口的 filter 参数不被识别，会报 InvalidFilter）
+ *
+ * 注意：sort 参数实测报 InvalidSort，这里不传，由调用方在内存排序。
+ */
 export async function listRecords(params: {
   pageSize?: number;
-  filter?: string;
+  filter?: BitableFilter;
+  table?: TableKey | string;
 }): Promise<IdeaRecord[]> {
-  // 注意：飞书的 sort 参数格式易变（实测 InvalidSort），这里不传，
-  // 由调用方在内存里按「时间」倒序排列。
-  const query = new URLSearchParams({ page_size: String(params.pageSize ?? 50) });
-  if (params.filter) query.set('filter', params.filter);
-  const data = await request<{ items?: Array<{ record_id?: string; fields?: Record<string, unknown> }> }>(
-    `${tablePath()}?${query}`,
-  );
+  const pageSize = params.pageSize ?? 50;
+  const path = tablePath(params.table);
+
+  const data = params.filter
+    ? await request<{ items?: Array<{ record_id?: string; fields?: Record<string, unknown> }> }>(
+        `${path}/search`,
+        {
+          method: 'POST',
+          body: JSON.stringify({ filter: params.filter, automatic_fields: false, page_size: pageSize }),
+        },
+      )
+    : await request<{ items?: Array<{ record_id?: string; fields?: Record<string, unknown> }> }>(
+        `${path}?page_size=${pageSize}`,
+      );
+
   // OpenAPI 把字段包在 fields 里，这里扁平化，让上层直接读 record.问题
   return (data.items ?? []).map((item) => ({ ...(item.fields ?? {}), record_id: item.record_id ?? '' }));
 }
 
-export async function createRecord(fields: Record<string, unknown>): Promise<string> {
-  const data = await request<{ record?: { record_id?: string } }>(tablePath(), {
+export async function createRecord(fields: Record<string, unknown>, table: TableKey | string = 'ideas'): Promise<string> {
+  const data = await request<{ record?: { record_id?: string } }>(tablePath(table), {
     method: 'POST',
     body: JSON.stringify({ fields }),
   });
   return data.record?.record_id ?? '';
 }
 
-export async function updateRecord(recordId: string, fields: Record<string, unknown>): Promise<void> {
-  await request(`${tablePath()}/${recordId}`, {
+export async function updateRecord(recordId: string, fields: Record<string, unknown>, table: TableKey | string = 'ideas'): Promise<void> {
+  await request(`${tablePath(table)}/${recordId}`, {
     method: 'PUT',
     body: JSON.stringify({ fields }),
   });
+}
+
+/** 按 record_id 取单条记录（已扁平化字段） */
+export async function getRecord(recordId: string, table: TableKey | string = 'ideas'): Promise<IdeaRecord | null> {
+  const data = await request<{ record?: { record_id?: string; fields?: Record<string, unknown> } }>(
+    `${tablePath(table)}/${recordId}`,
+  );
+  if (!data.record) return null;
+  return { ...(data.record.fields ?? {}), record_id: data.record.record_id ?? recordId };
 }
 
 /** 取字段文本（兼容数组 / 对象 / 字符串） */

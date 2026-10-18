@@ -2,7 +2,6 @@ import { config, ensureDataDir } from './config.js';
 import { Lark, sendMarkdown } from './feishu.js';
 import { chat } from './llm.js';
 import { getHistory, appendHistory } from './session.js';
-import { callTool as callIdeaTool } from 'investdesk-ideas/dist/mcp/tools.js';
 
 ensureDataDir();
 
@@ -33,12 +32,6 @@ async function handle(chatId, text, messageId) {
     const { text: answer } = await chat(history, text);
     await sendMarkdown(chatId, answer);
     console.log(`[done] ${Date.now() - started}ms reply=${answer.length}字`);
-    callIdeaTool('save_idea', { question: text, answer, type: '问答' })
-      .then((result) => {
-        const text = result?.content?.[0]?.text ?? '未知结果';
-        console.log(`[idea] ${result?.isError ? '写入失败: ' : ''}${text}`);
-      })
-      .catch((error) => console.error('[idea] 写入失败:', error.message));
     appendHistory(chatId, [
       { role: 'user', content: text },
       { role: 'assistant', content: answer },
