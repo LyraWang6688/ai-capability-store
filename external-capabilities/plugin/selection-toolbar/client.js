@@ -153,7 +153,7 @@ window.__ModuleLoader__.load({
       React.useEffect(() => {
         const isOwnUi = (node) => Boolean(
           node && typeof node.closest === 'function'
-          && node.closest('.' + ROOT_CLASS + '-bar,.' + ROOT_CLASS + '-note'),
+          && node.closest('.' + ROOT_CLASS + '-bar,.' + ROOT_CLASS + '-note,.' + ROOT_CLASS + '-rw'),
         );
         const readSelection = () => {
           if (noteOpenRef.current) return;
