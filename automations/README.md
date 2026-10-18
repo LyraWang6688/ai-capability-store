@@ -21,10 +21,93 @@ automations/
 ├── README.md          ← this file (domain contract)
 ├── LIFECYCLE.md       ← status policy
 ├── registry.yaml      ← source of truth for identity/path/status/version/trigger/workflow
-└── <name>/            ← one directory per automation, kebab-case
-    ├── README.md      ← what it does, inputs, outputs, failure modes
-    └── <entrypoint>   ← the executable named by registry `entrypoint`
+├── <name>/            ← one automation, kebab-case        (flat — the common shape)
+│   ├── README.md      ← what it does, inputs, outputs, failure modes
+│   └── <entrypoint>   ← the executable named by registry `entrypoint`
+└── <family>/          ← a group of related automations    (see "Families")
+    ├── README.md      ← why these members live together (required)
+    ├── <shared file>  ← contract / data every member uses
+    └── <member>/      ← one automation; registry key is `<family>-<member>`
 ```
+
+Exactly two shapes are legal, and nothing else: `automations/<name>/` and
+`automations/<family>/<member>/`.
+
+## Families — one level, shared files only
+
+A family exists for one situation: **two or more automations that must share files**
+(a report contract, an `interests.yaml`, an architecture doc) and would otherwise
+reach into each other's directory.
+
+```text
+automations/github-trending/       ← family container — NOT a registry entry
+├── README.md                      ← required: why these members live together
+├── REPORT-CONTRACT.md             ← shared: the report's content contract
+├── interests.yaml                 ← shared: what the operator currently cares about
+├── daily/                         ← registry key: github-trending-daily
+│   ├── README.md
+│   └── scan.py
+└── weekly/                        ← registry key: github-trending-weekly
+    ├── README.md
+    └── aggregate.py
+```
+
+A family is **not an asset**:
+
+| | asset (an automation) | family |
+|---|---|---|
+| registry entry | yes | **no** |
+| `version` / tag | yes | **no** |
+| `entrypoint` / `trigger_kind` | yes | **no** |
+| gets executed | yes | **no** |
+| has `status` | yes | **no** |
+
+Its only two jobs are to hold shared files and to bound its members.
+
+### The five rules
+
+1. **One level, never two.** `automations/<family>/<member>` is the deepest legal
+   path. Deeper nesting makes "what does this tag contain?" unanswerable.
+2. **The key stays derivable in both directions.** A member's registry key is
+   `<family>-<member>` — `github-trending` + `daily` → `github-trending-daily` —
+   while a flat asset keeps `key == directory name`. One thing never gets two
+   names. (This is also why tags do not change: `github-trending-daily-v0.1.0`
+   stays correct after a family migration.)
+3. **Files at the family level; directories are members, with no third option.**
+   A family may hold `README.md`, contracts and data. It may **not** hold a shared
+   code directory — a subdirectory is a registered member or it is a mistake. If
+   shared code is ever genuinely needed, add an explicitly reserved name to
+   `NON_ASSET_DIR_NAMES` in `scripts/validate_store.py` rather than widening this
+   rule: "some subdirectories are not members" turns a family into a drawer.
+4. **`README.md` is required.** A family has no key, no version and no tag, so the
+   README is the only place that can record why it exists. Without one the
+   container is a directory with no reason to be.
+5. **A registered path may not nest inside another.** The validator stops walking
+   at a registered directory (an asset owns its own internal layout), so anything
+   nested under one would never be checked.
+
+### What a family does to versions
+
+**Tags still pin shared files.** `git checkout github-trending-daily-v0.1.0`
+restores the whole tree at that commit, shared contract included. The
+immutable-snapshot property is unchanged.
+
+What is **not** enforced: that editing a shared file bumps its members' versions.
+The validator is pure-filesystem and cannot see a diff. Treat it as a contract
+obligation — a change under the family's own files bumps at least the PATCH
+version of every member whose behaviour it affects.
+
+### Why only this Domain
+
+`skills/` cannot do this: agent-plugins.org §7.1 requires the flat position and
+forbids recursion, so a nested skill is uninstallable, not merely unconventional.
+`external-capabilities/` has no such constraint but also no such need — `providers/`
+and `use-cases/` are already reserved non-asset shelves there.
+
+`automations/` is the Store's own invention, has no external standard to satisfy,
+and the shared-file pressure was real: before this rule, `github-trending-weekly`'s
+README linked to `../github-trending-daily/REPORT-CONTRACT.md`. That link is what a
+family is for.
 
 ## Source of truth
 
@@ -101,13 +184,16 @@ passing validation as proof that the external write works.
 
 ## Adding an automation
 
-1. Create `automations/<kebab-name>/` with a `README.md` and an entrypoint.
+1. Create `automations/<kebab-name>/` with a `README.md` and an entrypoint — or,
+   if it must share files with a sibling, `automations/<family>/<member>/` and put
+   the shared files at the family level (see "Families").
 2. Decide `executor` and `trigger_kind` — they are independent, and the executor
    chosen decides which runner descriptor you must add (`workflow` or `launchd`).
 3. Add the runner descriptor:
    - `github-actions` → `.github/workflows/automation-<kebab-name>.yml`
-   - `launchd` → a plist **template** under `automations/<name>/deploy/`, plus
-     an installer that writes the real plist to `~/Library/LaunchAgents/`
+   - `launchd` → a plist **template** under `automations/<name>/deploy/` (or
+     `automations/<family>/<member>/deploy/`), plus an installer that writes the
+     real plist to `~/Library/LaunchAgents/`
 4. Add a record to `automations/registry.yaml`.
 5. Run `python3 scripts/validate_store.py` — it enforces registry ↔ filesystem
    symmetry, kebab-case naming, entrypoint existence, executor/descriptor

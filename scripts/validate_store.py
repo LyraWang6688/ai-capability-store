@@ -147,6 +147,10 @@ ALLOWED_OUTPUT_TARGETS = {"git-branch", "external-system"}
 AUTOMATION_OUTPUT_BRANCH = "data"
 AUTOMATION_WORKFLOW_PREFIX = ".github/workflows/"
 AUTOMATION_DIR = "automations"
+# Directory names that are never assets. Used when a family container is
+# inspected: a family holds files plus registered members, and it must not
+# start failing because Python dropped a __pycache__ next to a shared module.
+NON_ASSET_DIR_NAMES = {"__pycache__", "node_modules", "dist", ".venv", ".git"}
 
 KEBAB_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 VERSION_RE = re.compile(r"^\d+\.\d+\.\d+$")
@@ -651,13 +655,33 @@ def validate_automation_entries(reg: dict):
                   isinstance(updated, str) and bool(DATE_RE.match(updated)),
                   f"updated={updated!r}")
 
-        # path must be exactly automations/<key> and exist as a directory.
+        # path may be automations/<key> (flat) or automations/<family>/<member>
+        # (one level of grouping), where the registry key is "<family>-<member>".
+        # Either way the key is derivable from the path and the path from the key,
+        # so "one directory = one asset = one tag" stays single-sourced: a family
+        # groups assets, it never introduces a second name for one.
+        # See automations/README.md, "Families".
         path = entry.get("path")
         if isinstance(path, str) and path:
-            expected_path = f"{AUTOMATION_DIR}/{key}"
-            check(f"automation {key} path == {expected_path}", path == expected_path,
-                  f"path={path!r}")
             parts = path.split("/")
+            flat_path = f"{AUTOMATION_DIR}/{key}"
+            in_family = (
+                len(parts) == 3
+                and parts[0] == AUTOMATION_DIR
+                and bool(KEBAB_RE.match(parts[1]))
+                and bool(KEBAB_RE.match(parts[2]))
+                # The registry key must remain derivable from the path, and the
+                # path from the key: for a member the key is "<family>-<member>".
+                # Allowing them to diverge would give one thing two names, which
+                # is exactly the drift the rest of this file exists to prevent.
+                and f"{parts[1]}-{parts[2]}" == key
+            )
+            check(
+                f"automation {key} path is automations/<key> "
+                f"or automations/<family>/<key> with key == <family>-<key>",
+                path == flat_path or in_family,
+                f"path={path!r}",
+            )
             check(f"automation {key} path relative",
                   not os.path.isabs(path) and ".." not in parts, path)
             check(f"automation {key} path is a directory",
@@ -1054,17 +1078,61 @@ def main() -> int:
         for name in sorted(os.listdir(automations_base)):
             if name.startswith("."):
                 continue
-            if not os.path.isdir(os.path.join(automations_base, name)):
+            full = os.path.join(automations_base, name)
+            if not os.path.isdir(full):
                 continue  # metadata files (README.md, registry.yaml) are not automations
             rel = f"{AUTOMATION_DIR}/{name}"
             check(f"filesystem automation directory kebab-case: {rel}",
                   bool(KEBAB_RE.match(name)), name)
-            check(f"filesystem automation is registered: {rel}", rel in registered_auto_paths,
-                  "automation directory exists but has no registry entry")
+
+            if rel in registered_auto_paths:
+                # Flat automation. Its own contents are its business: the Store
+                # fixes an asset's location, not its internal source layout.
+                continue
+
+            # Not registered itself, so the only other legal shape is a family
+            # container. Every member directory must be a registered automation.
+            members = sorted(
+                d
+                for d in os.listdir(full)
+                if not d.startswith(".")
+                and d not in NON_ASSET_DIR_NAMES
+                and os.path.isdir(os.path.join(full, d))
+            )
+            check(f"filesystem directory {rel} is a registered automation or a family",
+                  bool(members),
+                  "directory is neither registered nor a container of member directories")
+            if not members:
+                continue
+
+            # A family has no key, no version and no tag. README.md is the only
+            # place that can record why these members live together — without it
+            # the container is a directory with no reason to exist.
+            check(f"family {rel} documents itself in README.md",
+                  os.path.isfile(os.path.join(full, "README.md")),
+                  "a family container is not a registry entry; README.md is its only record")
+
+            for member in members:
+                member_rel = f"{rel}/{member}"
+                check(f"filesystem automation directory kebab-case: {member_rel}",
+                      bool(KEBAB_RE.match(member)), member)
+                check(f"family member is a registered automation: {member_rel}",
+                      member_rel in registered_auto_paths,
+                      "family member directory has no registry entry")
     for rel in sorted(registered_auto_paths):
         check(f"registered automation exists on disk: {rel}",
               os.path.isdir(os.path.join(ROOT, rel)),
               "registry entry points at a missing directory")
+
+    # A registered path may not be a prefix of another registered path: the walk
+    # above stops at a registered directory, so anything nested under one would
+    # never be checked.
+    for outer in sorted(registered_auto_paths):
+        for inner in sorted(registered_auto_paths):
+            if outer != inner:
+                check(f"registered automation paths are not nested: {outer} / {inner}",
+                      not inner.startswith(outer + "/"),
+                      f"{inner} is nested under the registered automation {outer}")
 
     # ---- Required policy / asset files ----
     for rel in REQUIRED_POLICY_FILES:

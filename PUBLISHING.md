@@ -81,8 +81,11 @@ Tag / Release when applicable (namespaced Git Tag; Release for distributable art
 
 1. Confirm Human approval to publish the Automation.
 2. Reuse Scan against `automations/registry.yaml`.
-3. Placement: `automations/<automation-name>/` — entrypoint, tests and `README.md`
-   stay together (`automations/README.md` explains why the directory is the unit).
+3. Placement: `automations/<automation-name>/` — or, when the automation must
+   share files with a sibling, `automations/<family>/<member>/` with the shared
+   files at the family level. Entrypoint, tests and `README.md` stay together;
+   `automations/README.md` § Families explains why the directory is the unit and
+   what a family may and may not contain.
 4. **Decide the domain honestly.** An Automation is triggered by a clock or an
    event; a Capability is *called*. If a human or a model decides *when* to run
    it, it is a Skill, not an Automation (`DOMAIN_MISMATCH` — see Stop Conditions).
@@ -92,7 +95,7 @@ Tag / Release when applicable (namespaced Git Tag; Release for distributable art
    its own descriptor and forbids the other's:
    - `github-actions` → `workflow:`
    - `launchd` → `launchd: {label, template}`, template committed under
-     `automations/<name>/deploy/`
+     `automations/<name>/deploy/` (or `automations/<family>/<member>/deploy/`)
    - `human` → neither
    Do not reach for `github-actions` by default. A runner needing a credential in
    the operator's own keychain cannot run on a hosted runner; declare `launchd`
