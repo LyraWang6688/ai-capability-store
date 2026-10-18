@@ -20,6 +20,7 @@ Usage:
     python3 check_tag_version.py <asset-name> <version> [<commit>]
     python3 check_tag_version.py --audit
     python3 check_tag_version.py --missing [<commit>]
+    python3 check_tag_version.py --package [<commit>]
 
     <version>  X.Y.Z or vX.Y.Z
     <commit>   any rev; defaults to HEAD (— audit reads each tag; --missing
@@ -33,6 +34,8 @@ Modes:
               have its tag. Default mode cannot catch this — it is asked about
               one tag that is about to be created, so the tags nobody created
               are exactly the ones it never hears about.
+    --package the fourth question: does the thing a consumer actually installs
+              agree with the registry about what version it is?
 
 Checks (default mode):
     1. the tag <asset-name>-v<version> does not already exist
@@ -47,6 +50,10 @@ Checks (--audit mode):
 Checks (--missing mode):
     for every (asset, version) in every peer Domain registry at <commit>:
     the tag <asset-name>-v<version> exists
+
+Checks (--package mode):
+    for every registered asset with an implementation directory containing a
+    `package.json`: that file's `version` equals the registry version
 
     This one has to be run deliberately — it belongs at the end of a release, not
     in PR CI, where a version bump without a tag yet is the normal state. Its
@@ -63,6 +70,7 @@ Exit codes:
 Read-only: it never creates, moves, or deletes a tag.
 """
 
+import json
 import os
 import subprocess
 import sys
@@ -316,6 +324,68 @@ def missing(store: str, commit: str = "main") -> int:
     return 0
 
 
+def package_versions(store: str, commit: str = "main") -> int:
+    """Every asset whose implementation declares a version must agree with the registry.
+
+    Returns the number of mismatched packages.
+
+    The registry is the Store's source of truth for what version an asset is — but
+    the artifact a consumer actually installs declares its own version, in its own
+    `package.json`. Nothing was comparing the two.
+
+    `selection-toolbar` was registered at 0.1.0 while its `package.json` said 1.0.0,
+    and every check passed: the tag agreed with the registry, `--missing` agreed,
+    `--audit` agreed. Only the artifact was wrong — and the artifact is the thing
+    that gets installed. That is the worst place for a version to be wrong, because
+    it is the one place the Store does not look.
+
+    Silent by design when there is nothing to compare: a Skill has no package.json,
+    and neither does a plain-script automation. Absence is not a failure here —
+    only disagreement is.
+    """
+    paths = registry_paths(store, commit)
+
+    def load(rel):
+        code, text = git(["show", f"{commit}:{rel}"], store)
+        return load_yaml_text(text) if code == 0 else None
+
+    checked = 0
+    mismatches = []
+    for domain, rel, entries in asset_sections(paths, load, fail):
+        for asset, record in sorted(entries.items()):
+            if not isinstance(record, dict):
+                continue
+            registered = record.get("version")
+            impl = record.get("implementation_path") or record.get("path")
+            if registered is None or not isinstance(impl, str) or not impl:
+                continue
+            pkg_rel = f"{impl.rstrip('/')}/package.json"
+            code, text = git(["show", f"{commit}:{pkg_rel}"], store)
+            if code != 0:
+                continue  # no package.json — nothing to compare
+            try:
+                declared = json.loads(text).get("version")
+            except ValueError:
+                mismatches.append((asset, pkg_rel, "unparseable", str(registered)))
+                continue
+            if declared is None:
+                continue  # a package.json without a version is not an assertion
+            checked += 1
+            if normalise_version(str(declared)) != normalise_version(str(registered)):
+                mismatches.append((asset, pkg_rel, str(declared), str(registered)))
+
+    print(f"checked {checked} package.json version(s) at {commit}")
+    if mismatches:
+        print()
+        for asset, pkg_rel, declared, registered in mismatches:
+            print(f"  FAIL {asset}: registry says {registered}, {pkg_rel} says {declared}")
+        print(f"\n{len(mismatches)} package version(s) disagree with the registry")
+        return len(mismatches)
+
+    print("every package.json version agrees with the registry")
+    return 0
+
+
 def main() -> int:
     args = sys.argv[1:]
 
@@ -333,6 +403,10 @@ def main() -> int:
     if args and args[0] == "--missing":
         commit = args[1] if len(args) > 1 else "main"
         return 10 if missing(store, commit) else 0
+
+    if args and args[0] == "--package":
+        commit = args[1] if len(args) > 1 else "main"
+        return 10 if package_versions(store, commit) else 0
 
     if len(args) < 2:
         sys.stderr.write(__doc__)

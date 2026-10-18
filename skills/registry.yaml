@@ -71,8 +71,8 @@ skills:
     path: skills/store-publish
     scope: shared
     status: testing
-    version: 0.2.2
-    updated: "2026-10-18"
+    version: 0.2.3
+    updated: "2026-10-19"
     notes: >
       The procedure this Store uses to onboard its own assets. Used end to end
       to register all four assets; v0.2.0 adds the subtree-pull workflow
@@ -91,6 +91,13 @@ skills:
       "does every truth have a tag" — the blind spot that let three releases go
       out untagged in October 2026. It runs weekly (.github/workflows/tag-audit.yml)
       rather than in PR CI, where an untagged version bump is correct work.
+      v0.2.3 adds the fourth mode `--package`: the registry says what version
+      an asset is, but the artifact a consumer installs declares its own in its
+      own package.json, and nothing compared them. `selection-toolbar` shipped
+      registered at 0.1.0 with package.json saying 1.0.0 while every other
+      check was green. It runs in PR CI — unlike `--missing` it compares two
+      things the PR already holds, so there is no untagged-version false
+      positive to design around.
       Still `testing`: 0.2.x cannot be `active` — VERSIONING.md §4 requires
       major >= 1 — and no trigger harness exists yet.
 
