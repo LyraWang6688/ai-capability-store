@@ -3,6 +3,7 @@
 import { spawn, spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
+import { homedir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { createInterface } from 'node:readline/promises';
 import { stdin as input, stdout as output } from 'node:process';
@@ -167,16 +168,22 @@ async function doc(args) {
 
 function status() {
   const cfg = loadConfig();
-  const hotkey = hotkeyStatus();
-  let hotkeyKey = 'z';
-  try { hotkeyKey = JSON.parse(readFileSync(HOTKEY_CONFIG_PATH, 'utf8')).key || 'z'; } catch { /* not installed */ }
+  const app = hotkeyStatus();
+  const hammerspoon = hammerspoonStatus();
+  let key = 'z';
+  try {
+    const lua = readFileSync(join(homedir(), '.hammerspoon', 'ai-quote-clip.lua'), 'utf8');
+    const match = lua.match(/alt"\s*,\s*"([a-z])"/);
+    if (match) key = match[1];
+  } catch { /* not installed */ }
   console.log(JSON.stringify({
     config: CONFIG_PATH,
     initialized: Boolean(cfg && cfg.docToken),
-    hotkeyKey: `⌃⌥${hotkeyKey.toUpperCase()}`,
     docToken: cfg ? cfg.docToken : null,
-    hotkey,
-    hotkeyConfig: HOTKEY_CONFIG_PATH,
+    hotkeyKey: `⌃⌥${key.toUpperCase()}`,
+    mode: hammerspoon.configInstalled ? 'hammerspoon' : (app.installed ? 'app' : 'none'),
+    hammerspoon,
+    app,
   }, null, 2));
 }
 
