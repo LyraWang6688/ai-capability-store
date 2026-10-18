@@ -1,15 +1,46 @@
 {
-  "name": "@local/selection-toolbar",
-  "version": "1.0.0",
-  "private": true,
+  "name": "@lyra_wang/dsh-selection-toolbar",
+  "version": "0.2.0",
+  "description": "DSH client plugin: select text in a conversation to get a floating toolbar (copy / follow-up / annotate). Annotate appends the quote plus your note to a Feishu document.",
+  "license": "MIT",
   "type": "module",
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "deepseek-harness",
+    "cordis",
+    "client-plugin",
+    "selection",
+    "toolbar",
+    "feishu",
+    "notes"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/LyraWang6688/ai-capability-store.git",
+    "directory": "external-capabilities/plugin/selection-toolbar"
+  },
   "exports": {
     ".": "./index.js",
     "./client": "./client.js",
     "./locale/*.json": "./locale/*.json",
     "./icon": "./icon.svg"
   },
-  "files": ["index.js", "client.js", "cordis.patch.yml", "locale/*.json", "icon.svg"],
+  "files": [
+    "index.js",
+    "client.js",
+    "cordis.patch.yml",
+    "locale/*.json",
+    "icon.svg",
+    "README.md",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=20"
+  },
   "dsh": {
     "bundle": {
       "patch": "./cordis.patch.yml"
