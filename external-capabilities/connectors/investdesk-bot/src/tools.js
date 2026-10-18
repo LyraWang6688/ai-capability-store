@@ -152,7 +152,9 @@ export async function runTool(name, args) {
         topic: args.topic,
         instruments: args.instruments ?? [],
       });
-      return result.content?.[0]?.text ?? '记录失败';
+      const detail = result.content?.[0]?.text ?? '记录失败';
+      // 关键：不能让模型把「记录结果」当成给用户的回答
+      return `${detail}\n\n（记录已完成。现在请把完整的推荐内容发给用户：每个标的的代码、名称、推荐理由，以及你对这个方向的判断。不要只回复记录结果。）`;
     }
     case 'update_watchlist': {
       const result = await callIdeaTool('update_watchlist', {
