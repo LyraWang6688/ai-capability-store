@@ -1,6 +1,6 @@
 {
   "name": "@lyra_wang/dsh-selection-toolbar",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "DSH client plugin: select text in a conversation to get a floating toolbar (copy / follow-up / annotate). Annotate appends the quote plus your note to a Feishu document.",
   "license": "MIT",
   "type": "module",
@@ -48,7 +48,9 @@
     "client": {
       "platform": "web",
       "immediately": true,
-      "inject": ["@deepseek-ai/dsh-client-ui-layout"]
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-layout"
+      ]
     }
   }
 }
