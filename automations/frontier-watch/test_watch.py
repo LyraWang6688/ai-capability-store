@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Offline tests: no network, no credentials."""
 import importlib.util
+import os
 import pathlib
 import unittest
 
@@ -47,6 +48,49 @@ class NotificationTest(unittest.TestCase):
 
     def test_notify_without_webhook_is_false(self):
         self.assertFalse(watch.notify("", "hello"))
+
+
+class DeliverNotificationTest(unittest.TestCase):
+    def test_no_channel_returns_none(self):
+        original = dict(os.environ)
+        try:
+            os.environ.pop("FEISHU_NOTIFY_CHAT_ID", None)
+            os.environ.pop("FEISHU_NOTIFY_WEBHOOK", None)
+            self.assertEqual(watch.deliver_notification({}, "hi"), "none")
+        finally:
+            os.environ.clear()
+            os.environ.update(original)
+
+    def test_dm_wins_when_it_succeeds(self):
+        original = dict(os.environ)
+        original_dm = watch.notify_dm
+        original_webhook = watch.notify
+        try:
+            os.environ["FEISHU_NOTIFY_CHAT_ID"] = "oc_test"
+            watch.notify_dm = lambda chat_id, text: True
+            watch.notify = lambda webhook, text: True
+            self.assertEqual(watch.deliver_notification({}, "hi"), "dm")
+        finally:
+            watch.notify_dm = original_dm
+            watch.notify = original_webhook
+            os.environ.clear()
+            os.environ.update(original)
+
+    def test_webhook_fallback(self):
+        original = dict(os.environ)
+        original_dm = watch.notify_dm
+        original_webhook = watch.notify
+        try:
+            os.environ["FEISHU_NOTIFY_CHAT_ID"] = "oc_test"
+            os.environ["FEISHU_NOTIFY_WEBHOOK"] = "https://example"
+            watch.notify_dm = lambda chat_id, text: False
+            watch.notify = lambda webhook, text: True
+            self.assertEqual(watch.deliver_notification({}, "hi"), "webhook")
+        finally:
+            watch.notify_dm = original_dm
+            watch.notify = original_webhook
+            os.environ.clear()
+            os.environ.update(original)
 
 
 class DoubaoNewsTest(unittest.TestCase):
