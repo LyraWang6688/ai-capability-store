@@ -40,7 +40,7 @@ export interface Quote {
   previousPrice: number | null;
   /** 数据时间：场内为 yyyyMMddHHmmss，场外为 yyyy-MM-dd */
   tradeTime: string;
-  source: 'tencent' | 'eastmoney-fund';
+  source: 'tencent' | 'eastmoney-fund' | 'wind';
 }
 
 /** 取价失败 */

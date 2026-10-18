@@ -7,6 +7,7 @@
  */
 
 import { fetchListedQuotes } from './tencent.ts';
+import { fetchWindQuotes, windConfigured } from './wind.ts';
 import { fetchFundNav } from './eastmoney.ts';
 import type { Failure, FetchResult, Quote, QuoteTarget } from './types.ts';
 
@@ -81,6 +82,28 @@ export async function fetchQuotes(
       name: target.name,
       reason: '手工录入，跳过自动取价',
     });
+  }
+
+  // ---- Wind 优先（配置了 WIND_API_KEY 时）：一次拿回全部，含前收盘价 ----
+  if (windConfigured()) {
+    try {
+      const windMap = await fetchWindQuotes(targets.filter((t) => t.route !== '手工录入'));
+      if (windMap.size > 0) {
+        for (const target of targets) {
+          if (target.route === '手工录入') continue;
+          const code = target.code.replace(/\D/g, '').padStart(6, '0');
+          const quote = windMap.get(code);
+          if (!quote) {
+            failures.push({ code: target.code, name: target.name, reason: 'Wind 未返回该标的行情' });
+            continue;
+          }
+          byRecord.set(target.recordId, { ...quote, name: target.name || quote.name });
+        }
+        return { byRecord, failures };
+      }
+    } catch {
+      // Wind 失败就继续走免费源，不阻断同步
+    }
   }
 
   // ---- 场内：一次批量请求 ----

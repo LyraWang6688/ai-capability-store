@@ -91,7 +91,7 @@ capabilities:
     type: mcp
     status: limited
     provider_path: external-capabilities/providers/lyrawang/README.md
-    version: 0.5.0
+    version: 0.6.0
     implementation_path: external-capabilities/mcp/investdesk-quotes
     auth: "客户端到 MCP 无认证，服务绑定 127.0.0.1 仅供本机客户端使用；MCP 到飞书走飞书自建应用 tenant_access_token（FEISHU_APP_ID / FEISHU_APP_SECRET），不依赖本机 keychain；行情接口免认证"
     capabilities: "lookup_quotes 查场内标的（个股 / ETF / LOF / REITs）价格或场外公募基金净值；portfolio_overview 读飞书持仓并按平台汇总市值 / 成本 / 盈亏；sync_prices 抓取全部持仓最新价格并写回飞书表格"

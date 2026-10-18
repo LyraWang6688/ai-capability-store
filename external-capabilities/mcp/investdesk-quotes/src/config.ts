@@ -56,6 +56,7 @@ export const MCP_PORT = Number(process.env.MCP_PORT ?? 8787);
  */
 export const FEISHU_APP_ID = process.env.FEISHU_APP_ID ?? '';
 export const FEISHU_APP_SECRET = process.env.FEISHU_APP_SECRET ?? '';
+export const WIND_API_KEY = (process.env.WIND_API_KEY ?? '').trim();
 export const FEISHU_BASE_URL = process.env.FEISHU_BASE_URL ?? 'https://open.feishu.cn';
 
 export function assertFeishuConfigured(): void {
