@@ -39,6 +39,8 @@ jobs:
       INVESTDESK_BASE_TOKEN: ${{ secrets.INVESTDESK_BASE_TOKEN }}
       INVESTDESK_HOLDINGS_TABLE: ${{ secrets.INVESTDESK_HOLDINGS_TABLE }}
       INVESTDESK_PLATFORMS_TABLE: ${{ secrets.INVESTDESK_PLATFORMS_TABLE }}
+      # 行情唯一数据源：万得（免费网页源已在 0.7.0 移除）
+      WIND_API_KEY: ${{ secrets.WIND_API_KEY }}
 
     steps:
       - uses: actions/checkout@v4
