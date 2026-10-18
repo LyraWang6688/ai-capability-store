@@ -2,7 +2,7 @@
 
 **把 AI 说得好、值得留下的句子，一键收进飞书。**
 
-和 ChatGPT / Codex / 豆包工作聊出来的好表达、好观点，选中 → 按 `⌃⌥S` → 直接追加到你的飞书文档。
+和 ChatGPT / Codex / 豆包工作聊出来的好表达、好观点，选中 → 按 `⌃⌥Z`（可改）→ 直接追加到你的飞书文档。
 任何 App（浏览器、编辑器、AI 客户端）都适用。
 
 ## 为什么需要它
@@ -24,12 +24,13 @@ ai-quote-clip init
 
 | 动作 | 命令 |
 |---|---|
-| 选中文字后按快捷键 | `⌃⌥S`（首次需在"系统设置 → 隐私与安全性 → 辅助功能"勾选 AiQuoteClip） |
+| 选中文字后按快捷键 | `⌃⌥Z`（首次需在"系统设置 → 隐私与安全性 → 辅助功能"勾选 AiQuoteClip） |
 | 收录剪贴板 | `ai-quote-clip add --clipboard` |
 | 收录一段文字 | `ai-quote-clip add "要收录的文字"` |
 | 管道 | `echo "文字" | ai-quote-clip add` |
 | 切换目标文档 | `ai-quote-clip doc set <URL|token>` |
 | 查看状态 | `ai-quote-clip status` |
+| 换快捷键字母 | `ai-quote-clip hotkey install --key w`（支持 a–z） |
 | 卸载快捷键 | `ai-quote-clip hotkey uninstall` |
 
 收录格式：

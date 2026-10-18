@@ -1,6 +1,6 @@
 {
   "name": "ai-quote-clip",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Collect the lines worth keeping from AI chats (ChatGPT, Codex, Doubao Work…) into your Feishu doc with one hotkey.",
   "license": "MIT",
   "type": "module",

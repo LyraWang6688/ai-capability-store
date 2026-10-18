@@ -33,7 +33,7 @@ export function hotkeyStatus() {
   return { supported: true, installed: true, running: Boolean(pid), detail: pid ? `running pid=${pid[1]}` : 'unknown' };
 }
 
-export function installHotkey({ nodePath, cliPath }) {
+export function installHotkey({ nodePath, cliPath, key = 'z' }) {
   if (!isMac()) throw new Error('快捷键安装仅支持 macOS');
   const swift = spawnSync('/usr/bin/xcrun', ['--find', 'swiftc'], { encoding: 'utf8' });
   const compiler = swift.status === 0 ? '/usr/bin/xcrun' : null;
@@ -63,7 +63,7 @@ export function installHotkey({ nodePath, cliPath }) {
 `);
   try { execFileSync('/usr/bin/codesign', ['--force', '--deep', '--sign', '-', APP_DIR], { stdio: 'ignore' }); } catch { /* signing is best-effort */ }
 
-  writeFileSync(HOTKEY_CONFIG_PATH, JSON.stringify({ node: nodePath, cli: cliPath }, null, 2) + '\n');
+  writeFileSync(HOTKEY_CONFIG_PATH, JSON.stringify({ node: nodePath, cli: cliPath, key: String(key || 'z').toLowerCase() }, null, 2) + '\n');
   mkdirSync(dirname(PLIST_PATH), { recursive: true });
   writeFileSync(PLIST_PATH, `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
