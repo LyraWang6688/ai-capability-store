@@ -17,6 +17,19 @@ description: Skill identity, path, lifecycle status, version, and placement scop
 
 # One flat mapping keyed by Skill identifier (map key == name). No sections.
 skills:
+  investdesk-portfolio:
+    name: investdesk-portfolio
+    path: skills/investdesk-portfolio
+    scope: shared
+    status: testing
+    version: 0.1.0
+    updated: "2026-10-18"
+    notes: >
+      持仓分析与复盘。读飞书多维表格的持仓，按六个视角分析：总览 / 平台分布 /
+      集中度 / 盈亏归因 / 风险敞口 / 异常项。强制区分「今日涨跌」与「累计盈亏」
+      两个口径，并标注数据时点（场内收盘、场外 T 日净值、QDII 更晚）。
+      只给「值得复核」的提示，不给买卖指令。与 investdesk-research 分工：
+      这个分析已有持仓，那个推荐新标的。
   investdesk-research:
     name: investdesk-research
     path: skills/investdesk-research
