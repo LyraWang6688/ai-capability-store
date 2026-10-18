@@ -1,4 +1,4 @@
-# Scheduled execution of automations/github-trending-weekly.
+# Scheduled execution of automations/github-trending/weekly.
 #
 # Contract (see automations/README.md):
 #   * the cron lives HERE and only here — registry.yaml records trigger_kind only
@@ -47,7 +47,7 @@ jobs:
           set -euo pipefail
           mkdir -p out/trending
           STAMP="$(TZ=Asia/Shanghai date +%F)"
-          python3 code/automations/github-trending-weekly/aggregate.py --data-dir out/trending \
+          python3 code/automations/github-trending/weekly/aggregate.py --data-dir out/trending \
             > "out/trending/weekly-${STAMP}.json"
           echo "wrote out/trending/weekly-${STAMP}.json"
           python3 -c "

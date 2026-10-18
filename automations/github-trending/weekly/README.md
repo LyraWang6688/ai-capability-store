@@ -23,11 +23,11 @@ look like — the two blocks, the interests mapping, and the **weekly-specific
 judgement differences** — is defined by a shared contract that covers both the
 daily and the weekly automation:
 
-- [`../github-trending-daily/REPORT-CONTRACT.md`](../github-trending-daily/REPORT-CONTRACT.md)
+- [`../REPORT-CONTRACT.md`](../REPORT-CONTRACT.md)
   — the report structure. Read the section named **「周报的差异」** for what
   differs from the daily (use `star_delta`, not `peak_daily_gain`; look for
   cross-week movement; respect the `trustworthy` gate).
-- [`../github-trending-daily/ARCHITECTURE.md`](../github-trending-daily/ARCHITECTURE.md)
+- [`../ARCHITECTURE.md`](../ARCHITECTURE.md)
   — how the whole pipeline runs end to end, and what a given change affects.
 
 The contract lives in the *daily* directory because the daily automation owns the
@@ -83,5 +83,5 @@ It **never** manufactures a trend from two points. Downstream (DSH) must honour
 ## Local use
 
 ```bash
-python3 automations/github-trending-weekly/aggregate.py --data-dir /path/to/trending
+python3 automations/github-trending/weekly/aggregate.py --data-dir /path/to/trending
 ```

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Deterministic offline tests for sync_from_cloud.py — no network, no gh.
 
-Run: python3 automations/github-trending-daily/test_sync_from_cloud.py
+Run: python3 automations/github-trending/daily/test_sync_from_cloud.py
 Exit: 0 all pass, 1 any failure.
 """
 from __future__ import annotations

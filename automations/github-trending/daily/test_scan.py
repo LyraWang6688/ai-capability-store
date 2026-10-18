@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Deterministic offline tests for scan.py — no network, no gh.
 
-Run: python3 automations/github-trending-daily/test_scan.py
+Run: python3 automations/github-trending/daily/test_scan.py
 Exit: 0 all pass, 1 any failure.
 """
 from __future__ import annotations

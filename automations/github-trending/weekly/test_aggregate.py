@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Deterministic offline tests for aggregate.py — no network, no snapshots on disk.
 
-Run: python3 automations/github-trending-weekly/test_aggregate.py
+Run: python3 automations/github-trending/weekly/test_aggregate.py
 Exit: 0 all pass, 1 any failure.
 """
 from __future__ import annotations

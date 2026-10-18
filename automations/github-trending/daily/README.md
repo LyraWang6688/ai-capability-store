@@ -32,7 +32,7 @@ One JSON document on stdout:
 The collector is deliberately **neutral about the curated list**: it does not
 know which repos are already in the owner's Feishu table, so there is no
 "already collected" field. That classification is the analysis side's job — see
-[`REPORT-CONTRACT.md`](./REPORT-CONTRACT.md) §2.
+[`REPORT-CONTRACT.md`](../REPORT-CONTRACT.md) §2.
 
 `topic_frequency` is the field an Agent reads first: it answers *what the AI
 ecosystem is paying attention to today* without any interpretation.
@@ -67,10 +67,10 @@ dimensions, plus status tracking for already-collected repos), the interests
 mapping, the anti-fabrication rules, and the daily vs weekly judgement
 differences:
 
-- [`REPORT-CONTRACT.md`](./REPORT-CONTRACT.md) — the structure, non-negotiable rules
-- [`interests.yaml`](./interests.yaml) — what the operator currently cares about,
+- [`REPORT-CONTRACT.md`](../REPORT-CONTRACT.md) — the structure, non-negotiable rules
+- [`interests.yaml`](../interests.yaml) — what the operator currently cares about,
   with the schema documented inline
-- [`ARCHITECTURE.md`](./ARCHITECTURE.md) — how the whole pipeline runs end to end:
+- [`ARCHITECTURE.md`](../ARCHITECTURE.md) — how the whole pipeline runs end to end:
   what lives where, what a given change affects, and why the schedule prompt is a
   pointer rather than a copy
 
@@ -86,7 +86,7 @@ structure is versioned and reviewable — a prompt living in a local
 ## Local use
 
 ```bash
-python3 automations/github-trending-daily/scan.py --save-dir /path/to/trending
+python3 automations/github-trending/daily/scan.py --save-dir /path/to/trending
 ```
 
 ## Degradation, not failure
