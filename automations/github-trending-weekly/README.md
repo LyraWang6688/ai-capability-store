@@ -16,6 +16,29 @@ star_delta     7 days      ← sustained adoption, reliable
 
 `star_delta` requires history, which is why the daily automation must run first.
 
+## The report this feeds
+
+This script only produces the *inputs* for a trend report. What the report must
+look like — the two blocks, the interests mapping, and the **weekly-specific
+judgement differences** — is defined by a shared contract that covers both the
+daily and the weekly automation:
+
+- [`../github-trending-daily/REPORT-CONTRACT.md`](../github-trending-daily/REPORT-CONTRACT.md)
+  — the report structure. Read the section named **「周报的差异」** for what
+  differs from the daily (use `star_delta`, not `peak_daily_gain`; look for
+  cross-week movement; respect the `trustworthy` gate).
+- [`../github-trending-daily/ARCHITECTURE.md`](../github-trending-daily/ARCHITECTURE.md)
+  — how the whole pipeline runs end to end, and what a given change affects.
+
+The contract lives in the *daily* directory because the daily automation owns the
+data collection, the interests file, and the shared report shape; the weekly
+extends it rather than defining its own.
+
+> Referenced by section **name**, not number — the contract gains and loses
+> sections, and a hard-coded `§N` silently rots (it did once: the weekly prompt
+> pointed at §6 while 「周报的差异」 had moved to §7).
+
+
 ## Input
 
 `<data-dir>/<YYYY-MM-DD>.json` written by `github-trending-daily`.
