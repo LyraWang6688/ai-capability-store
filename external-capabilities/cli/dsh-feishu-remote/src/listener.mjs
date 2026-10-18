@@ -14,12 +14,16 @@ function audit(level, stage, extra = {}) {
 }
 
 function loadState() {
-  if (!existsSync(STATE_PATH)) return { seen: [], pending: null };
+  if (!existsSync(STATE_PATH)) return { seen: [], pending: null, sessions: {} };
   try {
     const raw = JSON.parse(readFileSync(STATE_PATH, 'utf8'));
-    return { seen: Array.isArray(raw.seen) ? raw.seen : [], pending: raw.pending ?? null };
+    return {
+      seen: Array.isArray(raw.seen) ? raw.seen : [],
+      pending: raw.pending ?? null,
+      sessions: raw.sessions && typeof raw.sessions === 'object' ? raw.sessions : {},
+    };
   } catch {
-    return { seen: [], pending: null };
+    return { seen: [], pending: null, sessions: {} };
   }
 }
 
@@ -40,9 +44,28 @@ function ensureApiKey(cfg) {
   return true;
 }
 
-function runAgent(cfg, text) {
+/** Parse the NDJSON event stream from `dsh --profile headless --json`. */
+function parseEvents(stdout) {
+  let sessionId = null;
+  const texts = [];
+  let finalText = null;
+  for (const line of String(stdout || '').split('\n')) {
+    const trimmed = line.trim();
+    if (!trimmed.startsWith('{')) continue;
+    let event;
+    try { event = JSON.parse(trimmed); } catch { continue; }
+    if (event.type === 'session' && event.sessionId) sessionId = event.sessionId;
+    else if (event.type === 'final' && typeof event.text === 'string') finalText = event.text;
+    else if (event.type === 'text' && typeof event.text === 'string') texts.push(event.text);
+  }
+  return { sessionId, reply: finalText ?? texts.join('') };
+}
+
+function runAgent(cfg, text, sessionId) {
   return new Promise((resolve) => {
-    const args = [...(cfg.agentArgs || ['headless']), text];
+    const args = [...(cfg.agentArgs || ['headless']), '--json'];
+    if (sessionId) args.push('--session-id', sessionId);
+    args.push(text);
     const child = spawn(cfg.dshCli, args, {
       cwd: cfg.workdir,
       env: { ...process.env, ...(cfg.extraEnv || {}) },
@@ -55,7 +78,7 @@ function runAgent(cfg, text) {
       if (settled) return;
       settled = true;
       clearTimeout(timer);
-      resolve({ code, stdout, stderr });
+      resolve({ code, stdout, stderr, ...parseEvents(stdout) });
     };
     const timer = setTimeout(() => {
       try { child.kill('SIGTERM'); } catch { /* ignore */ }
@@ -106,10 +129,20 @@ export function startListener(cfg) {
 
   async function execute(chatId, text, taskId) {
     const started = Date.now();
-    audit('info', 'start', { taskId, chatId, text });
-    const result = await runAgent(cfg, text);
+    const reuse = cfg.reuseSession !== false;
+    const previous = reuse ? state.sessions[chatId] : null;
+    audit('info', 'start', { taskId, chatId, text, session: previous || 'new' });
+    let result = await runAgent(cfg, text, previous);
+    if (previous && result.code !== 0 && /unknown|not found|不存在|无效/i.test(`${result.stderr} ${result.stdout}`)) {
+      audit('warn', 'session-lost', { chatId, session: previous });
+      result = await runAgent(cfg, text, null);
+    }
+    if (reuse && result.code === 0 && result.sessionId) {
+      state.sessions[chatId] = result.sessionId;
+      saveState(state);
+    }
     const ok = result.code === 0;
-    const body = (result.stdout || '').trim();
+    const body = String(result.reply ?? result.stdout ?? '').trim();
     let reply;
     if (ok) reply = body || '（执行完成，没有输出）';
     else if (result.code === 'timeout') reply = `⏱ 超时（${cfg.timeoutSeconds}s）已中止。\n${(result.stderr || result.stdout || '').trim().slice(0, 1200)}`;

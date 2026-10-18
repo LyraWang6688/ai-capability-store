@@ -106,3 +106,12 @@ dsh-feishu-remote doctor
 MIT
 
 [![](https://img.shields.io/badge/powered_by-dsh-4D6BFE?style=flat-square&logo=deepseek&logoColor=white)](https://github.com/deepseek-ai/deepseek-harness)
+
+## 会话复用（0.2.0）
+
+飞书私聊里的连续对话会**复用同一个 DSH 会话**，不再每条消息新建一个会话：
+
+- 每个飞书 `chat_id` 记住最近一次的 `sessionId`（存于 `~/.dsh-feishu-remote/state.json` 的 `sessions` 字段）；
+- 再次发消息时用 `dsh --profile headless --session-id <id> --json` 继续同一会话；
+- 如果该会话已被删除，自动改用新会话并更新记录；
+- 配置项 `reuseSession`（默认 `true`）可关闭。
