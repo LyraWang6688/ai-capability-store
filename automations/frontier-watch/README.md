@@ -43,6 +43,8 @@
 默认走**私聊**：用写 Base 的同一个飞书应用（应用身份）把摘要发到操作者的 p2p 会话。
 
 1. Secret `FEISHU_NOTIFY_CHAT_ID` = 机器人与操作者的私聊 `chat_id`（`oc_…`）；
+   - 注意：**发消息的应用必须是该会话的成员**。写 Base 的专用应用通常不在私聊里（报 `230002`），
+     所以再配 `FEISHU_NOTIFY_APP_ID` / `FEISHU_NOTIFY_APP_SECRET`（你日常那个机器人应用）；
 2. 有新增时推一条文本摘要（最多 8 条 + Base 链接）；
 3. 想立刻验证：Actions → Run workflow → 勾选 `notify-test`；
 4. 若私聊失败，可再配 `FEISHU_NOTIFY_WEBHOOK`（群自定义机器人）作为兜底。
