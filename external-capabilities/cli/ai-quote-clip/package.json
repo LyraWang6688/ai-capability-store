@@ -1,0 +1,41 @@
+{
+  "name": "ai-quote-clip",
+  "version": "0.1.0",
+  "description": "Collect the lines worth keeping from AI chats (ChatGPT, Codex, Doubao Work…) into your Feishu doc with one hotkey.",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "ai-quote-clip": "./bin/cli.mjs",
+    "aqc": "./bin/cli.mjs"
+  },
+  "files": [
+    "bin",
+    "src",
+    "hotkey",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": [
+    "ai",
+    "clip",
+    "quote",
+    "feishu",
+    "lark",
+    "clipboard",
+    "hotkey",
+    "macos",
+    "knowledge",
+    "snippets"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/LyraWang6688/ai-capability-store.git",
+    "directory": "external-capabilities/cli/ai-quote-clip"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
