@@ -27,6 +27,7 @@ export const DEFAULTS = {
   agentArgs: ['headless'],
   workdir: HOME,
   timeoutSeconds: 300,
+  reuseSession: true,
   maxReplyChars: 3500,
   allowedOpenIds: [],
   allowedChatTypes: ['p2p'],
