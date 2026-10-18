@@ -9,10 +9,9 @@ name: automation-investdesk-quote-sync
 on:
   schedule:
     # GitHub cron 一律用 UTC。中国无夏令时，所以是固定偏移：
-    #   UTC 07:35 = 北京 15:35（A 股收盘后取场内价）
-    #   UTC 13:30 = 北京 21:30（场外基金净值公布后再取一次）
-    - cron: '35 7 * * 1-5'
-    - cron: '30 13 * * 1-5'
+    #   UTC 12:00 = 北京 20:00（每天一次：场内收盘价已定，场外净值开始公布）
+    #   注意：场外基金（尤其 QDII）净值可能晚于 20:00 才出，那部分会滞后一天
+    - cron: '0 12 * * 1-5'
   # 手动触发，用于首次验证和排障
   workflow_dispatch:
 
