@@ -1,0 +1,76 @@
+/**
+ * Thin wrappers around the already-authenticated `lark-cli`.
+ * Credentials never pass through this package.
+ */
+import { spawn } from 'node:child_process';
+
+function withProfile(cfg, args) {
+  return cfg.larkProfile ? ['--profile', cfg.larkProfile, ...args] : [...args];
+}
+
+/** Run a short-lived lark-cli command and collect its output. */
+export function run(cfg, args, { timeoutMs = 60000, cwd } = {}) {
+  return new Promise((resolve) => {
+    const child = spawn(cfg.larkCli, withProfile(cfg, args), {
+      cwd: cwd || cfg.workdir,
+      env: process.env,
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    let stdout = '';
+    let stderr = '';
+    let settled = false;
+    const finish = (code) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve({ code, stdout, stderr });
+    };
+    const timer = setTimeout(() => {
+      try { child.kill('SIGTERM'); } catch { /* ignore */ }
+      finish('timeout');
+    }, timeoutMs);
+    child.stdout.setEncoding('utf8');
+    child.stderr.setEncoding('utf8');
+    child.stdout.on('data', (chunk) => { stdout += chunk; });
+    child.stderr.on('data', (chunk) => { stderr += chunk; });
+    child.on('error', (error) => { stderr += String(error); finish('spawn-error'); });
+    child.on('close', (code) => finish(code));
+  });
+}
+
+export async function authStatus(cfg) {
+  const result = await run(cfg, ['auth', 'status', '--json'], { timeoutMs: 30000 });
+  if (result.code !== 0) return null;
+  try { return JSON.parse(result.stdout); } catch { return null; }
+}
+
+export function currentOpenId(status) {
+  if (!status) return null;
+  const user = status.identities && status.identities.user;
+  return (user && user.openId) || status.openId || null;
+}
+
+export async function sendText(cfg, chatId, text) {
+  const body = String(text || '').trim().slice(0, cfg.maxReplyChars) || '（无内容）';
+  return run(cfg, ['im', '+messages-send', '--chat-id', chatId, '--text', body, '--as', 'bot']);
+}
+
+/**
+ * Spawn the long-connection event consumer.
+ * stdin MUST stay open: lark-cli treats stdin EOF as an exit signal.
+ */
+export function spawnConsumer(cfg) {
+  return spawn(cfg.larkCli, withProfile(cfg, ['event', 'consume', 'im.message.receive_v1', '--as', 'bot']), {
+    cwd: cfg.workdir,
+    env: process.env,
+    stdio: ['pipe', 'pipe', 'pipe'],
+  });
+}
+
+export function listProfiles(cfg) {
+  return run(cfg, ['profile', 'list'], { timeoutMs: 30000 });
+}
+
+export function eventDryRun(cfg) {
+  return run(cfg, ['event', 'consume', 'im.message.receive_v1', '--as', 'bot', '--dry-run'], { timeoutMs: 45000 });
+}
