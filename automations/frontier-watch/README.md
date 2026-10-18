@@ -5,7 +5,7 @@
 
 - **Codex**：GitHub `openai/codex` Releases（有完整 Release Notes）
 - **Claude**：`support.claude.com` 发布说明页
-- **豆包工作**：暂无公开 changelog，本版不自动抓取（表格里的历史条目是人工补的）
+- **豆包工作**：没有公开 changelog、公众号也抓不了 → 用**公开报道**兜底（Google News / Bing News 的 RSS 搜索，CI runner 在海外可访问；两个源互为备份，失败即跳过）
 
 ## 为什么是 Automation，不是 Skill
 
@@ -58,7 +58,7 @@ python3 automations/frontier-watch/watch.py --dry-run
 
 | 情况 | 行为 |
 |---|---|
-| 抓取失败（网络/结构变化） | 该来源跳过，stderr 记录，另一个来源继续 |
+| 抓取失败（网络/结构变化） | 该来源跳过，stderr 记录，其他来源继续（豆包工作的两个 RSS 任一变空都不影响 Codex/Claude） |
 | 模型返回非 JSON | 本次该来源丢弃，不写脏数据 |
 | Base 读取失败 | 放弃本次写入（宁可不动，也不重复写，避免重复记录） |
 | 模型 Key 缺失 | 直接退出并提示（环境变量或钥匙串） |
