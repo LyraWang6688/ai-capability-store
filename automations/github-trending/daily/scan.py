@@ -33,6 +33,15 @@ NEW_REPO_DAYS = 7
 NEW_REPO_MIN_STARS = 200
 TOPIC_MIN_REPOS = 2
 
+# The DSH plugin watchlist. Trending only surfaces what is already popular, so an
+# early-stage ecosystem barely appears there — relying on it would make the
+# watchlist lucky rather than complete. This is a standing inventory, so it is
+# emitted as its own field and never merged into `candidates`: a repo that is not
+# trending should not enter topic_frequency.
+DSH_TOPIC = "dsh-plugin"
+DSH_TOPIC_LIMIT = 50
+DSH_TOPIC_TOPICS_FETCH = 10
+
 # NOTE: this module deliberately knows nothing about the owner's curated list.
 # "Is this repo already collected?" is an *analysis*-side judgement (it needs the
 # Feishu table), so it lives in REPORT-CONTRACT.md §2, not here. Keeping the
@@ -93,7 +102,7 @@ def parse_trending(period: str) -> list[dict]:
             {
                 "repo": repo,
                 "stars": _to_int(star_matches[-1]) if star_matches else 0,
-                "trend_gain": _to_int(gain_match.group(1)) if gain_match else 0,
+                "trend_gain": _to_int(gain_match.group(1)) if gain_match else None,
                 "language": lang_match.group(1) if lang_match else "",
                 "desc": _clean(desc_match.group(1)) if desc_match else "",
                 "topics": [],
@@ -131,11 +140,51 @@ def search_new_repos() -> list[dict]:
         {
             "repo": row["fullName"],
             "stars": row.get("stargazersCount", 0),
-            "trend_gain": 0,
+            "trend_gain": None,  # this source carries no daily velocity
             "language": row.get("language") or "",
             "desc": row.get("description") or "",
             "topics": [],
             "source": "new-7d",
+        }
+        for row in rows
+        if REPO_RE.match(row.get("fullName", ""))
+    ]
+
+
+def search_topic(topic: str) -> list[dict]:
+    """Repositories explicitly tagged with `topic`.
+
+    Same shape as the other sources, but sourced from the topic index instead of
+    the trending page — so it finds a project on day one, not on the day it
+    happens to go viral.
+    """
+    command = [
+        "gh", "search", "repos",
+        "--topic", topic,
+        "--sort", "stars",
+        "--limit", str(DSH_TOPIC_LIMIT),
+        # `topics` is not an accepted --json field for `gh search repos`;
+        # fetch_topics() fills it in below.
+        "--json", "fullName,stargazersCount,description,language",
+    ]
+    try:
+        completed = subprocess.run(
+            command, capture_output=True, text=True, timeout=GH_TIMEOUT
+        )
+        if completed.returncode != 0:
+            return []
+        rows = json.loads(completed.stdout or "[]")
+    except (OSError, subprocess.SubprocessError, json.JSONDecodeError):
+        return []
+    return [
+        {
+            "repo": row["fullName"],
+            "stars": row.get("stargazersCount", 0),
+            "trend_gain": None,
+            "language": row.get("language") or "",
+            "desc": row.get("description") or "",
+            "topics": [],
+            "source": f"topic:{topic}",
         }
         for row in rows
         if REPO_RE.match(row.get("fullName", ""))
@@ -160,6 +209,13 @@ def fetch_topics(repos: list[str]) -> dict[str, list[str]]:
         except (OSError, subprocess.SubprocessError, json.JSONDecodeError):
             topics[repo] = []
     return topics
+
+
+def _max_gain(a: int | None, b: int | None) -> int | None:
+    """max() over measured gains only. None means "not measurable" (a source
+    without a daily-velocity field), and must never be conflated with 0."""
+    values = [v for v in (a, b) if v is not None]
+    return max(values) if values else None
 
 
 def collect(warnings: list[str]) -> tuple[dict[str, dict], int]:
@@ -200,16 +256,38 @@ def main() -> int:
     candidates: list[dict] = []
     for repo, item in merged.items():
         blob = f"{repo} {item['desc']}".lower()
-        if any(marker in blob for marker in NOISE_MARKERS) and item["trend_gain"] < 300:
+        gain = item["trend_gain"]
+        if any(marker in blob for marker in NOISE_MARKERS) and (gain is None or gain < 300):
             excluded_noise.append(repo)
             continue
         candidates.append(item)
-    candidates.sort(key=lambda c: (c["trend_gain"], c["stars"]), reverse=True)
+    candidates.sort(
+        key=lambda c: (c["trend_gain"] if c["trend_gain"] is not None else -1, c["stars"]),
+        reverse=True,
+    )
 
-    topics = fetch_topics([c["repo"] for c in candidates[:40]])
+    dsh_plugins = search_topic(DSH_TOPIC)
+    if not dsh_plugins:
+        warnings.append(
+            f"topic:{DSH_TOPIC}: gh returned nothing (unauthenticated or rate limited)"
+        )
+
+    # One topics round-trip covers both lists; dedupe while keeping order.
+    seen_repos = [c["repo"] for c in candidates[:40]]
+    seen_set = set(seen_repos)
+    # Only the head of the watchlist needs topics: the report shows the top few
+    # by stars, and 50 sequential gh-api calls would dominate the run time.
+    for plugin in dsh_plugins[:DSH_TOPIC_TOPICS_FETCH]:
+        if plugin["repo"] not in seen_set:
+            seen_repos.append(plugin["repo"])
+            seen_set.add(plugin["repo"])
+    topics = fetch_topics(seen_repos)
     for candidate in candidates:
         if not candidate.get("topics"):
             candidate["topics"] = topics.get(candidate["repo"], [])
+    for plugin in dsh_plugins:
+        if not plugin.get("topics"):
+            plugin["topics"] = topics.get(plugin["repo"], [])
 
     frequency = Counter()
     for candidate in candidates:
@@ -228,6 +306,7 @@ def main() -> int:
         "warnings": warnings,
         "excluded_noise": sorted(excluded_noise),
         "topic_frequency": topic_frequency,
+        "dsh_plugins": dsh_plugins,
         "candidates": candidates,
     }
 
