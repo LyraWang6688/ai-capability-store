@@ -38,33 +38,16 @@
 飞书控制台还要做两件事（脚本做不了）：给应用授予 `base:record:read` / `base:record:create` /
 `base:field:read` 等 scope 并发布版本；把该应用加为目标 Base 的**可编辑协作者**。
 
-### 有新条目时私聊通知（可选）
+### 在本会话里看结果（和 github-trending 一样）
 
-默认走**私聊**：用写 Base 的同一个飞书应用（应用身份）把摘要发到操作者的 p2p 会话。
-
-1. Secret `FEISHU_NOTIFY_CHAT_ID` = 机器人与操作者的私聊 `chat_id`（`oc_…`）；
-   - 注意：**发消息的应用必须是该会话的成员**。写 Base 的专用应用通常不在私聊里（报 `230002`），
-     所以再配 `FEISHU_NOTIFY_APP_ID` / `FEISHU_NOTIFY_APP_SECRET`（你日常那个机器人应用）；
-2. 有新增时推一条文本摘要（最多 8 条 + Base 链接）；
-3. 想立刻验证：Actions → Run workflow → 勾选 `notify-test`。
-
-未配置 `FEISHU_NOTIFY_CHAT_ID` 时通知自动跳过，不影响写入；私聊失败只记 stderr。
-
-## 代码 vs 状态
-
-| | 位置 | 说明 |
-|---|---|---|
-| 代码 | 本目录（Store 检出） | 可审阅、可版本化 |
-| 配置 | `FRONTIER_CONFIG_JSON` secret（CI）或 `~/.automation-state/frontier-watch/config.json`（本机调试） | Base token / 表 id / 模型，**不进仓库** |
-| 去重状态 | 飞书 Base 自身 | 每次运行读取表内全部「功能/灵感」名称，不依赖本地状态文件 |
-| 日志 | GitHub Actions 运行日志 | 每次运行的提取与写入数量 |
-
-本机手动调试（需要自己的飞书应用凭据与模型 Key）：
+CI 只负责采集与写入；**每周的汇报由本机 DSH 定时任务完成**（它读 Base，不需要任何飞书 Secret）：
 
 ```sh
-export FEISHU_APP_ID=… FEISHU_APP_SECRET=… DEEPSEEK_API_KEY=…
-python3 automations/frontier-watch/watch.py --dry-run
+python3 automations/frontier-watch/report.py            # 默认最近 7 天
+python3 automations/frontier-watch/report.py --since 2026-10-01
 ```
+
+输出 JSON：`{since, count, items:[{feature,tool,priority,feasible,desc}]}`，由 DSH 会话整理成周报。
 
 ## 失败模式
 

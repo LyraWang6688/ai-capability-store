@@ -259,47 +259,6 @@ def format_notification(items, base_url):
     return "\n".join(lines)
 
 
-def notify_dm(chat_id, text):
-    """Send a private message with the Feishu app identity (tenant_access_token)."""
-    if not chat_id or not text:
-        return False
-    # A chat is only reachable by an app that is a member of it. The Base-writing
-    # app and the operator's bot are different apps, so allow a dedicated notifier.
-    notify_app_id = (os.environ.get("FEISHU_NOTIFY_APP_ID") or "").strip() or None
-    notify_secret = (os.environ.get("FEISHU_NOTIFY_APP_SECRET") or "").strip() or None
-    payload = json.dumps({
-        "receive_id": chat_id,
-        "msg_type": "text",
-        "content": json.dumps({"text": text}, ensure_ascii=False),
-    }, ensure_ascii=False).encode()
-    req = urllib.request.Request(
-        FEISHU_BASE + "/open-apis/im/v1/messages?receive_id_type=chat_id",
-        data=payload,
-        headers={
-            "Content-Type": "application/json; charset=utf-8",
-            "Authorization": "Bearer " + tenant_token(app_id=notify_app_id, app_secret=notify_secret),
-        },
-        method="POST",
-    )
-    response = http_json(req, "im/v1/messages")
-    if int(response.get("code") or 0) != 0:
-        print(f"飞书私聊通知失败 [{response.get('code')}] {response.get('msg')}", file=sys.stderr)
-        return False
-    return True
-
-
-def deliver_notification(cfg, text):
-    """Send the summary as a private Feishu message (the only delivery channel)."""
-    chat_id = (os.environ.get("FEISHU_NOTIFY_CHAT_ID") or "").strip()
-    if not chat_id:
-        return "none"
-    try:
-        return "dm" if notify_dm(chat_id, text) else "failed"
-    except SystemExit as error:
-        print("私聊通知失败:", error, file=sys.stderr)
-        return "failed"
-
-
 def main():
     dry_run = "--dry-run" in sys.argv
     cfg = load_config()
@@ -348,16 +307,7 @@ def main():
             unique.append(item)
 
     written = append_records(cfg, unique, dry_run)
-    if os.environ.get("NOTIFY_TEST", "").lower() in ("1", "true", "yes"):
-        base_url = cfg.get("base_url") or f"https://my.feishu.cn/base/{cfg['base_token']}"
-        test_ok = deliver_notification(cfg, format_notification(
-            [{"feature": "这是一条测试通知", "tool": "frontier-watch", "priority": "—"}], base_url)) != "none"
-        print(json.dumps({"notify_test": test_ok}, ensure_ascii=False))
-    notified = "none"
-    if written > 0 and not dry_run:
-        base_url = cfg.get("base_url") or f"https://my.feishu.cn/base/{cfg['base_token']}"
-        notified = deliver_notification(cfg, format_notification(unique, base_url))
-    print(json.dumps({"candidates": len(candidates), "new": len(unique), "written": written, "notified": notified, "dry_run": dry_run}, ensure_ascii=False))
+    print(json.dumps({"candidates": len(candidates), "new": len(unique), "written": written, "dry_run": dry_run}, ensure_ascii=False))
 
 
 if __name__ == "__main__":
