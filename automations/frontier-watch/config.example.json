@@ -1,0 +1,14 @@
+{
+  "base_token": "<飞书 Base token>",
+  "table_id": "<表 id，tbl 开头>",
+  "lark_cli": "lark-cli",
+  "lark_profile": "",
+  "model": "deepseek-flash",
+  "model_base_url": "https://api.deepseek.com",
+  "api_key_env": "DEEPSEEK_API_KEY",
+  "keychain_service": "DEEPSEEK_API_KEY",
+  "sources": {
+    "codex": "https://api.github.com/repos/openai/codex/releases?per_page=8",
+    "claude": "https://support.claude.com/en/articles/12138966-release-notes"
+  }
+}
