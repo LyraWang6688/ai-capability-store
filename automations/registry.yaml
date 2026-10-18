@@ -156,7 +156,7 @@ automations:
       互不冲突。云端稳定运行两周后可卸载本机那份，并把 deploy/ 目录标为历史。
 
       入口 sync.ts 是薄壳，真正的取价与写库逻辑在
-      external-capabilities/mcp/investdesk-quotes，与 MCP 的 sync_prices 工具共用同一个
+      automations/investdesk-quote-sync/src/（自包含，不再引用外部能力包；原 MCP 的 sync_prices 工具已随能力包移除），共用同一个
       函数，避免定时任务和插件各维护一套实现而随时间漂移。
 
       抓不到价格的标的不写 0，保持原值并单独上报。这条规则来自一次真实事故：早期版本

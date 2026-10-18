@@ -36,7 +36,7 @@ external-capabilities/connectors/<capability-name>/   # Store-managed connectors
 some registry entry's `implementation_path`.
 
 A shelf is created when a real asset needs it — `connectors/` exists because
-`investdesk-bot` is a deployment, not a package. A new shelf name must be declared
+(`investdesk-bot` was a deployment, not a package — retired 2026-10 when the chat entry moved to Doubao Work.) A new shelf name must be declared
 in `scripts/validate_store.py` (`CAPABILITY_SHELVES` or
 `RESERVED_CAPABILITY_DIRS`); it should not arrive by someone creating a directory,
 because adding a shelf is a policy decision worth reviewing.
@@ -62,7 +62,8 @@ native structure).
 
 Shelves are closed on purpose. Before this rule, `connectors/investdesk-bot` —
 fourteen files including a Dockerfile, a compose file and a deploy script — sat
-in the tree with no registry entry. Every schema check iterates entries, so
+in the tree with no registry entry. (That asset was later retired when the chat
+entry moved to Doubao Work; the episode is kept here as the reason for the rule.) Every schema check iterates entries, so
 nothing looked at it; every tag check does too. The validator reported a clean
 run. A directory nobody registered is an asset nobody governs, which is the one
 thing this Store exists to prevent.

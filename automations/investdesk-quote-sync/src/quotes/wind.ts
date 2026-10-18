@@ -69,7 +69,7 @@ async function fetchGroup(targets: QuoteTarget[], otc: boolean): Promise<Map<str
   await mcpRequest('initialize', {
     protocolVersion: '2025-03-26',
     capabilities: {},
-    clientInfo: { name: 'investdesk-quotes', version: '0.6.0' },
+    clientInfo: { name: 'investdesk-quote-sync', version: '0.2.0' },
   });
   windUsage.calls += 1;
   console.log(`[wind] 第 ${windUsage.calls} 次调用（${otc ? '场外' : '场内'} ${codes.length} 只）`);
