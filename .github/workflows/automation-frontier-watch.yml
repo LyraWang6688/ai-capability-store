@@ -16,7 +16,6 @@
 #   FEISHU_NOTIFY_APP_ID / FEISHU_NOTIFY_APP_SECRET
 #                          — optional: the app whose bot IS a member of that chat
 #                            (the Base-writing app usually is not → [230002]).
-#   FEISHU_NOTIFY_WEBHOOK  — optional fallback: a Feishu group custom-bot webhook.
 #   FRONTIER_CONFIG_JSON   — config.json contents: {"base_token","table_id","model",...}.
 #                            Not secrets, but they identify the operator's Base, so
 #                            they stay out of a public repository.
@@ -89,7 +88,7 @@ jobs:
           FEISHU_APP_ID: ${{ secrets.FEISHU_APP_ID }}
           FEISHU_APP_SECRET: ${{ secrets.FEISHU_APP_SECRET }}
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
-          # 有新条目时私聊发给操作者（应用身份 + 已有 p2p chat_id）；webhook 仅兜底。
+          # 有新条目时私聊发给操作者（应用身份 + 已有 p2p chat_id）。
           FEISHU_NOTIFY_CHAT_ID: ${{ secrets.FEISHU_NOTIFY_CHAT_ID }}
           # 通知可用独立应用（机器人需在目标会话里）；缺省回落到 FEISHU_APP_ID/SECRET。
           FEISHU_NOTIFY_APP_ID: ${{ secrets.FEISHU_NOTIFY_APP_ID }}

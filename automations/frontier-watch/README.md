@@ -46,10 +46,9 @@
    - 注意：**发消息的应用必须是该会话的成员**。写 Base 的专用应用通常不在私聊里（报 `230002`），
      所以再配 `FEISHU_NOTIFY_APP_ID` / `FEISHU_NOTIFY_APP_SECRET`（你日常那个机器人应用）；
 2. 有新增时推一条文本摘要（最多 8 条 + Base 链接）；
-3. 想立刻验证：Actions → Run workflow → 勾选 `notify-test`；
-4. 若私聊失败，可再配 `FEISHU_NOTIFY_WEBHOOK`（群自定义机器人）作为兜底。
+3. 想立刻验证：Actions → Run workflow → 勾选 `notify-test`。
 
-两者都未配置时通知自动跳过，不影响写入。
+未配置 `FEISHU_NOTIFY_CHAT_ID` 时通知自动跳过，不影响写入；私聊失败只记 stderr。
 
 ## 代码 vs 状态
 
