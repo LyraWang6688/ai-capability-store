@@ -59,6 +59,19 @@ capabilities:
     permissions: "飞书侧需要 docs 与 base 两个资源域的读写授权（以 lark-cli profile 实际授权为准）；MCP 侧按工具分别要求 docs:read、docs:write、base:read、base:write。写操作另需 confirm=true"
     notes: "自研、Store-managed。来源仓库为独立 git 仓库，已通过 git subtree 导入并保留完整提交历史。status 取 limited：需要 lark-cli 1.0.93+ 与一个已认证的 profile，远端模式还需 Auth0 + HTTPS，并非装上即用。包内 .agents/skills/feishu-mcp-tool-extension/ 为开发资料，不在 Store Skill 域登记。不经 npm 分发：它是自托管 HTTP 服务（nginx + pm2 + OAuth），没有 bin，deploy/ 含生产基础设施标识 —— 见 PUBLISHING.md §D"
 
+  investdesk-market:
+    name: investdesk-market
+    provider: lyrawang
+    type: mcp
+    status: limited
+    provider_path: external-capabilities/providers/lyrawang/README.md
+    version: 0.1.0
+    implementation_path: external-capabilities/mcp/investdesk-market
+    auth: "无认证：全部使用腾讯、东方财富、新浪的公开免费接口，不需要任何凭证"
+    capabilities: "sector_ranking 行业/概念板块涨跌排行与主力资金净额；fund_flow 个股/ETF 最近一日主力资金流；market_news 财经 7×24 快讯（可关键词过滤）；index_snapshot 主要指数快照"
+    permissions: "无。纯读取公开网页接口"
+    notes: "自研、Store-managed。补齐 investdesk-quotes 缺的「市场上下文」：quotes 只回答点价格，market 回答板块强弱、资金流向、最近消息、大盘位置。provider 取 lyrawang，因为数据源都是公开网页接口、没有授权方。实测稳定性差异很大：腾讯稳定但返回 GBK（必须 TextDecoder gbk，否则乱码）；东财 newsapi 稳定且返回 JSONP；东财 push2/clist 板块接口不稳定，同一 URL 时而 RemoteDisconnected，做了 3 次重试 + 多域名 + 新浪回退；东财 stock/fflow 间歇失败。公开接口无 SLA，全部失败时明确返回「数据源不可用」，不编造数据。ETF 规模/跟踪指数/费率无稳定免费源，暂不提供。status 取 limited：公开接口随时可能改版，且板块资金流依赖的东财接口不稳定。"
+
   investdesk-ideas:
     name: investdesk-ideas
     provider: lyrawang
