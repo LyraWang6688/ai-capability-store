@@ -1,0 +1,4 @@
+interface:
+  display_name: "InvestDesk Research"
+  short_description: "Screen stocks and ETFs by theme, then persist candidates to Bitable"
+  default_prompt: "Use $investdesk-research to screen real listed stocks or ETFs for this theme, apply the screening rules, output a structured candidate list, and persist it to the watchlist if the MCP is available."
