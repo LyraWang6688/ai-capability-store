@@ -461,17 +461,21 @@ export function apply(ctx) {
         throw new Error(`未配置投递箱：请在 ${config.path} 写入 {"baseToken":"<base token>","tableId":"<table id>"}`);
       }
       const entry = await structureEntry(config, text);
+      // 门禁要求「来源项目/来源会话」至少填一个；UI 只传正文，所以这里兜底到配置的默认项目。
+      const sourceProject = String(body.sourceProject ?? '').trim();
+      const sourceSession = String(body.sourceSession ?? '').trim();
+      const resolvedProject = sourceProject || entry.project || config.defaultProject;
       entryPath = join(tmpdir(), `selection-deliver-${Date.now()}-${process.pid}.json`);
       writeFileSync(entryPath, JSON.stringify({
         '类型': entry.type,
         '内容': entry.content,
-        '来源项目': String(body.sourceProject ?? '').trim() || entry.project,
-        '来源会话': String(body.sourceSession ?? '').trim(),
+        '来源项目': resolvedProject,
+        '来源会话': sourceSession,
         '状态': '待提炼',
       }, null, 2));
       const gate = await validateEntryFile(ctx, config, entryPath);
       const similar = await checkSimilarFile(ctx, config, entryPath);
-      const written = await writeInboxRecord(ctx, config, entry, String(body.sourceProject ?? '').trim(), String(body.sourceSession ?? '').trim());
+      const written = await writeInboxRecord(ctx, config, entry, resolvedProject, sourceSession);
       sendJson(res, 200, { ok: true, recordId: written.recordId, type: written.type, gate, similar });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
