@@ -36,6 +36,7 @@ allowed_trigger_kinds:
 allowed_executors:
   - github-actions
   - launchd
+  - systemd
   - human
 
 automations:

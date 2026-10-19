@@ -90,6 +90,39 @@ MUTATIONS = {
     "external-trigger-outside": lambda t: t.replace(
         "automations/investdesk-quote-sync/deploy/server-trigger.cron",
         "README.md", 1),
+    # systemd executor — added in this change
+    "systemd-no-timer": lambda t: t.replace(
+        "    executor: github-actions\n"
+        "    workflow: .github/workflows/automation-investdesk-quote-sync.yml\n",
+        "    executor: systemd\n"
+        "    systemd:\n"
+        "      unit: demo.service\n", 1),
+    "systemd-plus-workflow": lambda t: t.replace(
+        "    executor: github-actions\n"
+        "    workflow: .github/workflows/automation-investdesk-quote-sync.yml\n",
+        "    executor: systemd\n"
+        "    systemd:\n"
+        "      unit: demo.service\n"
+        "      timer: demo.timer\n"
+        "    workflow: .github/workflows/automation-investdesk-quote-sync.yml\n", 1),
+    # local-file output target — added in this change
+    "local-file-no-retention": lambda t: t.replace(
+        '    output:\n'
+        '      target: external-system\n'
+        '      destination: "飞书多维表格：持仓价格表"\n',
+        "    output:\n"
+        "      target: local-file\n"
+        "      path: /var/lib/demo\n"
+        "      human_access: ssh in and open the file\n", 1),
+    "local-file-complete": lambda t: t.replace(
+        '    output:\n'
+        '      target: external-system\n'
+        '      destination: "飞书多维表格：持仓价格表"\n',
+        "    output:\n"
+        "      target: local-file\n"
+        "      path: /var/lib/demo\n"
+        "      retention: 12\n"
+        "      human_access: ssh in and open the file\n", 1),
     # whitelist
     "unknown-field": _append_frontmatter("version: 9.9.9"),
     "duplicate-key": _duplicate_key,
@@ -121,6 +154,17 @@ CASES = [
      AUTOMATION_REGISTRY, "external-trigger-missing"),
     ("external_trigger outside its own directory is rejected", 1,
      AUTOMATION_REGISTRY, "external-trigger-outside"),
+    # systemd: a clock-driven job with no timer is the same defect as a workflow
+    # with no cron — nothing starts it.
+    ("systemd executor without a timer is rejected", 1,
+     AUTOMATION_REGISTRY, "systemd-no-timer"),
+    ("systemd plus a workflow descriptor is rejected", 1,
+     AUTOMATION_REGISTRY, "systemd-plus-workflow"),
+    # local-file: retention and human_access are mandatory, not advised.
+    ("local-file output without retention is rejected", 1,
+     AUTOMATION_REGISTRY, "local-file-no-retention"),
+    ("local-file output with all three fields passes", 0,
+     AUTOMATION_REGISTRY, "local-file-complete"),
 ]
 
 # The first case is the baseline: untouched, so it must pass.
