@@ -30,6 +30,14 @@ python3 ~/Documents/workplace/ai-capability-store/automations/github-trending/da
   （去 Actions 看 `automation-github-trending-daily` 的最近一次运行）。
   **不许用昨天的数据冒充今天，不许编任何数字。**
 - 报告开头必须标明：`数据来源：云端（data 分支） · 采集于 YYYY-MM-DD HH:mm`
+- **`today_status` 有三种，不能混**：
+  - `available` → 正常出报告
+  - `absent` → 云端确实没产出，说「今天云端数据缺失」
+  - `unreadable` → **读不到**（网络/权限/限流），不是没有。说「读不到，可能是瞬时故障，建议重跑」，
+    **不要说「云端数据缺失」** —— 那是把「不知道」说成了「没有」
+- **`warnings` 非空 → 报告里必须提一句**：哪个源退化了、影响了什么。
+  例：`trending-weekly` 崩了 → 只在 weekly 榜的项目当天不进候选。
+  **不要把降级的数据当正常数据照常分析。**
 
 ## 2. 采集层是中立的，分类是分析层的事
 

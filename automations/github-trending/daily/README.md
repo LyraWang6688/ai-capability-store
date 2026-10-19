@@ -65,6 +65,14 @@ python3 sync_from_cloud.py --days 7 --json
 
 Properties that matter:
 
+- **`absent` and `unreadable` are different answers.** A 404 means the cloud
+  really produced nothing that day; a timeout, an auth failure, or a rate limit
+  means we do not know. The summary carries them separately
+  (`absent_in_cloud` / `unreadable`) and exposes `today_status` as one of
+  `available` / `absent` / `unreadable`. Collapsing the two produced a
+  confidently wrong report on 2026-10-19 — the sync reported
+  `today_available: false` while the file was sitting on the data branch.
+  Unreadable days are retried once before being surfaced.
 - **Never fatal.** The caller falls back to reporting "cloud data missing"; a sync
   failure must not become a task failure.
 - **Never overwrites.** Only missing days are fetched, so a locally produced
