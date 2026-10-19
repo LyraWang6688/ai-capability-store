@@ -109,7 +109,7 @@ def useful(cmd):
     return True
 
 
-def build_local(command_sets, limit=60):
+def build_local(command_sets, limit=5):
     """command_sets: list of per-source command lists (each list ordered oldest->newest).
 
     The same shell session often appears in both ~/.zsh_history and an `fc -l`
@@ -180,7 +180,7 @@ def ssh_target():
     return user, host
 
 
-def build_recent(command_sets, limit=30):
+def build_recent(command_sets, limit=5):
     """Newest unique commands, from the most recent source backwards."""
     if not command_sets:
         return []
