@@ -182,20 +182,41 @@ def ssh_target():
     return user, host
 
 
-def build_recent(command_sets, limit=5):
-    """Newest unique commands: timestamped entries first, then latest index."""
-    if not command_sets:
-        return []
-    merged = []
-    for commands in command_sets:
-        merged.extend(commands)
-    indexed = []
-    for idx, (raw, epoch) in enumerate(merged):
-        indexed.append((idx, raw, epoch))
-    indexed.sort(key=lambda item: (item[2] or 0, item[0]), reverse=True)
+def build_recent_week(command_sets, limit=5, days=7):
+    """最近 N 天内用得最多的本地命令；不足 limit 时用最近的命令补齐。"""
+    now = datetime.datetime.now().timestamp()
+    cutoff = now - days * 86400
+
+    counts = {}
+    fallback = []
     seen = set()
+    merged = [pair for commands in command_sets for pair in commands]
+    for idx, pair in enumerate(merged):
+        raw, epoch = pair
+        cmd = ns(raw).strip()
+        if not useful(cmd):
+            continue
+        if epoch and epoch >= cutoff:
+            rec = counts.setdefault(cmd, {"command": cmd, "count": 0, "last_epoch": 0})
+            rec["count"] += 1
+            rec["last_epoch"] = max(rec["last_epoch"], epoch)
+    in_window = sorted(counts.values(), key=lambda r: (r["count"], r["last_epoch"]), reverse=True)
+
     out = []
-    for _idx, raw, epoch in indexed:
+    for rec in in_window[:limit]:
+        seen.add(rec["command"])
+        out.append({
+            "kind": "recent",
+            "title": rec["command"][:120],
+            "command": rec["command"],
+            "count": rec["count"],
+            "last": datetime.datetime.fromtimestamp(rec["last_epoch"]).strftime("%m-%d %H:%M"),
+        })
+
+    # fallback: newest commands from history (old entries have no timestamp)
+    for raw, epoch in reversed(merged):
+        if len(out) >= limit:
+            break
         cmd = ns(raw).strip()
         if not useful(cmd) or cmd in seen:
             continue
@@ -205,10 +226,8 @@ def build_recent(command_sets, limit=5):
             "title": cmd[:120],
             "command": cmd,
             "count": 0,
-            "last": "最近用过",
+            "last": "旧记录",
         })
-        if len(out) >= limit:
-            break
     return out
 
 
@@ -271,7 +290,7 @@ def main():
         "generated_at": __import__("datetime").datetime.now().isoformat(timespec="seconds"),
         "history_lines": len(commands),
         "sources": seen_sources,
-        "items": build_server() + build_recent(command_sets) + build_local(command_sets),
+        "items": build_server() + build_recent_week(command_sets),
     }
     with open(OUT, "w", encoding="utf-8") as f:
         json.dump(payload, f, ensure_ascii=False, indent=2)
