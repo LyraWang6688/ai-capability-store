@@ -1,0 +1,45 @@
+name: automation-repo-baseline
+
+# 每月 1 号 21:40（Asia/Shanghai）体检所有公开仓库的公开项目基线。
+# 手动触发可勾选 dry-run（只打印，不写飞书）。
+on:
+  schedule:
+    - cron: "40 13 1 * *"
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: "只打印结果，不写飞书 Base"
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: automation-repo-baseline
+  cancel-in-progress: false
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Offline tests
+        working-directory: automations/repo-baseline-audit
+        run: python3 test_audit.py
+
+      - name: Audit public repos
+        working-directory: automations/repo-baseline-audit
+        env:
+          GH_TOKEN: ${{ secrets.GH_AUDIT_TOKEN || github.token }}
+          FEISHU_APP_ID: ${{ secrets.FEISHU_APP_ID }}
+          FEISHU_APP_SECRET: ${{ secrets.FEISHU_APP_SECRET }}
+          BASELINE_CONFIG_JSON: ${{ secrets.BASELINE_CONFIG_JSON }}
+          DRY_RUN: ${{ inputs.dry-run }}
+        run: python3 run_audit.py --owner LyraWang6688
