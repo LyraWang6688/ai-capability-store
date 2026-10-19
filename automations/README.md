@@ -1,7 +1,12 @@
 # Automation Domain
 
-Scheduled and event-driven automations that run against the Store owner's
-GitHub account — data collection, aggregation, and recurring maintenance.
+Scheduled and event-driven automations that run against the Store owner's **own
+machines and accounts** — data collection, aggregation, and recurring maintenance.
+
+GitHub Actions, a macOS `launchd` job, and a Linux `systemd` unit are all in scope.
+What has to be declared is *who runs it*, *how often*, and *where the output lands* —
+not that the runner belongs to GitHub. The GitHub-only reading is a leftover from
+before `launchd` existed, and it was already untrue the moment a job ran on a laptop.
 
 ## What belongs here
 
@@ -129,20 +134,48 @@ unattended is exactly the thing you may need to roll back. Run
 | | question | values |
 |---|---|---|
 | `trigger_kind` | how often | `daily` / `weekly` / `monthly` / `manual` / `event` |
-| `executor` | what runs it | `github-actions` / `launchd` / `human` |
+| `executor` | what runs it | `github-actions` / `launchd` / `systemd` / `human` |
 | `external_trigger` | **who fires the clock**, when it is not the workflow | a path in this repository |
 
 Each executor requires **exactly its own descriptor** and no other:
 
 | `executor` | required | forbidden |
 |---|---|---|
-| `github-actions` | `workflow:` | `launchd:` |
-| `launchd` | `launchd: {label, template}` | `workflow:` |
-| `human` | neither | both |
+| `github-actions` | `workflow:` | `launchd:`, `systemd:` |
+| `launchd` | `launchd: {label, template}` | `workflow:`, `systemd:` |
+| `systemd` | `systemd: {unit, timer?}` | `workflow:`, `launchd:` |
+| `human` | neither | all |
 
 "Exactly" is enforced, not just "at least": an automation carrying both a
 workflow and a launchd block is two jobs described as one, and the registry would
 answer *"what runs this?"* with two incompatible answers.
+
+### `systemd` — a job that has to run on the owner's own Linux box
+
+Two real consumers forced this, and neither had a substitute:
+
+| Consumer | Why `github-actions` cannot do it |
+|---|---|
+| Monthly invoice on a platform with risk control | needs a **long-lived login** (browser cookies) and a **domestic IP**; a cloud runner's IP changes and is overseas, which the platform treats as suspicious |
+| Monthly server audit | has to read **local machine state** — pm2 processes, docker containers, `/etc/letsencrypt/live`, `127.0.0.1` ports, `dmesg` OOM lines. A cloud runner cannot see any of it, and reaching it over SSH would mean putting a private key in secrets |
+
+`launchd` cannot serve either (Linux, not macOS) and `human` would be dishonest for a
+job a timer starts.
+
+```yaml
+executor: systemd
+systemd:
+  unit: deepseek-invoice.service      # required
+  timer: deepseek-invoice.timer       # required when trigger_kind != manual/event
+```
+
+The unit and timer are **not** checked for existence — they live on the target machine,
+which this repository cannot see. What *is* checked: a clock-driven `systemd` automation
+must declare a `timer`. A unit with no timer is the same defect as a workflow with no
+cron — nothing starts it, and the registry would claim a cadence no unit produces.
+
+Put the unit, timer and installer under `automations/<name>/deploy/` so the target
+machine's configuration is reviewable here even though it is installed elsewhere.
 
 ### `external_trigger` — when the clock lives outside the workflow
 
@@ -208,6 +241,7 @@ workflow exists, is bound correctly, and carries a `schedule:` trigger when
 |---|---|---|
 | `git-branch` | `branch` (must be `data`), `path_pattern` | machine output committed to a branch |
 | `external-system` | `destination` | written into a system this repository does not own |
+| `local-file` | `path`, `retention`, `human_access` | a file on the machine that ran the job |
 
 **`git-branch` output goes to the `data` branch, never to `main`.** Automations
 produce high-frequency data; committing that to `main` would bury the Store's
@@ -219,18 +253,40 @@ asset history — one year of daily snapshots is ~365 commits of machine output.
 this repository can only record the claim — it cannot verify it. Do not read a
 passing validation as proof that the external write works.
 
+**`local-file` output is for artifacts that should not leave the machine they were
+produced on.** A monthly server audit writes a single-file HTML report for a human to
+open; its content — hostnames, deploy paths, certificate expiry dates — is exactly what
+should not be committed to a `git-branch` target, and it is not a row in anyone's
+database either.
+
+The validator cannot see the target filesystem, so it requires the declaration to be
+*specific* instead, and two of the three fields are mandatory rather than advised:
+
+| field | why mandatory |
+|---|---|
+| `path` | where it lands; no `..` traversal |
+| `retention` | an unbounded artifact directory on a server is a disk-full incident on a future date. A number, not a wish. |
+| `human_access` | **an artifact nobody can find has not been delivered.** Same rule as `external-system` requiring a destination that names a real place. |
+
+All three are assertions this repository cannot verify. That is not a reason to omit
+them — it is the reason to make them mandatory and specific, so the record says what
+was intended rather than recording an intention shaped like a placeholder.
+
 ## Adding an automation
 
 1. Create `automations/<kebab-name>/` with a `README.md` and an entrypoint — or,
    if it must share files with a sibling, `automations/<family>/<member>/` and put
    the shared files at the family level (see "Families").
 2. Decide `executor` and `trigger_kind` — they are independent, and the executor
-   chosen decides which runner descriptor you must add (`workflow` or `launchd`).
+   chosen decides which runner descriptor you must add
+   (`workflow`, `launchd`, or `systemd`).
 3. Add the runner descriptor:
    - `github-actions` → `.github/workflows/automation-<kebab-name>.yml`
    - `launchd` → a plist **template** under `automations/<name>/deploy/` (or
      `automations/<family>/<member>/deploy/`), plus an installer that writes the
      real plist to `~/Library/LaunchAgents/`
+   - `systemd` → the `.service` / `.timer` units and an installer under
+     `automations/<name>/deploy/`; the registry names them, it does not embed them
 4. Add a record to `automations/registry.yaml`.
 5. Run `python3 scripts/validate_store.py` — it enforces registry ↔ filesystem
    symmetry, kebab-case naming, entrypoint existence, executor/descriptor

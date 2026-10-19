@@ -142,11 +142,17 @@ ALLOWED_TRIGGER_KINDS = {"daily", "weekly", "monthly", "manual", "event"}
 # `workflow` was unconditionally required; that made a launchd-driven job
 # unrepresentable. Executor is a separate axis from trigger_kind:
 #   trigger_kind = how often      executor = what runs it
-ALLOWED_EXECUTORS = {"github-actions", "launchd", "human"}
+ALLOWED_EXECUTORS = {"github-actions", "launchd", "systemd", "human"}
 # WHERE the output lands. A `git-branch` target writes machine output to a branch
 # that never merges (the data branch); an `external-system` target writes into
 # something we do not own (e.g. a Feishu Base) and cannot be validated here.
-ALLOWED_OUTPUT_TARGETS = {"git-branch", "external-system"}
+# `local-file` exists because not every artifact wants to leave the machine it was
+# produced on. A monthly server audit writes an HTML report for a human to open; its
+# natural home is the server, and its content (hostnames, deploy paths, certificate
+# expiry) is exactly what should NOT be committed to a branch. The validator cannot
+# see the target filesystem, so it requires the declaration to be *specific* instead:
+# where, how long it is kept, and how a human gets to it.
+ALLOWED_OUTPUT_TARGETS = {"git-branch", "external-system", "local-file"}
 # Automation output is high-frequency machine data; committing it to main would
 # bury the Store's asset history (one year of daily snapshots ~= 365 commits).
 AUTOMATION_OUTPUT_BRANCH = "data"
@@ -623,12 +629,16 @@ def _executor_descriptor_ok(executor, entry: dict) -> bool:
     """
     has_workflow = isinstance(entry.get("workflow"), str) and entry.get("workflow")
     has_launchd = entry.get("launchd") is not None
+    has_systemd = entry.get("systemd") is not None
+    descriptors = (bool(has_workflow), bool(has_launchd), bool(has_systemd))
     if executor == "github-actions":
-        return bool(has_workflow) and not has_launchd
+        return descriptors == (True, False, False)
     if executor == "launchd":
-        return bool(has_launchd) and not has_workflow
+        return descriptors == (False, True, False)
+    if executor == "systemd":
+        return descriptors == (False, False, True)
     if executor == "human":
-        return not has_workflow and not has_launchd
+        return descriptors == (False, False, False)
     return False
 
 
@@ -793,6 +803,29 @@ def validate_automation_entries(reg: dict):
                 check(f"automation {key} external_trigger exists",
                       os.path.isfile(os.path.join(ROOT, ext)), ext)
 
+        if executor == "systemd":
+            systemd = entry.get("systemd")
+            if not isinstance(systemd, dict):
+                check(f"automation {key} systemd is a mapping", False, type(systemd).__name__)
+            else:
+                unknown = set(systemd.keys()) - {"unit", "timer"}
+                check(f"automation {key} systemd has only allowed keys", not unknown,
+                      f"unknown fields: {sorted(unknown)}")
+                unit = systemd.get("unit")
+                check(f"automation {key} systemd unit is non-empty string",
+                      isinstance(unit, str) and len(unit) > 0, f"unit={unit!r}")
+                timer = systemd.get("timer")
+                if timer is not None:
+                    check(f"automation {key} systemd timer is non-empty string",
+                          isinstance(timer, str) and len(timer) > 0, f"timer={timer!r}")
+                # A clock-driven systemd job with no timer is the same defect as a
+                # workflow with no cron: nothing starts it, and the registry would
+                # claim a cadence that no unit actually produces.
+                if trigger not in ("manual", "event"):
+                    check(f"automation {key} systemd declares a timer for a clock-driven job",
+                          isinstance(timer, str) and len(timer) > 0,
+                          f"trigger_kind={trigger!r} but no systemd.timer")
+
         # workflow must live under .github/workflows/ and exist.
         workflow = entry.get("workflow")
         if isinstance(workflow, str) and workflow:
@@ -851,6 +884,30 @@ def validate_automation_entries(reg: dict):
                     pattern_parts = pattern.split("/")
                     check(f"automation {key} output path_pattern is relative with no '..'",
                           not os.path.isabs(pattern) and ".." not in pattern_parts, pattern)
+            elif target == "local-file":
+                unknown = set(output.keys()) - {"target", "path", "retention", "human_access"}
+                check(f"automation {key} output has only allowed keys", not unknown,
+                      f"unknown fields: {sorted(unknown)}")
+                out_path = output.get("path")
+                check(f"automation {key} output path is non-empty string",
+                      isinstance(out_path, str) and len(out_path.strip()) > 0,
+                      f"path={out_path!r}")
+                if isinstance(out_path, str) and out_path.strip():
+                    check(f"automation {key} output path has no '..'",
+                          ".." not in out_path.split("/"), out_path)
+                # Retention is mandatory, not advised: an unbounded artifact directory
+                # on a server is a disk-full incident scheduled for some future month.
+                retention = output.get("retention")
+                check(f"automation {key} output retention is a positive integer",
+                      isinstance(retention, int) and not isinstance(retention, bool)
+                      and retention > 0, f"retention={retention!r}")
+                # human_access is mandatory because an artifact nobody can find is not
+                # delivered. This is the same rule as "a destination must name a real
+                # place" for external-system — the most the validator can honestly ask.
+                access = output.get("human_access")
+                check(f"automation {key} output human_access says how to reach it",
+                      isinstance(access, str) and len(access.strip()) >= 8,
+                      f"human_access={access!r}")
             elif target == "external-system":
                 unknown = set(output.keys()) - {"target", "destination"}
                 check(f"automation {key} output has only allowed keys", not unknown,
@@ -1013,7 +1070,7 @@ def main() -> int:
         check("automation registry keeps 5 trigger kinds",
               allowed_trigger == ALLOWED_TRIGGER_KINDS, f"kinds={sorted(allowed_trigger)}")
         allowed_execs = set(autos_reg.get("allowed_executors") or [])
-        check("automation registry keeps 3 executors",
+        check("automation registry keeps 4 executors",
               allowed_execs == ALLOWED_EXECUTORS, f"executors={sorted(allowed_execs)}")
         check("dependency registry dependencies is a list",
               isinstance(deps_reg.get("dependencies"), list),
