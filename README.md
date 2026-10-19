@@ -1,5 +1,11 @@
 # AI Capability Store
 
+> 同一个 skill，在 ChatGPT 能装、在 Claude 也能装 —— 因为你有一套自己的能力仓库，而不是散落在每个 AI 客户端里。
+>
+> **给谁用**：同时用多个 AI Host（ChatGPT / Claude / Codex / 豆包 / DeepSeek）的人
+> **它做什么**：把 Skill / MCP / CLI / Plugin 收成一份可版本化、可移植、有契约的资产，而不是一次性提示词
+> **怎么开始**：`python3 scripts/validate_store.py` 自检一遍，或从 [`skills/`](./skills) 看一个真实能力
+
 这是王颖个人长期 AI 能力资产的 **Canonical Store**：
 将 AI 接入真实 Workspace，把自然语言理解转化为可靠执行，
 并将与不同 AI Host 共创的 Skill、MCP、Plugin、CLI 等能力，
