@@ -79,7 +79,7 @@ capabilities:
     type: cli
     status: limited
     provider_path: external-capabilities/providers/lyrawang/README.md
-    version: 0.1.1
+    version: 0.1.2
     implementation_path: external-capabilities/cli/command-sync
     auth: "无凭据入仓。配置放 `~/.command-sync/config.json`（600）：history 路径、sshHost/sshUser、serverPaths；运行数据（历史快照、文档、报告）也都在 `~/.command-sync/`。仓库内只有 config.example.json 模板"
     capabilities: "把终端里手动输入的高频命令做成快捷键面板：Hammerspoon 绑定 ⌥X → 三组候选（服务器入口 / 最近用过 / 高频命令）→ 选中复制到剪贴板。另有月度 launchd 巡检：对比历史与快照发现新命令/新程序/服务器项目变化，并检查服务器上部署项目的上游仓库是否归档或删除。只读历史，不执行任何命令"
