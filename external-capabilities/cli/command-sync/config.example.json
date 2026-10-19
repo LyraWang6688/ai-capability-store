@@ -1,0 +1,9 @@
+{
+  "history": "~/.zsh_history",
+  "sshHost": "your.server.ip",
+  "sshUser": "ubuntu",
+  "serverPaths": [
+    "/home/ubuntu/project-a",
+    "/opt/project-b"
+  ]
+}
