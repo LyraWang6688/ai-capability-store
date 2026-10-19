@@ -1,0 +1,4 @@
+interface:
+  display_name: "Repo Baseline"
+  short_description: "审计 GitHub 公开仓库的安全 / 合并纪律 / CI / 可维护性基线"
+  default_prompt: "Use $repo-baseline to audit this repository against the public-repo baseline and produce a prioritized remediation list."

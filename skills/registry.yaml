@@ -114,6 +114,33 @@ skills:
       结构化后投入飞书「投递箱」表。核心纪律：投递者只报告观察、不负责归类——
       归类与抽象由维护者做。含门禁 validate_entry.py（结构不合格不许写）与
       check_similar.py（报告相似条目，但不阻断——重复本身是共性的证据）。
+  repo-wrapup:
+    name: repo-wrapup
+    path: skills/repo-wrapup
+    scope: shared
+    status: testing
+    version: 0.1.0
+    updated: "2026-10-19"
+    notes: >
+      多 agent 协作的收尾工具。审计分支 / worktree / PR 的残留状态，按安全边界
+      清理已合并且无风险的分支，并在交付时生成「收尾报告」——让
+      「本地和远端工作区干净了吗」不再需要靠人追问。与 repo-hygiene 分工：
+      那个管代码/依赖/死文件，这个只管分支/worktree/PR。worktree 一律不自动
+      删除（可能被其他 agent 占用），只报告。默认 plan 模式只出计划，
+      加 --clean 才真删。
+  repo-baseline:
+    name: repo-baseline
+    path: skills/repo-baseline
+    scope: shared
+    status: testing
+    version: 0.1.1
+    updated: "2026-10-19"
+    notes: >
+      GitHub 公开项目基线审计。17 项分五组（安全 / 合并纪律 / CI / 可维护 / 可扩展），
+      逐项 PASS/FAIL + 修复指引，支持批量扫描一个账号下所有公开仓库。
+      专门记录了一个高致错点：给没有 CI 的仓库开 required check 会锁死合并；
+      另一个是 CodeQL 的 Default setup 不生成 workflow 文件，只翻 .github/ 会误判。
+      默认只审计不改设置——改仓库设置是写操作，需用户授权。
 allowed_statuses:
   - draft
   - testing
