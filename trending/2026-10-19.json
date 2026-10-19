@@ -1,40 +1,50 @@
 {
-  "generated_at": "2026-10-18T23:14:50+00:00",
+  "generated_at": "2026-10-19T05:27:00+00:00",
   "automation": "github-trending-daily",
-  "total_scanned": 36,
-  "warnings": [
-    "trending-weekly: TypeError: '>' not supported between instances of 'NoneType' and 'int'"
-  ],
+  "total_scanned": 40,
+  "warnings": [],
   "excluded_noise": [
     "mlabonne/llm-course"
   ],
   "topic_frequency": [
     {
+      "topic": "claude-code",
+      "repos": 8
+    },
+    {
       "topic": "ai-agents",
       "repos": 7
     },
     {
-      "topic": "claude-code",
-      "repos": 7
-    },
-    {
-      "topic": "ai",
+      "topic": "mcp",
       "repos": 6
     },
     {
-      "topic": "mcp",
+      "topic": "ai",
       "repos": 5
     },
     {
-      "topic": "llm",
-      "repos": 4
+      "topic": "codex",
+      "repos": 5
+    },
+    {
+      "topic": "reverse-engineering",
+      "repos": 5
     },
     {
       "topic": "skills",
+      "repos": 4
+    },
+    {
+      "topic": "openclaw",
       "repos": 3
     },
     {
-      "topic": "codex",
+      "topic": "opencode",
+      "repos": 3
+    },
+    {
+      "topic": "claude",
       "repos": 3
     },
     {
@@ -42,31 +52,19 @@
       "repos": 3
     },
     {
-      "topic": "reverse-engineering",
+      "topic": "typescript",
       "repos": 3
     },
     {
-      "topic": "openclaw",
-      "repos": 2
-    },
-    {
-      "topic": "opencode",
-      "repos": 2
+      "topic": "llm",
+      "repos": 3
     },
     {
       "topic": "ai-assistant",
       "repos": 2
     },
     {
-      "topic": "claude",
-      "repos": 2
-    },
-    {
       "topic": "dsh-plugin",
-      "repos": 2
-    },
-    {
-      "topic": "typescript",
       "repos": 2
     },
     {
@@ -82,7 +80,27 @@
       "repos": 2
     },
     {
+      "topic": "decompiler",
+      "repos": 2
+    },
+    {
+      "topic": "ghidra",
+      "repos": 2
+    },
+    {
+      "topic": "hopper",
+      "repos": 2
+    },
+    {
       "topic": "model-context-protocol",
+      "repos": 2
+    },
+    {
+      "topic": "rea",
+      "repos": 2
+    },
+    {
+      "topic": "disassembler",
       "repos": 2
     },
     {
@@ -94,30 +112,14 @@
       "repos": 2
     },
     {
-      "topic": "macos",
-      "repos": 2
-    },
-    {
-      "topic": "golang",
-      "repos": 2
-    },
-    {
-      "topic": "design-system",
-      "repos": 2
-    },
-    {
-      "topic": "react",
-      "repos": 2
-    },
-    {
-      "topic": "tailwindcss",
+      "topic": "image-generation",
       "repos": 2
     }
   ],
   "dsh_plugins": [
     {
       "repo": "morluto/rea",
-      "stars": 321677,
+      "stars": 325511,
       "trend_gain": null,
       "language": "TypeScript",
       "desc": "Reverse engineer anything with agents, from app behavior down to native binaries.",
@@ -147,7 +149,7 @@
     },
     {
       "repo": "deepseek-ai/deepseek-harness",
-      "stars": 253049,
+      "stars": 253450,
       "trend_gain": null,
       "language": "TypeScript",
       "desc": "DeepSeek Harness: Everything is a Plugin.",
@@ -161,7 +163,7 @@
     },
     {
       "repo": "nexu-io/open-design",
-      "stars": 102193,
+      "stars": 102271,
       "trend_gain": null,
       "language": "TypeScript",
       "desc": "The 1st Collaborative AI Design Agent Workspace. Local-first and open source. Create motion, prototypes, websites, apps, dashboards, presentations, images, and videos with your team and AI agents. Share work, exchange feedback, and iterate together in one workspace.",
@@ -191,7 +193,7 @@
     },
     {
       "repo": "tt-a1i/archify",
-      "stars": 85394,
+      "stars": 85490,
       "trend_gain": null,
       "language": "JavaScript",
       "desc": "Turn any idea, plan, or codebase into a beautiful interactive diagram. An agent skill for Claude Code, Codex, and more.",
@@ -221,7 +223,7 @@
     },
     {
       "repo": "ruvnet/ruflo",
-      "stars": 76486,
+      "stars": 76666,
       "trend_gain": null,
       "language": "TypeScript",
       "desc": "🌊 The original agent harness. Deploy intelligent multi-player swarms, coordinate autonomous workflows, and build conversational AI systems. Features adaptive memory, self-learning intelligence, federation, vector RAG integration, and native Claude Code / Codex / Hermes and many more Integrated",
@@ -251,7 +253,7 @@
     },
     {
       "repo": "reactive-resume/reactive-resume",
-      "stars": 44491,
+      "stars": 44506,
       "trend_gain": null,
       "language": "TypeScript",
       "desc": "A one-of-a-kind resume builder that keeps your privacy in mind. Completely secure, customizable, portable, open-source and free forever. Try it out today!",
@@ -271,7 +273,7 @@
     },
     {
       "repo": "volcengine/OpenViking",
-      "stars": 40255,
+      "stars": 40282,
       "trend_gain": null,
       "language": "Python",
       "desc": "Self-evolving Context Database for AI Agents. Unify Agent Memory, Knowledge RAG and Skills.",
@@ -292,7 +294,7 @@
     },
     {
       "repo": "esengine/DeepSeek-Reasonix",
-      "stars": 35845,
+      "stars": 35854,
       "trend_gain": null,
       "language": "Go",
       "desc": "A reliable coding agent for complex software engineering tasks.",
@@ -320,7 +322,7 @@
     },
     {
       "repo": "freestylefly/awesome-gpt-image-2",
-      "stars": 34672,
+      "stars": 34690,
       "trend_gain": null,
       "language": "JavaScript",
       "desc": "Prompt as Code | GPT Image 2 / 2.5 提示词与案例库，530+ 个案例、20+ 套工业级模板与可复用 Skills，新增 2.5 同提示词对比专区，附完整提示词与生成记录，持续更新。",
@@ -340,7 +342,7 @@
     },
     {
       "repo": "Tencent/WeKnora",
-      "stars": 34608,
+      "stars": 34645,
       "trend_gain": null,
       "language": "Go",
       "desc": "Open-source LLM knowledge platform: turn raw documents into a queryable RAG, an autonomous reasoning agent, and a self-maintaining Wiki.",
@@ -370,7 +372,7 @@
     },
     {
       "repo": "anywhere-labs/dsh-desktop",
-      "stars": 31479,
+      "stars": 31578,
       "trend_gain": null,
       "language": "TypeScript",
       "desc": "为 DeepSeek Harness (DSH) 插件生态打造的现代化桌面端解决方案。万物皆「插件」，桌面本身也是「插件」。",
@@ -379,7 +381,7 @@
     },
     {
       "repo": "Molunerfinn/PicGo",
-      "stars": 27364,
+      "stars": 27366,
       "trend_gain": null,
       "language": "TypeScript",
       "desc": ":rocket: The Ultimate Image Uploader for Efficient Creators. Supports Obsidian, Typora, VS Code etc. and 60+ image hosting services  (S3, GitHub, Cloudflare R2, Imgur, Aliyun OSS...). Paste, upload, done.",
@@ -388,7 +390,7 @@
     },
     {
       "repo": "titanwings/distilly",
-      "stars": 25759,
+      "stars": 25769,
       "trend_gain": null,
       "language": "Python",
       "desc": "Distilly — Distill how they think into reusable Skills for any Agent or Bot. Formerly Colleague Skill（原同事 Skill）.",
@@ -397,7 +399,7 @@
     },
     {
       "repo": "Ebony-Vinyl/dsh-our-free-model",
-      "stars": 24704,
+      "stars": 25516,
       "trend_gain": null,
       "language": "JavaScript",
       "desc": "在 dsh 里装上这个插件即可，无需登录、注册或填 API Key，就能使用包括 DeepSeek V4.1 Flash、Kimi K3 在内的前沿模型——完全免费，不限量。 All you do is install this plugin in dsh: no login, no sign-up, no API key — the frontier models are just there, DeepSeek V4.1 Flash and Kimi K3 among them. Completely free, with no usage cap.",
@@ -406,7 +408,7 @@
     },
     {
       "repo": "nocobase/nocobase",
-      "stars": 24614,
+      "stars": 24617,
       "trend_gain": null,
       "language": "TypeScript",
       "desc": "NocoBase is an open-source AI + no-code platform for building business systems fast. Instead of generating everything from scratch, AI works on top of production-proven infrastructure and a WYSIWYG no-code interface, so you get both speed and reliability.",
@@ -415,7 +417,7 @@
     },
     {
       "repo": "walkinglabs/learn-harness-engineering",
-      "stars": 20766,
+      "stars": 20804,
       "trend_gain": null,
       "language": "TypeScript",
       "desc": "Harness engineering beginner tutorial, from 0 to 1",
@@ -424,7 +426,7 @@
     },
     {
       "repo": "awesome-dsh-plugin/awesome-dsh-plugin",
-      "stars": 19316,
+      "stars": 19383,
       "trend_gain": null,
       "language": "JavaScript",
       "desc": "A curated list of plugins for DeepSeek Harness (dsh) · DeepSeek Harness 插件精选列表",
@@ -433,7 +435,7 @@
     },
     {
       "repo": "dataelement/dsh-desktop",
-      "stars": 15182,
+      "stars": 15324,
       "trend_gain": null,
       "language": "JavaScript",
       "desc": "DSHDesktop：DeepSeek Harness Desktop / DeepSeek Harness 桌面版",
@@ -442,7 +444,7 @@
     },
     {
       "repo": "EverMind-AI/EverOS",
-      "stars": 13472,
+      "stars": 13477,
       "trend_gain": null,
       "language": "Python",
       "desc": "One portable memory layer for every AI agent: local-first, Markdown-native, user-owned, and self-evolving across apps, tools, and workflows.",
@@ -451,7 +453,7 @@
     },
     {
       "repo": "MemTensor/MemOS",
-      "stars": 11923,
+      "stars": 11926,
       "trend_gain": null,
       "language": "TypeScript",
       "desc": "Self-evolving memory OS for LLM & AI Agents: ultra-persistent memory, hybrid-retrieval, and cross-task skill reuse, with 35.24% token savings and DeepSeek Harness support.",
@@ -460,7 +462,7 @@
     },
     {
       "repo": "Tencent/BrowserSkill",
-      "stars": 9155,
+      "stars": 9172,
       "trend_gain": null,
       "language": "TypeScript",
       "desc": "Let AI agents use your real, logged-in browser without interrupting your work. CLI + extension for browser automation across any shell-capable AI agent.",
@@ -469,7 +471,7 @@
     },
     {
       "repo": "zhu1090093659/dsh-web",
-      "stars": 8967,
+      "stars": 8982,
       "trend_gain": null,
       "language": "TypeScript",
       "desc": "DeepSeek Harness (DSH) Web 插件聚合生态 · 万物皆插件，通过创意工坊分发｜｜DeepSeek Harness (DSH) Web Plugin Aggregation Ecosystem · Everything is a plugin, distributed via the Creative Workshop",
@@ -478,7 +480,7 @@
     },
     {
       "repo": "anbeime/skill",
-      "stars": 8278,
+      "stars": 8295,
       "trend_gain": null,
       "language": "Python",
       "desc": "收录最全、更新最快的技能Skills商店：精选原创技能包（涵盖文档处理、内容创作、编程开发、机器学习、自动化工作流），全部打包好可直接安装使用！同时自动抓取GitHub上万个Skills项目，按分类、更新时间、Star数量整理。The most comprehensive and frequently updated AI Agent skill library, featuring curated skill packs across document processing, content creation, programming, machine learning, automated workflows, and many more domains.",
@@ -496,7 +498,7 @@
     },
     {
       "repo": "plastic-labs/honcho",
-      "stars": 7680,
+      "stars": 7682,
       "trend_gain": null,
       "language": "Python",
       "desc": " Memory library for building stateful agents",
@@ -505,7 +507,7 @@
     },
     {
       "repo": "lingfengQAQ/webnovel-writer",
-      "stars": 7547,
+      "stars": 7557,
       "trend_gain": null,
       "language": "Python",
       "desc": "基于 Claude Code 的长篇网文辅助创作系统，解决 AI 写作中的「遗忘」和「幻觉」问题，支持 200 万字量级 连载创作。",
@@ -514,7 +516,7 @@
     },
     {
       "repo": "dsh-market/dsh-market",
-      "stars": 7206,
+      "stars": 7279,
       "trend_gain": null,
       "language": "TypeScript",
       "desc": "The plugin market inside DeepSeek Harness — browse, search, one-click install · DSH 可视化插件市场",
@@ -522,17 +524,8 @@
       "source": "topic:dsh-plugin"
     },
     {
-      "repo": "Devin-AXIS/iPolloWork",
-      "stars": 7071,
-      "trend_gain": null,
-      "language": "TypeScript",
-      "desc": "Enterprise-grade, local-first Agent Workbench for people and agent teams. A unified multi-engine workspace for Codex Harness, DeepSeek Harness, and OpenCode, with unified plugins and Skills, multi-agent projects and tasks, and editable code, documents, presentations, design, and video.",
-      "topics": [],
-      "source": "topic:dsh-plugin"
-    },
-    {
       "repo": "YuJunZhiXue/dsh-purge",
-      "stars": 7068,
+      "stars": 7191,
       "trend_gain": null,
       "language": "JavaScript",
       "desc": "DeepSeek Harness 破甲：让所有模型都能破甲，不同模型可换不同提示词；默认提示词面向国模「小码酱」。Jailbreak for every model — swap prompts per model. 求 Star 收藏 ⭐ 如要二开，请查看署名要求部分",
@@ -540,8 +533,17 @@
       "source": "topic:dsh-plugin"
     },
     {
+      "repo": "Devin-AXIS/iPolloWork",
+      "stars": 7084,
+      "trend_gain": null,
+      "language": "TypeScript",
+      "desc": "Enterprise-grade, local-first Agent Workbench for people and agent teams. A unified multi-engine workspace for Codex Harness, DeepSeek Harness, and OpenCode, with unified plugins and Skills, multi-agent projects and tasks, and editable code, documents, presentations, design, and video.",
+      "topics": [],
+      "source": "topic:dsh-plugin"
+    },
+    {
       "repo": "yjh051108/dsh-routing-suite",
-      "stars": 6988,
+      "stars": 6991,
       "trend_gain": null,
       "language": "JavaScript",
       "desc": "dsh-routing-suite — injector + router-standard kit: install the runtime injector first, then the task-aware reasoning-mode router preset (measured P1-P23).",
@@ -550,7 +552,7 @@
     },
     {
       "repo": "loopx-project/loopx",
-      "stars": 6358,
+      "stars": 6365,
       "trend_gain": null,
       "language": "Python",
       "desc": "A control plane with a durable state kernel for long-horizon agents and teams. Keep work moving and improving across sessions, with less human attention.",
@@ -558,17 +560,8 @@
       "source": "topic:dsh-plugin"
     },
     {
-      "repo": "Q00/ouroboros",
-      "stars": 6243,
-      "trend_gain": null,
-      "language": "Python",
-      "desc": "Agent OS: the agent gets smarter on its own. We just hold the line: Interview-gated, staged evaluation, budgeted evolution loop. MCP server, 14 runtimes: Claude Code, Codex CLI, Gemini CLI, OpenCode, Copilot, Kiro and more.",
-      "topics": [],
-      "source": "topic:dsh-plugin"
-    },
-    {
       "repo": "ZSeven-W/openpencil",
-      "stars": 6225,
+      "stars": 6249,
       "trend_gain": null,
       "language": "Rust",
       "desc": "The world's first open-source AI-native vector design tool and the first to feature concurrent Agent Teams. Design-as-Code. Turn prompts into UI directly on the live canvas. A modern alternative to Pencil.",
@@ -576,8 +569,17 @@
       "source": "topic:dsh-plugin"
     },
     {
+      "repo": "Q00/ouroboros",
+      "stars": 6244,
+      "trend_gain": null,
+      "language": "Python",
+      "desc": "Agent OS: the agent gets smarter on its own. We just hold the line: Interview-gated, staged evaluation, budgeted evolution loop. MCP server, 14 runtimes: Claude Code, Codex CLI, Gemini CLI, OpenCode, Copilot, Kiro and more.",
+      "topics": [],
+      "source": "topic:dsh-plugin"
+    },
+    {
       "repo": "superdesigndev/treg",
-      "stars": 5751,
+      "stars": 5762,
       "trend_gain": null,
       "language": "Python",
       "desc": "OpenRouter for agent tools. Join community here: https://discord.gg/6mQYYfFMAn",
@@ -586,7 +588,7 @@
     },
     {
       "repo": "MeteorNOX/DeepSeek-Balance-Whale-Widget",
-      "stars": 5269,
+      "stars": 5310,
       "trend_gain": null,
       "language": "JavaScript",
       "desc": "DeepSeek Harness（DSH）一只住在 DSH 界面右下角的小鲸鱼娘，帮你盯着DeepSeek账户余额。QQ弹弹，支持拖拽吸附、左吸附翻转、数字滚动动画，随界面自动启用，建议直接喊来你的dsh安装",
@@ -595,7 +597,7 @@
     },
     {
       "repo": "ccch1mneyyy/dsh-TUI",
-      "stars": 4807,
+      "stars": 4828,
       "trend_gain": null,
       "language": "TypeScript",
       "desc": "DSH's officially top-recommended TUI plugin — high performance, low overhead, cute pixel whale, smooth mouse interaction. One-command install via npm. / DSH 官方首推的 TUI 插件，高性能低占用，可爱像素鲸鱼，流畅鼠标交互，npm 一键安装",
@@ -604,7 +606,7 @@
     },
     {
       "repo": "liustack/modlens",
-      "stars": 4311,
+      "stars": 4318,
       "trend_gain": null,
       "language": "TypeScript",
       "desc": "The first vision plugin for DeepSeek Harness, and the vision bridge for every text-only coding agent. Paste an image, get structured JSON evidence (OCR, layout, semantics). | 全网最强 DeepSeek Harness 外挂视觉插件，为 DeepSeek、GLM 等纯文本模型外挂视觉能力，粘贴图片即得结构化 JSON 证据（OCR、版面、语义）。",
@@ -613,7 +615,7 @@
     },
     {
       "repo": "omdsh-dev/DSH-better-sidebar",
-      "stars": 4285,
+      "stars": 4295,
       "trend_gain": null,
       "language": "TypeScript",
       "desc": "开放的侧边栏底座，支持三方拓展注册新侧边栏页面。内置文件渲染编辑/终端/侧边对话/Git/子代理页面 ｜ Open sidebar foundation, supports third-party extensions to register new sidebar pages. Built-in file rendering/editing, terminal, side chat, Git, and sub-agent pages.",
@@ -622,7 +624,7 @@
     },
     {
       "repo": "crafter-station/petdex",
-      "stars": 4257,
+      "stars": 4258,
       "trend_gain": null,
       "language": "TypeScript",
       "desc": "A public gallery of animated pets for Codex, Claude Code, DeepSeek Harness, Hermes, OpenCode, Gemini CLI, and more.",
@@ -631,7 +633,7 @@
     },
     {
       "repo": "xiaobright/dsh-anchored-standard",
-      "stars": 3751,
+      "stars": 3750,
       "trend_gain": null,
       "language": "JavaScript",
       "desc": "Two-phase DeepSeek Harness preset: Minimal-aligned bootstrap, then full Standard tools (Project2 98/99)",
@@ -648,6 +650,15 @@
       "source": "topic:dsh-plugin"
     },
     {
+      "repo": "QingYunA/answer-me-with-html",
+      "stars": 3718,
+      "trend_gain": null,
+      "language": "JavaScript",
+      "desc": "Answer me with HTML — an agent skill that answers hard questions with a one-page HTML you can actually read. 让 AI Agent 用一页 HTML 回答复杂问题。",
+      "topics": [],
+      "source": "topic:dsh-plugin"
+    },
+    {
       "repo": "strukto-ai/mirage",
       "stars": 3695,
       "trend_gain": null,
@@ -657,17 +668,8 @@
       "source": "topic:dsh-plugin"
     },
     {
-      "repo": "QingYunA/answer-me-with-html",
-      "stars": 3695,
-      "trend_gain": null,
-      "language": "JavaScript",
-      "desc": "Answer me with HTML — an agent skill that answers hard questions with a one-page HTML you can actually read. 让 AI Agent 用一页 HTML 回答复杂问题。",
-      "topics": [],
-      "source": "topic:dsh-plugin"
-    },
-    {
       "repo": "agentscope-ai/ReMe",
-      "stars": 3646,
+      "stars": 3647,
       "trend_gain": null,
       "language": "Python",
       "desc": "ReMe: Memory Management Kit for Agents - Remember Me, Refine Me.",
@@ -676,7 +678,7 @@
     },
     {
       "repo": "whiteguo233/OpenBiliClaw",
-      "stars": 3479,
+      "stars": 3486,
       "trend_gain": null,
       "language": "Python",
       "desc": "本地私有、开源的自进化跨平台 AI 内容发现 Agent：先理解你，再主动从 B站、小红书、抖音、YouTube、X、知乎、Reddit、微博等平台与开放 Web 寻找内容。（支持 deepseek harness 插件） | Local-first open-source cross-platform AI content discovery agent: understands you, then proactively finds content across Bilibili, Xiaohongshu, Douyin, YouTube, X, Zhihu, Reddit, Weibo and the open web.（support deepseek harness plugin）",
@@ -684,17 +686,8 @@
       "source": "topic:dsh-plugin"
     },
     {
-      "repo": "chuspeeism/dashi-taskboard",
-      "stars": 3362,
-      "trend_gain": null,
-      "language": "JavaScript",
-      "desc": "现代化可灵活嵌入的任务面板，支持 Codex、DeepSeek Harness",
-      "topics": [],
-      "source": "topic:dsh-plugin"
-    },
-    {
       "repo": "edison7009/EchoBird",
-      "stars": 3358,
+      "stars": 3367,
       "trend_gain": null,
       "language": "Rust",
       "desc": "Manage ChatGPT, Codex CLI, and Claude Code accounts and track quota in one place. Use multi-model smart routing with priority and automatic failover. Install AI tools and deploy local LLMs in one click.",
@@ -702,8 +695,17 @@
       "source": "topic:dsh-plugin"
     },
     {
+      "repo": "chuspeeism/dashi-taskboard",
+      "stars": 3363,
+      "trend_gain": null,
+      "language": "JavaScript",
+      "desc": "现代化可灵活嵌入的任务面板，支持 Codex、DeepSeek Harness",
+      "topics": [],
+      "source": "topic:dsh-plugin"
+    },
+    {
       "repo": "dsh-tauri/deepseek-harness-desktop",
-      "stars": 3246,
+      "stars": 3265,
       "trend_gain": null,
       "language": "TypeScript",
       "desc": "DeepSeek Harness Tauri 桌面版 | Only 8mb installer, zero environment setup, preset plugins, Windows / macOS / Linux.",
@@ -721,7 +723,7 @@
     },
     {
       "repo": "T-Auto/dsh-ops",
-      "stars": 3063,
+      "stars": 3129,
       "trend_gain": null,
       "language": "JavaScript",
       "desc": "A toolkit for low-level operations in DSH, designed to reduce token usage and task execution time / DSH 底层操作工具插件，旨在减少 Token 消耗与任务耗时",
@@ -732,8 +734,8 @@
   "candidates": [
     {
       "repo": "MadsLorentzen/ai-job-search",
-      "stars": 52993,
-      "trend_gain": 2213,
+      "stars": 53997,
+      "trend_gain": 2232,
       "language": "Python",
       "desc": "The job search that runs on your machine. AI job application framework built on Claude Code: evaluate postings, tailor CVs, write cover letters, prep interviews. Fork it and own it.",
       "topics": [
@@ -750,12 +752,12 @@
         "latex",
         "resume"
       ],
-      "source": "trending-daily"
+      "source": "trending-daily+weekly"
     },
     {
       "repo": "debpalash/VoiceStudio",
-      "stars": 75232,
-      "trend_gain": 2098,
+      "stars": 75942,
+      "trend_gain": 2082,
       "language": "Python",
       "desc": "VoiceStudio is the open-source, fully-local ElevenLabs alternative — voice cloning, voice design, video dubbing, dictation, transcription & audiobook creation in 646 languages.",
       "topics": [
@@ -783,8 +785,8 @@
     },
     {
       "repo": "anomalyco/opencode",
-      "stars": 216524,
-      "trend_gain": 1417,
+      "stars": 216830,
+      "trend_gain": 1414,
       "language": "TypeScript",
       "desc": "The open source coding agent.",
       "topics": [],
@@ -792,8 +794,8 @@
     },
     {
       "repo": "anthropics/claude-plugins-official",
-      "stars": 42643,
-      "trend_gain": 1187,
+      "stars": 42846,
+      "trend_gain": 1175,
       "language": "Python",
       "desc": "Official, Anthropic-managed directory of high quality Claude Code Plugins.",
       "topics": [
@@ -801,11 +803,11 @@
         "mcp",
         "skills"
       ],
-      "source": "trending-daily"
+      "source": "trending-daily+weekly"
     },
     {
       "repo": "stablyai/orca",
-      "stars": 96571,
+      "stars": 97027,
       "trend_gain": 1146,
       "language": "TypeScript",
       "desc": "Orca is the place for working with a fleet of agents (e.g. Grok Bot, Claude Code). Run any coding agent with your own subscription. Available on desktop, mobile and remote runtime.",
@@ -835,26 +837,17 @@
     },
     {
       "repo": "HKUDS/CLI-Anything",
-      "stars": 54562,
-      "trend_gain": 582,
+      "stars": 54747,
+      "trend_gain": 589,
       "language": "Python",
       "desc": "\"CLI-Anything: Making ALL Software Agent-Native\" -- CLI-Hub: https://clianything.cc/",
       "topics": [],
       "source": "trending-daily"
     },
     {
-      "repo": "akitaonrails/ai-memory",
-      "stars": 10450,
-      "trend_gain": 513,
-      "language": "Rust",
-      "desc": "Solution for long term memory for agent coding CLIs and to facilitate handoff between different agent vendors",
-      "topics": [],
-      "source": "trending-daily"
-    },
-    {
       "repo": "ruvnet/ruflo",
-      "stars": 76485,
-      "trend_gain": 502,
+      "stars": 76666,
+      "trend_gain": 513,
       "language": "TypeScript",
       "desc": "🌊 The original agent harness. Deploy intelligent multi-player swarms, coordinate autonomous workflows, and build conversational AI systems. Features adaptive memory, self-learning intelligence, federation, vector RAG integration, and native Claude Code / Codex / Hermes and many more Integrated",
       "topics": [
@@ -882,9 +875,18 @@
       "source": "trending-daily"
     },
     {
+      "repo": "akitaonrails/ai-memory",
+      "stars": 10666,
+      "trend_gain": 512,
+      "language": "Rust",
+      "desc": "Solution for long term memory for agent coding CLIs and to facilitate handoff between different agent vendors",
+      "topics": [],
+      "source": "trending-daily"
+    },
+    {
       "repo": "android/skills",
-      "stars": 8744,
-      "trend_gain": 381,
+      "stars": 8869,
+      "trend_gain": 375,
       "language": "Kotlin",
       "desc": "",
       "topics": [
@@ -894,17 +896,17 @@
     },
     {
       "repo": "cursor/plugins",
-      "stars": 12717,
-      "trend_gain": 351,
+      "stars": 12828,
+      "trend_gain": 350,
       "language": "TypeScript",
       "desc": "Cursor plugin specification and official plugins",
       "topics": [],
-      "source": "trending-daily"
+      "source": "trending-daily+weekly"
     },
     {
       "repo": "Comfy-Org/ComfyUI",
-      "stars": 138577,
-      "trend_gain": 155,
+      "stars": 138833,
+      "trend_gain": 154,
       "language": "Python",
       "desc": "The most powerful and modular diffusion model GUI, api and backend with a graph/nodes interface. The fastest local inference engine in the world.",
       "topics": [
@@ -919,7 +921,7 @@
     },
     {
       "repo": "Kruk2/jasna",
-      "stars": 2373,
+      "stars": 2542,
       "trend_gain": 115,
       "language": "Python",
       "desc": "Video restoration tool",
@@ -928,7 +930,7 @@
     },
     {
       "repo": "morluto/rea",
-      "stars": 321677,
+      "stars": 325509,
       "trend_gain": null,
       "language": "TypeScript",
       "desc": "Reverse engineer anything with agents, from app behavior down to native binaries.",
@@ -957,8 +959,60 @@
       "source": "trending-weekly"
     },
     {
+      "repo": "NationalSecurityAgency/ghidra",
+      "stars": 91054,
+      "trend_gain": null,
+      "language": "Java",
+      "desc": "Ghidra is a software reverse engineering (SRE) framework",
+      "topics": [
+        "disassembler",
+        "reverse-engineering",
+        "software-analysis"
+      ],
+      "source": "trending-weekly"
+    },
+    {
+      "repo": "heygen-com/hyperframes",
+      "stars": 66925,
+      "trend_gain": null,
+      "language": "TypeScript",
+      "desc": "Write HTML. Render video. Built for agents.",
+      "topics": [
+        "ai",
+        "animation",
+        "ffmpeg",
+        "framework",
+        "gsap",
+        "html",
+        "mcp",
+        "puppeteer",
+        "rendering",
+        "typescript",
+        "video"
+      ],
+      "source": "trending-weekly"
+    },
+    {
+      "repo": "cathrynlavery/diagram-design",
+      "stars": 57874,
+      "trend_gain": null,
+      "language": "HTML",
+      "desc": "Editorial diagram design for Claude Code, Codex, GitHub Copilot, Cursor, Factory Droid, and Pi. 44 diagram types. Self-contained HTML + SVG. No shadows. No Mermaid slop.",
+      "topics": [
+        "agent-skills",
+        "claude-code",
+        "codex",
+        "data-visualization",
+        "diagrams",
+        "drawio",
+        "mermaid",
+        "svg"
+      ],
+      "source": "trending-weekly"
+    },
+    {
       "repo": "boykopovar/AnyPS5",
-      "stars": 43156,
+      "stars": 43409,
       "trend_gain": null,
       "language": "C++",
       "desc": "Tool for automatic PS5 executables porting to Linux and Windows",
@@ -975,7 +1029,7 @@
     },
     {
       "repo": "storytold/artcraft",
-      "stars": 32678,
+      "stars": 32955,
       "trend_gain": null,
       "language": "Rust",
       "desc": "ArtCraft is an intentional crafting engine for artists, designers, and filmmakers",
@@ -989,29 +1043,38 @@
       "source": "trending-weekly"
     },
     {
-      "repo": "jhaizhou-ops/d2r-mobile",
-      "stars": 3826,
+      "repo": "mksglu/context-mode",
+      "stars": 30832,
       "trend_gain": null,
-      "language": "C",
-      "desc": "Open-source iOS / macOS compatibility layer for Diablo II: Resurrected with the Reign of the Warlock expansion. Runs your own Switch copy natively on iPhone, iPad and Mac — full touch controls, 60 fps, new endgame modes. Bring your own game files. 开源的《暗黑破坏神 II：狱火重生》术士君临 iOS / macOS 兼容层",
+      "language": "TypeScript",
+      "desc": "Context window optimization for AI coding agents. Sandboxes tool output (98% reduction), persists session memory, and enforces routing across 17 platforms via MCP + hooks.",
       "topics": [
-        "compatibility-layer",
-        "diablo-2-resurrected",
-        "diablo2",
-        "game-port",
-        "ios",
-        "ipad",
-        "iphone",
-        "mac",
-        "macos",
-        "metal",
-        "reign-of-the-warlock"
+        "antigravity",
+        "claude",
+        "claude-code",
+        "claude-code-hooks",
+        "claude-code-plugins",
+        "claude-code-skill",
+        "codex",
+        "codex-cli",
+        "context-mode",
+        "copilot",
+        "cursor-plugin",
+        "kiro",
+        "mcp",
+        "mcp-server",
+        "mcp-tools",
+        "openclaw",
+        "opencode",
+        "pi-agent",
+        "skills",
+        "zed-extension"
       ],
-      "source": "new-7d"
+      "source": "trending-weekly"
     },
     {
       "repo": "Arekejoker/qwen21-nsfw-pose-skill",
-      "stars": 2731,
+      "stars": 3061,
       "trend_gain": null,
       "language": "Python",
       "desc": "Qwen-Image 2.1 NSFW/姿势出图 skill：作者级提示词配方 + NSFW LoRA + 136 姿势 VNCCS 人偶控制；适用 Claude Code / Codex / Cursor / OpenClaw",
@@ -1026,24 +1089,35 @@
       "source": "new-7d"
     },
     {
-      "repo": "HeyPuter/everything",
-      "stars": 2210,
+      "repo": "Gathin23/tv-vibehack",
+      "stars": 2443,
       "trend_gain": null,
-      "language": "JavaScript",
-      "desc": "We're rebuilding and open-sourcing the world’s software from scratch.",
+      "language": "Java",
+      "desc": "Your TV, minus the ads. Debloat any Android TV or Google TV over Wi-Fi and swap the ad-filled home screen for a clean Apple TV-style launcher. No root, fully reversible.",
       "topics": [
-        "adobe",
-        "cad",
-        "office",
-        "photoshop",
-        "saas",
-        "spreadsheet"
+        "ad-free",
+        "adb",
+        "android-tv",
+        "android-tv-launcher",
+        "bloatware-removal",
+        "claude-code",
+        "debloat",
+        "google-tv",
+        "hisense",
+        "home-screen",
+        "launcher",
+        "nvidia-shield",
+        "open-source",
+        "smart-tv",
+        "sony-bravia",
+        "tcl",
+        "xiaomi"
       ],
       "source": "new-7d"
     },
     {
       "repo": "feder-cr/git-ai",
-      "stars": 2190,
+      "stars": 2318,
       "trend_gain": null,
       "language": "Go",
       "desc": "Git designed for AI agents.",
@@ -1058,29 +1132,24 @@
       "source": "new-7d"
     },
     {
-      "repo": "deeplethe/solid-glass",
-      "stars": 2015,
+      "repo": "HeyPuter/everything",
+      "stars": 2241,
       "trend_gain": null,
-      "language": "TypeScript",
-      "desc": "A design system for AI applications. Material, physical, tactile, technical.",
+      "language": "JavaScript",
+      "desc": "We're rebuilding and open-sourcing the world’s software from scratch.",
       "topics": [
-        "agent-ui",
-        "ai",
-        "ai-agents",
-        "chat-ui",
-        "design-system",
-        "llm",
-        "react",
-        "shadcn",
-        "shadcn-ui",
-        "tailwindcss",
-        "theme"
+        "adobe",
+        "cad",
+        "office",
+        "photoshop",
+        "saas",
+        "spreadsheet"
       ],
       "source": "new-7d"
     },
     {
       "repo": "ahwootech/BRUTAL",
-      "stars": 1895,
+      "stars": 1922,
       "trend_gain": null,
       "language": "C#",
       "desc": "A free, open source C# framework for making games, or your own game engine. Direct access to native APIs and Vulkan, with the low-level libraries around them. The foundation under Kitten Space Agency and RimWorld's Waylith engine.",
@@ -1094,24 +1163,8 @@
       "source": "new-7d"
     },
     {
-      "repo": "Gathin23/tv-vibehack",
-      "stars": 1849,
-      "trend_gain": null,
-      "language": "Java",
-      "desc": "Your TV, minus the ads. Debloat any Android TV over ADB and give it a clean, tvOS-inspired launcher. Built in an afternoon with Claude Code.",
-      "topics": [
-        "adb",
-        "android-tv",
-        "claude-code",
-        "debloat",
-        "launcher",
-        "xiaomi"
-      ],
-      "source": "new-7d"
-    },
-    {
       "repo": "chenglou/handwired",
-      "stars": 1727,
+      "stars": 1743,
       "trend_gain": null,
       "language": "TypeScript",
       "desc": "Turn your regular JavaScript code into a neural net.",
@@ -1120,7 +1173,7 @@
     },
     {
       "repo": "Supermedo/uncharted_pc",
-      "stars": 1437,
+      "stars": 1473,
       "trend_gain": null,
       "language": "C++",
       "desc": "Uncharted: The Nathan Drake Collection running natively on Windows - by SuperMedo",
@@ -1129,7 +1182,7 @@
     },
     {
       "repo": "Caho1/open-claude-ui",
-      "stars": 1206,
+      "stars": 1216,
       "trend_gain": null,
       "language": "TypeScript",
       "desc": "基于 REA 深度拆解并高保真还原 Claude 官方桌面端 UI。还原 30 个独立 React 组件与 8 项硬核交互物理算法，附带 3000+ 行逆向分析手册。",
@@ -1148,60 +1201,17 @@
       "source": "new-7d"
     },
     {
-      "repo": "rohit267/net-merge",
-      "stars": 1112,
+      "repo": "ly05010419/MacNativeGames",
+      "stars": 1061,
       "trend_gain": null,
-      "language": "Go",
-      "desc": "Use all your network adapters at once on Windows/Linux/Mac: per-connection load balancing over Wi-Fi, Ethernet and phone/USB tethers (TUN + Wintun)",
-      "topics": [
-        "bandwidth-aggregation",
-        "downloader",
-        "golang",
-        "linux",
-        "load-balancing",
-        "macos",
-        "networking",
-        "tethering",
-        "tun",
-        "wifi",
-        "windows",
-        "wintun"
-      ],
-      "source": "new-7d"
-    },
-    {
-      "repo": "zhuyansen/new-term-radar",
-      "stars": 1108,
-      "trend_gain": null,
-      "language": "Python",
-      "desc": "Daily radar for new AI terms: names of new models, products and repos, caught on X, Hugging Face, GitHub and sitemaps before keyword tools list them.",
-      "topics": [
-        "agent-skills",
-        "ai",
-        "aisa",
-        "claude-code",
-        "claude-skills",
-        "google-trends",
-        "keyword-research",
-        "mcp",
-        "mcp-server",
-        "seo",
-        "trends"
-      ],
-      "source": "new-7d"
-    },
-    {
-      "repo": "AjncSystem/ShadowOfTheColossus-PC",
-      "stars": 1070,
-      "trend_gain": null,
-      "language": "C++",
-      "desc": "Native Windows port of Shadow of the Colossus (PS4, CUSA08809) - bring your own game dump. Port nativo para PC.",
+      "language": "C",
+      "desc": "",
       "topics": [],
       "source": "new-7d"
     },
     {
       "repo": "outcrawlai/scout",
-      "stars": 945,
+      "stars": 946,
       "trend_gain": null,
       "language": "TypeScript",
       "desc": "Scout: the open-source browser agent, by Outcrawl. Mirrored automatically from Outcrawl's own repository.",
@@ -1217,8 +1227,23 @@
       "source": "new-7d"
     },
     {
+      "repo": "Leonxlnx/earshot",
+      "stars": 927,
+      "trend_gain": null,
+      "language": "Python",
+      "desc": "Ears for coding agents: let AI hear, review and make sound. CPU-only, open source.",
+      "topics": [
+        "ai-agents",
+        "audio",
+        "claude-code",
+        "mcp",
+        "sound-design"
+      ],
+      "source": "new-7d"
+    },
+    {
       "repo": "xscreensaver-official/xscreensaver",
-      "stars": 856,
+      "stars": 870,
       "trend_gain": null,
       "language": "",
       "desc": "There is no official XScreenSaver GitHub repository.",
@@ -1226,8 +1251,17 @@
       "source": "new-7d"
     },
     {
+      "repo": "Tencent-Hunyuan/Hy-Memory",
+      "stars": 849,
+      "trend_gain": null,
+      "language": "Python",
+      "desc": "",
+      "topics": [],
+      "source": "new-7d"
+    },
+    {
       "repo": "CoolkHz/gptibo",
-      "stars": 827,
+      "stars": 829,
       "trend_gain": null,
       "language": "TypeScript",
       "desc": "Self-hosted GPTibo storefront, admin and Go backend — sanitized MIT source",
@@ -1235,8 +1269,26 @@
       "source": "new-7d"
     },
     {
+      "repo": "MyLuxy/overdrive",
+      "stars": 810,
+      "trend_gain": null,
+      "language": "C++",
+      "desc": "Overdrive, a PS5 homebrew game store with 1,800+ games.",
+      "topics": [
+        "exfat",
+        "game-store",
+        "homebrew",
+        "jailbreak",
+        "ps5",
+        "ps5-homebrew",
+        "reverse-engineering",
+        "shadowmountplus"
+      ],
+      "source": "new-7d"
+    },
+    {
       "repo": "LiCinCan/blender-ai-mcp-addon",
-      "stars": 784,
+      "stars": 788,
       "trend_gain": null,
       "language": "Python",
       "desc": "AI assistant and MCP server for Blender: visual chat, scene tools, multi-agent workflows. Works with OpenAI, ChatGPT, Claude, Gemini, Ollama, OpenCode. Blender AI addon and plugin, copilot for 3D, bpy Python scripting, MCP integration.",
@@ -1265,44 +1317,55 @@
       "source": "new-7d"
     },
     {
-      "repo": "Leonxlnx/earshot",
-      "stars": 783,
+      "repo": "Zfinix/eleven",
+      "stars": 765,
       "trend_gain": null,
-      "language": "Python",
-      "desc": "Ears for coding agents: let AI hear, review and make sound. CPU-only, open source.",
+      "language": "TypeScript",
+      "desc": "Agent-first reverse engineering for macOS, Windows and Linux: any ACP agent reads, renames and patches binaries, Android apps and GPU kernels next to you.",
       "topics": [
+        "acp",
         "ai-agents",
-        "audio",
-        "claude-code",
-        "mcp",
-        "sound-design"
+        "android",
+        "decompiler",
+        "disassembler",
+        "ghidra",
+        "hopper",
+        "macos",
+        "rea",
+        "reverse-engineering"
       ],
       "source": "new-7d"
     },
     {
-      "repo": "MyLuxy/overdrive",
-      "stars": 777,
-      "trend_gain": null,
-      "language": "C++",
-      "desc": "Overdrive, a PS5 homebrew game store with 1,800+ games.",
-      "topics": [
-        "exfat",
-        "game-store",
-        "homebrew",
-        "jailbreak",
-        "ps5",
-        "ps5-homebrew",
-        "reverse-engineering",
-        "shadowmountplus"
-      ],
-      "source": "new-7d"
-    },
-    {
-      "repo": "Tencent-Hunyuan/Hy-Memory",
-      "stars": 770,
+      "repo": "OpenMOSS/MOSS-Image",
+      "stars": 752,
       "trend_gain": null,
       "language": "Python",
-      "desc": "",
+      "desc": "Official repository for MOSS-Image, a 5B-parameter base DiT model with high-quality text rendering, layout generation, and efficient fine-tuning.",
+      "topics": [
+        "controllable-generation",
+        "foundation-models",
+        "image-generation",
+        "text-rendering",
+        "text-to-image"
+      ],
+      "source": "new-7d"
+    },
+    {
+      "repo": "Noniv/web-ocean",
+      "stars": 696,
+      "trend_gain": null,
+      "language": "HTML",
+      "desc": "Real-time WebGPU ocean renderer written from scratch, no engine. FFT waves, whitecaps, sun glitter, physically based sunset sky with clouds, free camera. Built with Claude Code (Opus 5.5). Opens from a single 61 KB HTML file in Chrome.",
+      "topics": [],
+      "source": "new-7d"
+    },
+    {
+      "repo": "aicodeking/leanrea",
+      "stars": 673,
+      "trend_gain": null,
+      "language": "Python",
+      "desc": "One 8 KB skill that replaces REA (Reverse Engineer Anything): plain CLI tools, no MCP. Benchmarked: 38% faster, 35% cheaper.",
       "topics": [],
       "source": "new-7d"
     }
