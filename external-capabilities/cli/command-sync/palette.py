@@ -153,6 +153,8 @@ def build_local(command_sets, limit=5):
     for r in items:
         if len(out) >= limit:
             break
+        if r["count"] < 2:
+            continue
         out.append({
             "kind": "local",
             "title": r["command"][:120],
@@ -181,15 +183,19 @@ def ssh_target():
 
 
 def build_recent(command_sets, limit=5):
-    """Newest unique commands, from the most recent source backwards."""
+    """Newest unique commands: timestamped entries first, then latest index."""
     if not command_sets:
         return []
     merged = []
     for commands in command_sets:
         merged.extend(commands)
+    indexed = []
+    for idx, (raw, epoch) in enumerate(merged):
+        indexed.append((idx, raw, epoch))
+    indexed.sort(key=lambda item: (item[2] or 0, item[0]), reverse=True)
     seen = set()
     out = []
-    for raw, epoch in reversed(merged):
+    for _idx, raw, epoch in indexed:
         cmd = ns(raw).strip()
         if not useful(cmd) or cmd in seen:
             continue
@@ -251,7 +257,7 @@ def main():
     except OSError as exc:
         print("读取历史失败：%s" % exc, file=sys.stderr)
         return 1
-    paths = [HISTORY] + sorted(glob.glob(DUMP_GLOB))
+    paths = sorted(glob.glob(DUMP_GLOB)) + [HISTORY]
     command_sets = []
     seen_sources = []
     for path in paths:
