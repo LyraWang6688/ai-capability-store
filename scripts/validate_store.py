@@ -509,6 +509,29 @@ def validate_skill_frontmatter(key: str, skill_dir: str) -> None:
             isinstance(k, str) and isinstance(v, str) for k, v in meta.items())
         check(f"{label} metadata is a string -> string map", ok_meta, repr(meta)[:80])
 
+    # The last two whitelisted fields were accepted without their shape being
+    # checked: the whitelist said "you may write `allowed-tools`", not "write it
+    # the way the spec defines it". A YAML list where a space-separated string is
+    # required passes the whitelist and then breaks in the client — the same
+    # failure shape as a required field that is only *present*.
+    lic = fm.get("license")
+    if lic is not None:
+        check(f"{label} license is a non-empty string",
+              isinstance(lic, str) and bool(lic.strip()), repr(lic)[:60])
+
+    tools = fm.get("allowed-tools")
+    if tools is not None:
+        # Spec: "Space-separated string of pre-approved tools." A block scalar
+        # (`|`) or a flow list both look reasonable in YAML and are both wrong.
+        ok_tools = (
+            isinstance(tools, str)
+            and bool(tools.strip())
+            and tools == tools.strip()
+            and "\n" not in tools
+        )
+        check(f"{label} allowed-tools is a space-separated string", ok_tools,
+              repr(tools)[:60])
+
 
 def validate_capability_entries(reg: dict):
     """Validate capability record schema. Returns list of (key, entry)."""
