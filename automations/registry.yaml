@@ -251,3 +251,35 @@ automations:
 
       systemd unit 里声明 SuccessExitStatus=3：退出码 3 表示「发现问题」，不是系统失败。
       没有这个声明，每个月都会在 journal 里留下一条误导性的 failed。
+
+  deepseek-invoice:
+    name: deepseek-invoice
+    path: automations/deepseek-invoice
+    entrypoint: run.mjs
+    status: testing
+    version: 0.1.0
+    updated: "2026-10-20"
+    trigger_kind: monthly
+    executor: systemd
+    systemd:
+      unit: deepseek-invoice.service
+      timer: deepseek-invoice.timer
+    output:
+      target: local-file
+      path: /opt/deepseek-invoice/logs
+      retention: 24
+      human_access: "SSH 到目标机后 `ls -t /opt/deepseek-invoice/logs | head`；日志与截图同目录"
+    description: >
+      每月 1 日在 owner 自有 Linux 服务器上，用 headless Chromium 打开 DeepSeek 开放平台账单页，
+      读取「可开票金额」；大于 0 时按固定抬头/税号/邮箱提交增值税普通发票申请，为 0 时跳过。
+    notes: >
+      执行器选 systemd 而不是 github-actions：需要长期登录态（storageState）与国内固定 IP，
+      云端 runner 的 IP 漂移且位于境外，会被目标平台风控。
+
+      登录态由本地 Chrome 导出并裁剪到仅 deepseek 域（约 6KB），放在
+      auth/storage-state.deepseek.json（600）。失效时脚本以退出码 2 结束，需要重新导出；
+      不会静默重试，也不会用旧态反复提交。
+
+      安全性：默认 dry-run，systemd unit 显式 --live；maxAmount 上限保护；金额为 0 直接跳过，
+      天然幂等。output 用 local-file：日志与截图含账号相关信息，不应进入 git-branch，
+      也不进任何外部系统。

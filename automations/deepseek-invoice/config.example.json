@@ -1,0 +1,11 @@
+{
+  "mode": "browser",
+  "transactionsUrl": "https://platform.deepseek.com/transactions",
+  "invoiceTitle": "<发票抬头>",
+  "taxId": "<纳税人识别号>",
+  "email": "<接收发票邮箱>",
+  "invoiceType": "增值税普通发票",
+  "maxAmount": 10000,
+  "storageStatePath": "/opt/deepseek-invoice/auth/storage-state.deepseek.json",
+  "headless": true
+}
