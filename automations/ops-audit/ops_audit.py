@@ -60,7 +60,8 @@ SWAP_RATE_WARN_KB = 100  # KB/s：低于这个量的换页属于正常
 
 DEFAULTS = {
     "runtime": {"local": False},
-    "server": {"host": "", "ssh_user": "ubuntu", "roots": ["~", "/opt", "/srv", "/var/www"]},
+    "server": {"host": "", "ssh_user": "ubuntu", "roots": ["~", "/opt", "/srv", "/var/www"],
+               "exclude": []},
     "domains": {},
     "expect": {"pm2": [], "docker": [], "ports": [5000, 3011]},
     "thresholds": {
@@ -399,6 +400,22 @@ def fetch_repo_meta(slug, token=""):
     return {"isArchived": bool(data.get("archived")), "pushedAt": data.get("pushed_at")}
 
 
+def filter_projects(projects, exclude_prefixes):
+    """按路径前缀排除项目。纯函数。
+
+    为什么需要：服务器上除了"部署的项目"，还可能有"部署用的源码检出"
+    （例如 Store 自己的 clone）。它们是 git 仓库，但不属于被审计的部署项。
+    """
+    prefixes = [p.rstrip("/") for p in (exclude_prefixes or []) if p]
+    kept = []
+    for proj in projects or []:
+        path = proj.get("path", "")
+        if any(path == pre or path.startswith(pre + "/") for pre in prefixes):
+            continue
+        kept.append(proj)
+    return kept
+
+
 def collect_projects(cfg):
     """采集服务器上的项目 + 它们对应的 GitHub 仓库状态。"""
     facts, err = collect_server(cfg)
@@ -406,7 +423,8 @@ def collect_projects(cfg):
         return None, err
     token = (cfg.get("repos") or {}).get("token", "")
     rows = []
-    for proj in facts.get("projects", []):
+    excluded = cfg["server"].get("exclude", [])
+    for proj in filter_projects(facts.get("projects", []), excluded):
         slug = repo_slug_from_remote(proj["remote"])
         if not slug:
             continue
