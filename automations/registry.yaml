@@ -212,3 +212,39 @@ automations:
 
       output.target 为 external-system：目标不在本仓库控制范围内，校验器只能记录
       这个声明，无法验证外部写入。通过校验不等于写入成功。
+
+  ops-audit:
+    name: ops-audit
+    path: automations/ops-audit
+    entrypoint: ops_audit.py
+    status: testing
+    version: 0.1.0
+    updated: "2026-10-20"
+    trigger_kind: monthly
+    executor: systemd
+    systemd:
+      unit: ops-audit.service
+      timer: ops-audit.timer
+    output:
+      target: local-file
+      path: /var/lib/ops-audit/reports
+      retention: 12
+      human_access: "SSH 到目标机后打开 <path>/<date>.html；或由操作者取回本地查看"
+    description: >
+      每月对 owner 自有 Linux 服务器做一次只读审计：资源水位、服务存活、域名可达性、
+      证书到期、OOM 与环比变化；并审计服务器上部署项目对应的 GitHub 仓库是否仍存在且活跃。
+      产出单文件 HTML 报告（样式内联，可直接打开或转发）。
+    notes: >
+      只读：不重启服务、不改配置、不动服务器文件。发现「上游已归档/删除但服务仍在跑」时
+      只输出建议退休清单并标注需人工确认——仓库状态不等于业务状态，删除必须由人决定。
+
+      采集有两种模式：runtime.local=true 直接在目标机执行（systemd 部署用这种），否则通过
+      SSH 采集（本机巡检远程机器用）。GitHub 查询走 HTTPS API，公开仓库无需 token，
+      私有仓库可在 repos.token 里配。
+
+      timer 是 OnCalendar=*-*-01 21:00:00 + Persistent=true：关机错过会在开机后补跑。
+      报告含主机名/域名/部署路径/证书到期，属于运维面，因此 output.target 用 local-file
+      而不是 git-branch；报告也不会进外部系统，所以不是 external-system。
+
+      systemd unit 里声明 SuccessExitStatus=3：退出码 3 表示「发现问题」，不是系统失败。
+      没有这个声明，每个月都会在 journal 里留下一条误导性的 failed。

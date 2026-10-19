@@ -1,0 +1,56 @@
+{
+  "_comment": [
+    "复制成 config.local.json 后填上真实值。config.local.json 已 .gitignore，不要提交。",
+    "这份文件是给公开仓库看的占位符，不含任何真实主机、域名或账号。"
+  ],
+  "runtime": {
+    "local": false
+  },
+  "server": {
+    "host": "203.0.113.10",
+    "ssh_user": "ubuntu",
+    "roots": [
+      "~",
+      "/opt",
+      "/srv",
+      "/var/www"
+    ]
+  },
+  "domains": {
+    "web": "web.example.com",
+    "api": "api.example.com"
+  },
+  "expect": {
+    "pm2": [
+      "my-api"
+    ],
+    "docker": [
+      "my-web"
+    ],
+    "ports": [
+      5000,
+      3011
+    ]
+  },
+  "thresholds": {
+    "disk_warn": 85,
+    "disk_crit": 92,
+    "inode_warn": 85,
+    "mem_avail_warn_mb": 150,
+    "load_warn_ratio": 1.0,
+    "cert_warn_days": 21,
+    "restart_delta_warn": 5,
+    "disk_delta_warn": 5
+  },
+  "repos": {
+    "owner": "your-github-login",
+    "inactive_days": 180
+  },
+  "paths": {
+    "data_dir": "data"
+  },
+  "outputs": {
+    "local_report": true,
+    "feishu_base": null
+  }
+}
