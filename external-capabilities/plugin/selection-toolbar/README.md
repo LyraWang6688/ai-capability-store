@@ -69,3 +69,24 @@ DSH（DeepSeek Harness）客户端插件：在对话里用鼠标划选文字后�
 ## 许可证
 
 MIT
+
+## 0.4.0：收藏 + 投递
+
+| 按钮 | 行为 | 依赖配置 |
+|---|---|---|
+| 收藏 | 把选中原文追加到飞书文档《好的内容》（不再输入注释） | `docToken` |
+| 投递 | 按 `context-submit` skill 的规范结构化（类型/内容/来源项目），过门禁脚本后写入飞书「投递箱」Base | `baseToken`、`tableId`、`skillDir` |
+
+投递链路：模型结构化 → `validate_entry.py` 门禁（FAIL 不写）→ `check_similar.py` 查重（不阻塞）→ `lark-cli base +record-batch-create` 写入（状态=待提炼）。
+
+配置文件 `~/.dsh/selection-toolbar.json` 示例：
+
+```json
+{
+  "docToken": "<好的内容 doc token>",
+  "baseToken": "<Base token>",
+  "tableId": "<投递箱 table id>",
+  "skillDir": "~/Documents/workplace/ai-capability-store/skills/context-submit",
+  "defaultProject": "DSH 选区投递"
+}
+```

@@ -264,11 +264,19 @@ window.__ModuleLoader__.load({
           },
         },
         {
-          key: 'note',
-          icon: '✎',
-          label: t('annotate'),
-          run: () => {
-            openNote();
+          key: 'collect',
+          icon: '☆',
+          label: t('collect'),
+          run: (text) => {
+            void saveCollect(text);
+          },
+        },
+        {
+          key: 'deliver',
+          icon: '⇥',
+          label: t('deliver'),
+          run: (text) => {
+            void deliverToInbox(text);
           },
         },
         {
@@ -320,6 +328,50 @@ window.__ModuleLoader__.load({
         } catch (error) {
           const reason = error && error.message ? error.message : String(error);
           say(t('savedLocalOnly') + '：' + reason);
+        }
+      };
+
+      const saveCollect = async (text) => {
+        if (text === '') return;
+        say(t('collecting'));
+        try {
+          const response = await fetch('/plugins/selection-toolbar/note', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ text, note: '', at: new Date().toISOString() }),
+          });
+          const payload = await response.json().catch(() => ({}));
+          if (response.ok && payload && payload.ok === true) {
+            say(t('collected'));
+          } else {
+            const reason = payload && payload.message ? String(payload.message) : 'HTTP ' + response.status;
+            say(t('collectFailed') + '：' + reason);
+          }
+        } catch (error) {
+          say(t('collectFailed') + '：' + (error && error.message ? error.message : String(error)));
+        }
+      };
+
+      const deliverToInbox = async (text) => {
+        if (text === '') return;
+        say(t('delivering'));
+        try {
+          const response = await fetch('/plugins/selection-toolbar/deliver', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ text }),
+          });
+          const payload = await response.json().catch(() => ({}));
+          if (response.ok && payload && payload.ok === true) {
+            const id = payload.recordId ? ' #' + payload.recordId : '';
+            const similar = payload.similar ? '' : '';
+            say(t('delivered') + id + similar);
+          } else {
+            const reason = payload && payload.message ? String(payload.message) : 'HTTP ' + response.status;
+            say(t('deliverFailed') + '：' + reason);
+          }
+        } catch (error) {
+          say(t('deliverFailed') + '：' + (error && error.message ? error.message : String(error)));
         }
       };
 
@@ -495,6 +547,13 @@ window.__ModuleLoader__.load({
           speak: '朗读',
           ask: '追问',
           annotate: '注释',
+          collect: '收藏',
+          deliver: '投递',
+          collecting: '正在收藏…',
+          collected: '已收藏到飞书文档',
+          collectFailed: '收藏失败',
+          delivering: '正在投递到投递箱…',
+          delivered: '已投递',
           copied: '已复制',
           copyFailed: '复制失败（可手动 ⌘C）',
           speaking: '朗读中…',
@@ -528,6 +587,13 @@ window.__ModuleLoader__.load({
           speak: 'Read aloud',
           ask: 'Follow up',
           annotate: 'Annotate',
+          collect: 'Collect',
+          deliver: 'Deliver',
+          collecting: 'Collecting…',
+          collected: 'Collected to the Feishu doc',
+          collectFailed: 'Collect failed',
+          delivering: 'Delivering to the inbox…',
+          delivered: 'Delivered',
           copied: 'Copied',
           copyFailed: 'Copy failed — press ⌘C instead',
           speaking: 'Reading aloud…',

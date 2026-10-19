@@ -1,0 +1,4 @@
+interface:
+  display_name: "Context Submit"
+  short_description: "把值得沉淀的观察投递到 Agent Context 投递箱"
+  default_prompt: "Use $context-submit to structure this observation and submit it to the Agent Context inbox table."
