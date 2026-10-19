@@ -7,9 +7,14 @@ three registry files, so a newly registered asset is noticed the moment it is sa
 before the commit, before the push. That is the cheapest possible moment to be told
 the thing is wrong.
 
-It is not a daemon. launchd runs it every five minutes while the machine is awake,
-which is exactly when someone is editing the repository. No background process, no
-polling loop, nothing to forget about.
+It is not a daemon and it does not poll. launchd watches the three Domain directories
+with FSEvents and runs this script the moment anything changes there; the script hashes
+the registries first and exits in ~50ms if nothing relevant moved. So a save while you
+are editing costs milliseconds, and the real work happens only on an actual change.
+
+Watching the directories rather than the three registry files is deliberate: an atomic
+save replaces the file's inode, which makes a file-level WatchPaths go quiet forever.
+A directory watch survives that. The hash gate is what makes the extra events harmless.
 
 State and reports live outside the repository (~/.ai-capability-store/asset-review)
 so the watcher never dirties the tree it is watching.
