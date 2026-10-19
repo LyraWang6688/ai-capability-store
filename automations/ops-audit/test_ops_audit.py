@@ -309,5 +309,33 @@ class TestVersion(unittest.TestCase):
         self.assertEqual(oa.read_version("/nonexistent/VERSION"), "unknown")
 
 
+class TestFilterProjects(unittest.TestCase):
+    def projs(self):
+        return [
+            {"path": "/home/ubuntu/meeting-analysis", "remote": "git@github.com:o/a.git"},
+            {"path": "/opt/box2bitable", "remote": "git@github.com:o/b.git"},
+            {"path": "/opt/ai-capability-store", "remote": "git@github.com:o/store.git"},
+        ]
+
+    def test_no_exclude_keeps_all(self):
+        self.assertEqual(len(oa.filter_projects(self.projs(), [])), 3)
+
+    def test_exclude_prefix(self):
+        kept = oa.filter_projects(self.projs(), ["/opt/ai-capability-store"])
+        self.assertEqual([p["path"] for p in kept], ["/home/ubuntu/meeting-analysis", "/opt/box2bitable"])
+
+    def test_exclude_is_prefix_not_substring(self):
+        kept = oa.filter_projects(self.projs(), ["/opt/ai"])
+        self.assertEqual(len(kept), 3, "前缀必须按目录边界匹配，不能子串匹配")
+
+    def test_exclude_trailing_slash_tolerated(self):
+        kept = oa.filter_projects(self.projs(), ["/opt/ai-capability-store/"])
+        self.assertEqual(len(kept), 2)
+
+    def test_exclude_child_path(self):
+        kept = oa.filter_projects(self.projs(), ["/opt"])
+        self.assertEqual([p["path"] for p in kept], ["/home/ubuntu/meeting-analysis"])
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

@@ -30,7 +30,10 @@ contract for `executor: systemd` and `output.target: local-file`.
 ```jsonc
 {
   "runtime": { "local": true },                  // true = run on the target machine
-  "server": { "host": "…", "ssh_user": "ubuntu", "roots": ["~", "/opt"] },
+  "server": {
+    "host": "…", "ssh_user": "ubuntu", "roots": ["~", "/opt"],
+    "exclude": ["/srv/source-checkouts"]      // 部署用的源码检出，不算部署项目
+  },
   "domains": { "web": "web.example.com" },       // reachability targets
   "expect": { "pm2": ["my-api"], "docker": ["my-web"], "ports": [5000, 3011] },
   "repos": { "owner": "github-login", "inactive_days": 180 },
@@ -124,3 +127,6 @@ verdict, month-over-month deltas, HTML rendering. No SSH, no network — safe on
 4. Certificate days come from certbot's directory; other ACME clients are invisible.
 5. The `expect` lists (pm2 names, containers, ports) are maintenance input: when a
    deployment changes, the list must change with it.
+6. `server.exclude` exists because a server also holds **source checkouts** (for
+   example the Store's own clone used to deploy). They are git repositories but not
+   deployed projects; without the exclusion the audit counts them as one.
