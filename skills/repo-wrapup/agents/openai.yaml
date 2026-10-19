@@ -1,0 +1,4 @@
+interface:
+  display_name: "Repo Wrapup"
+  short_description: "清理分支 / worktree / PR，并生成可核验的收尾报告"
+  default_prompt: "Use $repo-wrapup to audit this repository's branches, worktrees and PRs, produce a cleanup plan, and generate the wrap-up report for delivery."
