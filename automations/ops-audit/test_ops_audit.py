@@ -297,5 +297,17 @@ class TestHtmlReport(unittest.TestCase):
         self.assertNotIn("<script", html.lower())
 
 
+class TestVersion(unittest.TestCase):
+    def test_reads_deployed_version(self):
+        import tempfile
+        with tempfile.NamedTemporaryFile("w", suffix="VERSION", delete=False) as f:
+            f.write("ops-audit-v0.1.0\n")
+            path = f.name
+        self.assertEqual(oa.read_version(path), "ops-audit-v0.1.0")
+
+    def test_missing_file_is_unknown(self):
+        self.assertEqual(oa.read_version("/nonexistent/VERSION"), "unknown")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

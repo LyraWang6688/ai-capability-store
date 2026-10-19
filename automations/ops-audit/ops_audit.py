@@ -36,6 +36,20 @@ def _default_config_path():
 
 DEFAULT_CONFIG = _default_config_path()
 EXAMPLE_CONFIG = os.path.join(HERE, "config.example.json")
+VERSION_FILE = os.path.join(HERE, "VERSION")
+
+
+def read_version(path=None):
+    """读取部署时写入的版本号（install.sh 生成）。纯函数：缺失时返回 unknown。"""
+    p = path or VERSION_FILE
+    try:
+        with open(p, encoding="utf-8") as f:
+            v = f.read().strip()
+        return v or "unknown"
+    except OSError:
+        return "unknown"
+
+
 SSH_BIN = "/usr/bin/ssh"
 CURL_BIN = "/usr/bin/curl"
 GH_BIN = "/opt/homebrew/bin/gh" if os.path.exists("/opt/homebrew/bin/gh") else "gh"
@@ -635,7 +649,7 @@ def render_html(cfg, today, health, projects, prev):
 <header>
   <h1>服务器月度体检</h1>
   {_badge(verdict, tone)}
-  <span class="meta">{host} · {today} · 生成于 {generated}</span>
+  <span class="meta">{host} · {today} · 版本 {read_version()} · 生成于 {generated}</span>
 </header>
 
 <div class="cards">{cards}</div>
@@ -662,7 +676,7 @@ def render_html(cfg, today, health, projects, prev):
   <table><thead><tr><th>仓库</th><th>判定</th><th>最后推送</th><th>服务器路径</th></tr></thead><tbody>{project_rows}</tbody></table>
 </div>
 
-<footer>本报告由 ops-audit 自动生成，所有检查均为只读；项目处置需人工确认。</footer>
+<footer>本报告由 ops-audit（{read_version()}）自动生成，所有检查均为只读；项目处置需人工确认。</footer>
 </div></body></html>
 """
 
@@ -776,7 +790,7 @@ def cmd_run(cfg, today):
     with open(report_html, "w", encoding="utf-8") as f:
         f.write(html)
     save_json(os.path.join(paths["reports"], f"{today}.json"), {
-        "date": today, "issues": issues, "projects": projects,
+        "date": today, "version": read_version(), "issues": issues, "projects": projects,
     })
     save_json(paths["prev"], {
         "date": today,
@@ -790,6 +804,7 @@ def cmd_run(cfg, today):
 
     blocker = [i for i in issues if i[0] == "🔴"]
     print(f"报告已生成：{report_html}")
+    print(f"  版本：{read_version()}")
     print(f"  总体：{'🔴 有阻断问题' if blocker else ('🟡 有提示' if issues else '✅ 健康')}"
           f" ｜ 项目 {len(projects)} 个 ｜ 问题 {len(issues)} 条")
     blocker = [i for i in issues if i[0] == "🔴"]
