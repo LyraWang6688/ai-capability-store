@@ -177,6 +177,17 @@ async function appendToDoc(ctx, markdown, config) {
   return { revisionId: parsed && parsed.data ? parsed.data.revision_id : undefined };
 }
 
+/** Reuse the Host's browser authentication for this plugin's own routes. */
+function connectionRejection(ctx, req) {
+  const connection = typeof ctx.get === 'function' ? ctx.get('connection') : undefined;
+  if (!connection || typeof connection.requestRejection !== 'function') return undefined;
+  try {
+    return connection.requestRejection({ headers: req.headers });
+  } catch (error) {
+    return undefined;
+  }
+}
+
 function sendJson(res, status, payload) {
   const body = JSON.stringify(payload);
   res.statusCode = status;
@@ -394,6 +405,11 @@ export function apply(ctx) {
       sendJson(res, 405, { ok: false, message: 'method not allowed' });
       return;
     }
+    const rejection = connectionRejection(ctx, req);
+    if (rejection !== undefined) {
+      sendJson(res, rejection, { ok: false, message: '未通过 DSH 连接鉴权（本地 token 无效）' });
+      return;
+    }
     try {
       const body = await readJsonBody(req);
       const markdown = formatNote(body);
@@ -423,6 +439,11 @@ export function apply(ctx) {
       sendJson(res, 405, { ok: false, message: 'method not allowed' });
       return;
     }
+    const rejection = connectionRejection(ctx, req);
+    if (rejection !== undefined) {
+      sendJson(res, rejection, { ok: false, message: '未通过 DSH 连接鉴权（本地 token 无效）' });
+      return;
+    }
     try {
       const body = await readJsonBody(req);
       const text = String(body.text ?? '').trim();
@@ -448,6 +469,11 @@ export function apply(ctx) {
   const deliverHandler = async (req, res) => {
     if (req.method !== 'POST') {
       sendJson(res, 405, { ok: false, message: 'method not allowed' });
+      return;
+    }
+    const rejection = connectionRejection(ctx, req);
+    if (rejection !== undefined) {
+      sendJson(res, rejection, { ok: false, message: '未通过 DSH 连接鉴权（本地 token 无效）' });
       return;
     }
     let entryPath = '';
