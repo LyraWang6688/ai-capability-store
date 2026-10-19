@@ -14,7 +14,8 @@ if [ ! -f "$APP_DIR/config.json" ]; then
   echo "⚠️  已放置占位配置，请编辑 $APP_DIR/config.json 填真实值（至少 runtime.local=true）。"
 fi
 # 记录部署来源版本，报告里会显示，用于回答"服务器跑的是哪个版本"
-VERSION="$(git -C "$ROOT" describe --tags --always 2>/dev/null || echo "unknown")"
+# 只认本项目的 tag：Store 是多项目共用一个仓库，--tags 会挑到别人的 tag
+VERSION="$(git -C "$ROOT" describe --tags --match 'ops-audit-v*' --always 2>/dev/null || echo "unknown")"
 echo "$VERSION" | sudo tee "$APP_DIR/VERSION" >/dev/null
 
 sudo cp "$HERE/ops-audit.service" "$HERE/ops-audit.timer" /etc/systemd/system/
