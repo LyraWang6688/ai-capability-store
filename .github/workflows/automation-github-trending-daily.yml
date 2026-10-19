@@ -60,6 +60,22 @@ jobs:
           STAMP="$(TZ=Asia/Shanghai date +%F)"
           python3 code/automations/github-trending/daily/scan.py > "out/trending/${STAMP}.json"
           echo "wrote out/trending/${STAMP}.json ($(wc -c < "out/trending/${STAMP}.json") bytes)"
+      - name: Check source health
+        # A degraded source must be loud, not silent. On 2026-10-19 the weekly
+        # source died and the workflow still reported success — the only trace
+        # was a string inside the JSON's warnings array.
+        #
+        # continue-on-error keeps the "degrade, never fail" contract: partial
+        # data is still worth committing. The run page shows the failed step and
+        # the ::warning:: annotations regardless.
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          STAMP="$(TZ=Asia/Shanghai date +%F)"
+          python3 code/automations/github-trending/daily/check_sources.py \
+            "out/trending/${STAMP}.json" \
+            --summary "$GITHUB_STEP_SUMMARY"
+
 
       - name: Commit snapshot to data branch
         working-directory: out
