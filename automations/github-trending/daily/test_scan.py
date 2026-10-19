@@ -10,6 +10,7 @@ import importlib.util
 import os
 import sys
 import unittest
+from unittest.mock import patch
 from unittest import mock
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -101,6 +102,56 @@ class TestFiltering(unittest.TestCase):
         noise, candidates = self._filter(merged)
         self.assertEqual(noise, [])
         self.assertEqual(len(candidates), 1)
+
+
+class TestMergeAcrossSources(unittest.TestCase):
+    """The merge path itself must survive a None trend_gain.
+
+    TestTrendGainTriState covers _max_gain() in isolation. That is not enough:
+    _max_gain can be perfectly correct while collect() still calls max(), which
+    is exactly the regression that killed the weekly source on 2026-10-19
+    (warnings: "trending-weekly: TypeError: '>' not supported between
+    instances of 'NoneType' and 'int'"). This test drives collect() end to end
+    with the network stubbed out.
+    """
+
+    def test_merge_tolerates_a_none_from_one_source(self):
+        daily = [{"repo": "owner/a", "stars": 100, "trend_gain": 500,
+                  "language": "", "desc": "", "topics": [], "source": "trending-daily"}]
+        weekly = [{"repo": "owner/a", "stars": 90, "trend_gain": None,
+                   "language": "", "desc": "", "topics": [], "source": "trending-weekly"}]
+
+        def fake_parse(period):
+            return daily if period == "daily" else weekly
+
+        warnings: list[str] = []
+        with patch.object(scan, "parse_trending", side_effect=fake_parse), \
+             patch.object(scan, "search_new_repos", return_value=[]):
+            merged, _ = scan.collect(warnings)
+
+        # collect() also warns when search_new_repos() is empty; what matters
+        # here is that the merge did not raise.
+        self.assertFalse([w for w in warnings if "TypeError" in w],
+                         f"merging raised: {warnings}")
+        self.assertEqual(merged["owner/a"]["trend_gain"], 500,
+                         "the measured value must win over the unknown one")
+        self.assertEqual(merged["owner/a"]["source"], "trending-daily+weekly")
+
+    def test_merge_keeps_measured_zero_over_unknown(self):
+        daily = [{"repo": "owner/b", "stars": 10, "trend_gain": 0,
+                  "language": "", "desc": "", "topics": [], "source": "trending-daily"}]
+        weekly = [{"repo": "owner/b", "stars": 10, "trend_gain": None,
+                   "language": "", "desc": "", "topics": [], "source": "trending-weekly"}]
+
+        def fake_parse(period):
+            return daily if period == "daily" else weekly
+
+        with patch.object(scan, "parse_trending", side_effect=fake_parse), \
+             patch.object(scan, "search_new_repos", return_value=[]):
+            merged, _ = scan.collect([])
+
+        self.assertEqual(merged["owner/b"]["trend_gain"], 0,
+                         "0 is a measurement; it must not be replaced by None")
 
 
 class TestTrendGainTriState(unittest.TestCase):
