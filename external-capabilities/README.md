@@ -143,6 +143,10 @@ which documents that party's official interfaces, auth model and constraints.
 
 Authentication metadata ≠ credential storage. See [SECURITY.md](./SECURITY.md).
 
+Capabilities that move work across a trust boundary — a remote message causing local
+execution, or local content leaving the machine — have requirements of their own in
+[SECURITY.md § Remote-Triggered Execution](./SECURITY.md#remote-triggered-execution).
+
 ## Status Values
 
 A capability's status answers **"can it be used right now?"** — and, for
