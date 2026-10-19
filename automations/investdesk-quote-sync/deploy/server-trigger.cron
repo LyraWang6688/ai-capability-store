@@ -1,0 +1,17 @@
+# crontab 模板 —— 按 SERVER-TRIGGER.md 的步骤安装到 /etc/cron.d/
+#
+# ⚠️ 为什么命令放在脚本里，而不是直接写进 crontab：
+#    crontab 里【未转义的 % 会被换成一个换行】，而且【第一个 % 之后的所有内容
+#    会作为 stdin 传给命令】。curl 的 -w '%{http_code}' 正好含 %，直接写会让
+#    整行被截断成 shell 语法错误 —— 而且是静默失效：cron 只在本地邮件里报错。
+#    第一版就是这么写的，装上去之后每天 20:00 悄悄失败。
+#
+# 时间：北京 20:00 周一至周五（场内收盘价已定，场外净值开始公布）。
+#
+#   {{HOUR}} 要换成【服务器本机时区】下的对应小时：
+#     CST / Asia+0800  → 20
+#     UTC              → 12
+#   换算命令见 SERVER-TRIGGER.md，别手算。
+SHELL=/bin/bash
+PATH=/usr/local/bin:/usr/bin:/bin
+0 {{HOUR}} * * 1-5 root /usr/local/bin/investdesk-quote-sync-trigger

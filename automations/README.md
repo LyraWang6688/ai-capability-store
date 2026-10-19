@@ -130,6 +130,7 @@ unattended is exactly the thing you may need to roll back. Run
 |---|---|---|
 | `trigger_kind` | how often | `daily` / `weekly` / `monthly` / `manual` / `event` |
 | `executor` | what runs it | `github-actions` / `launchd` / `human` |
+| `external_trigger` | **who fires the clock**, when it is not the workflow | a path in this repository |
 
 Each executor requires **exactly its own descriptor** and no other:
 
@@ -142,6 +143,42 @@ Each executor requires **exactly its own descriptor** and no other:
 "Exactly" is enforced, not just "at least": an automation carrying both a
 workflow and a launchd block is two jobs described as one, and the registry would
 answer *"what runs this?"* with two incompatible answers.
+
+### `external_trigger` — when the clock lives outside the workflow
+
+A `github-actions` automation normally carries its cron in the bound workflow, and the
+validator requires a `schedule:` block for any `trigger_kind` other than `manual`. That
+is the right default: a job that nothing starts is worse than one that is mislabelled.
+
+It stops being the right default when **GitHub's scheduler is the problem.** In this
+repository it fires 4-5 hours late — recorded in the workflows themselves, and the
+reason `github-trending-daily`'s cron was moved to 05:17. For a job that must land
+before a 09:00 consumer, 4-5 hours is the difference between today's data and
+yesterday's.
+
+The fix is to fire the run from a clock that is punctual — a server crontab calling
+`workflow_dispatch` — and drop the workflow's own cron. `trigger_kind` stays `daily`
+(it *is* daily), `executor` stays `github-actions` (GitHub still runs it); only the
+clock moved.
+
+```yaml
+trigger_kind: daily
+executor: github-actions
+workflow: .github/workflows/automation-investdesk-quote-sync.yml
+external_trigger: automations/investdesk-quote-sync/deploy/server-trigger.cron
+```
+
+The field is **a path to evidence**, and the validator treats it as one: it must exist
+and must live inside the automation's own directory. *"Something else fires this"* is an
+assertion; a checked-in crontab is a file someone can read.
+
+Setting it **relaxes** the `schedule:` requirement rather than forbidding a `schedule:`
+block. An automation may keep a low-frequency cron as a safety net on top of the
+external trigger — the two are not mutually exclusive, and for a job with no other
+fallback that is often the right shape.
+
+**`manual` is not a substitute.** It passes the same validator and is a lie: nothing
+human starts it. The point of the field is to say what *actually* fires the job.
 
 `launchd.label` must also appear as `<string>label</string>` inside the plist
 template — an installed job whose `Label` disagrees with the registry is a job
