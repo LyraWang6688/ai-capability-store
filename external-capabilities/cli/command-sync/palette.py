@@ -259,10 +259,13 @@ def build_server():
         pass
     for path in paths:
         info = detail.get(path) or {}
-        name = info.get("remote", "").split("/")[-1].replace(".git", "") or path
+        name = info.get("remote", "").split("/")[-1].replace(".git", "")
+        label = path
+        if name and name != path:
+            label = "%s（%s）" % (path, name)
         out.append({
             "kind": "server",
-            "title": "进入服务器项目 %s（%s）" % (path, name),
+            "title": "进入服务器项目 %s" % label,
             "command": "ssh -t %s@%s 'cd %s && exec bash -l'" % (user, host, path),
             "count": 0,
             "last": "服务器项目",
