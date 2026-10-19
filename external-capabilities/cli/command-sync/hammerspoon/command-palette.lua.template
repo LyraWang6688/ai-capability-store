@@ -1,0 +1,50 @@
+-- command-sync 命令面板：⌥X 打开，输入搜索，回车复制命令
+local HOME = os.getenv("HOME")
+local BASE = os.getenv("COMMAND_SYNC_HOME") or (HOME .. "/.command-sync")
+local PALETTE = BASE .. "/palette.json"
+local SCRIPT = BASE .. "/bin/palette.py"
+local PY = "/usr/bin/python3"
+
+local chooser = hs.chooser.new(function(choice)
+  if not choice then return end
+  hs.pasteboard.setContents(choice.cmd)
+  hs.alert.show("已复制：" .. string.sub(choice.cmd, 1, 48), 1.2)
+end)
+chooser:placeholderText("搜索命令（回车复制到剪贴板）")
+chooser:width(46)
+chooser:rows(10)
+
+local function loadPalette()
+  local f = io.open(PALETTE, "r")
+  if not f then return {} end
+  local content = f:read("*a")
+  f:close()
+  local ok, data = pcall(function() return hs.json.decode(content) end)
+  if not ok or type(data) ~= "table" then return {} end
+  local choices = {}
+  for _, it in ipairs(data.items or {}) do
+    local prefix = "⌘ "
+    if it.kind == "server" then prefix = "🌐 "
+    elseif it.kind == "recent" then prefix = "🕘 " end
+    choices[#choices + 1] = {
+      text = prefix .. tostring(it.title),
+      subText = tostring(it.command),
+      cmd = tostring(it.command),
+    }
+  end
+  return choices
+end
+
+local function refreshAndShow()
+  hs.task.new(PY, function(code)
+    local choices = loadPalette()
+    if #choices == 0 then
+      hs.alert.show("没有命令数据（先跑 palette.py）")
+      return
+    end
+    chooser:choices(choices)
+    chooser:show()
+  end, {SCRIPT}):start()
+end
+
+hs.hotkey.bind({"alt"}, "x", refreshAndShow)
