@@ -73,6 +73,18 @@ capabilities:
     permissions: "需要操作者本机安装并授权 lark-cli（用户身份，具备目标文档的编辑权限）以完成飞书写入；复制与追问不需要任何额外权限。宿主侧仅注册一个同源本地接口 `/plugins/selection-toolbar/note`（POST），不开放外部网络监听"
     notes: "自研、Store-managed。首次登记：全新资产，从未进过版本控制，首次提交即其第一份历史（按 first-publish §0 ② 直接复制）。依赖 DSH 桌面端（提供 `shell.overlay` 槽位与插件安装与管理器）与 lark-cli 1.0.x；未配置 docToken 时注释只写本地并在界面回显原因。status 取 limited：不是装上即用，需按 README 创建一次操作者配置并重启 DSH。0.2.0 起可经 npm 分发：公开包名 `@lyra_wang/dsh-selection-toolbar`（0.2.0 与注册表版本一致），消费者在 DSH 插件页输入包名即可安装；npm 上的 `dsh-selection-toolbar`（无 scope）已被第三方占用，故使用作者 scope。0.2.0 同时把包名从开发期 `@local/selection-toolbar` 改为公开包名，并同步 client loader id（改名属破坏性变更，故 minor +1）。2026-10-19 实测证据：宿主路由 `GET /plugins/selection-toolbar/note` 返回 405（已加载）；飞书文档 revision 5 → 6 → 7 各追加一条；时间戳由 `<sub>` 改为纯文本北京时间后显示为 `时间：2026/10/19 02:11`。0.2.1（补丁）：把 `client.js` 的 locale 命名空间常量从遗留的 `@local/selection-toolbar` 统一为公开包名（此前 register/bind 用同一个值所以功能一直正常，属改名未清干净的痕迹；locale 注册只在进程内存在，修改不丢任何数据）；并在插件目录新增 `.gitignore`（`selection-toolbar.json` / `*.local.json` / `.env*` / `node_modules/`），防止任何人把含文档 token 的测试配置误提交——配置文件本身仍在仓库外的 `~/.dsh/selection-toolbar.json`。0.2.2（补丁）：`locale/zh.json` 与 `locale/en.json` 的 meta 描述仍写着已删除的「朗读 / read aloud」，插件页因此显示「复制 / 朗读 / 追问 / 注释」；本次改为「复制 / 追问 / 注释」，并同步修正英文描述。0.3.0（minor）：新增第 4 个动作「改写」——选中一段文字后可指定要求（润色 / 更简洁 / 小红书风 / 公众号风 / 自定义），宿主侧新增 `POST /plugins/selection-toolbar/rewrite`，用配置的模型（默认 deepseek-flash，OpenAI 兼容端点）只重写该段，结果可复制或插入输入框；API Key 从环境变量或系统钥匙串读取，不随包分发。为避免与「注释」冲突，改写结果第一版不直接替换只读消息的 DOM（留作后续）。0.3.1（补丁）：修复改写面板点击即消失——「点击面板外关闭」的判定只认工具条与注释面板，漏掉了改写面板的类名，导致点「小红书风」等按钮被当成点击外部而关闭面板；现补上 `-rw` 类名。"
 
+  command-sync:
+    name: command-sync
+    provider: lyrawang
+    type: cli
+    status: limited
+    provider_path: external-capabilities/providers/lyrawang/README.md
+    version: 0.1.3
+    implementation_path: external-capabilities/cli/command-sync
+    auth: "无凭据入仓。配置放 `~/.command-sync/config.json`（600）：history 路径、sshHost/sshUser、serverPaths；运行数据（历史快照、文档、报告）也都在 `~/.command-sync/`。仓库内只有 config.example.json 模板"
+    capabilities: "把终端里手动输入的命令做成快捷键面板：Hammerspoon 绑定 ⌥X → 两块候选（服务器入口 3 条 / 最近 7 天用得最多的 5 条本地命令）→ 选中复制到剪贴板。只读 zsh 历史，不执行任何命令"
+    permissions: "需要 Python3（系统自带）与 Hammerspoon（免费开源、Apple 公证签名）作为面板宿主；Hammerspoon 需要一次性「辅助功能」授权。面板只读本机 zsh 历史；服务器入口只是生成 ssh 命令文本，不主动连接"
+    notes: "自研、Store-managed。从 `~/command-sync` 迁入 Store 并参数化：脚本装到 `~/.command-sync/bin/`，数据与配置留在 `~/.command-sync/`，仓库不含任何个人主机/路径。面板只复制不执行（npm publish/ssh 等需人工确认）。数据源只含用户手动输入的命令，不含 AI 执行的命令。历史准确性依赖 zsh 的 INC_APPEND_HISTORY + EXTENDED_HISTORY（README 有说明）。0.1.3：移除月度巡检脚本（scan.py/run-check.sh）——巡检由另一个项目负责，本资产只做命令面板。"
   ai-quote-clip:
     name: ai-quote-clip
     provider: lyrawang
