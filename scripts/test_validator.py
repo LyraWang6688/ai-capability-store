@@ -83,6 +83,13 @@ MUTATIONS = {
     "allowed-tools-multiline-block": _append_frontmatter("allowed-tools: |\n  Read\n  Write"),
     "allowed-tools-empty": _append_frontmatter('allowed-tools: ""'),
     "allowed-tools-space-separated": _append_frontmatter("allowed-tools: Read Write Bash"),
+    # external_trigger — shape added in this change
+    "external-trigger-missing": lambda t: t.replace(
+        "automations/investdesk-quote-sync/deploy/server-trigger.cron",
+        "automations/investdesk-quote-sync/deploy/nope.cron", 1),
+    "external-trigger-outside": lambda t: t.replace(
+        "automations/investdesk-quote-sync/deploy/server-trigger.cron",
+        "README.md", 1),
     # whitelist
     "unknown-field": _append_frontmatter("version: 9.9.9"),
     "duplicate-key": _duplicate_key,
@@ -108,6 +115,12 @@ CASES = [
     ("allowed-tools space-separated passes", 0, SKILL_MD, "allowed-tools-space-separated"),
     ("unknown frontmatter field is rejected", 1, SKILL_MD, "unknown-field"),
     ("duplicate frontmatter key is rejected", 1, SKILL_MD, "duplicate-key"),
+    # external_trigger: the field is a claim about who fires the clock, and
+    # the validator only accepts it with evidence on disk.
+    ("external_trigger pointing at a missing file is rejected", 1,
+     AUTOMATION_REGISTRY, "external-trigger-missing"),
+    ("external_trigger outside its own directory is rejected", 1,
+     AUTOMATION_REGISTRY, "external-trigger-outside"),
 ]
 
 # The first case is the baseline: untouched, so it must pass.

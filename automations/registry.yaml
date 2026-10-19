@@ -177,6 +177,10 @@ automations:
     trigger_kind: daily
     executor: github-actions
     workflow: .github/workflows/automation-investdesk-quote-sync.yml
+    # 谁敲钟。GitHub 的 schedule 在本仓库实测延迟 4-5 小时，对「必须赶在次日
+    # 09:00 消费前落地」的任务太晚；改由自建服务器的 crontab 准点调
+    # workflow_dispatch，workflow 自身的 cron 已移除。
+    external_trigger: automations/investdesk-quote-sync/deploy/server-trigger.cron
     output:
       target: external-system
       destination: "飞书多维表格：持仓价格表"

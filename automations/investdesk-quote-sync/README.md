@@ -14,14 +14,27 @@ MCP 能力包 `investdesk-quotes` 已按架构调整移除——那个 MCP 形�
 
 ## 触发
 
-`executor: github-actions`，周一至周五两次（北京时间）：
+`executor: github-actions`，`trigger_kind: daily`，weekday 20:00（北京时间）。
 
-| 时间 | 目的 |
-|---|---|
-| 20:00 | 每天一次。场内收盘价已定，场外基金净值开始公布（QDII 更晚，属正常） |
+**但钟不在 GitHub 上。** GitHub 的 `schedule` 在本仓库实测延迟 4-5 小时（workflow 里原来
+记着 "QUEUED FOR 4h14m"），而这个任务必须赶在次日 09:00 的消费方之前落地。所以：
 
-具体时间只写在 `deploy/com.investdesk.quotes.plist.template` 里，registry 只记 `trigger_kind: daily`，
-避免同一份 cron 存在两处而漂移。
+```text
+自建服务器 crontab（准点 20:00）
+   → POST /actions/workflows/automation-investdesk-quote-sync.yml/dispatches
+   → GitHub 立刻创建 run（手动触发的 run 不走调度队列）
+   → 在 GitHub 的 runner 上执行（凭据仍是 GitHub Secrets）
+```
+
+```text
+工作流里       只有 workflow_dispatch（schedule 已移除）
+registry       外部钟由 external_trigger 指向下面那个 cron 描述
+准点来源       deploy/server-trigger.cron（{{HOUR}} 按服务器时区换算）
+安装与运维     deploy/SERVER-TRIGGER.md
+```
+
+**代价：没有兜底。** 服务器挂了或令牌过期，当天就不跑。要把保险加回来，在 workflow 里加一段
+低频 `schedule`（例如每周一次）即可 —— 它只会重复一次幂等写入。
 
 ## 输入
 

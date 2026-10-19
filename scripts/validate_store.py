@@ -763,6 +763,36 @@ def validate_automation_entries(reg: dict):
                               f"<string>{label}</string>" in plist_body,
                               f"{template} does not declare Label {label!r}")
 
+        # `external_trigger`: a file in this repository that shows what fires this
+        # automation from outside the workflow — a server crontab, a systemd timer.
+        #
+        # Why it exists. The Automation Domain assumed GitHub was the only clock, so
+        # `trigger_kind != manual` implied "the bound workflow declares a cron". GitHub's
+        # scheduler turned out to fire 4-5 hours late in this repository, which for a job
+        # that must land before a 09:00 consumer is the difference between today's data
+        # and yesterday's. A server crontab calling `workflow_dispatch` fixes the timing,
+        # and the workflow's own cron can then go away — but `manual` would be a lie:
+        # nothing human triggers it.
+        #
+        # The field is a path, it must exist, and it must live inside the automation's
+        # own directory. "Something else fires this" is an assertion; a file is evidence.
+        external_trigger = entry.get("external_trigger")
+        if external_trigger is not None:
+            check(f"automation {key} external_trigger is a string",
+                  isinstance(external_trigger, str) and bool(external_trigger.strip()),
+                  repr(external_trigger)[:60])
+            if isinstance(external_trigger, str) and external_trigger.strip():
+                ext = external_trigger
+                ext_parts = ext.split("/")
+                check(f"automation {key} external_trigger relative",
+                      not os.path.isabs(ext) and ".." not in ext_parts, ext)
+                if isinstance(path, str) and path:
+                    check(f"automation {key} external_trigger under its directory",
+                          ext.startswith(path.rstrip("/") + "/"),
+                          f"{ext} is outside {path}")
+                check(f"automation {key} external_trigger exists",
+                      os.path.isfile(os.path.join(ROOT, ext)), ext)
+
         # workflow must live under .github/workflows/ and exist.
         workflow = entry.get("workflow")
         if isinstance(workflow, str) and workflow:
@@ -780,7 +810,12 @@ def validate_automation_entries(reg: dict):
                 # special-casing for the very block we care about.
                 with open(workflow_file, encoding="utf-8") as handle:
                     body = handle.read()
-                if trigger != "manual":
+                # A time-triggered automation must have *something* that fires it.
+                # That used to mean only "the workflow declares a cron"; with
+                # `external_trigger` it can also mean "a descriptor in this
+                # repository shows the external clock". Either satisfies the
+                # original concern: no job that silently nothing starts.
+                if trigger != "manual" and not external_trigger:
                     check(f"automation {key} workflow declares schedule:",
                           "schedule:" in body,
                           f"{workflow} has no schedule: block but trigger_kind={trigger!r}")
