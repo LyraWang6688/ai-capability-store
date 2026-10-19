@@ -45,10 +45,10 @@ def gh(path, raw=False):
         return None
 
 
-def exists(repo, path):
-    r = subprocess.run(["gh", "api", f"repos/{repo}/contents/{path}"],
-                       capture_output=True, text=True)
-    return r.returncode == 0
+def list_tree(repo, branch):
+    """一次拿到整个仓库的文件路径集合，避免为每个文件单独发一次请求。"""
+    d = gh(f"repos/{repo}/git/trees/{branch}?recursive=1") or {}
+    return {x.get("path") for x in (d.get("tree") or [])}
 
 
 def audit(repo):
@@ -63,35 +63,34 @@ def audit(repo):
     rulesets = gh(f"repos/{repo}/rulesets")
     bp = gh(f"repos/{repo}/branches/main/protection") or {}
     wfperm = gh(f"repos/{repo}/actions/permissions/workflow") or {}
-    workflows = gh(f"repos/{repo}/contents/.github/workflows") or []
     tags = gh(f"repos/{repo}/tags") or []
     releases = gh(f"repos/{repo}/releases") or []
     cs_alerts = gh(f"repos/{repo}/code-scanning/alerts?state=open")
+    tree = list_tree(repo, d.get("default_branch") or "main")
 
-    has_wf = isinstance(workflows, list) and any(
-        w.get("name", "").endswith((".yml", ".yaml")) for w in workflows
-    )
+    has_wf = any(x.startswith(".github/workflows/") and x.endswith((".yml", ".yaml"))
+                 for x in tree)
 
     res = {}
     res["A1"] = (sec.get("secret_scanning") or {}).get("status") == "enabled"
     res["A2"] = (sec.get("secret_scanning_push_protection") or {}).get("status") == "enabled"
     res["A3"] = (sec.get("dependabot_security_updates") or {}).get("status") == "enabled"
     res["A5"] = cs.get("state") == "configured"
-    res["A6"] = exists(repo, "SECURITY.md") or exists(repo, ".github/SECURITY.md")
+    res["A6"] = "SECURITY.md" in tree or ".github/SECURITY.md" in tree
     res["A7"] = wfperm.get("default_workflow_permissions") == "read"
     res["B1"] = bool(d.get("delete_branch_on_merge"))
     res["B2"] = (isinstance(rulesets, list) and len(rulesets) > 0) or bool(bp)
     rsc = (bp.get("required_status_checks") or {})
     rsc_contexts = rsc.get("contexts") if isinstance(rsc, dict) else None
     res["B3"] = bool(rsc_contexts)
-    res["B4"] = bool(exists(repo, ".github/CODEOWNERS") or exists(repo, "CODEOWNERS"))
+    res["B4"] = bool(".github/CODEOWNERS" in tree or "CODEOWNERS" in tree)
     res["B5"] = bool(d.get("allow_auto_merge"))
     res["B6"] = bool((bp.get("required_conversation_resolution") or {}).get("enabled"))
     res["C1"] = has_wf
-    res["D1"] = exists(repo, ".github/pull_request_template.md")
-    res["D3"] = exists(repo, ".github/CODEOWNERS") or exists(repo, "CODEOWNERS")
+    res["D1"] = ".github/pull_request_template.md" in tree
+    res["D3"] = ".github/CODEOWNERS" in tree or "CODEOWNERS" in tree
     res["E2"] = (len(tags) > 0) if isinstance(tags, list) else False
-    res["E3"] = exists(repo, ".github/dependabot.yml")
+    res["E3"] = ".github/dependabot.yml" in tree
 
     extra = {
         "codeql_alerts": len(cs_alerts) if isinstance(cs_alerts, list) else None,
