@@ -225,7 +225,8 @@ def collect(warnings: list[str]) -> tuple[dict[str, dict], int]:
             for item in parse_trending(period):
                 existing = merged.get(item["repo"])
                 if existing:
-                    existing["trend_gain"] = max(
+                    # _max_gain, not max(): one source may report None
+                    existing["trend_gain"] = _max_gain(
                         existing["trend_gain"], item["trend_gain"]
                     )
                     existing["source"] = "trending-daily+weekly"
