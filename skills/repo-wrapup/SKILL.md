@@ -36,24 +36,34 @@ compatibility: "需要 bash 与 git；gh 可选（有 gh 才能统计未关闭 P
 | 指标 | 含义 | 干净 |
 |---|---|---|
 | `EXTRA_WORKTREES` | 主工作区之外的 worktree | 0 |
-| `LOCAL_MERGED_NOT_DELETED` | 已合并进 base 但本地还在的分支 | 0 |
-| `REMOTE_MERGED_NOT_DELETED` | 已合并进 base 但远端还在的分支 | 0 |
+| `LOCAL_MERGED_NOT_DELETED` | 已确认合并但本地还在的分支 | 0 |
+| `REMOTE_MERGED_NOT_DELETED` | 已确认合并但远端还在的分支 | 0 |
 | `BRANCHES_WITH_UNPUSHED` | 含未推送提交的分支 | 0 |
+| **`UNKNOWN`** | **判不了的分支**（既非已合并、也非未推送、也无 open PR） | **0** |
 | `OPEN_PRS` | 未关闭的 PR | 0（或全部在等合并且未超 3 天） |
 | `UNCOMMITTED_CHANGES` | 未提交改动 | 0 |
 
-`CLEAN=yes` 当且仅当前五项为 0 且无未提交改动。
+`CLEAN=yes` 当且仅当**全部为 0（含 UNKNOWN）**且无未提交改动。
+
+> ⚠️ **「已合并」是双判据**：base 的祖先 **或** 对应 PR 状态为 `MERGED`。
+> 因为 **`git branch --merged` 看不见 squash 合并**——squash 重写了提交，
+> 分支 HEAD 不再是 base 的祖先。只看祖先关系会**系统性漏报，且表现为「报告说干净」**。
 
 ## 安全边界（先看这段再动手）
 
-`safe_cleanup.sh` 只删**同时满足三条**的分支：
+`safe_cleanup.sh` 只删**同时满足全部条件**的分支：
 
-1. 已推送（无未推送提交）
-2. 已合并进 base
-3. 不是当前分支，也没有被任何 worktree 占用
+1. 已确认合并（双判据）
+2. 无未推送提交
+3. **没有 open PR**
+4. 不是当前分支 / main / master
+5. 没有被任何 worktree 占用
 
 **任一不满足 → 跳过，只报告。**详见 [references/safety-contract.md](references/safety-contract.md)。
 
+> **判不了的一律进 `UNKNOWN`，只报告不删。**
+> **沉默的零 ≠ 确认的零**——工具看不到的东西必须显式出现，不得因为「我没有依据」就当「没有」。
+>
 > ⚠️ **worktree 一律不自动删除。**它可能正被另一个 agent 使用，误删不可逆。
 
 ## 收尾报告（交付时必须附）
