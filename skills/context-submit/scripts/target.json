@@ -1,0 +1,25 @@
+{
+  "_comment": [
+    "Machine contract for context-submit. Single source of truth for table coords,",
+    "field ids, and allowed enum values. Scripts read it; never hardcode."
+  ],
+  "base_token": "ZNjDb9TrpalLuCsw0macCeVdnld",
+  "table_id": "tblPOVjILsGdG9Uw",
+  "table_name": "投递箱",
+  "identity": "user",
+  "fields": {
+    "内容": "fldWTmEU9C",
+    "类型": "fldxMzrdTW",
+    "状态": "fldvlTFbep",
+    "关联准则": "fldESiwtwk",
+    "来源项目": "fldNjO222u",
+    "来源会话": "fldjSXIYBt"
+  },
+  "type_options": ["踩坑", "经验", "集成", "偏好", "事实", "规则"],
+  "tech_types": ["踩坑", "经验", "集成"],
+  "cognitive_types": ["偏好", "事实", "规则"],
+  "status_options": ["待提炼", "已提炼", "已归档"],
+  "default_status": "待提炼",
+  "min_content_len": 80,
+  "max_content_len": 2000
+}

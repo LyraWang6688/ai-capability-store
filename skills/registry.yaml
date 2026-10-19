@@ -101,6 +101,19 @@ skills:
       Still `testing`: 0.2.x cannot be `active` — VERSIONING.md §4 requires
       major >= 1 — and no trigger harness exists yet.
 
+  context-submit:
+    name: context-submit
+    path: skills/context-submit
+    scope: shared
+    status: testing
+    version: 0.1.0
+    updated: "2026-10-19"
+    notes: >
+      Agent Context Architecture 的唯一输入口。实干 agent 把观察到的、值得长期沉淀的
+      东西（踩坑 / 经验 / 集成知识 / 用户偏好 / 需要记住的事实 / 规则候选）按统一模板
+      结构化后投入飞书「投递箱」表。核心纪律：投递者只报告观察、不负责归类——
+      归类与抽象由维护者做。含门禁 validate_entry.py（结构不合格不许写）与
+      check_similar.py（报告相似条目，但不阻断——重复本身是共性的证据）。
 allowed_statuses:
   - draft
   - testing
