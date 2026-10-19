@@ -46,8 +46,23 @@ compatibility: "需要 gh CLI 且已登录；需要网络。不需要 MCP。私�
         → Settings → Code security → Push protection（真 Hook，服务端拦截）
 ...
 未关闭 CodeQL 告警: 30
-得分: 12/17
+结果: PASS 12 · FAIL 5 · UNKNOWN 0
 ```
+
+## 结果三态：PASS / FAIL / UNKNOWN
+
+| 结果 | 含义 | 该怎么反应 |
+|---|---|---|
+| `✓ PASS` | 确实开着 | 无需动作 |
+| `✗ FAIL` | 确实关着 | 按提示去开 |
+| `? UNKNOWN` | **查不到 —— 不代表没开** | **先别改**，查权限/API |
+
+> **为什么要区分**：这份报告的全部价值是「不用自己去核」。
+> 一旦某条 FAIL 其实是查不到，读者就不再信任剩下的条目。
+
+对应地，`repo-wrapup` 那边的问题是反过来的——它**看不见就报干净**（安抚性错误，危险）；
+这边**看不见就报 FAIL**（告警性错误，安全但会让人白改）。
+两个都缺 UNKNOWN，这次一起补上。
 
 ## 最容易出事的点
 
@@ -55,6 +70,7 @@ compatibility: "需要 gh CLI 且已登录；需要网络。不需要 MCP。私�
 |---|---|---|
 | 给**没有 CI** 的仓库开 required check | **合并被锁死** | 先建 CI，再开 check |
 | 把「CodeQL 未启用」判错 | 漏判 | CodeQL 的 **Default setup 不生成 workflow 文件**，必须查 `code-scanning/default-setup` 接口 |
+| **硬编码 `main` 查分支保护** | 默认分支不是 main 的仓库 → **假 FAIL** | 用 `repos/{repo}.default_branch`，不要写死 `main` |
 | 只看 `.github/workflows/` | 以为所有功能都没开 | 功能状态要查**状态接口**，不是查配置文件 |
 | 开了扫描就以为安全 | 告警堆积无人看 | **扫描是发现，triage 才是安全** |
 

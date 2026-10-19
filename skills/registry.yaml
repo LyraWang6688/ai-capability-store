@@ -133,7 +133,7 @@ skills:
     path: skills/repo-baseline
     scope: shared
     status: testing
-    version: 0.1.0
+    version: 0.1.1
     updated: "2026-10-19"
     notes: >
       GitHub 公开项目基线审计。17 项分五组（安全 / 合并纪律 / CI / 可维护 / 可扩展），
