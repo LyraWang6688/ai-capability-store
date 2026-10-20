@@ -21,6 +21,10 @@ standard nobody can defend is just a list of opinions:
         D4 llms.txt     llmstxt.org; both exemplar repos (android/skills,
                         morluto/rea) ship one.
         D5 AGENTS.md    the convention agent tooling already reads.
+        D6 dsh badge    attribution + ecosystem traceability, NOT a ranking
+                        factor: the badge is an <img>, and GitHub indexes README
+                        text, not image contents. Do not expect the score to
+                        move traffic.
 
     T3  needs a 14-day window (GitHub traffic retention)
         D6 traffic      captured separately by `--baseline`; compare later.
@@ -50,6 +54,7 @@ OPENING_MARKERS = (
     ("怎么开始", "get started", "quick start", "quickstart", "install", "usage"),
 )
 
+BADGE_MARKERS = ("powered_by-dsh", "powered-by-dsh")
 MIN_TOPICS = 5
 DESC_MIN, DESC_MAX = 20, 200
 
@@ -96,8 +101,8 @@ def audit(repo: str) -> dict:
 
     items = []
 
-    def add(code, title, ok, detail, fix):
-        items.append({"code": code, "title": title,
+    def add(code, title, ok, detail, fix, tier="T1"):
+        items.append({"code": code, "title": title, "tier": tier,
                       "status": "PASS" if ok else "FAIL",
                       "detail": detail, "fix": "" if ok else fix})
 
@@ -117,10 +122,15 @@ def audit(repo: str) -> dict:
         "在标题下插入三行摘要；README 是 GitHub 搜索最大的可索引面")
 
     add("D4", "llms.txt", _has_file(repo, "llms.txt"), "",
-        "新增 llms.txt：给 agent 的机器可读索引（项目是什么 / 核心文档在哪）")
+        "新增 llms.txt：给 agent 的机器可读索引（项目是什么 / 核心文档在哪）", tier="T2")
 
     add("D5", "AGENTS.md", _has_file(repo, "AGENTS.md"), "",
-        "新增 AGENTS.md：agent 进入仓库后先读的规则文件")
+        "新增 AGENTS.md：agent 进入仓库后先读的规则文件", tier="T2")
+
+    badge = any(marker in readme.lower() for marker in BADGE_MARKERS)
+    add("D6", "DSH badge", badge, "",
+        "README 末尾加 powered-by-dsh 徽章；作用是署名和生态可追溯，"
+        "**不影响搜索排名**（图片不被 in:readme 索引为文本）", tier="T2")
 
     score = sum(1 for i in items if i["status"] == "PASS")
     return {"repo": repo, "archived": archived, "score": score,
@@ -132,7 +142,8 @@ def print_report(result: dict) -> None:
     print(f"\n{'=' * 60}\n{result['repo']}{tag}\n{'=' * 60}")
     for item in result["items"]:
         mark = "✓" if item["status"] == "PASS" else "✗"
-        line = f"  {mark} {item['code']}  {item['title']}"
+        tier = item.get("tier", "")
+        line = f"  {mark} {item['code']}  {item['title']}" + (f"  [{tier}]" if tier == "T2" else "")
         if item["detail"]:
             line += f"  —  {item['detail']}"
         print(line)

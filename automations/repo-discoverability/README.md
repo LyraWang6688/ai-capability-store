@@ -49,12 +49,26 @@ repo clone 1,730 次 / 331 个独立来源
 |---|---|---|
 | D4 | `llms.txt` | [llmstxt.org](https://llmstxt.org) 约定；两个范例仓库都有。给 agent 一个机器可读的入口索引 |
 | D5 | `AGENTS.md` | agent 工具（Claude Code / Codex 等）通用约定；进入仓库后先读的就是它 |
+| D6 | `powered by dsh` 徽章 | 署名 + 生态可追溯性。**明确不是搜索因素** —— 见下面的警告 |
+
+> **关于 D6 的警告（写在这里防止以后被误当成优化手段）**
+>
+> 徽章是一个 `<img>` 标签。GitHub 的 `in:readme` 索引的是**文本**，不是图片内容。
+> 所以加徽章**不会提高任何搜索排名**，也不影响 D1/D2/D3 的索引效果。
+>
+> 它的价值只有两个：① 署名这个项目是用 DSH 做的；② 读到你 README 的人/agent 能顺着链接回到 DSH。
+> **不要因为它加了就以为分数会涨。** 2026-10-20 首次检查时 13/13 个仓库都没有它，
+> 补上是「补齐署名」，不是「提升排名」。
+
+```markdown
+[![](https://img.shields.io/badge/powered_by-dsh-4D6BFE?style=flat-square&logo=deepseek&logoColor=white)](https://github.com/deepseek-ai/deepseek-harness)
+```
 
 ### T3 · 需要时间窗 —— 已建基线
 
 | # | 项 | 做法 |
 |---|---|---|
-| D6 | traffic | GitHub 的 traffic API 只保留 **14 天**，超期由服务端删除，要也要不回来。所以基线必须自己存：`traffic_baseline.py --record` 写 `~/.automation-state/repo-discoverability/traffic.json`，14 天后 `--compare` 出增量 |
+| D7 | traffic | GitHub 的 traffic API 只保留 **14 天**，超期由服务端删除，要也要不回来。所以基线必须自己存：`traffic_baseline.py --record` 写 `~/.automation-state/repo-discoverability/traffic.json`，14 天后 `--compare` 出增量 |
 
 **2026-10-20 记录的基线（14 天窗口）**：
 
