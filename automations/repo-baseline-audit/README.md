@@ -1,6 +1,6 @@
 # repo-baseline-audit
 
-**每周一自动体检你名下所有公开 GitHub 仓库的「公开项目基线」。**
+**每周一自动体检你名下所有公开 GitHub 仓库的「公开项目基线」（默认跳过已归档与 fork）。**
 
 审计 17 项（安全 / 合并纪律 / CI / 可维护 / 可扩展），每项给 PASS / FAIL / UNKNOWN，
 结果写入飞书 Base「仓库基线体检」表：一行一个仓库（PASS/FAIL/UNKNOWN 计数 + 不合格项清单）。
@@ -44,6 +44,15 @@ GH_TOKEN=... python3 run_audit.py --owner LyraWang6688
 | `GH_AUDIT_TOKEN` | 有 admin 读权限的 PAT（读分支保护/安全设置；用 GITHUB_TOKEN 会大量 UNKNOWN） |
 | `FEISHU_APP_ID` / `FEISHU_APP_SECRET` | 飞书应用身份（需是该 Base 的可编辑协作者） |
 | `BASELINE_CONFIG_JSON` | `{"base_token":"...","table_id":"..."}` |
+
+## 跳过已归档 / fork
+
+已归档仓库是"主动冻结"的，审计它们只会产生大量无意义 FAIL；fork 同理。
+默认跳过，需要时显式纳入：
+
+```bash
+python3 run_audit.py --owner X --include-archived --include-forks
+```
 
 ## 已知边界
 

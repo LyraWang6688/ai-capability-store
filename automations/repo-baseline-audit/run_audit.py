@@ -65,15 +65,28 @@ def load_config():
     return cfg
 
 
-def list_public_repos(owner):
+def list_public_repos(owner, include_archived=False, include_forks=False):
+    """公开仓库；默认跳过已归档和 fork（它们不再维护，审计只会制造噪音）。"""
     result = subprocess.run(
         ["gh", "api", f"users/{owner}/repos?per_page=100&type=owner", "--paginate",
-         "--jq", ".[] | select(.private == false) | .full_name"],
+         "--jq", '.[] | [.full_name, (.private|tostring), (.archived|tostring), (.fork|tostring)] | @tsv'],
         capture_output=True, text=True, timeout=120,
     )
     if result.returncode != 0:
         raise SystemExit("列举仓库失败：" + (result.stderr or result.stdout)[:300])
-    names = [line.strip() for line in (result.stdout or "").splitlines() if line.strip()]
+    names = []
+    for line in (result.stdout or "").splitlines():
+        parts = line.split("\t")
+        if len(parts) != 4:
+            continue
+        full_name, private, archived, fork = parts
+        if private == "true":
+            continue
+        if archived == "true" and not include_archived:
+            continue
+        if fork == "true" and not include_forks:
+            continue
+        names.append(full_name)
     return sorted(set(names))
 
 
@@ -130,10 +143,12 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--owner", default="LyraWang6688")
     parser.add_argument("--limit", type=int, default=0)
+    parser.add_argument("--include-archived", action="store_true", help="把已归档仓库也纳入审计")
+    parser.add_argument("--include-forks", action="store_true", help="把 fork 仓库也纳入审计")
     parser.add_argument("--dry-run", default=os.environ.get("DRY_RUN", "").lower() in ("1", "true", "yes"))
     args = parser.parse_args()
 
-    repos = list_public_repos(args.owner)
+    repos = list_public_repos(args.owner, args.include_archived, args.include_forks)
     if args.limit:
         repos = repos[:args.limit]
     print(f"公开仓库：{len(repos)} 个", file=sys.stderr)
