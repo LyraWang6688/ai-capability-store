@@ -17,7 +17,7 @@ const DEFAULT_BASE_URL = FEISHU_BASE_URL;
 export interface NotifyOptions {
   appId: string;
   appSecret: string;
-  userId: string; // 接收人 open_id
+  chatId: string; // 接收单聊 chat_id（王颖↔万能助手），open_id 按应用隔离故用 chat_id
   baseUrl?: string;
 }
 
@@ -47,14 +47,14 @@ export async function sendNotifyMessage(
   const baseUrl = options.baseUrl ?? DEFAULT_BASE_URL;
   const token = await getTenantToken(options.appId, options.appSecret, baseUrl);
 
-  const response = await fetch(`${baseUrl}/open-apis/im/v1/messages?receive_id_type=open_id`, {
+  const response = await fetch(`${baseUrl}/open-apis/im/v1/messages?receive_id_type=chat_id`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${token}`,
       'Content-Type': 'application/json; charset=utf-8',
     },
     body: JSON.stringify({
-      receive_id: options.userId,
+      receive_id: options.chatId,
       msg_type: 'text',
       content: JSON.stringify({ text }),
     }),
