@@ -65,29 +65,32 @@ def load_config():
     return cfg
 
 
-def list_public_repos(owner, include_archived=False, include_forks=False):
-    """公开仓库；默认跳过已归档和 fork（它们不再维护，审计只会制造噪音）。"""
+def list_public_repos(owner, include_archived=False, include_forks=False, public_only=False):
+    """名下仓库（公开+私有）；默认跳过已归档和 fork。
+
+    用 `gh repo list`（登录态）而不是 `users/<owner>/repos`（后者只返回公开仓库）。
+    """
     result = subprocess.run(
-        ["gh", "api", f"users/{owner}/repos?per_page=100&type=owner", "--paginate",
-         "--jq", '.[] | [.full_name, (.private|tostring), (.archived|tostring), (.fork|tostring)] | @tsv'],
+        ["gh", "repo", "list", owner, "--limit", "200",
+         "--json", "nameWithOwner,isPrivate,isArchived,isFork"],
         capture_output=True, text=True, timeout=120,
     )
     if result.returncode != 0:
         raise SystemExit("列举仓库失败：" + (result.stderr or result.stdout)[:300])
+    try:
+        repos = json.loads(result.stdout or "[]")
+    except json.JSONDecodeError:
+        raise SystemExit("解析仓库列表失败")
     names = []
-    for line in (result.stdout or "").splitlines():
-        parts = line.split("\t")
-        if len(parts) != 4:
+    for repo in repos:
+        if repo.get("isArchived") and not include_archived:
             continue
-        full_name, private, archived, fork = parts
-        if private == "true":
+        if repo.get("isFork") and not include_forks:
             continue
-        if archived == "true" and not include_archived:
+        if public_only and repo.get("isPrivate"):
             continue
-        if fork == "true" and not include_forks:
-            continue
-        names.append(full_name)
-    return sorted(set(names))
+        names.append(repo.get("nameWithOwner"))
+    return sorted({name for name in names if name})
 
 
 def failing_text(res):
@@ -108,6 +111,7 @@ def audit_repo(repo):
         counts[state] = counts.get(state, 0) + 1
     return {
         "repo": repo,
+        "visibility": "私有" if (isinstance(extra, dict) and extra.get("private")) else "公开",
         "pass": counts[ab.PASS],
         "fail": counts[ab.FAIL],
         "unknown": counts[ab.UNKNOWN],
@@ -123,6 +127,7 @@ def write_rows(cfg, rows, dry_run):
     today = datetime.now(timezone(timedelta(hours=8))).date().isoformat()
     records = [{
         "仓库": row["repo"],
+        "可见性": [row.get("visibility") or "公开"],
         "检查日期": today,
         "PASS": row["pass"],
         "FAIL": row["fail"],
@@ -145,10 +150,11 @@ def main():
     parser.add_argument("--limit", type=int, default=0)
     parser.add_argument("--include-archived", action="store_true", help="把已归档仓库也纳入审计")
     parser.add_argument("--include-forks", action="store_true", help="把 fork 仓库也纳入审计")
+    parser.add_argument("--public-only", action="store_true", help="只审计公开仓库")
     parser.add_argument("--dry-run", default=os.environ.get("DRY_RUN", "").lower() in ("1", "true", "yes"))
     args = parser.parse_args()
 
-    repos = list_public_repos(args.owner, args.include_archived, args.include_forks)
+    repos = list_public_repos(args.owner, args.include_archived, args.include_forks, args.public_only)
     if args.limit:
         repos = repos[:args.limit]
     print(f"公开仓库：{len(repos)} 个", file=sys.stderr)
