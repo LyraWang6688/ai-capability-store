@@ -103,6 +103,7 @@ run_init() {
 
 MC_MO_BIN=\"${mo}\"
 MC_LABEL=\"${user_label}\"
+MC_SCHEDULE_DAY=\"1\"
 MC_REPORT_DIR=\"\${HOME}/Library/Logs/mac-cleanup\"
 
 # DSH 运行时目录（--init 探测）。空 = 不做 DSH 相关检查。
@@ -130,6 +131,12 @@ MC_DSH_HOME=\"$([ -d "${HOME}/.dsh" ] && printf '%s' "${HOME}/.dsh")\"
       printf '%s\n' "${dsh_runtime}" | sed "s|${HOME}|~|"
       echo
     fi
+    echo "# ── 本工具自己的目录 ──"
+    echo "# Mole 会清理 ~/Library/Logs/*，不保护就会在清理过程中删掉自己的运行产物"
+    echo "# （clean.txt / verify.txt / health.txt），报告里"核对"栏于是永远是空的。"
+    printf '%s\n' "${MC_REPORT_DIR}" | sed "s|${HOME}|~|"
+    printf '%s\n' "${MC_STATE_DIR}" | sed "s|${HOME}|~|"
+    echo
     if [ -n "${live}" ]; then
       echo "# ── 你原有的白名单条目（并入基准）──"
       grep -vE '^\s*(#|$)' "${live}" | sed 's/[[:space:]]*$//'
@@ -229,6 +236,25 @@ MC_DSH_HOME=\"$([ -d "${HOME}/.dsh" ] && printf '%s' "${HOME}/.dsh")\"
   else
     echo "· 三个清单文件均已存在，全部跳过（要重建加 --force）"
     skipped=$((skipped + 3))
+  fi
+
+  # 把工具自己的目录并入 Mole 的实际白名单 —— 只加保护，不改其它条目
+  if [ -f "${MC_MOLE_WHITELIST}" ]; then
+    local added=0 p
+    for p in "${MC_REPORT_DIR}" "${MC_STATE_DIR}"; do
+      if ! grep -Fqx "${p}" "${MC_MOLE_WHITELIST}" &&
+         ! grep -Fqx "$(printf '%s' "${p}" | sed "s|${HOME}|~|")" "${MC_MOLE_WHITELIST}"; then
+        printf '%s\n' "${p}" >> "${MC_MOLE_WHITELIST}"
+        added=$((added + 1))
+      fi
+    done
+    if [ "${added}" -gt 0 ]; then
+      echo "✓ 已把工具自己的目录加入 Mole 白名单（+${added} 条：报告目录 / 状态目录）"
+    else
+      echo "· 工具自己的目录已在 Mole 白名单里"
+    fi
+  else
+    echo "· 还没有 ~/.config/mole/whitelist —— 无法自动保护（guard 会提示先建好）"
   fi
 
   echo

@@ -170,11 +170,14 @@ if [ "${MODE}" = "check" ]; then
   HEALTH_STATUS="$(grep -E '^VERDICT:' "${HEALTH_OUT}" | cut -d: -f2- | sed 's/^ //')"
   grep -E '^(OK|BROKEN|MISSING|SKIP|ABSENT|VERDICT)' "${HEALTH_OUT}" | sed 's/^/   /'
 
-  write_report "${REPORT_FILE}" "${QUARTER}" "${STAMP}" \
+  # 预览报告单独命名 —— 否则同季度内一次 --check 就会覆盖真实清理的记录
+  CHECK_REPORT="${MC_REPORT_DIR}/${QUARTER}-check-${STAMP}.md"
+  write_report "${CHECK_REPORT}" "${QUARTER}" "${STAMP}" \
     "CHECK-ONLY" "${FREE_BEFORE_KB}" "${FREE_BEFORE_KB}" \
     "${GUARD_STATUS}" "${DRY_TOTAL}" "未执行清理（--check）" "${RUN_DIR}" \
     "未执行（--check 不清理，没有日志可比）" "${HEALTH_STATUS}"
-  log "报告：${REPORT_FILE}"
+  log "预览报告：${CHECK_REPORT}"
+  log "  （真实清理的报告是 ${REPORT_FILE}，预览不会覆盖它）"
   [ "${HEALTH_STATUS}" = "BROKEN" ] && warn "关键资产体检 BROKEN —— 看 ${HEALTH_OUT}"
   exit 0
 fi

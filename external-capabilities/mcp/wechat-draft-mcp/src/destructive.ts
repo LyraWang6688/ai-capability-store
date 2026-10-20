@@ -61,10 +61,23 @@ export function assertConfirmed(
 ): void {
   const expected = confirmationTokenFor(targetId);
   if (expected && (confirm ?? "").trim() === expected) return;
+    // Neither the expected value nor the target ID is echoed.
+    //
+    // The old message printed `（目标 X → 应为 Y）`, so one failed call returned the answer
+    // and the retry passed — a "prove you looked at the target" gate reduced to a "call
+    // twice" gate. The first attempt at fixing that stopped printing the expected value
+    // but kept printing the target ID ... which is the same leak, because the token *is*
+    // the last six characters of the target ID. A test caught it. Both are gone now.
+    //
+    // Be clear about what this gate is worth: the caller supplies `targetId`, so it can
+    // always derive the token itself. The gate is not a secret; it is a **stop-and-look**
+    // step. Removing the echo only means the caller has to stop and derive it instead of
+    // copy-pasting it out of an error.
   throw new DestructiveOperationBlockedError(
-    `「${operation}」需要二次确认：请把目标 ID 的后 6 位作为 confirm 传入` +
-      `（目标 ${targetId || "(空)"} → 应为 ${expected || "(空)"}）。` +
-      `这一步是为了强制确认"要动的确实是这一条"。`
+    `「${operation}」需要二次确认：请把目标 ID 的后 6 位作为 confirm 传入。\n` +
+      `目标 ID 不回显 —— 它是你传进来的，你手上就有它；而它的后 6 位就是期望值，\n` +
+      `所以回显目标 ID 等于把答案交出去。\n` +
+      `请先去读目标的 ID（例如用 get_wechat_draft 或后台草稿箱），算出后 6 位再传进来。`
   );
 }
 

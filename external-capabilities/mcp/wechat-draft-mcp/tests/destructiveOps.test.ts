@@ -268,7 +268,16 @@ describe("破坏性操作：更新与删除", () => {
     const env = await envWith("del-material", { WECHAT_ALLOW_DESTRUCTIVE: ALLOW });
     const target = "MOCK_MATERIAL_ABC123";
 
-    await assert.rejects(() => deleteMaterialById({ credentials, targetId: target, confirm: "WRONG1", api, env }), /二次确认/);
+    // 报错里不能出现期望值 —— 否则第二次照抄就能通过，这道门等于没设。
+    let blocked = "";
+    try {
+      await deleteMaterialById({ credentials, targetId: target, confirm: "WRONG1", api, env });
+      assert.fail("confirm 不匹配时应当被拒绝");
+    } catch (error) {
+      blocked = String((error as Error).message);
+    }
+    assert.match(blocked, /二次确认/);
+    assert.ok(!blocked.includes(target.slice(-6)), "错误信息泄露了 confirm 期望值");
     assert.equal(server.count("material/del_material"), 0);
 
     const result = await deleteMaterialById({ credentials, targetId: target, confirm: "ABC123", api, env });

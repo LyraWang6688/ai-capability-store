@@ -8,7 +8,15 @@
 
 schema_version: 1
 
-dependencies: []
+dependencies:
+  # 排版 → 上传 是同一条流水线：layout 生成 body HTML，draft-mcp 把它传进草稿箱。
+  # 两者对图片的要求相反（layout 用 {{..._URL}} 占位符，draft 要相对本地路径），
+  # 记在这里是为了让"改一个必须看另一个"变成一条可查的事实，而不是靠人记得。
+  - skill: wechat-html-css-layout
+    requires:
+      - capability: wechat-draft-mcp
+        required: false
+        notes: 上传时使用；不用上传时只需排版，无需此能力
 
 # A dependency entry:
 #   - skill: <skill-name>              # must exist in skills/registry.yaml

@@ -57,6 +57,7 @@ describe("security：顶层路径", () => {
   test("敏感目录黑名单：/etc 即使真实存在也拒绝", async () => {
     assert.equal(await expectReject(() => resolveSafePath("/etc")), "PATH_FORBIDDEN");
     assert.equal(await expectReject(() => resolveSafePath("/etc/hosts")), "PATH_FORBIDDEN");
+
   });
 
   test("HOME 下的 .ssh 等凭证目录拒绝", async () => {
@@ -70,6 +71,21 @@ describe("security：顶层路径", () => {
     try {
       assert.equal(await expectReject(() => resolveSafePath(sshDir)), "PATH_FORBIDDEN");
       assert.equal(await expectReject(() => resolveSafePath(path.join(sshDir, "id_rsa"))), "PATH_FORBIDDEN");
+
+      // 黑名单补全之前，这些都能被读进来。
+      for (const name of [".npmrc", ".env", ".netrc"]) {
+        const credential = path.join(fakeHome, name);
+        await writeFile(credential, "SECRET");
+        assert.equal(await expectReject(() => resolveSafePath(credential)), "PATH_FORBIDDEN");
+      }
+      // .env 不只在家目录：项目目录里的也算 —— 所以按 basename 判，不按位置判。
+      const projectDir = path.join(fakeHome, "project");
+      await mkdir(projectDir, { recursive: true });
+      await writeFile(path.join(projectDir, ".env.production"), "SECRET");
+      assert.equal(
+        await expectReject(() => resolveSafePath(path.join(projectDir, ".env.production"))),
+        "PATH_FORBIDDEN"
+      );
     } finally {
       if (originalHome === undefined) delete process.env.HOME;
       else process.env.HOME = originalHome;
