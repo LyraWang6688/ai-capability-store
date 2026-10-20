@@ -29,6 +29,8 @@ HISTORY = os.path.expanduser(CONFIG.get("history") or DEFAULT_HISTORY)
 DUMP_GLOB = os.path.join(BASE, "history-dump*.txt")
 OUT = os.path.join(BASE, "palette.json")
 SERVER_PATHS = os.path.join(BASE, "known-server-paths.json")
+SHORTCUTS = os.path.join(BASE, "shortcuts.md")
+HAMMERSPOON_DIR = os.path.join(HOME, ".hammerspoon")
 SSH_CONFIG = os.path.join(HOME, ".ssh", "config")
 
 SKIP_EXACT = {"ls", "cd", "pwd", "clear", "exit", "history", "ll", "la", "q", "vi", "vim", "nano", "top", "htop",
@@ -231,6 +233,105 @@ def build_recent_week(command_sets, limit=5, days=7):
     return out
 
 
+# ── 快捷键速查 ─────────────────────────────────────────────────────────────
+#
+# 两类数据：
+#   1. ~/.command-sync/shortcuts.json —— 手动维护。系统快捷键（Finder 的 ⌘⇧.）
+#      和第三方 App 的快捷键没法自动发现，只能写进来。
+#   2. ~/.hammerspoon/*.lua —— 自动扫 hs.hotkey.bind。能拿到组合键和函数名，
+#      拿不到"这是干什么的"。
+#
+# 扫到但 shortcuts.json 里没有的，标成「未登记」原样列出 —— 否则新加的快捷键
+# 永远不会出现在面板里，而面板的意义就是"记不住的时候有个地方找"。
+
+MOD_SYMBOLS = {"alt": "⌥", "option": "⌥", "ctrl": "⌃", "control": "⌃",
+               "cmd": "⌘", "command": "⌘", "shift": "⇧"}
+
+
+def combo_from_bind(mods, key):
+    """把 hs.hotkey.bind({"alt"}, "x", fn) 的实参拼成 ⌥X。"""
+    parts = []
+    for m in mods:
+        sym = MOD_SYMBOLS.get(m.strip().strip('"').strip("'").lower())
+        if sym:
+            parts.append(sym)
+    return "".join(parts) + (key.strip().strip('"').strip("'").upper() or "?")
+
+
+def scan_hammerspoon():
+    """扫 ~/.hammerspoon 下的 hs.hotkey.bind，返回 [{"combo": ..., "fn": ...}]。"""
+    found = []
+    if not os.path.isdir(HAMMERSPOON_DIR):
+        return found
+    bind = re.compile(
+        r'''hs\.hotkey\.bind\(\s*\{([^}]*)\}\s*,\s*["']([^"']+)["']\s*,\s*([A-Za-z_][\w.]*)''')
+    for name in sorted(os.listdir(HAMMERSPOON_DIR)):
+        if not name.endswith(".lua"):
+            continue
+        try:
+            with open(os.path.join(HAMMERSPOON_DIR, name), encoding="utf-8", errors="ignore") as fh:
+                text = fh.read()
+        except OSError:
+            continue
+        for hit in bind.finditer(text):
+            mods = [x for x in hit.group(1).split(",") if x.strip()]
+            found.append({"combo": combo_from_bind(mods, hit.group(2)),
+                          "fn": hit.group(3), "file": name})
+
+    return found
+
+
+def load_shortcuts():
+    """一行一条。插件（selection-toolbar）往这里追加，面板读它。
+
+    用纯文本而不是 JSON：两个组件各写各的字段格式就会漂移，而这个文件的
+    全部职责就是"记住一句话" —— 让人也能直接编辑它。
+    """
+    try:
+        with open(SHORTCUTS, encoding="utf-8") as fh:
+            raw = fh.read()
+    except OSError:
+        return []
+    rows = []
+    for line in raw.splitlines():
+        text = line.strip()
+        if not text or text.startswith("#"):
+            continue
+        if text.startswith("- "):
+            text = text[2:].strip()
+        rows.append(text)
+    return rows
+
+
+def build_shortcuts():
+    """速查表：手存的在前（有描述），扫出来但没登记的在后（标 ⚠️）。"""
+    saved = load_shortcuts()
+    items = [{
+        "kind": "shortcut",
+        "title": line,
+        "command": line,
+        "shortcut": line,
+        "count": 0,
+        "last": "已保存",
+    } for line in saved]
+
+    norm = lambda x: re.sub(r"\s+", "", x).lower()
+    seen = {norm(x) for x in saved}
+    for hit in scan_hammerspoon():
+        # 已经手存过的跳过（比较去掉空格、忽略大小写）
+        if any(norm(hit["combo"]) in norm(x) for x in saved):
+            continue
+        items.append({
+            "kind": "shortcut",
+            "title": "⚠️ 未登记：" + hit["fn"],
+            "command": hit["combo"],
+            "shortcut": hit["combo"],
+            "count": 0,
+            "last": "Hammerspoon",
+        })
+    return items
+
+
 def build_server():
     out = []
     cfg_user = str(CONFIG.get("sshUser") or "").strip()
@@ -293,7 +394,7 @@ def main():
         "generated_at": __import__("datetime").datetime.now().isoformat(timespec="seconds"),
         "history_lines": len(commands),
         "sources": seen_sources,
-        "items": build_server() + build_recent_week(command_sets),
+        "items": build_server() + build_shortcuts() + build_recent_week(command_sets),
     }
     with open(OUT, "w", encoding="utf-8") as f:
         json.dump(payload, f, ensure_ascii=False, indent=2)
