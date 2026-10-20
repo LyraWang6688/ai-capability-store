@@ -158,7 +158,7 @@ automations:
     path: automations/repo-baseline-audit
     entrypoint: run_audit.py
     status: testing
-    version: 0.2.3
+    version: 0.2.4
     updated: "2026-10-20"
     trigger_kind: weekly
     executor: github-actions
@@ -174,8 +174,8 @@ automations:
       为什么是 Automation：触发由时钟决定（每月 1 号），不需要人或模型参与；
       只审计、不改任何仓库设置。UNKNOWN 表示查不到而不是没开。
       report.py 供本机 DSH 定时任务读取最近 7 天结果，在会话里生成周报。
-      0.2.0：每周自动维护各仓库的 [baseline] issue——没有就创建，已有就追加一条
-      「周度同步」评论（计数 + 新增/已修复项），不重复建 issue。
+      0.2.4：只为「不合格且还没有 [baseline] issue」的仓库开一次 issue，不做周度评论；
+      周报只通过本机 DSH 定时任务在会话里给出。
       原为 skill repo-baseline（0.1.1），按用户要求整体迁入 Action 并删除 skill。
   frontier-watch:
     name: frontier-watch

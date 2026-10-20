@@ -45,13 +45,14 @@ GH_TOKEN=... python3 run_audit.py --owner LyraWang6688
 | `FEISHU_APP_ID` / `FEISHU_APP_SECRET` | 飞书应用身份（需是该 Base 的可编辑协作者） |
 | `BASELINE_CONFIG_JSON` | `{"base_token":"...","table_id":"..."}` |
 
-## 自动维护 issue（0.2.0）
+## 自动开 issue（0.2.4）
 
 每周运行时：
 
-- 仓库没有 `[baseline]` issue → **创建**一个（含 FAIL 清单与修复路径）；
-- 已有 → 在 issue 里**追加一条评论**（本周计数 + 新增项 + 已修复项），不新建、不刷屏；
-- 全部通过且存在 issue → 评论「本轮全部通过，可关闭」。
+- 仓库**不合格**且还没有 `[baseline]` issue → **创建**一个（FAIL 清单 + 修复路径）；
+- 已有 issue → **不评论、不更新**（避免刷屏）；
+- 仓库全部通过 → 不建新 issue；
+- 周报通过本机 DSH 定时任务在**会话里**给出，issue 只作为待修复清单。
 
 ```bash
 python3 run_audit.py --owner X --sync-issues

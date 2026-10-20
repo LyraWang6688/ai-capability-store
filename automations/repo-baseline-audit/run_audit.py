@@ -207,60 +207,31 @@ def issue_body(row):
     return "\n".join(lines)
 
 
-def extract_fail_ids(body):
-    return set(re.findall(r"- \[[ x]\] \*\*([A-E]\d)", body or ""))
-
-
 def sync_issues(rows, dry_run):
-    """Create one [baseline] issue per repo, then comment weekly deltas."""
-    created, commented, none = [], [], []
-    for row in rows:
-        repo = row["repo"]
-        existing = open_baseline_issue(repo)
-        if row["fail_ids"] == []:
-            if existing:
-                if not dry_run:
-                    r = gh(["issue", "comment", str(existing["number"]), "-R", repo, "--body",
-                            f"## 周度同步\n\n`PASS {row['counts'][ab.PASS]} · FAIL 0 · UNKNOWN {row['counts'][ab.UNKNOWN]}`\n\n本轮审计全部通过，issue 可以关闭 ✅"])
-                    if r.returncode != 0:
-                        print(f"issue comment failed [{repo}]: {(r.stderr or r.stdout).strip()[:300]}", file=sys.stderr)
-                        continue
-                commented.append(repo)
-            continue
-        if existing is None:
-            if not dry_run:
-                r = gh(["issue", "create", "-R", repo,
-                        "--title", f"{TITLE_PREFIX} 项目基线审计：{row['counts'][ab.FAIL]} 项待修复",
-                        "--body", issue_body(row)])
-                if r.returncode == 0:
-                    created.append((repo, r.stdout.strip().splitlines()[-1]))
-                else:
-                    print(f"issue create failed [{repo}]: {(r.stderr or r.stdout).strip()[:300]}", file=sys.stderr)
-            else:
-                created.append((repo, "dry-run"))
-            continue
-        previous = extract_fail_ids(existing.get("body"))
-        current = set(row["fail_ids"])
-        added = sorted(current - previous)
-        fixed = sorted(previous - current)
-        lines = [
-            "## 周度同步",
-            "",
-            f"`PASS {row['counts'][ab.PASS]} · FAIL {row['counts'][ab.FAIL]} · UNKNOWN {row['counts'][ab.UNKNOWN]}`",
-            "",
-            f"新增未通过项：{', '.join(added) if added else '无'}",
-            f"已修复项：{', '.join(fixed) if fixed else '无'}",
-        ]
-        if not dry_run:
-            r = gh(["issue", "comment", str(existing["number"]), "-R", repo, "--body", "\n".join(lines)])
-            if r.returncode != 0:
-                print(f"issue comment failed [{repo}]: {(r.stderr or r.stdout).strip()[:300]}", file=sys.stderr)
-                continue
-        commented.append(repo)
-    print(json.dumps({"issues_created": len(created), "issues_commented": len(commented) + len(none),
-                      "dry_run": dry_run, "created": created}, ensure_ascii=False), file=sys.stderr)
-    return created, commented
+    """只为「不合格且还没有 issue」的仓库开一次 issue；不做周度评论。
 
+    周报通过本机 DSH 定时任务在会话里给出，issue 只作为待修复清单存在。
+    """
+    created = []
+    for row in rows:
+        if row["fail_ids"] == []:
+            continue
+        repo = row["repo"]
+        if open_baseline_issue(repo) is not None:
+            continue
+        if dry_run:
+            created.append((repo, "dry-run"))
+            continue
+        r = gh(["issue", "create", "-R", repo,
+                "--title", f"{TITLE_PREFIX} 项目基线审计：{row['counts'][ab.FAIL]} 项待修复",
+                "--body", issue_body(row)])
+        if r.returncode == 0:
+            created.append((repo, r.stdout.strip().splitlines()[-1]))
+        else:
+            print(f"issue create failed [{repo}]: {(r.stderr or r.stdout).strip()[:300]}", file=sys.stderr)
+    print(json.dumps({"issues_created": len(created), "dry_run": dry_run, "created": created},
+                     ensure_ascii=False), file=sys.stderr)
+    return created
 
 def main():
     parser = argparse.ArgumentParser()
