@@ -147,7 +147,7 @@ automations:
       llms.txt / AGENTS.md 为生态约定。自动补齐 description 与 llms.txt；
       topics 只从人工确认的 topics.plan.json 套用，不做关键词猜测。
     notes: >
-      为什么是 Automation：触发由时钟决定（每周一 22:10），不需要人或模型参与。
+      为什么是 Automation：触发由时钟决定（每周一 08:00），不需要人或模型参与。
       issue 幂等：同一仓库只维护一条（带隐藏 marker），修好会自动关闭，不会每周堆单。
       跨仓库开 issue 需要 PAT（repo scope）—— GITHUB_TOKEN 只能写当前仓库。
       与 repo-baseline-audit 分工：那个修内功（安全/CI/合并纪律），这个修外功（能不能被找到）。
