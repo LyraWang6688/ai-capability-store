@@ -61,20 +61,18 @@ export function assertConfirmed(
 ): void {
   const expected = confirmationTokenFor(targetId);
   if (expected && (confirm ?? "").trim() === expected) return;
-  // The expected value is deliberately NOT printed. It used to be, in the form
-  // `（目标 X → 应为 Y）`, which meant one failed call handed the caller the answer and
-  // the second attempt passed. That turns a "prove you looked at the target" gate into
-  // a "call twice" gate. The target ID is printed instead: reading it is the work this
-  // gate is asking for, and it is not the answer.
-  // Neither the expected value nor the target ID is echoed. The token is the last six
-  // characters of the target ID — so printing the *target ID* hands the answer over just
-  // as effectively as printing the token. (The first version of this fix printed the
-  // target and a test caught it.)
-  //
-  // Be clear about what this gate is worth: the caller supplies `targetId`, so it can
-  // always derive the token itself. The gate is not a secret; it is a **stop-and-look**
-  // step. Removing the echo only means the caller has to stop and derive it instead of
-  // copy-pasting it from an error.
+    // Neither the expected value nor the target ID is echoed.
+    //
+    // The old message printed `（目标 X → 应为 Y）`, so one failed call returned the answer
+    // and the retry passed — a "prove you looked at the target" gate reduced to a "call
+    // twice" gate. The first attempt at fixing that stopped printing the expected value
+    // but kept printing the target ID ... which is the same leak, because the token *is*
+    // the last six characters of the target ID. A test caught it. Both are gone now.
+    //
+    // Be clear about what this gate is worth: the caller supplies `targetId`, so it can
+    // always derive the token itself. The gate is not a secret; it is a **stop-and-look**
+    // step. Removing the echo only means the caller has to stop and derive it instead of
+    // copy-pasting it out of an error.
   throw new DestructiveOperationBlockedError(
     `「${operation}」需要二次确认：请把目标 ID 的后 6 位作为 confirm 传入。\n` +
       `目标 ID 不回显 —— 它是你传进来的，你手上就有它；而它的后 6 位就是期望值，\n` +
