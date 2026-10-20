@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  LaunchAgent 模板 —— 不要直接安装这个文件。
+  用 install.sh 生成并安装（它会替换 __PLACEHOLDER__ 并写入 ~/Library/LaunchAgents/）。
+
+  为什么用 StartCalendarInterval 而不是 cron：
+    - launchd 是 macOS 原生调度器，cron 已被 Apple 标记为弃用
+    - 到点时机器在睡眠 → launchd 会在唤醒后补跑一次；cron 会直接跳过
+    - 关机跨过时间点则不会累积（按"每周/每月"语义就是这个行为）
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>__LABEL__</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>__PROJECT_DIR__/mac-cleanup.sh</string>
+    </array>
+
+    <!-- 每季度一次：1/4/7/10 月 1 日 10:00 -->
+    <key>StartCalendarInterval</key>
+    <array>
+        <dict><key>Month</key><integer>1</integer><key>Day</key><integer>1</integer><key>Hour</key><integer>10</integer><key>Minute</key><integer>0</integer></dict>
+        <dict><key>Month</key><integer>4</integer><key>Day</key><integer>1</integer><key>Hour</key><integer>10</integer><key>Minute</key><integer>0</integer></dict>
+        <dict><key>Month</key><integer>7</integer><key>Day</key><integer>1</integer><key>Hour</key><integer>10</integer><key>Minute</key><integer>0</integer></dict>
+        <dict><key>Month</key><integer>10</integer><key>Day</key><integer>1</integer><key>Hour</key><integer>10</integer><key>Minute</key><integer>0</integer></dict>
+    </array>
+
+    <!-- 登录时不要跑（避免插上电源就清理） -->
+    <key>RunAtLoad</key>
+    <false/>
+
+    <!-- launchd 的 PATH 极简，这里显式给上；脚本内部仍用绝对路径 -->
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+        <key>HOME</key>
+        <string>__HOME__</string>
+    </dict>
+
+    <key>StandardOutPath</key>
+    <string>__LOG_DIR__/launchd.out.log</string>
+    <key>StandardErrorPath</key>
+    <string>__LOG_DIR__/launchd.err.log</string>
+</dict>
+</plist>
