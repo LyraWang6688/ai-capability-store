@@ -39,6 +39,8 @@ fi
 if [ -d "/Applications/Hammerspoon.app" ]; then
     mkdir -p "$HS_DIR"
     cp "$HERE/hammerspoon/command-palette.lua.template" "$HS_DIR/command-palette.lua"
+    cp "$HERE/hammerspoon/palette.html" "$BASE/palette.html"
+    echo "✓ 已安装两栏面板 HTML：$BASE/palette.html"
     if ! grep -q 'command-palette.lua' "$HS_DIR/init.lua" 2>/dev/null; then
         printf '\n-- command-sync palette\ndofile(hs.configdir .. "/command-palette.lua")\n' >> "$HS_DIR/init.lua"
     fi
