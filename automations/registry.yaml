@@ -154,14 +154,14 @@ automations:
     path: automations/repo-baseline-audit
     entrypoint: run_audit.py
     status: testing
-    version: 0.1.3
+    version: 0.1.4
     updated: "2026-10-20"
     trigger_kind: weekly
     executor: github-actions
     workflow: .github/workflows/automation-repo-baseline.yml
     output:
       target: external-system
-      destination: "Feishu Base「AI 工具」多维表格：仓库基线体检"
+      destination: "飞书知识库「GitHub 优质项目收录」多维表格：仓库基线体检"
     description: >
       每周一 09:00（Asia/Shanghai）批量审计名下所有 GitHub 仓库（公开 + 私有；默认跳过已归档与 fork）的公开项目基线
       （17 项：安全 / 合并纪律 / CI / 可维护 / 可扩展），每项 PASS/FAIL/UNKNOWN，
