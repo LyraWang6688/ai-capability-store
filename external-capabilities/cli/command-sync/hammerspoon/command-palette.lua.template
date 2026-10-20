@@ -58,7 +58,10 @@ local function show()
   -- 必须带 titled：纯 borderless 的 webview 在 1.1.1 上不是 key window，收不到键盘
   panel:windowStyle({"titled", "closable"})
   panel:windowTitle("⌥X")
-  panel:level("floating")
+  -- hs.webview:level() 要数字，不是 "floating" 这种字符串（那是 hs.window 的写法）。
+  -- 3 = 浮动层。传字符串会抛 "incorrect type 'string' for argument 2"，
+  -- 而 pcall 之外的错误会让整个配置加载失败 —— 表现是「按了没反应」。
+  panel:level(3)
   panel:closeOnEscape(false)
   panel:html(html)
   panel:show()
