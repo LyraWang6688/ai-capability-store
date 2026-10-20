@@ -90,8 +90,8 @@ Tag / Release when applicable (namespaced Git Tag; Release for distributable art
    event; a Capability is *called*. If a human or a model decides *when* to run
    it, it is a Skill, not an Automation (`DOMAIN_MISMATCH` — see Stop Conditions).
 5. **Choose `executor` independently of `trigger_kind`.** `trigger_kind` says how
-   often (`daily` / `weekly` / `monthly` / `manual` / `event`); `executor` says
-   what runs it (`github-actions` / `launchd` / `human`). Each requires exactly
+   often (`daily` / `weekly` / `monthly` / `quarterly` / `manual` / `event`); `executor` says
+   what runs it (`github-actions` / `launchd` / `systemd` / `human`). Each requires exactly
    its own descriptor and forbids the other's:
    - `github-actions` → `workflow:`
    - `launchd` → `launchd: {label, template}`, template committed under

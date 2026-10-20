@@ -123,6 +123,11 @@ MUTATIONS = {
         "      path: /var/lib/demo\n"
         "      retention: 12\n"
         "      human_access: ssh in and open the file\n", 1),
+    # trigger_kind — quarterly added in this change, yearly deliberately absent
+    "trigger-kind-quarterly": lambda t: t.replace(
+        "    trigger_kind: daily\n", "    trigger_kind: quarterly\n", 1),
+    "trigger-kind-yearly": lambda t: t.replace(
+        "    trigger_kind: daily\n", "    trigger_kind: yearly\n", 1),
     # whitelist
     "unknown-field": _append_frontmatter("version: 9.9.9"),
     "duplicate-key": _duplicate_key,
@@ -165,6 +170,12 @@ CASES = [
      AUTOMATION_REGISTRY, "local-file-no-retention"),
     ("local-file output with all three fields passes", 0,
      AUTOMATION_REGISTRY, "local-file-complete"),
+    # quarterly is a real cadence; yearly is a guess with no consumer, so the
+    # enum refuses it until something actually needs it.
+    ("quarterly trigger_kind is accepted", 0,
+     AUTOMATION_REGISTRY, "trigger-kind-quarterly"),
+    ("yearly trigger_kind is rejected", 1,
+     AUTOMATION_REGISTRY, "trigger-kind-yearly"),
 ]
 
 # The first case is the baseline: untouched, so it must pass.
