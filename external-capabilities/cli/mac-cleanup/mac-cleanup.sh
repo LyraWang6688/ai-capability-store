@@ -51,7 +51,8 @@ usage() {
   ./mac-cleanup.sh --init [--force]   扫描本机，生成配置与清单（首次必做）
   ./mac-cleanup.sh --check            只体检 + 预演 + 出报告，不删任何东西
   ./mac-cleanup.sh                    完整跑：guard → snapshot → clean → verify → health → report
-  ./mac-cleanup.sh --install          安装 / 卸载季度定时任务（转给 install.sh）
+  ./mac-cleanup.sh --install          安装季度定时任务（复制包到 ~/.mac-cleanup/app 再装）
+  ./mac-cleanup.sh --install --status 等  转给 install.sh：--status / --dry-run / --run-now / --uninstall
   ./mac-cleanup.sh --help             显示本帮助
 
 退出码：
@@ -75,15 +76,26 @@ MODE="run"
 case "${1:-}" in
   --install)
     shift
-    APP="${MC_STATE_DIR}/app"
-    mkdir -p "${APP}" || { err "无法创建 ${APP}"; exit 1; }
-    # npx 把包装在缓存目录（~/.npm/_npx/<hash>），随时会被回收 ——
-    # LaunchAgent 绝不能指向那里，否则某天清理缓存后任务就静默失效。
-    # 所以先复制到稳定位置，再让 install.sh 指向副本。
-    cp -R "${MC_ROOT}/." "${APP}/" || { err "复制包到 ${APP} 失败"; exit 1; }
-    chmod +x "${APP}/mac-cleanup.sh" "${APP}/install.sh"
-    echo "已复制到稳定位置：${APP}"
-    MC_APP_DIR="${APP}" exec /bin/bash "${APP}/install.sh" "$@"
+    # 只有【真正安装】才需要把包复制到稳定位置。
+    # 只读子命令（--status / --dry-run）和 --uninstall / --run-now 直接用包里的
+    # install.sh —— 否则每次查状态都往目标目录重写一遍包，在没有写权限的环境里
+    # 会先报一堆 "cp: Operation not permitted" 才显示状态，卸载前还会先写一遍。
+    case "${1:-}" in
+      ""|--force)
+        APP="${MC_STATE_DIR}/app"
+        mkdir -p "${APP}" || { err "无法创建 ${APP}"; exit 1; }
+        # npx 把包装在缓存目录（~/.npm/_npx/<hash>），随时会被回收 ——
+        # LaunchAgent 绝不能指向那里，否则某天清理缓存后任务就静默失效。
+        # 所以先复制到稳定位置，再让 install.sh 指向副本。
+        cp -R "${MC_ROOT}/." "${APP}/" || { err "复制包到 ${APP} 失败"; exit 1; }
+        chmod +x "${APP}/mac-cleanup.sh" "${APP}/install.sh"
+        echo "已复制到稳定位置：${APP}"
+        MC_APP_DIR="${APP}" exec /bin/bash "${APP}/install.sh" "$@"
+        ;;
+      *)
+        exec /bin/bash "${MC_ROOT}/install.sh" "$@"
+        ;;
+    esac
     ;;
   --check) MODE="check" ;;
   "") ;;

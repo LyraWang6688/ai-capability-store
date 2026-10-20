@@ -56,6 +56,9 @@ case "${1:-}" in
     say "卸载 ${LABEL} …"
     launchctl bootout "${DOMAIN}/${LABEL}" 2>/dev/null || true
     rm -f "${TARGET}" && say "  已删除 ${TARGET}"
+    if [ -d "${MC_STATE_DIR}/app" ]; then
+      rm -rf "${MC_STATE_DIR}/app" && say "  已删除运行副本 ${MC_STATE_DIR}/app"
+    fi
     say "  报告与日志保留在 ${LOG_DIR}"
     exit 0
     ;;
