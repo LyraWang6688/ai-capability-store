@@ -31,12 +31,18 @@ def main():
     cols = data.get("fields") or []
     idx = {c: i for i, c in enumerate(cols)}
     rows = data.get("data") or []
-    since = (date.today() - timedelta(days=args.days)).isoformat()
+    cell_of = lambda r, name: r[idx[name]] if name in idx else None
+    days = [str(cell_of(r, "检查日期") or "") for r in rows]
+    latest = max([d for d in days if d] or [""])
+    since = latest or (date.today() - timedelta(days=args.days)).isoformat()
     items = []
     for r in rows:
-        cell = lambda name: r[idx[name]] if name in idx else None
+        cell = lambda name, row=r: cell_of(row, name)
         day = str(cell("检查日期") or "")
-        if day and day < since:
+        if latest:
+            if day != latest:
+                continue
+        elif day and day < since:
             continue
         items.append({
             "仓库": str(cell("仓库") or ""),
