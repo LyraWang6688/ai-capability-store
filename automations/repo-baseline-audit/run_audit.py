@@ -220,8 +220,11 @@ def sync_issues(rows, dry_run):
         if row["fail_ids"] == []:
             if existing:
                 if not dry_run:
-                    gh(["issue", "comment", "-R", repo, "--body",
-                        f"## 周度同步\n\n`PASS {row['counts'][ab.PASS]} · FAIL 0 · UNKNOWN {row['counts'][ab.UNKNOWN]}`\n\n本轮审计全部通过，issue 可以关闭 ✅"])
+                    r = gh(["issue", "comment", "-R", repo, "--body",
+                            f"## 周度同步\n\n`PASS {row['counts'][ab.PASS]} · FAIL 0 · UNKNOWN {row['counts'][ab.UNKNOWN]}`\n\n本轮审计全部通过，issue 可以关闭 ✅"])
+                    if r.returncode != 0:
+                        print(f"issue comment failed [{repo}]: {(r.stderr or r.stdout).strip()[:300]}", file=sys.stderr)
+                        continue
                 commented.append(repo)
             continue
         if existing is None:
@@ -231,6 +234,8 @@ def sync_issues(rows, dry_run):
                         "--body", issue_body(row)])
                 if r.returncode == 0:
                     created.append((repo, r.stdout.strip().splitlines()[-1]))
+                else:
+                    print(f"issue create failed [{repo}]: {(r.stderr or r.stdout).strip()[:300]}", file=sys.stderr)
             else:
                 created.append((repo, "dry-run"))
             continue
@@ -247,7 +252,10 @@ def sync_issues(rows, dry_run):
             f"已修复项：{', '.join(fixed) if fixed else '无'}",
         ]
         if not dry_run:
-            gh(["issue", "comment", "-R", repo, "--body", "\n".join(lines)])
+            r = gh(["issue", "comment", "-R", repo, "--body", "\n".join(lines)])
+            if r.returncode != 0:
+                print(f"issue comment failed [{repo}]: {(r.stderr or r.stdout).strip()[:300]}", file=sys.stderr)
+                continue
         commented.append(repo)
     print(json.dumps({"issues_created": len(created), "issues_commented": len(commented) + len(none),
                       "dry_run": dry_run, "created": created}, ensure_ascii=False), file=sys.stderr)
