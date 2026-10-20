@@ -18,6 +18,7 @@ import audit_discoverability as au
 import traffic_baseline as tb
 import report_issues as ri
 import report as rp
+import naming as nm
 
 README = """# Demo Project
 
@@ -34,6 +35,55 @@ README = """# Demo Project
 
 
 
+
+
+class TestNaming(unittest.TestCase):
+    """D8 判据：只有「近名数」和「第一名星数」能判失败。
+
+    早期版本还把「全部是泛词」判成失败 —— 那会误杀几乎所有名字，
+    因为 GitHub 上任何一个英文词都对应上千个仓库。
+    """
+
+    def _analyze(self, fake):
+        with mock.patch.object(nm, "search", side_effect=fake):
+            return nm.analyze("mac-cleanup-guard")
+
+    def test_unique_name_passes_even_when_every_token_is_generic(self):
+        def fake(term):
+            if term == "mac-cleanup-guard":
+                return {"count": 0, "top_name": "", "top_star": 0}
+            return {"count": 500000, "top_name": "big/repo", "top_star": 99999}
+        result = self._analyze(fake)
+        self.assertEqual(result["status"], "PASS",
+                         "泛词不是失败理由 —— 名字独占就够了")
+
+    def test_crowded_name_fails(self):
+        def fake(term):
+            if term == "mac-cleanup-guard":
+                return {"count": 42, "top_name": "a/b", "top_star": 10}
+            return {"count": 100, "top_name": "x/y", "top_star": 5}
+        self.assertEqual(self._analyze(fake)["status"], "FAIL")
+
+    def test_slot_owned_by_a_big_repo_fails(self):
+        def fake(term):
+            if term == "mac-cleanup-guard":
+                return {"count": 2, "top_name": "moleculer", "top_star": 6380}
+            return {"count": 10, "top_name": "x/y", "top_star": 1}
+        self.assertEqual(self._analyze(fake)["status"], "FAIL")
+
+    def test_ecosystem_is_context_not_score(self):
+        def fake(term):
+            if term == "mac-cleanup-guard":
+                return {"count": 0, "top_name": "", "top_star": 0}
+            if term == "mac":
+                return {"count": 1000000, "top_name": "jaywcjlove/awesome-mac", "top_star": 116563}
+            return {"count": 10, "top_name": "", "top_star": 0}
+        result = self._analyze(fake)
+        self.assertIsNotNone(result["ecosystem"], "应报告可借的生态")
+        self.assertEqual(result["status"], "PASS", "借势不加分也不扣分")
+
+    def test_tokens_split_on_hyphen_and_underscore(self):
+        self.assertEqual(nm.tokens("mac_cleanup-guard"), ["mac", "cleanup", "guard"])
 
 
 class TestLocalReport(unittest.TestCase):
@@ -64,9 +114,12 @@ class TestAuditScope(unittest.TestCase):
     """公开 / 归档 / 私有的判据必须分开 —— 混在一起会产出假失败。"""
 
     def _audit(self, meta, readme="# X\n\n> q\n\n给谁用 它做什么 怎么开始\n"):
+        fake_naming = {"status": "PASS", "collisions": 0, "top_name": "", "top_star": 0,
+                       "problems": [], "notes": [], "ecosystem": None}
         with mock.patch.object(au, "gh_json",
                                side_effect=lambda p: meta if p.endswith("owner/demo") else None), \
-             mock.patch.object(au, "_readme_text", return_value=readme):
+             mock.patch.object(au, "_readme_text", return_value=readme), \
+             mock.patch.object(au.naming, "analyze", return_value=fake_naming):
             return au.audit("owner/demo")
 
     def test_private_repo_marks_search_items_not_applicable(self):
@@ -80,14 +133,14 @@ class TestAuditScope(unittest.TestCase):
     def test_na_items_do_not_dilute_the_denominator(self):
         meta = {"archived": False, "private": True, "topics": [], "description": "", "language": ""}
         result = self._audit(meta)
-        self.assertEqual(result["total"], 3, "私有仓库只算 D3/D4/D5 三项")
+        self.assertEqual(result["total"], 3, "私有仓库只算 D3/D4/D5 三项（D8 命名也 N/A）")
 
-    def test_public_repo_scores_all_six(self):
+    def test_public_repo_scores_all_items(self):
         meta = {"archived": False, "private": False, "topics": ["a","b","c","d","e"],
                 "description": "这是一个长度足够的项目描述用于通过长度检查", "language": "Python"}
         result = self._audit(meta)
-        self.assertEqual(result["total"], 6)
-        self.assertEqual(result["score"], 3, "D1/D2/D3 应通过")
+        self.assertEqual(result["total"], 7, "D1–D6 + D8")
+        self.assertEqual(result["score"], 4, "D1/D2/D3 + D8 应通过")
 
     def test_archived_flag_is_reported(self):
         result = self._audit({"archived": True, "private": False, "topics": [], "description": "", "language": ""})

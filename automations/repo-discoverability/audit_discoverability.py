@@ -27,7 +27,14 @@ standard nobody can defend is just a list of opinions:
                         move traffic.
 
     T3  needs a 14-day window (GitHub traffic retention)
-        D6 traffic      captured separately by `--baseline`; compare later.
+        D7 traffic      captured separately by `--baseline`; compare later.
+
+    Naming
+        D8 name         measured live by `naming.py`: how many repos share this
+                        name, and whether the top one already owns the slot.
+                        A 0-star repo cannot outrank a 2,000-star one for a
+                        crowded term, so the only reachable position is a name
+                        that is not crowded and matches what someone types.
 
 Archived repos are skipped entirely: they are read-only, so their score cannot be
 improved and counting them as failures only creates noise.
@@ -52,6 +59,10 @@ import argparse
 import json
 import subprocess
 import sys
+import os
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import naming  # noqa: E402
 
 # The three questions a README opening must answer. Chinese and English forms are
 # both accepted so a bilingual repo is not penalised.
@@ -98,8 +109,9 @@ def _has_file(repo: str, path: str) -> bool:
     return gh_json(f"repos/{repo}/contents/{path}") is not None
 
 
-def audit(repo: str) -> dict:
+def audit(repo: str, with_naming: bool = True) -> dict:
     """Return {repo, archived, score, items: [{code, title, status, detail, fix}]}."""
+    with_naming = with_naming and not os.environ.get("DISCOVERABILITY_SKIP_NAMING")
     meta = gh_json(f"repos/{repo}") or {}
     archived = bool(meta.get("archived"))
     private = bool(meta.get("private"))
@@ -143,6 +155,19 @@ def audit(repo: str) -> dict:
         "**不影响搜索排名**（图片不被 in:readme 索引为文本）",
         tier="T2", applicable=not private)
 
+    # D8 · 命名：名字是用户唯一会打的那个字段。
+    if with_naming:
+        try:
+            verdict = naming.analyze(repo.split("/")[-1])
+            detail = (f"近名 {verdict['collisions']} 个 · "
+                      f"第一名 {verdict['top_name'] or '—'} ⭐{verdict['top_star']:,}")
+            fix = "；".join(verdict["problems"]) if verdict["problems"] else ""
+            add("D8", "命名", verdict["status"] == "PASS", detail, fix,
+                applicable=not private)
+        except Exception as exc:  # noqa: BLE001 — 搜索接口失败不该让整次审计失败
+            add("D8", "命名", False, f"检测失败：{type(exc).__name__}",
+                "检查 gh 认证与搜索限额（30 次/分）")
+
     score = sum(1 for i in items if i["status"] == "PASS")
     total = sum(1 for i in items if i["status"] != "N/A")
     return {"repo": repo, "archived": archived, "private": private, "score": score,
@@ -173,6 +198,8 @@ def main() -> int:
     parser.add_argument("--json", action="store_true", help="machine-readable output")
     parser.add_argument("--include-archived", action="store_true",
                         help="score archived repos too instead of skipping them")
+    parser.add_argument("--no-naming", action="store_true",
+                        help="跳过 D8 命名检测（省搜索 API 配额）")
     parser.add_argument("--include-private", action="store_true",
                         help="also audit private repos（判据会自动降级："
                              "私有仓库不检查 topics/description/徽章）")
@@ -197,7 +224,7 @@ def main() -> int:
     results = []
     for repo in repos:
         try:
-            result = audit(repo)
+            result = audit(repo, with_naming=not args.no_naming)
         except Exception as exc:  # noqa: BLE001 — one bad repo must not kill the run
             print(f"[warn] {repo}: {type(exc).__name__}: {exc}", file=sys.stderr)
             continue

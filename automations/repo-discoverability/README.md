@@ -145,6 +145,36 @@ python3 traffic_baseline.py --owner LyraWang6688 --compare
 退出码：`audit` 0 = 全 PASS/SKIP，1 = 有 FAIL。`report_issues` 0 = 无错误，1 = 有仓库写入失败。
 
 
+## D8 · 命名检测
+
+**GitHub 不公开搜索词频数据** —— 没有 API 能告诉你「这个词每天被搜多少次」。
+能测的只有两件事：
+
+```
+竞争度   搜 <名字> in:name，有多少个近名仓库
+占位度   这个位置的第一名有多少星
+```
+
+| 情况 | 结论 |
+|---|---|
+| 近名 0–2 个，第一名星 <1000 | ✅ **PASS** —— 这个位置抢得下来 |
+| 近名 3–10 个 | ✅ PASS —— 可用，但不算独占 |
+| 近名 >10 个 | ❌ **FAIL** —— 淹没，考虑加区分词 |
+| 第一名 ≥1000 星 | ❌ **FAIL** —— 位置已被占 |
+
+**一个曾经写错、后来修掉的判据**：早期版本把「名字全部由泛词构成」判成失败。
+但 GitHub 上**任何一个英文词都对应上千个仓库** —— 这条规则会误杀几乎所有名字，
+包括 `mac-cleanup-guard`（0 个近名、独占自己那个精确匹配位）。现在泛词只作上下文。
+
+**「借生态势」不评分**：名字和知名项目共享前缀（如 `mole-guard` 之于 `tw93/Mole`），
+报告显示那个项目的星数作参考，但**不加分也不扣分**。
+
+```bash
+python3 naming.py mac-cleanup-guard                    # 查候选名
+python3 naming.py --owner LyraWang6688                 # 查所有公开仓库
+python3 naming.py --store ~/Documents/workplace/ai-capability-store   # 查 Store 资产
+```
+
 ## 审计范围
 
 ```
