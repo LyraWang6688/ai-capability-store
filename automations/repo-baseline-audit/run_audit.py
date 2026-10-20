@@ -220,7 +220,7 @@ def sync_issues(rows, dry_run):
         if row["fail_ids"] == []:
             if existing:
                 if not dry_run:
-                    r = gh(["issue", "comment", "-R", repo, "--body",
+                    r = gh(["issue", "comment", str(existing["number"]), "-R", repo, "--body",
                             f"## 周度同步\n\n`PASS {row['counts'][ab.PASS]} · FAIL 0 · UNKNOWN {row['counts'][ab.UNKNOWN]}`\n\n本轮审计全部通过，issue 可以关闭 ✅"])
                     if r.returncode != 0:
                         print(f"issue comment failed [{repo}]: {(r.stderr or r.stdout).strip()[:300]}", file=sys.stderr)
@@ -252,7 +252,7 @@ def sync_issues(rows, dry_run):
             f"已修复项：{', '.join(fixed) if fixed else '无'}",
         ]
         if not dry_run:
-            r = gh(["issue", "comment", "-R", repo, "--body", "\n".join(lines)])
+            r = gh(["issue", "comment", str(existing["number"]), "-R", repo, "--body", "\n".join(lines)])
             if r.returncode != 0:
                 print(f"issue comment failed [{repo}]: {(r.stderr or r.stdout).strip()[:300]}", file=sys.stderr)
                 continue
