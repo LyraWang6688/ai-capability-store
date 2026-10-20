@@ -1,23 +1,26 @@
 name: automation-repo-discoverability
 
-# 每月 1 号 22:10（Asia/Shanghai）体检所有公开仓库的「发现性」：
+# 每周一 22:10（Asia/Shanghai）体检所有公开仓库的「发现性」：
 # 能不能被 AI / 人搜到，搜到之后愿不愿意点进来。
 #
-# 默认 dry-run：只打印会改什么。要真的写 description / llms.txt 才关掉它。
-# topics 永远不自动写 —— 只从 automations/repo-discoverability/topics.plan.json 套用，
-# 而那个开关在脚本里（--apply-topics），本 workflow 故意不暴露。
+# 两件事，分开做：
+#   ① 自动补确定性缺口（description / llms.txt / DSH 徽章）—— 幂等
+#   ② 把没过的项开成 issue 派给仓库负责的 AI —— 幂等，修好会自动关闭
+#
+# topics 永远不自动写 —— 只从 automations/repo-discoverability/topics.plan.json 套用。
 on:
   schedule:
-    - cron: "10 14 1 * *"
+    - cron: "10 14 * * 1"
   workflow_dispatch:
     inputs:
       dry-run:
-        description: "只打印会改什么，不写任何仓库"
+        description: "只打印会改什么，不写仓库、不开 issue"
         type: boolean
         default: true
 
 permissions:
   contents: read
+  issues: write
 
 concurrency:
   group: automation-repo-discoverability
@@ -61,6 +64,21 @@ jobs:
             python3 apply_discoverability.py --owner LyraWang6688 --apply || true
           fi
 
+      - name: Open / update issues on non-compliant repos
+        working-directory: automations/repo-discoverability
+        env:
+          # 跨仓库开 issue 必须是 PAT（repo scope）；GITHUB_TOKEN 只能写当前仓库
+          GH_TOKEN: ${{ secrets.GH_DISCOVERY_TOKEN || secrets.GH_AUDIT_TOKEN || github.token }}
+        run: |
+          set -euo pipefail
+          if [ "${{ inputs.dry-run }}" = "true" ]; then
+            echo "::notice::dry-run —— 只打印，不开 issue"
+            python3 report_issues.py --owner LyraWang6688 || true
+          else
+            # 每周都会跑：脚本是幂等的（有则改、好则关），不会重复开单
+            python3 report_issues.py --owner LyraWang6688 --create || true
+          fi
+
       - name: Summary
         if: always()
         run: |
@@ -68,7 +86,9 @@ jobs:
             echo "## repo-discoverability"
             echo ""
             echo "- 标准与证据：\`automations/repo-discoverability/README.md\`"
+            echo "- 写 README / 选 topics 的规范：\`automations/repo-discoverability/MAINTAINER-GUIDE.md\`"
             echo "- **topics 不会被自动写入** —— 只在 \`--apply-topics\` 且 topics.plan.json 有条目时才写。"
             echo "- 分支保护会拦住 llms.txt 的提交；脚本报错而不绕过保护，需要人工走 PR。"
             echo "- 归档仓库直接跳过（只读）。"
+            echo "- issue 是幂等的：同一仓库只维护一条，修好会自动关闭。"
           } >> "$GITHUB_STEP_SUMMARY"

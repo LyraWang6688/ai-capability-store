@@ -17,6 +17,7 @@ from unittest import mock
 import apply_discoverability as ap
 import audit_discoverability as au
 import traffic_baseline as tb
+import report_issues as ri
 
 README = """# Demo Project
 
@@ -106,6 +107,55 @@ class TestTopicsComeFromThePlanOnly(unittest.TestCase):
         result = self._run({})
         # 但建议不进 actions
         self.assertEqual([a for a in result["actions"] if a["field"] == "topics"], [])
+
+
+class TestIssueReporting(unittest.TestCase):
+    """The issue bot must be idempotent — a weekly run cannot pile up issues."""
+
+    def _result(self, fails: int):
+        items = []
+        for n in range(fails):
+            items.append({"code": f"D{n+1}", "title": f"t{n}", "tier": "T1",
+                          "status": "FAIL", "detail": "", "fix": "fix it"})
+        items.append({"code": "D9", "title": "ok", "tier": "T1",
+                      "status": "PASS", "detail": "", "fix": ""})
+        return {"repo": "owner/demo", "archived": False,
+                "score": 1, "total": len(items), "items": items}
+
+    def test_body_carries_the_marker_used_for_idempotency(self):
+        self.assertIn(ri.MARKER, ri.render_body(self._result(2)))
+
+    def test_body_lists_every_failing_item(self):
+        body = ri.render_body(self._result(3))
+        for code in ("D1", "D2", "D3"):
+            self.assertIn(code, body)
+
+    def test_passing_repo_without_issue_does_nothing(self):
+        with mock.patch.object(ri, "find_open_issue", return_value=None):
+            out = ri.handle("owner/demo", self._result(0), do_write=False)
+        self.assertEqual(out["action"], "none")
+
+    def test_failing_repo_without_issue_wants_to_create(self):
+        with mock.patch.object(ri, "find_open_issue", return_value=None):
+            out = ri.handle("owner/demo", self._result(2), do_write=False)
+        self.assertEqual(out["action"], "create")
+
+    def test_failing_repo_with_existing_issue_updates_instead_of_creating(self):
+        with mock.patch.object(ri, "find_open_issue", return_value={"number": 7, "body": ri.MARKER}):
+            out = ri.handle("owner/demo", self._result(2), do_write=False)
+        self.assertEqual(out["action"], "update", "不能因为每周跑就重复开单")
+        self.assertIn("#7", out["detail"])
+
+    def test_fixed_repo_closes_the_issue(self):
+        with mock.patch.object(ri, "find_open_issue", return_value={"number": 9, "body": ri.MARKER}):
+            out = ri.handle("owner/demo", self._result(0), do_write=False)
+        self.assertEqual(out["action"], "close")
+
+    def test_archived_repo_is_skipped_entirely(self):
+        result = self._result(3)
+        result["archived"] = True
+        out = ri.handle("owner/demo", result, do_write=False)
+        self.assertEqual(out["action"], "none")
 
 
 class TestDshBadge(unittest.TestCase):
