@@ -87,8 +87,7 @@ def audit(repo):
     status, d = gh2(f"repos/{repo}")
     if not isinstance(d, dict) or status != 200:
         return None, "仓库不存在或无权限"
-    if d.get("private"):
-        return None, "私有仓库（部分安全功能需付费，跳过）"
+    # 私有仓库照常审计；付费级安全能力查不到时会以 UNKNOWN 呈现
 
     # ← review 修正：默认分支不能硬编码 main
     branch = d.get("default_branch") or "main"
@@ -162,6 +161,7 @@ def audit(repo):
         res["E2"] = PASS if len(tags) > 0 else FAIL
 
     return res, {
+        "private": bool(d.get("private")),
         "codeql_alerts": len(cs_alerts) if isinstance(cs_alerts, list) else None,
         "url": d.get("html_url"),
         "branch": branch,

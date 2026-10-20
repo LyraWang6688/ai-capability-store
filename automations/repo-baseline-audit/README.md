@@ -1,6 +1,6 @@
 # repo-baseline-audit
 
-**每周一自动体检你名下所有公开 GitHub 仓库的「公开项目基线」（默认跳过已归档与 fork）。**
+**每周一自动体检你名下所有 GitHub 仓库的「公开项目基线」——公开 + 私有，默认跳过已归档与 fork。**
 
 审计 17 项（安全 / 合并纪律 / CI / 可维护 / 可扩展），每项给 PASS / FAIL / UNKNOWN，
 结果写入飞书 Base「仓库基线体检」表：一行一个仓库（PASS/FAIL/UNKNOWN 计数 + 不合格项清单）。
@@ -13,9 +13,9 @@
 
 飞书 Base「仓库基线体检」表：
 
-| 仓库 | 检查日期 | PASS | FAIL | UNKNOWN | 不合格项 |
+| 仓库 | 可见性 | 检查日期 | PASS | FAIL | UNKNOWN | 不合格项 |
 |---|---|---|---|---|---|
-| LyraWang6688/xxx | 2026-11-01 | 12 | 5 | 0 | A2 推送保护；B3 required status checks |
+| LyraWang6688/xxx | 公开 | 2026-11-01 | 12 | 5 | 0 | A2 推送保护；B3 required status checks |
 
 ## 周报（DSH 会话）
 
@@ -56,6 +56,8 @@ python3 run_audit.py --owner X --include-archived --include-forks
 
 ## 已知边界
 
-- 私有仓库跳过（部分安全功能需付费）；
+- 私有仓库照常审计；但 GitHub Advanced Security 相关能力（密钥扫描/CodeQL 等）在私有仓库需要付费，
+  查不到时会显示 **UNKNOWN**，不是"没开"；
+- 但 `--public-only` 可只看公开仓库；
 - `UNKNOWN` 表示"查不到"，不代表没开；
 - 本自动化**只审计不改设置**；要改请人工按报告操作（注意：没 CI 的仓库不要开 required check）。

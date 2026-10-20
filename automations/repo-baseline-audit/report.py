@@ -46,6 +46,7 @@ def main():
             continue
         items.append({
             "仓库": str(cell("仓库") or ""),
+            "可见性": str(cell("可见性") or ""),
             "PASS": cell("PASS") or 0,
             "FAIL": cell("FAIL") or 0,
             "UNKNOWN": cell("UNKNOWN") or 0,
