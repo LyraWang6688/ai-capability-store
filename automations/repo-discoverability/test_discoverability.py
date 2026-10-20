@@ -17,6 +17,7 @@ from unittest import mock
 import audit_discoverability as au
 import traffic_baseline as tb
 import report_issues as ri
+import report as rp
 
 README = """# Demo Project
 
@@ -33,6 +34,30 @@ README = """# Demo Project
 
 
 
+
+
+class TestLocalReport(unittest.TestCase):
+    """report.py 是 DSH 会话侧读 issue 的入口，解析必须稳。"""
+
+    def test_parse_failures_reads_the_issue_table(self):
+        body = (
+            "| 项 | 层 | 缺什么 | 怎么补 |\n"
+            "| --- | --- | --- | --- |\n"
+            "| `D3` README 前三行 | 实测项（必修） | 命中 0/3 | 插入三行摘要 |\n"
+            "| `D6` DSH badge | 生态约定（建议） | — | 加徽章 |\n"
+        )
+        rows = rp.parse_failures(body)
+        self.assertEqual([r["code"] for r in rows], ["D3", "D6"],
+                         "code 里不能残留反引号")
+        self.assertEqual(rows[0]["title"], "README 前三行")
+        self.assertEqual(rows[1]["tier"], "生态约定（建议）")
+
+    def test_parse_failures_ignores_non_item_rows(self):
+        self.assertEqual(rp.parse_failures("| --- | --- | --- | --- |\n随便一行"), [])
+
+    def test_marker_and_label_are_shared_with_the_writer(self):
+        self.assertEqual(rp.MARKER, ri.MARKER, "读写两边必须用同一个 marker")
+        self.assertEqual(rp.LABEL, ri.LABEL)
 
 
 class TestAuditScope(unittest.TestCase):
