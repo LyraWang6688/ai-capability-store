@@ -109,6 +109,40 @@ class TestTopicsComeFromThePlanOnly(unittest.TestCase):
         self.assertEqual([a for a in result["actions"] if a["field"] == "topics"], [])
 
 
+class TestAuditScope(unittest.TestCase):
+    """公开 / 归档 / 私有的判据必须分开 —— 混在一起会产出假失败。"""
+
+    def _audit(self, meta, readme="# X\n\n> q\n\n给谁用 它做什么 怎么开始\n"):
+        with mock.patch.object(au, "gh_json",
+                               side_effect=lambda p: meta if p.endswith("owner/demo") else None), \
+             mock.patch.object(au, "_readme_text", return_value=readme):
+            return au.audit("owner/demo")
+
+    def test_private_repo_marks_search_items_not_applicable(self):
+        meta = {"archived": False, "private": True, "topics": [], "description": "", "language": ""}
+        result = self._audit(meta)
+        by_code = {i["code"]: i for i in result["items"]}
+        for code in ("D1", "D2", "D6"):
+            self.assertEqual(by_code[code]["status"], "N/A",
+                             f"{code} 对私有仓库没有意义，不该算 FAIL")
+
+    def test_na_items_do_not_dilute_the_denominator(self):
+        meta = {"archived": False, "private": True, "topics": [], "description": "", "language": ""}
+        result = self._audit(meta)
+        self.assertEqual(result["total"], 3, "私有仓库只算 D3/D4/D5 三项")
+
+    def test_public_repo_scores_all_six(self):
+        meta = {"archived": False, "private": False, "topics": ["a","b","c","d","e"],
+                "description": "这是一个长度足够的项目描述用于通过长度检查", "language": "Python"}
+        result = self._audit(meta)
+        self.assertEqual(result["total"], 6)
+        self.assertEqual(result["score"], 3, "D1/D2/D3 应通过")
+
+    def test_archived_flag_is_reported(self):
+        result = self._audit({"archived": True, "private": False, "topics": [], "description": "", "language": ""})
+        self.assertTrue(result["archived"])
+
+
 class TestIssueReporting(unittest.TestCase):
     """The issue bot must be idempotent — a weekly run cannot pile up issues."""
 
@@ -167,7 +201,7 @@ class TestDshBadge(unittest.TestCase):
 
     def test_readme_without_badge_fails_the_check(self):
         meta = {"archived": False, "topics": ["a", "b", "c", "d", "e"],
-                "description": "这是一个长度足够的项目描述用于通过检查", "language": "Python"}
+                "description": "这是一个长度足够的项目描述用于通过长度检查", "language": "Python"}
         readme = "# X\n\n> 引言够长了吧这个项目\n\n给谁用 / 它做什么 / 怎么开始\n"
         with mock.patch.object(au, "gh_json",
                                side_effect=lambda p: meta if p.endswith("owner/demo") else None), \

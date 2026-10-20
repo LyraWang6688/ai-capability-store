@@ -29,8 +29,15 @@ standard nobody can defend is just a list of opinions:
     T3  needs a 14-day window (GitHub traffic retention)
         D6 traffic      captured separately by `--baseline`; compare later.
 
-Archived repos are reported as SKIP, not FAIL: they are read-only, so their
-score cannot be improved and counting them as failures only creates noise.
+Archived repos are skipped entirely: they are read-only, so their score cannot be
+improved and counting them as failures only creates noise.
+
+**Private repos use a reduced item set.** A private repo never appears in GitHub
+search, so D1 (topics), D2 (description) and D6 (badge) measure nothing — they are
+reported as N/A instead of PASS/FAIL. What still matters privately is whether a
+human or an agent who *is* given access can read the repo: D3 (README opening),
+D4 (llms.txt), D5 (AGENTS.md). The score denominator is PASS+FAIL, so N/A items do
+not dilute it.
 
 Usage:
     python3 scripts/audit_discoverability.py LyraWang6688/ai-capability-store
@@ -95,25 +102,28 @@ def audit(repo: str) -> dict:
     """Return {repo, archived, score, items: [{code, title, status, detail, fix}]}."""
     meta = gh_json(f"repos/{repo}") or {}
     archived = bool(meta.get("archived"))
+    private = bool(meta.get("private"))
     topics = meta.get("topics") or []
     description = (meta.get("description") or "").strip()
     readme = _readme_text(repo)
 
     items = []
 
-    def add(code, title, ok, detail, fix, tier="T1"):
-        items.append({"code": code, "title": title, "tier": tier,
-                      "status": "PASS" if ok else "FAIL",
-                      "detail": detail, "fix": "" if ok else fix})
+    def add(code, title, ok, detail, fix, tier="T1", applicable=True):
+        status = ("PASS" if ok else "FAIL") if applicable else "N/A"
+        items.append({"code": code, "title": title, "tier": tier, "status": status,
+                      "detail": detail if applicable else "私有仓库不适用",
+                      "fix": "" if (ok or not applicable) else fix})
 
     add("D1", "topics", len(topics) >= MIN_TOPICS,
         f"{len(topics)} 个" + (f"：{', '.join(topics)}" if topics else "（空）"),
-        f"至少 {MIN_TOPICS} 个；没 topic 的仓库在 topic: 搜索里命中数为 0")
+        f"至少 {MIN_TOPICS} 个；没 topic 的仓库在 topic: 搜索里命中数为 0",
+        applicable=not private)
 
     add("D2", "description", DESC_MIN <= len(description) <= DESC_MAX,
         (f"{len(description)} 字：{description[:60]}…" if description else "（空）"),
         f"写 {DESC_MIN}–{DESC_MAX} 字，说清「给谁、解决什么」；"
-        "这是搜索结果里唯一能读的一句话")
+        "这是搜索结果里唯一能读的一句话", applicable=not private)
 
     head = "\n".join(readme.split("\n")[:25]).lower()
     found = [any(m.lower() in head for m in group) for group in OPENING_MARKERS]
@@ -130,18 +140,20 @@ def audit(repo: str) -> dict:
     badge = any(marker in readme.lower() for marker in BADGE_MARKERS)
     add("D6", "DSH badge", badge, "",
         "README 末尾加 powered-by-dsh 徽章；作用是署名和生态可追溯，"
-        "**不影响搜索排名**（图片不被 in:readme 索引为文本）", tier="T2")
+        "**不影响搜索排名**（图片不被 in:readme 索引为文本）",
+        tier="T2", applicable=not private)
 
     score = sum(1 for i in items if i["status"] == "PASS")
-    return {"repo": repo, "archived": archived, "score": score,
-            "total": len(items), "items": items}
+    total = sum(1 for i in items if i["status"] != "N/A")
+    return {"repo": repo, "archived": archived, "private": private, "score": score,
+            "total": total, "items": items}
 
 
 def print_report(result: dict) -> None:
     tag = "  [SKIP · 归档仓库，只读]" if result["archived"] else ""
     print(f"\n{'=' * 60}\n{result['repo']}{tag}\n{'=' * 60}")
     for item in result["items"]:
-        mark = "✓" if item["status"] == "PASS" else "✗"
+        mark = {"PASS": "✓", "FAIL": "✗"}.get(item["status"], "–")
         tier = item.get("tier", "")
         line = f"  {mark} {item['code']}  {item['title']}" + (f"  [{tier}]" if tier == "T2" else "")
         if item["detail"]:
@@ -161,11 +173,18 @@ def main() -> int:
     parser.add_argument("--json", action="store_true", help="machine-readable output")
     parser.add_argument("--include-archived", action="store_true",
                         help="score archived repos too instead of skipping them")
+    parser.add_argument("--include-private", action="store_true",
+                        help="also audit private repos（判据会自动降级："
+                             "私有仓库不检查 topics/description/徽章）")
     args = parser.parse_args()
 
     repos = list(args.repos)
     if args.all:
-        listing = gh_json(f"users/{args.owner}/repos?per_page=100&type=public")
+        # 默认只审计公开仓库：私有仓库不会出现在 GitHub 搜索里，
+        # topics/description/徽章 对它测不出任何东西。要审私有仓库用 --include-private。
+        listing = gh_json(
+            "user/repos?per_page=100&affiliation=owner" if args.include_private
+            else f"users/{args.owner}/repos?per_page=100&type=public")
         if listing is None:
             print("无法列出仓库（gh 未认证或网络问题）", file=sys.stderr)
             return 2
@@ -210,9 +229,10 @@ def main() -> int:
             print(f"\n{'=' * 60}\n  汇总（不含归档）\n{'=' * 60}")
             for r in sorted(scorable, key=lambda x: -x["score"]):
                 print(f"    {r['score']}/{r['total']}  {r['repo']}")
-            avg = sum(r["score"] for r in scorable) / len(scorable)
-            print(f"\n  平均 {avg:.2f}/{scorable[0]['total']}")
-            print(f"  归档跳过 {len(results) - len(scorable)} 个")
+            avg = sum(r["score"] / r["total"] for r in scorable) / len(scorable)
+            priv = [r for r in scorable if r.get("private")]
+            print(f"\n  平均 {avg * 100:.0f}%（按各自满分归一）")
+            print(f"  公开 {len(scorable) - len(priv)} 个 · 私有 {len(priv)} 个 · 归档跳过 {len(results) - len(scorable)} 个")
 
     failed = any(i["status"] == "FAIL" for r in scorable for i in r["items"])
     return 1 if failed else 0

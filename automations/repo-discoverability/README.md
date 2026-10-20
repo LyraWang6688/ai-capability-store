@@ -157,6 +157,21 @@ python3 apply_discoverability.py --owner LyraWang6688 --apply --apply-topics
 
 退出码：`audit` 0 = 全 PASS/SKIP，1 = 有 FAIL。`apply` 0 = 无错误，1 = 有写入失败。
 
+## 审计范围
+
+```
+✅ 公开仓库          默认审计
+❌ 归档仓库          跳过（只读，改不了；算 FAIL 只是噪音）
+❌ 私有仓库          默认不审 —— 见下
+```
+
+**为什么私有仓库默认不审**：私有仓库不会出现在 GitHub 搜索里。
+`topics` / `description` / 徽章 对它**测不出任何东西**，强行算 FAIL 是假失败。
+
+如果确实要审（比如想让自己的 agent 更容易读），用 `--include-private`：
+判据会自动降级 —— `D1` / `D2` / `D6` 标 **N/A**，只检查 `D3` README / `D4` llms.txt / `D5` AGENTS.md，
+且 N/A 项**不计入分母**。
+
 ## 已知边界
 
 - **归档仓库直接跳过** —— 只读，改了会被 API 403，算成 FAIL 只是噪音。
