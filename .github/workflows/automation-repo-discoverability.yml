@@ -1,6 +1,6 @@
 name: automation-repo-discoverability
 
-# 每周一 08:00（Asia/Shanghai）体检所有公开仓库的「发现性」：
+# 每周一 20:00（Asia/Shanghai）体检所有公开仓库的「发现性」：
 # 能不能被 AI / 人搜到，搜到之后愿不愿意点进来。
 #
 # 边界（用户 2026-10-20 明确）：本自动化**只读 + 开 issue，不写任何仓库**。
@@ -11,7 +11,7 @@ name: automation-repo-discoverability
 # 「怎么按标准执行」由用户与各仓库负责的 AI 约定，不归本自动化管。
 on:
   schedule:
-    - cron: "0 0 * * 1"        # 00:00 UTC = 08:00 Asia/Shanghai，每周一
+    - cron: "0 12 * * 1"       # 12:00 UTC = 20:00 Asia/Shanghai，每周一晚 8 点
   workflow_dispatch:
     inputs:
       dry-run:

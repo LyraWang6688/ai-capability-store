@@ -166,7 +166,7 @@ python3 traffic_baseline.py --owner LyraWang6688 --compare
   2026-10-19 名下 13 个公开仓库里 **8 个是归档的**，真正需要做这项的只有 5 个。
 - **分支保护会拦住写入** —— `ai-capability-store` 和 `feishu-retail-ops` 都要求走 PR。
   脚本不会用 `--admin` 绕过；它会报错并说明需要 PR。**这是对的**：绕过保护等于假装 CI 通过了。
-- **weekly**：workflow 每周一 08:00 跑一次；issue 幂等，修好自动关闭
+- **weekly**：workflow 每周一晚 20:00 跑一次；issue 幂等，修好自动关闭
 - **`llms.txt` 不保证被任何 agent 读取** —— 它是 T2 约定，不是 T1 实测项。不要因为它加了就以为分数一定涨。
 
 ## 相关

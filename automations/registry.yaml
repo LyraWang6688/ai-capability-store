@@ -148,7 +148,7 @@ automations:
       **只读 + 开 issue，不写任何仓库** —— 不合格就开 issue 派给仓库负责的 AI，
       「怎么按标准执行」由用户与各仓库 AI 约定，不归本自动化。
     notes: >
-      为什么是 Automation：触发由时钟决定（每周一 08:00），不需要人或模型参与。
+      为什么是 Automation：触发由时钟决定（每周一晚 20:00），不需要人或模型参与。
       issue 幂等：同一仓库只维护一条（带隐藏 marker），修好会自动关闭，不会每周堆单。
       跨仓库开 issue 需要 PAT（repo scope）—— GITHUB_TOKEN 只能写当前仓库。
       与 repo-baseline-audit 分工：那个修内功（安全/CI/合并纪律），这个修外功（能不能被找到）。
