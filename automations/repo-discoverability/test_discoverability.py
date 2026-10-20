@@ -108,6 +108,36 @@ class TestTopicsComeFromThePlanOnly(unittest.TestCase):
         self.assertEqual([a for a in result["actions"] if a["field"] == "topics"], [])
 
 
+class TestDshBadge(unittest.TestCase):
+    """D6 is attribution, not a ranking factor — the test pins that framing."""
+
+    def test_badge_markers_cover_both_spellings(self):
+        self.assertIn("powered_by-dsh", au.BADGE_MARKERS)
+        self.assertIn("powered-by-dsh", au.BADGE_MARKERS)
+
+    def test_readme_without_badge_fails_the_check(self):
+        meta = {"archived": False, "topics": ["a", "b", "c", "d", "e"],
+                "description": "这是一个长度足够的项目描述用于通过检查", "language": "Python"}
+        readme = "# X\n\n> 引言够长了吧这个项目\n\n给谁用 / 它做什么 / 怎么开始\n"
+        with mock.patch.object(au, "gh_json",
+                               side_effect=lambda p: meta if p.endswith("owner/demo") else None), \
+             mock.patch.object(au, "_readme_text", return_value=readme):
+            result = au.audit("owner/demo")
+        badge = next(i for i in result["items"] if i["code"] == "D6")
+        self.assertEqual(badge["status"], "FAIL")
+        self.assertEqual(badge["tier"], "T2", "D6 是约定项不是实测项")
+
+    def test_badge_is_found_when_present(self):
+        meta = {"archived": False, "topics": [], "description": "", "language": ""}
+        readme = "# X\n\n> q\n\n[![](https://img.shields.io/badge/powered_by-dsh-blue)](x)\n"
+        with mock.patch.object(au, "gh_json",
+                               side_effect=lambda p: meta if p.endswith("owner/demo") else None), \
+             mock.patch.object(au, "_readme_text", return_value=readme):
+            result = au.audit("owner/demo")
+        badge = next(i for i in result["items"] if i["code"] == "D6")
+        self.assertEqual(badge["status"], "PASS")
+
+
 class TestTrafficBaseline(unittest.TestCase):
     """The 14-day window is the reason this exists as its own script + storage."""
 

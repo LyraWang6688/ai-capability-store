@@ -64,6 +64,12 @@ LANGUAGE_TOPICS = {
 MAX_TOPICS = 8
 MIN_TOPICS = 5
 DESC_MAX = 200
+DSH_BADGE = (
+    "[![](https://img.shields.io/badge/powered_by-dsh-4D6BFE"
+    "?style=flat-square&logo=deepseek&logoColor=white)]"
+    "(https://github.com/deepseek-ai/deepseek-harness)"
+)
+BADGE_MARKERS = ("powered_by-dsh", "powered-by-dsh")
 PLAN_FILE = "topics.plan.json"
 
 
@@ -263,6 +269,9 @@ def apply_repo(repo: str, do_write: bool, do_topics: bool = False) -> dict:
             plan["suggestions"] = derive_topics(readme, meta.get("language") or "", [])
 
     llms = build_llms_txt(repo, readme, new_desc or current_desc)
+    if not any(marker in readme.lower() for marker in BADGE_MARKERS):
+        plan["actions"].append({"field": "dsh-badge", "to": DSH_BADGE, "readme": readme})
+
     if not gh_json(f"repos/{repo}/contents/llms.txt"):
         plan["actions"].append({"field": "llms.txt", "to": "（新建，约 "
                                 f"{len(llms)} 字符）", "content": llms})
@@ -283,6 +292,12 @@ def apply_repo(repo: str, do_write: bool, do_topics: bool = False) -> dict:
             r = gh(args)
             if r.returncode != 0:
                 plan["errors"].append(f"topics: {(r.stderr or r.stdout)[:120]}")
+        elif action["field"] == "dsh-badge":
+            updated = action["readme"].rstrip("\n") + "\n\n" + action["to"] + "\n"
+            ok, detail = put_file(repo, "README.md", updated,
+                                  "docs(readme): add powered-by-dsh badge")
+            if not ok:
+                plan["errors"].append(f"dsh-badge: {detail}")
         elif action["field"] == "llms.txt":
             ok, detail = put_file(repo, "llms.txt", action["content"],
                                   "docs: add llms.txt for agent-readable indexing")
