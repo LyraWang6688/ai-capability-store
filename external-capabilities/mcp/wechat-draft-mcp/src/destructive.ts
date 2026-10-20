@@ -61,10 +61,25 @@ export function assertConfirmed(
 ): void {
   const expected = confirmationTokenFor(targetId);
   if (expected && (confirm ?? "").trim() === expected) return;
+  // The expected value is deliberately NOT printed. It used to be, in the form
+  // `（目标 X → 应为 Y）`, which meant one failed call handed the caller the answer and
+  // the second attempt passed. That turns a "prove you looked at the target" gate into
+  // a "call twice" gate. The target ID is printed instead: reading it is the work this
+  // gate is asking for, and it is not the answer.
+  // Neither the expected value nor the target ID is echoed. The token is the last six
+  // characters of the target ID — so printing the *target ID* hands the answer over just
+  // as effectively as printing the token. (The first version of this fix printed the
+  // target and a test caught it.)
+  //
+  // Be clear about what this gate is worth: the caller supplies `targetId`, so it can
+  // always derive the token itself. The gate is not a secret; it is a **stop-and-look**
+  // step. Removing the echo only means the caller has to stop and derive it instead of
+  // copy-pasting it from an error.
   throw new DestructiveOperationBlockedError(
-    `「${operation}」需要二次确认：请把目标 ID 的后 6 位作为 confirm 传入` +
-      `（目标 ${targetId || "(空)"} → 应为 ${expected || "(空)"}）。` +
-      `这一步是为了强制确认"要动的确实是这一条"。`
+    `「${operation}」需要二次确认：请把目标 ID 的后 6 位作为 confirm 传入。\n` +
+      `目标 ID 不回显 —— 它是你传进来的，你手上就有它；而它的后 6 位就是期望值，\n` +
+      `所以回显目标 ID 等于把答案交出去。\n` +
+      `请先去读目标的 ID（例如用 get_wechat_draft 或后台草稿箱），算出后 6 位再传进来。`
   );
 }
 

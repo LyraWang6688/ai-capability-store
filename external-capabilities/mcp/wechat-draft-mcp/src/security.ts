@@ -30,9 +30,30 @@ const FORBIDDEN_HOME_ENTRIES = [
   ".gnupg",
   ".codebuddy",
   ".workbuddy",
+  // Credential stores that were missing from the first list. The allowlist
+  // (WECHAT_DRAFT_ALLOWED_ROOTS) is the real answer, but it is opt-in — so when it is
+  // unset this list is the *only* boundary, and a boundary made of an incomplete list is
+  // not a boundary. Everything below is a known credential location, not a guess.
+  ".npmrc", // npm publish tokens — this repository has published packages
+  ".netrc", // machine auth
+  ".docker", // registry credentials
+  ".kube", // cluster credentials
+  ".dsh", // DSH model credentials
+  ".env",
+  ".env.local",
+  ".config/gh", // gh auth
+  ".config/gcloud",
   "Library/Keychains",
   "Library/Application Support/lark-cli"
 ];
+
+/**
+ * 文件名级黑名单 —— 与位置无关。
+ *
+ * `.env` 不会只出现在家目录：任何一个项目目录下的 `.env.` 变体都藏着凭据。
+ * 按 basename 判，才不会因为「它不在 $HOME 里」而放过。
+ */
+const FORBIDDEN_BASENAMES = [/^\.env(\..+)?$/, /^\.netrc$/, /^\.npmrc$/, /^id_(rsa|ed25519|ecdsa|dsa)$/, /^\.p12$/, /^\.pfx$/];
 
 export class PathNotAllowedError extends Error {
   readonly code: string;
@@ -78,6 +99,12 @@ export async function resolveSafePath(input: string, env: NodeJS.ProcessEnv = pr
     ...FORBIDDEN_PREFIXES,
     ...FORBIDDEN_HOME_ENTRIES.map((entry) => (home ? path.join(home, entry) : ""))
   ].filter(Boolean);
+
+  // 文件名级检查：`.env` 之类的凭据在任何目录里都是凭据。
+  const base = path.basename(resolved);
+  if (FORBIDDEN_BASENAMES.some((pattern) => pattern.test(base))) {
+    throw new PathNotAllowedError("PATH_FORBIDDEN", "出于安全考虑，不允许读取该文件。");
+  }
 
   for (const prefix of denied) {
     if (isInside(resolved, prefix)) {
