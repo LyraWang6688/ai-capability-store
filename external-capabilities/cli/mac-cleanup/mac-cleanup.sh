@@ -151,10 +151,19 @@ DRY_TOTAL="$(pending_total_human "${RUN_DIR}/clean-list.txt")"
 log "   待清合计：${DRY_TOTAL}"
 
 if [ "${MODE}" = "check" ]; then
+  # 资产体检是纯只读、与"清没清"无关 —— 预览模式恰恰是最该看它的时刻
+  log "⑤ health：关键资产体检（只读）"
+  HEALTH_OUT="${RUN_DIR}/health.txt"
+  health_check > "${HEALTH_OUT}" 2>&1
+  HEALTH_STATUS="$(grep -E '^VERDICT:' "${HEALTH_OUT}" | cut -d: -f2- | sed 's/^ //')"
+  grep -E '^(OK|BROKEN|MISSING|SKIP|ABSENT|VERDICT)' "${HEALTH_OUT}" | sed 's/^/   /'
+
   write_report "${REPORT_FILE}" "${QUARTER}" "${STAMP}" \
     "CHECK-ONLY" "${FREE_BEFORE_KB}" "${FREE_BEFORE_KB}" \
-    "${GUARD_STATUS}" "${DRY_TOTAL}" "未执行清理（--check）" "${RUN_DIR}"
+    "${GUARD_STATUS}" "${DRY_TOTAL}" "未执行清理（--check）" "${RUN_DIR}" \
+    "未执行（--check 不清理，没有日志可比）" "${HEALTH_STATUS}"
   log "报告：${REPORT_FILE}"
+  [ "${HEALTH_STATUS}" = "BROKEN" ] && warn "关键资产体检 BROKEN —— 看 ${HEALTH_OUT}"
   exit 0
 fi
 
