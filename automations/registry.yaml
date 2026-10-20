@@ -154,21 +154,22 @@ automations:
     path: automations/repo-baseline-audit
     entrypoint: run_audit.py
     status: testing
-    version: 0.1.0
+    version: 0.1.1
     updated: "2026-10-20"
-    trigger_kind: monthly
+    trigger_kind: weekly
     executor: github-actions
     workflow: .github/workflows/automation-repo-baseline.yml
     output:
       target: external-system
       destination: "Feishu Base「AI 工具」多维表格：仓库基线体检"
     description: >
-      每月 1 号 21:40（Asia/Shanghai）批量审计名下所有公开 GitHub 仓库的公开项目基线
+      每周一 09:00（Asia/Shanghai）批量审计名下所有公开 GitHub 仓库的公开项目基线
       （17 项：安全 / 合并纪律 / CI / 可维护 / 可扩展），每项 PASS/FAIL/UNKNOWN，
       结果写入飞书 Base「仓库基线体检」表（一行一个仓库 + 不合格项清单）。
     notes: >
       为什么是 Automation：触发由时钟决定（每月 1 号），不需要人或模型参与；
       只审计、不改任何仓库设置。UNKNOWN 表示查不到而不是没开。
+      report.py 供本机 DSH 定时任务读取最近 7 天结果，在会话里生成周报。
       原为 skill repo-baseline（0.1.1），按用户要求整体迁入 Action 并删除 skill。
   frontier-watch:
     name: frontier-watch
