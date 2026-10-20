@@ -17,6 +17,19 @@ description: Skill identity, path, lifecycle status, version, and placement scop
 
 # One flat mapping keyed by Skill identifier (map key == name). No sections.
 skills:
+  geo-content:
+    name: geo-content
+    path: skills/geo-content
+    scope: shared
+    status: testing
+    version: 0.1.0
+    updated: "2026-10-20"
+    notes: >
+      Store-native reusable content creation, review and revision workflow for
+      human readability and accurate AI retrieval, summarization and citation.
+      Separates editorial quality, platform accessibility and observed outcomes;
+      no universal GEO score or citation guarantee. New asset, no prior Git history.
+      Acceptance scope and representative artifacts: references/acceptance.md.
   ai-tool-footprint:
     name: ai-tool-footprint
     path: skills/ai-tool-footprint

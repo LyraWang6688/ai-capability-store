@@ -1,0 +1,4 @@
+interface:
+  display_name: "GEO 内容创作与审阅"
+  short_description: "创作或审阅便于读者与 AI 理解、检索、概括和引用的内容，保留真实证据边界"
+  default_prompt: "请用 $geo-content 审阅这篇内容的主题、可摘引性、事实依据与适用边界，并给出修改后的版本。"
