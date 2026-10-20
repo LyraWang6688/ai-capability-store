@@ -33,6 +33,8 @@ run_init() {
   local force=0
   [ "${1:-}" = "--force" ] && force=1
 
+  mkdir -p "${MC_STATE_DIR}" || { echo "✗ 无法创建状态目录 ${MC_STATE_DIR}"; return 1; }
+
   echo "════ mac-cleanup 初始化 ════"
   echo
 
@@ -80,17 +82,17 @@ run_init() {
   _write_or_skip() {   # $1=path  $2=content
     local f="$1"
     if [ -f "${f}" ] && [ "${force}" -ne 1 ]; then
-      echo "· 已存在，跳过：${f#"${MC_ROOT}"/}（要重建加 --force）"
+      echo "· 已存在，跳过：${f#"${MC_STATE_DIR}"/}（要重建加 --force）"
       skipped=$((skipped + 1))
       return 0
     fi
     if [ -f "${f}" ]; then
       local bak
       bak="$(_mc_backup_if_exists "${f}")"
-      [ -n "${bak}" ] && echo "  备份：${bak#"${MC_ROOT}"/}"
+      [ -n "${bak}" ] && echo "  备份：${bak#"${MC_STATE_DIR}"/}"
     fi
     printf '%s' "$2" > "${f}"
-    echo "✓ 写入：${f#"${MC_ROOT}"/}"
+    echo "✓ 写入：${f#"${MC_STATE_DIR}"/}"
     wrote=$((wrote + 1))
   }
 
@@ -133,25 +135,25 @@ MC_DSH_HOME=\"$([ -d "${HOME}/.dsh" ] && printf '%s' "${HOME}/.dsh")\"
       grep -vE '^\s*(#|$)' "${live}" | sed 's/[[:space:]]*$//'
       echo
     fi
-  } > "${MC_ROOT}/.whitelist.reference.tmp"
+  } > "${MC_STATE_DIR}/.whitelist.reference.tmp"
 
   # 去重（保留注释与空行，只对模式行去重；顺序保持"内置在前、额外在后"）
   awk '/^[[:space:]]*#/ {print; next}
        /^[[:space:]]*$/ {print; next}
-       !seen[$0]++' "${MC_ROOT}/.whitelist.reference.tmp" > "${MC_ROOT}/.whitelist.reference.dedup" \
-    && mv "${MC_ROOT}/.whitelist.reference.dedup" "${MC_ROOT}/.whitelist.reference.tmp"
+       !seen[$0]++' "${MC_STATE_DIR}/.whitelist.reference.tmp" > "${MC_STATE_DIR}/.whitelist.reference.dedup" \
+    && mv "${MC_STATE_DIR}/.whitelist.reference.dedup" "${MC_STATE_DIR}/.whitelist.reference.tmp"
 
   if [ -f "${MC_REF_WHITELIST}" ] && [ "${force}" -ne 1 ]; then
     echo "· 已存在，跳过：whitelist.reference（要重建加 --force）"
     skipped=$((skipped + 1))
-    rm -f "${MC_ROOT}/.whitelist.reference.tmp"
+    rm -f "${MC_STATE_DIR}/.whitelist.reference.tmp"
   else
     if [ -f "${MC_REF_WHITELIST}" ]; then
       local bak
       bak="$(_mc_backup_if_exists "${MC_REF_WHITELIST}")"
-      [ -n "${bak}" ] && echo "  备份：${bak#"${MC_ROOT}"/}"
+      [ -n "${bak}" ] && echo "  备份：${bak#"${MC_STATE_DIR}"/}"
     fi
-    mv "${MC_ROOT}/.whitelist.reference.tmp" "${MC_REF_WHITELIST}"
+    mv "${MC_STATE_DIR}/.whitelist.reference.tmp" "${MC_REF_WHITELIST}"
     echo "✓ 写入：whitelist.reference"
     wrote=$((wrote + 1))
   fi
@@ -161,7 +163,7 @@ MC_DSH_HOME=\"$([ -d "${HOME}/.dsh" ] && printf '%s' "${HOME}/.dsh")\"
   # watch.list    = 通用观察清单
   if [ "${force}" -eq 1 ] || [ ! -f "${MC_EXPECT_ABSENT}" ] || [ ! -f "${MC_CRITICAL_LIST}" ] || [ ! -f "${MC_WATCH_LIST}" ]; then
     # 临时把参考清单读进来，算出不命中的
-    local tmp_absent="${MC_ROOT}/.expect.tmp"
+    local tmp_absent="${MC_STATE_DIR}/.expect.tmp"
     {
       echo "# 允许"命中不到路径"的白名单条目（--init 自动生成）"
       echo "# 这些条目在本机当前不存在（App 没装/已卸载/尚未创建），不算错误。"

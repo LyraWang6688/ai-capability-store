@@ -7,16 +7,22 @@
 
 MC_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
-# ── 默认配置（可提交）────────────────────────────────────────
-readonly MC_CONFIG_DEFAULT="${MC_ROOT}/config.default.sh"
-# ── 本机配置（--init 生成，gitignore）────────────────────────
-readonly MC_CONFIG_LOCAL="${MC_ROOT}/config.local.sh"
+# ── 状态目录（本机生成物）────────────────────────────────────
+# 为什么不放包目录：npm/npx 把包装在缓存目录（~/.npm/_npx/<hash>/…），
+# 那里随时被回收，而且是只读语义。所以状态一律放用户目录。
+# 可用 MC_STATE_DIR 覆盖（测试用）。
+readonly MC_STATE_DIR="${MC_STATE_DIR:-${HOME}/.mac-cleanup}"
 
-# ── 生成的清单文件（--init 生成，gitignore）──────────────────
-readonly MC_REF_WHITELIST="${MC_ROOT}/whitelist.reference"
-readonly MC_EXPECT_ABSENT="${MC_ROOT}/expect-absent.list"
-readonly MC_CRITICAL_LIST="${MC_ROOT}/critical.list"
-readonly MC_WATCH_LIST="${MC_ROOT}/watch.list"
+# ── 默认配置（随包发布，只读）────────────────────────────────
+readonly MC_CONFIG_DEFAULT="${MC_ROOT}/config.default.sh"
+# ── 本机配置（--init 生成，落在状态目录）────────────────────
+readonly MC_CONFIG_LOCAL="${MC_STATE_DIR}/config.local.sh"
+
+# ── 生成的清单文件（--init 生成，落在状态目录）──────────────
+readonly MC_REF_WHITELIST="${MC_STATE_DIR}/whitelist.reference"
+readonly MC_EXPECT_ABSENT="${MC_STATE_DIR}/expect-absent.list"
+readonly MC_CRITICAL_LIST="${MC_STATE_DIR}/critical.list"
+readonly MC_WATCH_LIST="${MC_STATE_DIR}/watch.list"
 
 # ── Mole 自己的路径（Mole 的约定，跨机器一致）────────────────
 readonly MC_MOLE_HOME="${HOME}/.config/mole"
@@ -27,7 +33,7 @@ readonly MC_CLEAN_LIST="${MC_MOLE_HOME}/clean-list.txt"
 # ── 配置项默认值（config.local.sh 可覆盖）────────────────────
 MC_MO_BIN=""
 MC_LABEL="local.mac-cleanup"
-MC_REPORT_DIR="${HOME}/Library/Logs/mac-cleanup"
+MC_REPORT_DIR="${MC_REPORT_DIR:-${HOME}/Library/Logs/mac-cleanup}"
 MC_DSH_RUNTIME=""          # 由 --init 探测；空 = 不做 DSH 相关检查
 MC_DSH_HOME=""             # 同上
 
