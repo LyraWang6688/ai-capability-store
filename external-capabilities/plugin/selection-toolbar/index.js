@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { readFileSync, unlinkSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
@@ -18,6 +18,7 @@ import { join } from 'node:path';
 const ROUTE_PATH = '/plugins/selection-toolbar/note';
 const REWRITE_PATH = '/plugins/selection-toolbar/rewrite';
 const DELIVER_PATH = '/plugins/selection-toolbar/deliver';
+const SHORTCUT_PATH = '/plugins/selection-toolbar/shortcut';
 const DEFAULT_CONFIG_PATH = join(homedir(), '.dsh', 'selection-toolbar.json');
 
 /** Read the operator config from outside the repository on every write. */
@@ -432,6 +433,52 @@ export function apply(ctx) {
     kind: 'exact',
     path: ROUTE_PATH,
     handler,
+  }));
+
+  // 把选中的文字追加到快捷键表。文件归 command-sync 所有，所以路径和它对齐；
+  // 用「一行一条」而不是 JSON 数组，是为了让这个文件也能被人直接编辑 ——
+  // 面板读它，插件写它，两边都不需要知道对方的代码。
+  const shortcutHandler = async (req, res) => {
+    if (req.method !== 'POST') {
+      sendJson(res, 405, { ok: false, message: 'method not allowed' });
+      return;
+    }
+    const rejection = connectionRejection(ctx, req);
+    if (rejection !== undefined) {
+      sendJson(res, rejection, { ok: false, message: '未通过 DSH 连接鉴权（本地 token 无效）' });
+      return;
+    }
+    try {
+      const body = await readJsonBody(req);
+      const text = String(body.text ?? '').trim();
+      if (text === '') throw new Error('text is required');
+      if (text.length > 2000) throw new Error('选中的文字太长（上限 2000 字符）');
+      const dir = join(homedir(), '.command-sync');
+      const file = join(dir, 'shortcuts.md');
+      mkdirSync(dir, { recursive: true, mode: 0o700 });
+      let existing = '';
+      try {
+        existing = readFileSync(file, 'utf8');
+      } catch (error) {
+        if (error.code !== 'ENOENT') throw error;
+      }
+      const lines = existing.split('\n').map((l) => l.trim()).filter(Boolean);
+      if (!lines.includes(text)) {
+        lines.push(text);
+        writeFileSync(file, lines.join('\n') + '\n', { mode: 0o600 });
+      }
+      sendJson(res, 200, { ok: true, total: lines.length, duplicate: existing.split('\n').map((l) => l.trim()).includes(text) });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      ctx.logger?.warn?.(`selection-toolbar: shortcut save failed: ${message}`);
+      sendJson(res, 500, { ok: false, message });
+    }
+  };
+
+  ctx.effect(() => ctx.webServer.register({
+    kind: 'exact',
+    path: SHORTCUT_PATH,
+    handler: shortcutHandler,
   }));
 
   const rewriteHandler = async (req, res) => {

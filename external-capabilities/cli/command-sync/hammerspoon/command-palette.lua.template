@@ -10,7 +10,7 @@ local chooser = hs.chooser.new(function(choice)
   hs.pasteboard.setContents(choice.cmd)
   hs.alert.show("已复制：" .. string.sub(choice.cmd, 1, 48), 1.2)
 end)
-chooser:placeholderText("搜索命令（回车复制到剪贴板）")
+chooser:placeholderText("搜索命令或快捷键（回车复制到剪贴板）")
 chooser:width(46)
 chooser:rows(10)
 
@@ -25,7 +25,8 @@ local function loadPalette()
   for _, it in ipairs(data.items or {}) do
     local prefix = "⌘ "
     if it.kind == "server" then prefix = "🌐 "
-    elseif it.kind == "recent" then prefix = "🕘 " end
+    elseif it.kind == "recent" then prefix = "🕘 "
+    elseif it.kind == "shortcut" then prefix = "⌨️ " end
     choices[#choices + 1] = {
       text = prefix .. tostring(it.title),
       subText = tostring(it.command),

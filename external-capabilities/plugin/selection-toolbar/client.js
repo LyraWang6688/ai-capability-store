@@ -264,6 +264,14 @@ window.__ModuleLoader__.load({
           },
         },
         {
+          key: 'shortcut',
+          icon: '⌨',
+          label: t('shortcut'),
+          run: (text) => {
+            void saveShortcut(text);
+          },
+        },
+        {
           key: 'collect',
           icon: '☆',
           label: t('collect'),
@@ -328,6 +336,31 @@ window.__ModuleLoader__.load({
         } catch (error) {
           const reason = error && error.message ? error.message : String(error);
           say(t('savedLocalOnly') + '：' + reason);
+        }
+      };
+
+      // 选中一段描述（比如「⌘⇧. 显示/隐藏隐藏文件」），点一下存进快捷键表。
+      // 不做按键捕获：全局热键会被 Hammerspoon 先抢走，而系统快捷键本来
+      // 就是一句知识而不是一次按键 —— 对这两类来说，选中文字更直接。
+      const saveShortcut = async (text) => {
+        const value = String(text || '').trim();
+        if (value === '') return;
+        try {
+          const response = await fetch('/plugins/selection-toolbar/shortcut', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ text: value }),
+          });
+          const payload = await response.json().catch(() => ({}));
+          if (response.ok && payload && payload.ok === true) {
+            const total = typeof payload.total === 'number' ? payload.total : 0;
+            say(total > 0 ? t('shortcutSaved') + ' (' + total + ')' : t('shortcutSaved'));
+          } else {
+            const reason = payload && payload.message ? String(payload.message) : 'HTTP ' + response.status;
+            say(t('shortcutFailed') + '：' + reason);
+          }
+        } catch (error) {
+          say(t('shortcutFailed'));
         }
       };
 
@@ -543,6 +576,9 @@ window.__ModuleLoader__.load({
       inject: ['slots', 'locale'],
       apply(ctx) {
         const zh = {
+          shortcut: '快捷键',
+          shortcutSaved: '已保存快捷键',
+          shortcutFailed: '保存快捷键失败',
           copy: '复制',
           speak: '朗读',
           ask: '追问',
@@ -583,6 +619,9 @@ window.__ModuleLoader__.load({
           failed: '出错了，请重试',
         };
         const en = {
+          shortcut: 'Shortcut',
+          shortcutSaved: 'Shortcut saved',
+          shortcutFailed: 'Saving the shortcut failed',
           copy: 'Copy',
           speak: 'Read aloud',
           ask: 'Follow up',

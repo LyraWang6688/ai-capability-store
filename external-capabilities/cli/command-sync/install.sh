@@ -29,6 +29,12 @@ else
     echo "✓ 配置已存在：$BASE/config.json"
 fi
 
+# 1.5) 快捷键速查表：不存在就给一份示例，存在则不动（可能已经存过东西）
+if [ ! -f "$BASE/shortcuts.md" ]; then
+    cp "$HERE/shortcuts.example.md" "$BASE/shortcuts.md"
+    echo "\u2713 已生成 $BASE/shortcuts.md（可直接编辑；selection-toolbar 也会往里追加）"
+fi
+
 # 2) Hammerspoon 面板
 if [ -d "/Applications/Hammerspoon.app" ]; then
     mkdir -p "$HS_DIR"
