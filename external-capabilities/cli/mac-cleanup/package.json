@@ -1,0 +1,49 @@
+{
+  "name": "@lyra_wang/mac-cleanup",
+  "version": "0.2.0",
+  "description": "季度性 macOS 清理：给 Mole 的 mo clean 加三道护栏（白名单体检 / 日志核对 / 关键资产体检）",
+  "license": "MIT",
+  "author": "王颖 (LyraWang)",
+  "homepage": "https://github.com/LyraWang6688/ai-capability-store/tree/main/external-capabilities/cli/mac-cleanup",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/LyraWang6688/ai-capability-store.git",
+    "directory": "external-capabilities/cli/mac-cleanup"
+  },
+  "bugs": {
+    "url": "https://github.com/LyraWang6688/ai-capability-store/issues"
+  },
+  "bin": {
+    "mac-cleanup": "bin/mac-cleanup.js"
+  },
+  "files": [
+    "bin/",
+    "lib/",
+    "deploy/",
+    "config.default.sh",
+    "mac-cleanup.sh",
+    "install.sh",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=16"
+  },
+  "os": [
+    "darwin"
+  ],
+  "keywords": [
+    "macos",
+    "cleanup",
+    "disk-space",
+    "mole",
+    "launchd",
+    "maintenance"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "prepack": "bash -n mac-cleanup.sh && bash -n install.sh && bash -n lib/common.sh && bash -n lib/detect.sh && bash -n lib/init.sh && bash -n lib/guard.sh && bash -n lib/verify.sh"
+  }
+}

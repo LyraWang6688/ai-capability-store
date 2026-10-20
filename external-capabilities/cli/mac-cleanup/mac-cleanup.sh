@@ -20,7 +20,19 @@
 
 set -u
 
-MC_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# npm 的 bin 是指向本文件的符号链接 —— 先解析真实路径，否则找不到 lib/
+_mc_rp() {
+  local p="$1" d n=0
+  while [ -L "$p" ]; do
+    n=$((n + 1)); [ "$n" -le 40 ] || break
+    d="$(cd "$(dirname "$p")" 2>/dev/null && pwd -P)" || break
+    p="$(readlink "$p")" || break
+    case "$p" in /*) ;; *) p="$d/$p" ;; esac
+  done
+  d="$(cd "$(dirname "$p")" 2>/dev/null && pwd -P)" || return 1
+  printf '%s/%s\n' "$d" "$(basename "$p")"
+}
+MC_ROOT="$(cd "$(dirname "$(_mc_rp "${BASH_SOURCE[0]}")")" && pwd -P)"
 
 # shellcheck source=lib/common.sh
 . "${MC_ROOT}/lib/common.sh"
@@ -39,6 +51,7 @@ usage() {
   ./mac-cleanup.sh --init [--force]   扫描本机，生成配置与清单（首次必做）
   ./mac-cleanup.sh --check            只体检 + 预演 + 出报告，不删任何东西
   ./mac-cleanup.sh                    完整跑：guard → snapshot → clean → verify → health → report
+  ./mac-cleanup.sh --install          安装 / 卸载季度定时任务（转给 install.sh）
   ./mac-cleanup.sh --help             显示本帮助
 
 退出码：
@@ -60,6 +73,18 @@ esac
 
 MODE="run"
 case "${1:-}" in
+  --install)
+    shift
+    APP="${MC_STATE_DIR}/app"
+    mkdir -p "${APP}" || { err "无法创建 ${APP}"; exit 1; }
+    # npx 把包装在缓存目录（~/.npm/_npx/<hash>），随时会被回收 ——
+    # LaunchAgent 绝不能指向那里，否则某天清理缓存后任务就静默失效。
+    # 所以先复制到稳定位置，再让 install.sh 指向副本。
+    cp -R "${MC_ROOT}/." "${APP}/" || { err "复制包到 ${APP} 失败"; exit 1; }
+    chmod +x "${APP}/mac-cleanup.sh" "${APP}/install.sh"
+    echo "已复制到稳定位置：${APP}"
+    MC_APP_DIR="${APP}" exec /bin/bash "${APP}/install.sh" "$@"
+    ;;
   --check) MODE="check" ;;
   "") ;;
   *) echo "未知参数：$1（用 --help）" >&2; exit 64 ;;
@@ -126,10 +151,19 @@ DRY_TOTAL="$(pending_total_human "${RUN_DIR}/clean-list.txt")"
 log "   待清合计：${DRY_TOTAL}"
 
 if [ "${MODE}" = "check" ]; then
+  # 资产体检是纯只读、与"清没清"无关 —— 预览模式恰恰是最该看它的时刻
+  log "⑤ health：关键资产体检（只读）"
+  HEALTH_OUT="${RUN_DIR}/health.txt"
+  health_check > "${HEALTH_OUT}" 2>&1
+  HEALTH_STATUS="$(grep -E '^VERDICT:' "${HEALTH_OUT}" | cut -d: -f2- | sed 's/^ //')"
+  grep -E '^(OK|BROKEN|MISSING|SKIP|ABSENT|VERDICT)' "${HEALTH_OUT}" | sed 's/^/   /'
+
   write_report "${REPORT_FILE}" "${QUARTER}" "${STAMP}" \
     "CHECK-ONLY" "${FREE_BEFORE_KB}" "${FREE_BEFORE_KB}" \
-    "${GUARD_STATUS}" "${DRY_TOTAL}" "未执行清理（--check）" "${RUN_DIR}"
+    "${GUARD_STATUS}" "${DRY_TOTAL}" "未执行清理（--check）" "${RUN_DIR}" \
+    "未执行（--check 不清理，没有日志可比）" "${HEALTH_STATUS}"
   log "报告：${REPORT_FILE}"
+  [ "${HEALTH_STATUS}" = "BROKEN" ] && warn "关键资产体检 BROKEN —— 看 ${HEALTH_OUT}"
   exit 0
 fi
 

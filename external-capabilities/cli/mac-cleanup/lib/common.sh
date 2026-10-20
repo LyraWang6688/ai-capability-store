@@ -7,16 +7,22 @@
 
 MC_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
-# ── 默认配置（可提交）────────────────────────────────────────
-readonly MC_CONFIG_DEFAULT="${MC_ROOT}/config.default.sh"
-# ── 本机配置（--init 生成，gitignore）────────────────────────
-readonly MC_CONFIG_LOCAL="${MC_ROOT}/config.local.sh"
+# ── 状态目录（本机生成物）────────────────────────────────────
+# 为什么不放包目录：npm/npx 把包装在缓存目录（~/.npm/_npx/<hash>/…），
+# 那里随时被回收，而且是只读语义。所以状态一律放用户目录。
+# 可用 MC_STATE_DIR 覆盖（测试用）。
+readonly MC_STATE_DIR="${MC_STATE_DIR:-${HOME}/.mac-cleanup}"
 
-# ── 生成的清单文件（--init 生成，gitignore）──────────────────
-readonly MC_REF_WHITELIST="${MC_ROOT}/whitelist.reference"
-readonly MC_EXPECT_ABSENT="${MC_ROOT}/expect-absent.list"
-readonly MC_CRITICAL_LIST="${MC_ROOT}/critical.list"
-readonly MC_WATCH_LIST="${MC_ROOT}/watch.list"
+# ── 默认配置（随包发布，只读）────────────────────────────────
+readonly MC_CONFIG_DEFAULT="${MC_ROOT}/config.default.sh"
+# ── 本机配置（--init 生成，落在状态目录）────────────────────
+readonly MC_CONFIG_LOCAL="${MC_STATE_DIR}/config.local.sh"
+
+# ── 生成的清单文件（--init 生成，落在状态目录）──────────────
+readonly MC_REF_WHITELIST="${MC_STATE_DIR}/whitelist.reference"
+readonly MC_EXPECT_ABSENT="${MC_STATE_DIR}/expect-absent.list"
+readonly MC_CRITICAL_LIST="${MC_STATE_DIR}/critical.list"
+readonly MC_WATCH_LIST="${MC_STATE_DIR}/watch.list"
 
 # ── Mole 自己的路径（Mole 的约定，跨机器一致）────────────────
 readonly MC_MOLE_HOME="${HOME}/.config/mole"
@@ -27,11 +33,13 @@ readonly MC_CLEAN_LIST="${MC_MOLE_HOME}/clean-list.txt"
 # ── 配置项默认值（config.local.sh 可覆盖）────────────────────
 MC_MO_BIN=""
 MC_LABEL="local.mac-cleanup"
-MC_REPORT_DIR="${HOME}/Library/Logs/mac-cleanup"
+MC_REPORT_DIR="${MC_REPORT_DIR:-${HOME}/Library/Logs/mac-cleanup}"
 MC_DSH_RUNTIME=""          # 由 --init 探测；空 = 不做 DSH 相关检查
 MC_DSH_HOME=""             # 同上
 
 mc_load_config() {
+  # 环境变量优先于配置文件：配置文件里是硬赋值，会盖掉调用方的重定向（测试/临时改路径）
+  local env_report="${MC_REPORT_DIR:-}"
   if [ -f "${MC_CONFIG_DEFAULT}" ]; then
     # shellcheck disable=SC1090
     . "${MC_CONFIG_DEFAULT}"
@@ -40,6 +48,7 @@ mc_load_config() {
     # shellcheck disable=SC1090
     . "${MC_CONFIG_LOCAL}"
   fi
+  [ -n "${env_report}" ] && MC_REPORT_DIR="${env_report}"
   MC_WORK_DIR="${MC_REPORT_DIR}/work"
 }
 
@@ -92,6 +101,39 @@ read_asset_list() {
   done < "${f}"
 }
 
+# 从 Mole 的 clean-list.txt 取体积最大的 N 条，输出 "<bytes>\t<路径>"
+# 为什么需要：dry-run 给出的是总数（如 26.5GB / 655 条），但真正决定
+# "这次清理我要不要同意"的是最大的那几条 —— 比如废纸篓里 12GB 的旧备份。
+top_pending_rows() {
+  local f="$1" n="${2:-5}"
+  [ -f "${f}" ] || return 0
+  awk '
+    {
+      if (match($0, /# *[0-9.]+ *(B|KB|MB|GB) *$/)) {
+        s = substr($0, RSTART + 1); gsub(/[ #()]/, "", s)
+        unit = s; sub(/^[0-9.]+/, "", unit)
+        num  = s; sub(/[A-Za-z]+$/, "", num)
+        m = 1
+        if (unit == "KB") m = 1024
+        else if (unit == "MB") m = 1048576
+        else if (unit == "GB") m = 1073741824
+        path = $0
+        sub(/[[:space:]]*#[^#]*$/, "", path)
+        gsub(/^[[:space:]]+|[[:space:]]+$/, "", path)
+        printf "%.0f\t%s\n", num * m, path
+      }
+    }
+  ' "${f}" | sort -k1,1 -rn | head -n "${n}"
+}
+
+_bytes_human_dec() {  # 十进制展示（与 Mole 的 GB 口径一致）
+  awk -v b="${1:-0}" 'BEGIN{
+    if (b >= 1073741824) printf "%.2f GB", b/1073741824
+    else if (b >= 1048576) printf "%.0f MB", b/1048576
+    else printf "%.0f KB", b/1024
+  }'
+}
+
 # ── 报告 ───────────────────────────────────────────────────────
 # write_report <file> <quarter> <stamp> <status> <free_before_kb> <free_after_kb>
 #              <guard> <dry_total> <mo_summary> <run_dir> [verify] [health]
@@ -123,6 +165,30 @@ write_report() {
     echo "| 关键资产体检 | ${health} |"
     echo "| dry-run 预计 | ${dry} |"
     echo
+
+    # ── 待清理 Top 5：让"要删什么"直接可见，而不是藏在 655 行清单里 ──
+    local cl="${rundir}/clean-list.txt"
+    if [ -n "${rundir}" ] && [ -f "${cl}" ]; then
+      local rows
+      rows="$(top_pending_rows "${cl}" 5)"
+      if [ -n "${rows}" ]; then
+        echo "## 待清理 Top 5（按体积）"
+        echo
+        echo "| 体积 | 路径 |"
+        echo "|---|---|"
+        printf '%s\n' "${rows}" | while IFS="$(printf '\t')" read -r b p; do
+          [ -n "${p}" ] || continue
+          echo "| $(_bytes_human_dec "${b}") | \`$(printf '%s' "${p}" | sed "s|${HOME}|~|")\` |"
+        done
+        echo
+        if printf '%s\n' "${rows}" | awk -F'\t' '($2 ~ /\/\.Trash\//) || ($1 + 0 >= 5368709120) { f = 1 } END { exit(f ? 0 : 1) }'; then
+          echo "> ⚠️ 上面有项目落在**废纸篓**，或单项超过 5 GB。清理会真的删掉它们 —— "
+          echo "> 确认不要了再跑完整清理；只是暂存的话先去废纸篓恢复。"
+          echo
+        fi
+      fi
+    fi
+
     echo "## Mole 自报（⚠️ 不可信，仅供对照）"
     echo
     echo '```'

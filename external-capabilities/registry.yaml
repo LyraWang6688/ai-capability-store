@@ -115,9 +115,9 @@ capabilities:
     type: cli
     status: limited
     provider_path: external-capabilities/providers/lyrawang/README.md
-    version: 0.1.0
+    version: 0.2.0
     implementation_path: external-capabilities/cli/mac-cleanup
-    auth: "无凭据入仓。本机配置在仓库外的 5 个生成文件（config.local.sh / whitelist.reference / expect-absent.list / critical.list / watch.list，均由 `--init` 产出并在本包 .gitignore 内），报告写在 ~/Library/Logs/mac-cleanup/；仓库内零密钥、零个人路径"
-    capabilities: "季度性 macOS 清理：六阶段（白名单体检 → dry-run 存档 → 非交互清理 → 日志核对 → 关键资产体检 → 出报告）。三道护栏专治 Mole 的三种静默失败：白名单是替换语义（少一条即静默失去保护）、汇总数字虚报/漏报（实测一次少报 3.4 倍、一次虚报 2275MB 而文件并未删除）、删掉未被识别的运行时依赖（曾差点删掉 164 个符号链接指向的运行时目录）。不 sudo、不删 REVIEW 项、无自研删除逻辑。`--init` 扫描本机生成基准与清单；`install.sh` 装 launchd 季度任务（1/4/7/10 月 1 日 10:00，睡眠后补跑）"
+    auth: "无凭据入仓。本机状态全部在仓库外的 `~/.mac-cleanup/`（可用 MC_STATE_DIR 覆盖）：config.local.sh / whitelist.reference / expect-absent.list / critical.list / watch.list，均由 `--init` 生成；报告写在 ~/Library/Logs/mac-cleanup/。仓库内零密钥、零个人路径"
+    capabilities: "季度性 macOS 清理：六阶段（白名单体检 → dry-run 存档 → 非交互清理 → 日志核对 → 关键资产体检 → 出报告）。三道护栏专治 Mole 的三种静默失败：白名单是替换语义（少一条即静默失去保护）、汇总数字虚报/漏报（实测一次少报 3.4 倍、一次虚报 2275MB 而文件并未删除）、删掉未被识别的运行时依赖（曾差点删掉 164 个符号链接指向的运行时目录）。不 sudo、不删 REVIEW 项、无自研删除逻辑。`--init` 扫描本机生成基准与清单；安装季度定时任务（1/4/7/10 月 1 日 10:00，睡眠后补跑）"
     permissions: "需要 Homebrew 安装的 Mole（brew install mole）。读 ~/Library 与 ~/.config/mole 用本用户权限即可，部分受保护路径可能需要「完全磁盘访问权限」；不需要 sudo、不需要网络、不需要任何凭据。只删 Mole 白名单之外的缓存与日志，系统级缓存（需 sudo）明确不处理"
-    notes: "自研、Store-managed。从 ~/Documents/workplace/mac-cleanup 迁入本 Store（`git subtree add` 保留历史），迁入后本目录即唯一源码。已参数化：仓库内不含任何个人路径、主机名或 npx 哈希 —— `--init` 从 ~/.dsh/profiles/node_modules 的符号链接反查 DSH 运行时目录，从 mo 的真实路径反推 Mole 源码位置，覆盖 Apple Silicon 与 Intel 两种 Homebrew 前缀。不含 SKILL.md：这是可安装的 CLI 工具，不是 Agent 跟随的流程。status 取 limited：需先装 Mole 并跑一次 `--init`，不是装上即用。"
+    notes: "自研、Store-managed。从 ~/Documents/workplace/mac-cleanup 迁入本 Store（`git subtree add` 保留历史；0.1.0 起本目录即唯一源码）。已参数化：仓库内不含任何个人路径、主机名或 npx 哈希 —— `--init` 从 ~/.dsh/profiles/node_modules 的符号链接反查 DSH 运行时目录，从 mo 的真实路径反推 Mole 源码位置，覆盖 Apple Silicon 与 Intel 两种 Homebrew 前缀。不含 SKILL.md：这是可安装的 CLI 工具，不是 Agent 跟随的流程。status 取 limited：需先装 Mole 并跑一次 `--init`，不是装上即用。0.1.0 首次收录。0.2.0：npm 分发（`npx @lyra_wang/mac-cleanup`，bin 为 bin/mac-cleanup.js 包装层）——为此做两处结构调整：① 状态文件从包目录迁到 `~/.mac-cleanup/`，因为 npx 把包装在 `~/.npm/_npx/<hash>/` 缓存目录，随时被回收且是只读语义；② 入口脚本解析自身符号链接（npm 的 bin 是 symlink，否则找不到 lib/）。`--install` 会先把包复制到 `~/.mac-cleanup/app` 再生成 LaunchAgent，避免 plist 指向会被回收的 npx 缓存。npm 上的 `mac-cleanup` 无 scope 名已被第三方占用，故用 `@lyra_wang` scope"

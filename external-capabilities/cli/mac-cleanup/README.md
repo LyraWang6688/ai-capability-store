@@ -9,15 +9,26 @@
 
 ---
 
-## 安装（三步）
+## 安装
+
+**方式 A：npm（推荐，不占源码目录）**
 
 ```bash
-brew install mole                 # 依赖：Mole（没有它就没法工作）
-git clone <repo> mac-cleanup && cd mac-cleanup
+brew install mole                          # 依赖：Mole
+npx @lyra_wang/mac-cleanup --init          # ① 扫描本机，生成配置与清单
+npx @lyra_wang/mac-cleanup --check         # ② 只体检+预演+出报告，不删任何东西
+npx @lyra_wang/mac-cleanup --install       # ③ 装季度定时任务
+```
 
-./mac-cleanup.sh --init           # ① 扫描本机，生成配置与清单（必做一次）
-./mac-cleanup.sh --check          # ② 只体检+预演+出报告，【不删任何东西】
-./install.sh                      # ③ 满意后再装季度定时任务
+`--install` 等价于跑 `install.sh`（npm 安装时脚本不在固定路径，所以由 `--init` 把安装器路径写进配置）。
+
+**方式 B：从仓库目录跑**
+
+```bash
+git clone <repo> && cd external-capabilities/cli/mac-cleanup
+./mac-cleanup.sh --init
+./mac-cleanup.sh --check
+./install.sh
 ```
 
 `--init` 会打印它探测到了什么。**如果 `--check` 的报告正常，就可以 `./install.sh`。**
@@ -75,7 +86,10 @@ git clone <repo> mac-cleanup && cd mac-cleanup
 这个项目**不含任何硬编码的本机路径**。所有机器相关的信息由 `--init` 探测并写入
 **5 个 gitignore 的本地文件**：
 
-| 文件 | 内容 | 怎么来的 |
+生成物全部落在 **`~/.mac-cleanup/`**（可用环境变量 `MC_STATE_DIR` 覆盖）——
+**不在包目录里**，因为 npm/npx 把包装在缓存目录（`~/.npm/_npx/<hash>/…`），那里随时被回收，而且是只读语义。
+
+| 文件（`~/.mac-cleanup/` 下） | 内容 | 怎么来的 |
 |---|---|---|
 | `config.local.sh` | mo 路径、launchd 标签、报告目录、DSH 运行时 | 探测 + 现有配置 |
 | `whitelist.reference` | 白名单基准（内置保护 + 本机额外保护） | 从**已安装的 Mole 源码**提取内置模式，再从现有 `~/.config/mole/whitelist` 并入你的条目 |
@@ -172,9 +186,11 @@ mac-cleanup/
 ├── deploy/
 │   └── launchd.plist.template LaunchAgent 模板（label/路径在安装时替换）
 ├── install.sh                 安装 / 卸载 / 状态 / 立即触发
+├── package.json               npm 包装（bin → bin/mac-cleanup.js）
+├── bin/mac-cleanup.js         npm bin 入口（只转发参数与退出码）
 └── README.md
 
-本机生成（gitignore，不入库）：
+本机生成（在 ~/.mac-cleanup/，不在包目录）：
 config.local.sh · whitelist.reference · expect-absent.list · critical.list · watch.list
 ```
 

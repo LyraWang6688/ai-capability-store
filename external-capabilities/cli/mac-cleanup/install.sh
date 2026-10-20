@@ -11,7 +11,19 @@
 
 set -u
 
-MC_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# npm 的 bin 是指向本文件的符号链接 —— 先解析真实路径，否则找不到 lib/
+_mc_rp() {
+  local p="$1" d n=0
+  while [ -L "$p" ]; do
+    n=$((n + 1)); [ "$n" -le 40 ] || break
+    d="$(cd "$(dirname "$p")" 2>/dev/null && pwd -P)" || break
+    p="$(readlink "$p")" || break
+    case "$p" in /*) ;; *) p="$d/$p" ;; esac
+  done
+  d="$(cd "$(dirname "$p")" 2>/dev/null && pwd -P)" || return 1
+  printf '%s/%s\n' "$d" "$(basename "$p")"
+}
+MC_ROOT="$(cd "$(dirname "$(_mc_rp "${BASH_SOURCE[0]}")")" && pwd -P)"
 # shellcheck source=lib/common.sh
 . "${MC_ROOT}/lib/common.sh"
 # shellcheck source=lib/detect.sh
@@ -20,6 +32,8 @@ MC_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 mc_load_config
 
 LABEL="${MC_LABEL:-local.mac-cleanup}"
+# 安装来源：npm 形态下由 --install 把包复制到 ~/.mac-cleanup/app 再传进来
+APP_DIR="${MC_APP_DIR:-${MC_ROOT}}"
 TEMPLATE="${MC_ROOT}/deploy/launchd.plist.template"
 TARGET="${HOME}/Library/LaunchAgents/${LABEL}.plist"
 LOG_DIR="${MC_REPORT_DIR}"
@@ -31,7 +45,7 @@ die() { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
 render_plist() {
   [ -f "${TEMPLATE}" ] || die "模板不存在：${TEMPLATE}"
   sed -e "s|__LABEL__|${LABEL}|g" \
-      -e "s|__PROJECT_DIR__|${MC_ROOT}|g" \
+      -e "s|__PROJECT_DIR__|${APP_DIR}|g" \
       -e "s|__HOME__|${HOME}|g" \
       -e "s|__LOG_DIR__|${LOG_DIR}|g" \
       "${TEMPLATE}"
@@ -74,7 +88,7 @@ case "${1:-}" in
 esac
 
 # ── 安装 ──────────────────────────────────────────────────────
-[ -f "${MC_CONFIG_LOCAL}" ] || die "还没初始化。先跑：${MC_ROOT}/mac-cleanup.sh --init"
+[ -f "${MC_CONFIG_LOCAL}" ] || die "还没初始化。先跑：mac-cleanup --init（或 ${MC_ROOT}/mac-cleanup.sh --init）"
 [ -f "${MC_REF_WHITELIST}" ] || die "缺少 whitelist.reference。先跑：${MC_ROOT}/mac-cleanup.sh --init"
 [ -x "${MC_ROOT}/mac-cleanup.sh" ] || chmod +x "${MC_ROOT}/mac-cleanup.sh" 2>/dev/null || true
 [ -f "${TEMPLATE}" ] || die "模板不存在：${TEMPLATE}"
