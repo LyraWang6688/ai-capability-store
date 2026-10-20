@@ -1,0 +1,15 @@
+# ── 本机生成的配置与清单（每台机器不同，绝不提交）──────────────
+config.local.sh
+whitelist.reference
+whitelist.reference.bak-*
+expect-absent.list
+expect-absent.list.bak-*
+critical.list
+critical.list.bak-*
+watch.list
+watch.list.bak-*
+
+# ── 运行时垃圾 ────────────────────────────────────────────────
+.DS_Store
+*.tmp
+.*.tmp

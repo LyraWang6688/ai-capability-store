@@ -2,12 +2,12 @@
 # 核对 + 体检
 #
 # 为什么不信 Mole 的汇总（实测两次）：
-#   2026-10-04 第 2 轮：汇总 Tracked 1.67GB / 495 items，日志实测 1.64GB / 707 REMOVED → 基本吻合
-#   2026-10-04 第 3 轮：汇总 Tracked 10.43GB / 161 items，日志实测 35.83GB / 426 REMOVED → 少报 3.4 倍
-#   2026-10-04 第 2 轮另一处：汇总 "Cleaned 1 items, about 2275MB"，实际是 SKIPPED，文件还在 → 虚报
+#   第 2 轮：汇总 Tracked 1.67GB / 495 items，日志实测 1.64GB / 707 REMOVED → 基本吻合
+#   第 3 轮：汇总 Tracked 10.43GB / 161 items，日志实测 35.83GB / 426 REMOVED → 少报 3.4 倍
+#   第 2 轮另一处：汇总 "Cleaned 1 items, about 2275MB"，实际是 SKIPPED，文件还在 → 虚报
 #
 # 结论：只认 operations.log 的逐条加总 + df 实测。
-# 单位说明：Mole 的显示是十进制（GB=10^9），此处按同样口径解析，避免 5% 系统性偏差。
+# 单位：Mole 的显示是十进制（GB=10^9），此处按同口径解析，避免 5% 系统性偏差。
 
 _parse_size_to_bytes() {  # "62.1MB" → bytes（十进制）
   awk -v s="${1}" 'BEGIN{
@@ -41,7 +41,6 @@ verify_clean() {
     return 1
   fi
 
-  # 取最后一次 session（最后一次 "clean session started" 之后的内容）
   local start_line
   start_line="$(grep -n 'clean session started at' "${logf}" | tail -1 | cut -d: -f1)"
   [ -n "${start_line}" ] || start_line=1
@@ -60,7 +59,6 @@ verify_clean() {
       return num * m
     }
     /clean session ended at/ {
-      # 形如: ... ended at 2026-10-04 01:43:10, 428 items, 36.72GB ==========
       if (match($0, /, [0-9]+ items/)) {
         s = substr($0, RSTART + 2); sub(/ items.*/, "", s); mo_items = s
       }
@@ -71,7 +69,7 @@ verify_clean() {
     /\[clean\] REMOVED/ {
       rem_items++
       if (match($0, /\([0-9.]+ *(B|KB|MB|GB|TB)\)[[:space:]]*$/)) {
-        s = substr($0, RSTART + 1, RLENGTH - 2)   # 去掉括号
+        s = substr($0, RSTART + 1, RLENGTH - 2)
         rem_bytes += tobytes(s)
       }
       next
@@ -103,7 +101,6 @@ verify_clean() {
   echo "SKIPPED   ${skip} 项（受保护，正常）"
   echo "FAILED    ${fail} 项（权限/占用，无损）"
 
-  # 判定：Mole 自报 vs 日志加总，体积偏差 > 20% 视为 MISMATCH
   local verdict="OK" reason=""
   if [ -n "${mo_gb}" ] && [ "${mo_bytes}" -gt 0 ]; then
     local diff
@@ -117,14 +114,13 @@ verify_clean() {
     fi
   fi
 
-  # 次要判定：df 实际变化 vs 日志加总，偏差 > 40% 时提示（APFS 回收/其它进程会干扰）
   if [ "${verdict}" = "OK" ] && [ "${df_delta_bytes}" -gt 0 ]; then
     local d2
     d2="$(awk -v a="${df_delta_bytes}" -v b="${rem_bytes}" 'BEGIN{
       d = (a > b) ? (a - b) : (b - a)
       printf "%.0f", (b > 0) ? d * 100 / b : 0
     }')"
-    [ "${d2}" -gt 40 ] && reason="注：df 变化与日志加总差 ${d2}%（APFS 回收/其它进程可能导致，正常范围可忽略）"
+    [ "${d2}" -gt 40 ] && reason="注：df 变化与日志加总差 ${d2}%（APFS 回收/其它进程可能导致，可忽略）"
   fi
 
   [ -n "${reason}" ] && echo "MISMATCH ${reason}"
@@ -132,24 +128,26 @@ verify_clean() {
   [ "${verdict}" = "OK" ]
 }
 
-# health_check —— 关键资产体检
+# health_check —— 关键资产体检（清单来自 --init 生成的 critical.list / watch.list）
 health_check() {
   local broken=0 missing=0
+  local tmp="${TMPDIR:-/tmp}/maccleanup-health.$$"
+  : > "${tmp}"
 
-  # ① DSH profile 的符号链接完整性（最能说明问题的一条）
-  local link_total=0 link_ok=0 link_bad=0 bad_names=""
-  local l
-  for l in "${HOME}"/.dsh/profiles/node_modules/*; do
-    [ -L "${l}" ] || continue
-    link_total=$((link_total + 1))
-    if [ -e "${l}" ]; then
-      link_ok=$((link_ok + 1))
-    else
-      link_bad=$((link_bad + 1))
-      bad_names="${bad_names} $(basename "${l}")"
-    fi
-  done
-  if [ "${link_total}" -gt 0 ]; then
+  # ① DSH profile 符号链接完整性（只有 DSH 用户才有意义）
+  local dsh_nm="${HOME}/.dsh/profiles/node_modules"
+  if [ -d "${dsh_nm}" ]; then
+    local link_total=0 link_ok=0 link_bad=0 bad_names="" l
+    for l in "${dsh_nm}"/*; do
+      [ -L "${l}" ] || continue
+      link_total=$((link_total + 1))
+      if [ -e "${l}" ]; then
+        link_ok=$((link_ok + 1))
+      else
+        link_bad=$((link_bad + 1))
+        bad_names="${bad_names} $(basename "${l}")"
+      fi
+    done
     if [ "${link_bad}" -gt 0 ]; then
       echo "BROKEN  DSH 符号链接 ${link_bad}/${link_total} 悬空 →${bad_names}"
       broken=$((broken + 1))
@@ -157,46 +155,53 @@ health_check() {
       echo "OK      DSH 符号链接 ${link_ok}/${link_total} 全部有效"
     fi
   else
-    echo "OK      DSH 符号链接（未发现，跳过）"
+    echo "SKIP    没有 DSH profile（~/.dsh/profiles/node_modules 不存在）"
   fi
 
   # ② 必须存在的关键资产
-  local tmp="${TMPDIR:-/tmp}/maccleanup-health.$$"
-  local entry path desc
-  printf '%s\n' "${CRITICAL_ASSETS}" | while IFS= read -r entry; do
+  local entry path desc suffix
+  while IFS= read -r entry; do
     [ -n "${entry}" ] || continue
     path="${entry%%|*}"
     desc="${entry#*|}"
+    [ "${desc}" = "${path}" ] && desc=""
+    suffix=""
+    [ -n "${desc}" ] && suffix="　（${desc}）"
     if [ -e "${path}" ]; then
-      echo "OK      存在：${path}　（${desc}）"
+      echo "OK      存在：$(printf '%s' "${path}" | sed "s|${HOME}|~|")${suffix}"
     else
-      echo "MISSING 缺失：${path}　（${desc}）"
+      echo "MISSING 缺失：$(printf '%s' "${path}" | sed "s|${HOME}|~|")${suffix}"
     fi
-  done > "${tmp}"
-  cat "${tmp}"
+  done < <(read_asset_list "${MC_CRITICAL_LIST}") | tee "${tmp}"
+
   missing="$(grep -c '^MISSING' "${tmp}" 2>/dev/null || true)"
   missing="${missing:-0}"
+  rm -f "${tmp}"
 
-  # ②b 只观察的资产（本机没装就是没有，不算失败）
-  printf '%s\n' "${WATCH_ASSETS}" | while IFS= read -r entry; do
+  # ③ 只观察的资产
+  while IFS= read -r entry; do
     [ -n "${entry}" ] || continue
     path="${entry%%|*}"
     desc="${entry#*|}"
+    [ "${desc}" = "${path}" ] && desc=""
+    suffix=""
+    [ -n "${desc}" ] && suffix="　（${desc}）"
     if [ -e "${path}" ]; then
-      echo "OK      在：${path}　（${desc}）"
+      echo "OK      在：$(printf '%s' "${path}" | sed "s|${HOME}|~|")${suffix}"
     else
-      echo "ABSENT  本机无：${path}　（${desc}）"
+      echo "ABSENT  本机无：$(printf '%s' "${path}" | sed "s|${HOME}|~|")${suffix}"
     fi
-  done
-  rm -f "${tmp}"
+  done < <(read_asset_list "${MC_WATCH_LIST}")
 
-  # ③ 白名单里的"必保"条目顺手确认一遍（注意白名单里存的是 ~/ 形式）
-  if [ -f "${MOLE_WHITELIST}" ]; then
-    if grep -Fq '~/.npm/_npx/1e7f6d9597241db0' "${MOLE_WHITELIST}" ||
-       grep -Fq "${HOME}/.npm/_npx/1e7f6d9597241db0" "${MOLE_WHITELIST}"; then
-      echo "OK      DSH 运行时目录在保护名单里"
+  # ④ DSH 运行时是否在保护名单里（只有探测到时才查）
+  if [ -n "${MC_DSH_RUNTIME:-}" ]; then
+    local rel
+    rel="$(printf '%s' "${MC_DSH_RUNTIME}" | sed "s|${HOME}|~|")"
+    if grep -Fq "${rel}" "${MC_MOLE_WHITELIST}" 2>/dev/null ||
+       grep -Fq "${MC_DSH_RUNTIME}" "${MC_MOLE_WHITELIST}" 2>/dev/null; then
+      echo "OK      DSH 运行时在保护名单里"
     else
-      echo "MISSING DSH 运行时目录不在保护名单里（危险：下次清理会删掉它）"
+      echo "MISSING DSH 运行时不在保护名单里（危险：下次清理会删掉它）"
       missing=$((missing + 1))
     fi
   fi
