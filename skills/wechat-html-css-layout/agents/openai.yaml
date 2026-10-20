@@ -1,0 +1,15 @@
+interface:
+  display_name: Wechat Html Css Layout
+  short_description: WeChat Official Account article body HTML fragment layout skill
+    for AI Native Content Lab.
+  icon: 🟢
+  color: '#8DAA91'
+  icon_small: assets/icon.svg
+  icon_large: assets/icon.svg
+policy:
+  products:
+  - chatgpt
+  - codex
+  - api
+  - atlas
+  allow_implicit_invocation: true
