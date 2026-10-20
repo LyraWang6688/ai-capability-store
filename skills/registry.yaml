@@ -48,7 +48,7 @@ skills:
     path: skills/repo-hygiene
     scope: shared
     status: testing
-    version: 0.1.1
+    version: 0.1.2
     updated: "2026-10-20"
   teaming-meeting-analysis:
     name: teaming-meeting-analysis
