@@ -1,4 +1,7 @@
 #!/usr/bin/env node
+import { existsSync, readFileSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 /**
  * MCP 服务器（stdio）—— 产品主入口。
  *
@@ -30,10 +33,41 @@ const { inspectArticleBundle, publishArticleBundle, summarizeBundle, updateArtic
 const { createWechatApi, readCredentialsFromEnv } = await import("./wechatApi.js");
 const { readAudit } = await import("./destructive.js");
 
+// 版本号从 package.json 读，不写常量。
+//
+// 原先是一个字面量 "0.3.0"，配了一句注释说"必须与 package.json 一致，测试守着"。
+// 守护测试确实在守 —— 而它从 0.3.1 就一直红着，因为 0.3.1 和 0.3.2 两次发布
+// 都没人改这个常量。所以握手时服务端报的是 0.3.0。
+//
+// 一个"必须由人记得同步"的常量，本质上是两份真源。读文件就只剩一份。
+/**
+ * 从最近的一个 package.json 读版本号。
+ *
+ * 不能写死相对路径：同一个源文件会被编译到两个位置 —— 发布产物在 `dist/`，
+ * 测试产物在 `dist-test/src/` —— 而 `../package.json` 只对前者成立，对后者会
+ * 指向 `dist-test/package.json`（不存在）。第一版这么写，直接让 8 个 stdio 测试
+ * 全部以 ENOENT 失败。
+ */
+function readPackageVersion(): string {
+  let dir = path.dirname(fileURLToPath(import.meta.url));
+  for (let hop = 0; hop < 6; hop += 1) {
+    const candidate = path.join(dir, "package.json");
+    if (existsSync(candidate)) {
+      const pkg = JSON.parse(readFileSync(candidate, "utf8")) as { version?: string };
+      if (pkg.version) return pkg.version;
+    }
+    const parent = path.dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+  return "0.0.0";
+}
+
+const PKG_VERSION = readPackageVersion();
+
 const server = new McpServer({
   name: "wechat-draft-mcp",
-  // 必须与 package.json 的 version 一致（tests/mcpStdio.test.ts 里有断言守着）。
-  version: "0.3.0"
+  version: PKG_VERSION
 });
 
 function text(value: unknown) {
