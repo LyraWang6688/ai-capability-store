@@ -190,6 +190,9 @@ python3 ~/Documents/workplace/ai-capability-store/automations/github-trending/da
 
 ## 5. 通用约束
 
+- **介绍任何仓库时，必须有一列「它是什么」** —— 取仓库的 GitHub `description` 原文，或一句话概括。
+  只给仓库名和星数，读者不知道它是干什么的，等于没介绍。
+  这条适用于报告里**每一张**列了仓库的表（第三节、第四节都算）。
 - 话题分析基于 `topic_frequency` 和 `trend_gain`，不凭感觉
 - 每个判断都要能指回具体仓库
 - **星多不等于无关**（反例：`morluto/rea` 31 万星，但 topics 有 `dsh-plugin`）；
