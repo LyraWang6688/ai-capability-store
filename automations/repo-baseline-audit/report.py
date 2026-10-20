@@ -11,8 +11,8 @@ import subprocess
 import sys
 from datetime import date, timedelta
 
-BASE_TOKEN = os.environ.get("BASELINE_BASE_TOKEN") or "ZNjDb9TrpalLuCsw0macCeVdnld"
-TABLE_ID = os.environ.get("BASELINE_TABLE_ID") or "tbloNfrzuBscST9I"
+BASE_TOKEN = os.environ.get("BASELINE_BASE_TOKEN") or "NeujbbOfcaPEvMsPIxscaJImn9d"
+TABLE_ID = os.environ.get("BASELINE_TABLE_ID") or "tblJVkJkpo8w7yHr"
 
 
 def lark(args):
