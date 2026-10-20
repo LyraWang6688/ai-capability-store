@@ -264,6 +264,14 @@ window.__ModuleLoader__.load({
           },
         },
         {
+          key: 'repo',
+          icon: '📦',
+          label: t('repo'),
+          run: (text) => {
+            void collectRepo(text);
+          },
+        },
+        {
           key: 'shortcut',
           icon: '⌨',
           label: t('shortcut'),
@@ -342,6 +350,32 @@ window.__ModuleLoader__.load({
       // 选中一段描述（比如「⌘⇧. 显示/隐藏隐藏文件」），点一下存进快捷键表。
       // 不做按键捕获：全局热键会被 Hammerspoon 先抢走，而系统快捷键本来
       // 就是一句知识而不是一次按键 —— 对这两类来说，选中文字更直接。
+      // 选中一个 owner/repo，点「收录」→ 写进飞书「GitHub 优质项目收录」表。
+      // 不做判断：选中什么就收什么。类型由脚本按 topics/名字猜，并把依据一起返回。
+      const collectRepo = async (text) => {
+        const value = String(text || '').trim();
+        if (value === '') return;
+        say(t('repo'));
+        try {
+          const response = await fetch('/plugins/selection-toolbar/repo-collect', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ text: value }),
+          });
+          const payload = await response.json().catch(() => ({}));
+          if (response.ok && payload && payload.ok === true) {
+            say(payload.message || t('repoSaved'));
+          } else if (payload && payload.code === 10) {
+            say(t('repoExists') + '：' + String(payload.message || '').slice(0, 80));
+          } else {
+            const reason = payload && payload.message ? String(payload.message) : 'HTTP ' + response.status;
+            say(t('repoFailed') + '：' + reason.slice(0, 120));
+          }
+        } catch (error) {
+          say(t('repoFailed'));
+        }
+      };
+
       const saveShortcut = async (text) => {
         const value = String(text || '').trim();
         if (value === '') return;
@@ -576,6 +610,10 @@ window.__ModuleLoader__.load({
       inject: ['slots', 'locale'],
       apply(ctx) {
         const zh = {
+          repo: '收录',
+          repoSaved: '已收录',
+          repoFailed: '收录失败',
+          repoExists: '已经收录过了',
           shortcut: '快捷键',
           shortcutSaved: '已保存快捷键',
           shortcutFailed: '保存快捷键失败',
@@ -619,6 +657,10 @@ window.__ModuleLoader__.load({
           failed: '出错了，请重试',
         };
         const en = {
+          repo: 'Collect repo',
+          repoSaved: 'Repository collected',
+          repoFailed: 'Collecting the repository failed',
+          repoExists: 'Already collected',
           shortcut: 'Shortcut',
           shortcutSaved: 'Shortcut saved',
           shortcutFailed: 'Saving the shortcut failed',
