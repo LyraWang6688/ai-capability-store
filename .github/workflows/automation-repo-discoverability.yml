@@ -1,6 +1,6 @@
 name: automation-repo-discoverability
 
-# 每周一 22:10（Asia/Shanghai）体检所有公开仓库的「发现性」：
+# 每周一 08:00（Asia/Shanghai）体检所有公开仓库的「发现性」：
 # 能不能被 AI / 人搜到，搜到之后愿不愿意点进来。
 #
 # 两件事，分开做：
@@ -10,7 +10,7 @@ name: automation-repo-discoverability
 # topics 永远不自动写 —— 只从 automations/repo-discoverability/topics.plan.json 套用。
 on:
   schedule:
-    - cron: "10 14 * * 1"
+    - cron: "0 0 * * 1"        # 00:00 UTC = 08:00 Asia/Shanghai，每周一
   workflow_dispatch:
     inputs:
       dry-run:
