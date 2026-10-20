@@ -1,0 +1,11 @@
+{
+  "type": "bar",
+  "title": "短期记忆丢了，要重算多少",
+  "subtitle": "读题时，有 20 层要重建最近的短期记忆",
+  "conclusion": "整个读题阶段的计算量，少了将近一半",
+  "footer": "数据：示例数据，仅用于演示版式",
+  "rows": [
+    { "label": "原来：重算最后 2560 个 token", "max_value": 2560, "from_value": 0, "to_value": 2560, "unit": " token" },
+    { "label": "新法：重算最后 128 个", "max_value": 2560, "from_value": 0, "to_value": 128, "unit": " token" }
+  ]
+}
