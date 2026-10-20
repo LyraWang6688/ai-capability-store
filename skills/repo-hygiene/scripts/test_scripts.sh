@@ -35,6 +35,19 @@ if "$script_dir/safe_delete_guard.sh" --repo "$repo" -- notes.txt >/dev/null 2>&
   echo "FAIL: visible untracked path passed deletion guard" >&2
   exit 1
 fi
+# A path that is ignored but named by tracked content must not pass silently.
+# This is the `.venv` case: gitignored, load-bearing, referenced by a tracked script.
+printf '.venv/\n' >> "$repo/.gitignore"
+printf '#!/bin/sh\n.venv/bin/python3 -c pass\n' > "$repo/run.sh"
+git -C "$repo" add .gitignore run.sh
+git -C "$repo" commit -qm "reference .venv from tracked content"
+mkdir -p "$repo/.venv/bin"
+printf 'x\n' > "$repo/.venv/bin/python3"
+if "$script_dir/safe_delete_guard.sh" --repo "$repo" -- .venv >/dev/null 2>&1; then
+  echo "FAIL: ignored-but-referenced path passed deletion guard" >&2
+  exit 1
+fi
+
 if "$script_dir/safe_delete_guard.sh" --repo "$repo" -- .git >/dev/null 2>&1; then
   echo "FAIL: .git passed deletion guard" >&2
   exit 1
