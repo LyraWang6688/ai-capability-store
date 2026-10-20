@@ -12,9 +12,33 @@
 
 import { backendName } from './src/feishu/base.ts';
 import { syncPortfolioPrices } from './src/portfolio.ts';
+import { buildSyncNotifyText, sendNotifyMessage } from './src/notify.ts';
 
 /** 低于这个成功率视为异常退出，便于从日志/监控发现数据源故障 */
 const MIN_SUCCESS_RATE = 0.8;
+
+/**
+ * 同步成功后发通知（事件信号），失败只警告不影响主流程退出码。
+ * NOTIFY_* 未配置时静默跳过，避免阻塞价格同步。
+ */
+async function notifySyncCompleted(summary: {
+  total: number;
+  written: number;
+  failures: number;
+}): Promise<void> {
+  const appId = process.env.NOTIFY_APP_ID ?? '';
+  const appSecret = process.env.NOTIFY_APP_SECRET ?? '';
+  const userId = process.env.NOTIFY_USER_ID ?? '';
+  if (!appId || !appSecret || !userId) {
+    console.warn('[notify] 未配置 NOTIFY_APP_ID/NOTIFY_APP_SECRET/NOTIFY_USER_ID，跳过同步完成通知');
+    return;
+  }
+  try {
+    await sendNotifyMessage({ appId, appSecret, userId }, buildSyncNotifyText(summary));
+  } catch (error) {
+    console.warn('[notify] 通知发送失败（不影响同步结果）：', error instanceof Error ? error.message : error);
+  }
+}
 
 async function main(): Promise<number> {
   const startedAt = Date.now();
@@ -50,6 +74,9 @@ async function main(): Promise<number> {
     console.error(`[sync] 成功率低于 ${MIN_SUCCESS_RATE * 100}%，退出码 1`);
     return 1;
   }
+
+  // 同步成功 → 发事件通知（豆包侧监听后触发持仓日报）
+  await notifySyncCompleted({ total: summary.total, written: summary.written, failures: summary.failures.length });
   return 0;
 }
 

@@ -43,6 +43,10 @@ jobs:
       INVESTDESK_PLATFORMS_TABLE: ${{ secrets.INVESTDESK_PLATFORMS_TABLE }}
       # 行情唯一数据源：万得（免费网页源已在 0.7.0 移除）
       WIND_API_KEY: ${{ secrets.WIND_API_KEY }}
+      # 同步完成事件通知：独立应用凭证（cli_aa1c820068f85cb6），与写表凭证分离
+      NOTIFY_APP_ID: ${{ secrets.NOTIFY_APP_ID }}
+      NOTIFY_APP_SECRET: ${{ secrets.NOTIFY_APP_SECRET }}
+      NOTIFY_USER_ID: ${{ secrets.NOTIFY_USER_ID }}
 
     steps:
       - uses: actions/checkout@v4
