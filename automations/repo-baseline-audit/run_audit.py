@@ -7,6 +7,7 @@
 import argparse
 import json
 import os
+import re
 import subprocess
 import sys
 import urllib.request
@@ -116,6 +117,9 @@ def audit_repo(repo):
         "fail": counts[ab.FAIL],
         "unknown": counts[ab.UNKNOWN],
         "failing": failing_text(res),
+        "fail_ids": [iid for iid, _g, _n, _f in ab.ITEMS if res.get(iid) == ab.FAIL],
+        "unknown_ids": [iid for iid, _g, _n, _f in ab.ITEMS if res.get(iid) == ab.UNKNOWN],
+        "counts": counts,
         "branch": extra.get("branch") if isinstance(extra, dict) else "",
     }
 
@@ -144,6 +148,112 @@ def write_rows(cfg, rows, dry_run):
     return written
 
 
+
+TITLE_PREFIX = "[baseline]"
+
+
+def gh(args, timeout=90):
+    return subprocess.run(["gh"] + args, capture_output=True, text=True, timeout=timeout)
+
+
+def open_baseline_issue(repo):
+    """Find an existing open [baseline] issue in <repo>."""
+    r = gh(["issue", "list", "-R", repo, "--state", "open", "--limit", "200",
+            "--search", "baseline in:title", "--json", "number,title,body"])
+    if r.returncode != 0:
+        return None
+    try:
+        items = json.loads(r.stdout or "[]")
+    except json.JSONDecodeError:
+        return None
+    for item in items:
+        if str(item.get("title", "")).startswith(TITLE_PREFIX):
+            return item
+    return None
+
+
+def issue_body(row):
+    counts = row["counts"]
+    groups = {}
+    for iid in row["fail_ids"]:
+        for item_id, grp, label, fix in ab.ITEMS:
+            if item_id == iid:
+                groups.setdefault(grp, []).append((item_id, label, fix))
+    lines = [
+        "## 自动审计结果",
+        "",
+        f"`PASS {counts[ab.PASS]} · FAIL {counts[ab.FAIL]} · UNKNOWN {counts[ab.UNKNOWN]}`",
+        "",
+        "由 `repo-baseline-audit` 自动生成（GitHub Actions，每周一次）。修复后无需手动关闭，下一轮审计通过即可。",
+        "",
+    ]
+    for grp, items in groups.items():
+        lines.append(f"### {grp}")
+        for iid, label, fix in items:
+            lines.append(f"- [ ] **{iid} {label}** — {fix}")
+        lines.append("")
+    if row["unknown_ids"]:
+        lines += ["### 查不到（UNKNOWN，不代表没开）", "", "需要人工确认：", ""]
+        for iid in row["unknown_ids"]:
+            for item_id, _grp, label, _fix in ab.ITEMS:
+                if item_id == iid:
+                    lines.append(f"- {iid} {label}")
+        lines.append("")
+    lines += [
+        "---",
+        "> ⚠️ 不要给没有 CI 的仓库开启 required status checks，否则合并会被锁死。",
+        "> 本 issue 只做记录，不会自动修改仓库设置。",
+    ]
+    return "\n".join(lines)
+
+
+def extract_fail_ids(body):
+    return set(re.findall(r"- \[[ x]\] \*\*([A-E]\d)", body or ""))
+
+
+def sync_issues(rows, dry_run):
+    """Create one [baseline] issue per repo, then comment weekly deltas."""
+    created, commented, none = [], [], []
+    for row in rows:
+        repo = row["repo"]
+        existing = open_baseline_issue(repo)
+        if row["fail_ids"] == []:
+            if existing:
+                if not dry_run:
+                    gh(["issue", "comment", "-R", repo, "--body",
+                        f"## 周度同步\n\n`PASS {row['counts'][ab.PASS]} · FAIL 0 · UNKNOWN {row['counts'][ab.UNKNOWN]}`\n\n本轮审计全部通过，issue 可以关闭 ✅"])
+                commented.append(repo)
+            continue
+        if existing is None:
+            if not dry_run:
+                r = gh(["issue", "create", "-R", repo,
+                        "--title", f"{TITLE_PREFIX} 项目基线审计：{row['counts'][ab.FAIL]} 项待修复",
+                        "--body", issue_body(row)])
+                if r.returncode == 0:
+                    created.append((repo, r.stdout.strip().splitlines()[-1]))
+            else:
+                created.append((repo, "dry-run"))
+            continue
+        previous = extract_fail_ids(existing.get("body"))
+        current = set(row["fail_ids"])
+        added = sorted(current - previous)
+        fixed = sorted(previous - current)
+        lines = [
+            "## 周度同步",
+            "",
+            f"`PASS {row['counts'][ab.PASS]} · FAIL {row['counts'][ab.FAIL]} · UNKNOWN {row['counts'][ab.UNKNOWN]}`",
+            "",
+            f"新增未通过项：{', '.join(added) if added else '无'}",
+            f"已修复项：{', '.join(fixed) if fixed else '无'}",
+        ]
+        if not dry_run:
+            gh(["issue", "comment", "-R", repo, "--body", "\n".join(lines)])
+        commented.append(repo)
+    print(json.dumps({"issues_created": len(created), "issues_commented": len(commented) + len(none),
+                      "dry_run": dry_run, "created": created}, ensure_ascii=False), file=sys.stderr)
+    return created, commented
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--owner", default="LyraWang6688")
@@ -151,6 +261,7 @@ def main():
     parser.add_argument("--include-archived", action="store_true", help="把已归档仓库也纳入审计")
     parser.add_argument("--include-forks", action="store_true", help="把 fork 仓库也纳入审计")
     parser.add_argument("--public-only", action="store_true", help="只审计公开仓库")
+    parser.add_argument("--sync-issues", action="store_true", help="每仓库维护一个 [baseline] issue（创建或评论）")
     parser.add_argument("--dry-run", default=os.environ.get("DRY_RUN", "").lower() in ("1", "true", "yes"))
     args = parser.parse_args()
 
@@ -172,6 +283,8 @@ def main():
         print(f"  PASS {row['pass']} / FAIL {row['fail']} / UNKNOWN {row['unknown']}", file=sys.stderr)
 
     rows.sort(key=lambda r: r["fail"], reverse=True)
+    if args.sync_issues:
+        sync_issues(rows, args.dry_run)
     written = 0
     if not args.dry_run:
         written = write_rows(load_config(), rows, False)
