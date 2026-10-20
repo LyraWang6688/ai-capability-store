@@ -1,0 +1,4 @@
+interface:
+  display_name: "WeChat GIF Chart"
+  short_description: "Generate 720x540 animated GIF charts for WeChat articles"
+  default_prompt: "Use $animated-chart-gif to turn this data into a 720x540 animated GIF for a WeChat article."

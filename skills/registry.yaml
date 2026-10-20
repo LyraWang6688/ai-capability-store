@@ -162,6 +162,21 @@ skills:
     status: testing
     version: 0.1.0
     updated: "2026-10-20"
+  animated-chart-gif:
+    name: animated-chart-gif
+    path: skills/animated-chart-gif
+    scope: shared
+    status: testing
+    version: 0.1.0
+    updated: "2026-10-20"
+    notes: >
+      Store-native new asset (no prior Git history; authored 2026-10-20).
+      Renders 720x540 / 12.5fps animated GIFs for WeChat article bodies from a
+      JSON spec: bar comparison, line trend with moving readout, and stepwise
+      flow highlight. Spec derived by measuring six GIFs from a live public
+      WeChat article (see references/spec.md). Deterministic Pillow renderer,
+      local only, no network. Requires Python 3 + Pillow and a macOS CJK font.
+      Not a WeChat layout tool; complements wechat-html-css-layout.
 allowed_statuses:
   - draft
   - testing
