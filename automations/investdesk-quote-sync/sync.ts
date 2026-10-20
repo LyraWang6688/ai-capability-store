@@ -28,13 +28,13 @@ async function notifySyncCompleted(summary: {
 }): Promise<void> {
   const appId = process.env.NOTIFY_APP_ID ?? '';
   const appSecret = process.env.NOTIFY_APP_SECRET ?? '';
-  const userId = process.env.NOTIFY_USER_ID ?? '';
-  if (!appId || !appSecret || !userId) {
-    console.warn('[notify] 未配置 NOTIFY_APP_ID/NOTIFY_APP_SECRET/NOTIFY_USER_ID，跳过同步完成通知');
+  const chatId = process.env.NOTIFY_CHAT_ID ?? '';
+  if (!appId || !appSecret || !chatId) {
+    console.warn('[notify] 未配置 NOTIFY_APP_ID/NOTIFY_APP_SECRET/NOTIFY_CHAT_ID，跳过同步完成通知');
     return;
   }
   try {
-    await sendNotifyMessage({ appId, appSecret, userId }, buildSyncNotifyText(summary));
+    await sendNotifyMessage({ appId, appSecret, chatId }, buildSyncNotifyText(summary));
   } catch (error) {
     console.warn('[notify] 通知发送失败（不影响同步结果）：', error instanceof Error ? error.message : error);
   }
