@@ -109,4 +109,15 @@ capabilities:
     capabilities: "把飞书私聊任务转发到本机执行：白名单 open_id 校验、仅 p2p、高风险词先确认（回复「确认」才执行）、串行队列、超时中止（SIGTERM→SIGKILL）、结果截断回传飞书、逐任务审计 JSONL；另提供 doctor 环境体检与 launchd 开机自启（caffeinate 防休眠）。执行后端可配置：默认 `dsh headless <任务>`，可替换为任意命令"
     permissions: "需要：本机 lark-cli 已授权（im 域：读私聊消息、以机器人发消息）；一个已开启 `im.message.receive_v1` 长连接事件订阅的自建应用机器人；执行后端命令可运行（默认需要 DSH CLI 与模型 Key）。服务以操作者本人身份运行，可读写配置的 workdir"
     notes: "自研、Store-managed。全新资产，从未进过版本控制，首次提交即其第一份历史（按 first-publish §0 ② 直接复制）。status 取 limited：需先建飞书自建应用、配事件订阅与权限、绑 lark-cli 并授权，不是装上即用。0.1.0 分发形态为 npm CLI：`npx @lyra_wang/dsh-feishu-remote init`（npm 上的 `dsh-feishu-remote` 无 scope 名已被第三方 shixiangyu2 占用，且那是 DSH 插件形态的同类项目；本项目是独立常驻 CLI、执行后端可替换、内置高风险确认与审计，两者无关）。macOS 用 launchd 常驻；其他平台用 systemd/PM2 运行 `dsh-feishu-remote run`。2026-10-19 本机实测：doctor 全绿（lark-cli 1.0.97、事件订阅就绪、DSH 内置 CLI、DEEPSEEK_API_KEY 钥匙串就绪）；同一套逻辑先用 launchd 版验证了「列出桌面文件（9.3s 完成）」与「删除类指令先确认、取消零执行」。"
-
+  mac-cleanup:
+    name: mac-cleanup
+    provider: lyrawang
+    type: cli
+    status: limited
+    provider_path: external-capabilities/providers/lyrawang/README.md
+    version: 0.1.0
+    implementation_path: external-capabilities/cli/mac-cleanup
+    auth: "无凭据入仓。本机配置在仓库外的 5 个生成文件（config.local.sh / whitelist.reference / expect-absent.list / critical.list / watch.list，均由 `--init` 产出并在本包 .gitignore 内），报告写在 ~/Library/Logs/mac-cleanup/；仓库内零密钥、零个人路径"
+    capabilities: "季度性 macOS 清理：六阶段（白名单体检 → dry-run 存档 → 非交互清理 → 日志核对 → 关键资产体检 → 出报告）。三道护栏专治 Mole 的三种静默失败：白名单是替换语义（少一条即静默失去保护）、汇总数字虚报/漏报（实测一次少报 3.4 倍、一次虚报 2275MB 而文件并未删除）、删掉未被识别的运行时依赖（曾差点删掉 164 个符号链接指向的运行时目录）。不 sudo、不删 REVIEW 项、无自研删除逻辑。`--init` 扫描本机生成基准与清单；`install.sh` 装 launchd 季度任务（1/4/7/10 月 1 日 10:00，睡眠后补跑）"
+    permissions: "需要 Homebrew 安装的 Mole（brew install mole）。读 ~/Library 与 ~/.config/mole 用本用户权限即可，部分受保护路径可能需要「完全磁盘访问权限」；不需要 sudo、不需要网络、不需要任何凭据。只删 Mole 白名单之外的缓存与日志，系统级缓存（需 sudo）明确不处理"
+    notes: "自研、Store-managed。从 ~/Documents/workplace/mac-cleanup 迁入本 Store（`git subtree add` 保留历史），迁入后本目录即唯一源码。已参数化：仓库内不含任何个人路径、主机名或 npx 哈希 —— `--init` 从 ~/.dsh/profiles/node_modules 的符号链接反查 DSH 运行时目录，从 mo 的真实路径反推 Mole 源码位置，覆盖 Apple Silicon 与 Intel 两种 Homebrew 前缀。不含 SKILL.md：这是可安装的 CLI 工具，不是 Agent 跟随的流程。status 取 limited：需先装 Mole 并跑一次 `--init`，不是装上即用。"
