@@ -131,7 +131,7 @@ automations:
     path: automations/repo-discoverability
     entrypoint: apply_discoverability.py
     status: testing
-    version: 0.2.2
+    version: 0.2.0
     updated: "2026-10-20"
     trigger_kind: weekly
     executor: github-actions
@@ -158,7 +158,7 @@ automations:
     path: automations/repo-baseline-audit
     entrypoint: run_audit.py
     status: testing
-    version: 0.2.0
+    version: 0.2.3
     updated: "2026-10-20"
     trigger_kind: weekly
     executor: github-actions
