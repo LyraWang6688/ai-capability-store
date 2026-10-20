@@ -115,7 +115,7 @@ capabilities:
     type: cli
     status: limited
     provider_path: external-capabilities/providers/lyrawang/README.md
-    version: 0.2.2
+    version: 0.2.3
     implementation_path: external-capabilities/cli/mac-cleanup
     auth: "无凭据入仓。本机状态全部在仓库外的 `~/.mac-cleanup/`（可用 MC_STATE_DIR 覆盖）：config.local.sh / whitelist.reference / expect-absent.list / critical.list / watch.list，均由 `--init` 生成；报告写在 ~/Library/Logs/mac-cleanup/。仓库内零密钥、零个人路径"
     capabilities: "季度性 macOS 清理：六阶段（白名单体检 → dry-run 存档 → 非交互清理 → 日志核对 → 关键资产体检 → 出报告）。三道护栏专治 Mole 的三种静默失败：白名单是替换语义（少一条即静默失去保护）、汇总数字虚报/漏报（实测一次少报 3.4 倍、一次虚报 2275MB 而文件并未删除）、删掉未被识别的运行时依赖（曾差点删掉 164 个符号链接指向的运行时目录）。不 sudo、不删 REVIEW 项、无自研删除逻辑。`--init` 扫描本机生成基准与清单；安装季度定时任务（1/4/7/10 月 1 日 10:00，睡眠后补跑）"
