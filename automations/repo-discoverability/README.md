@@ -123,6 +123,22 @@ personal-ip-hub    → inventory
 
 所以 topics 走 `topics.plan.json`：一次性人工确认，之后自动套用。
 
+## 输出到哪
+
+**不再只是打印报告** —— 没过的项会开成 issue，落到该干活的那个仓库里：
+
+| 情况 | 动作 |
+|---|---|
+| 有 FAIL，且没有既有 issue | 🆕 开一条 `[discoverability] N 项待补` |
+| 有 FAIL，已有 issue | ✏️ 原地更新（不重复开单） |
+| 之前不合格，现在合格 | ✅ 自动关闭并留言 |
+
+**幂等**靠一条隐藏 marker（`<!-- repo-discoverability-bot -->`）识别自己开的单。
+所以每周跑不会有问题，也不会堆积。
+
+**跨仓库开 issue 需要 PAT（`repo` scope）** —— Actions 默认的 `GITHUB_TOKEN` 只能写当前仓库。
+脚本遇到权限不足会逐仓库报错，不会假装成功。
+
 ## 运行
 
 ```bash
@@ -147,6 +163,7 @@ python3 apply_discoverability.py --owner LyraWang6688 --apply --apply-topics
   2026-10-19 名下 13 个公开仓库里 **8 个是归档的**，真正需要做这项的只有 5 个。
 - **分支保护会拦住写入** —— `ai-capability-store` 和 `feishu-retail-ops` 都要求走 PR。
   脚本不会用 `--admin` 绕过；它会报错并说明需要 PR。**这是对的**：绕过保护等于假装 CI 通过了。
+- **weekly**：workflow 每周一 22:10 跑一次；issue 幂等，修好自动关闭
 - **`llms.txt` 不保证被任何 agent 读取** —— 它是 T2 约定，不是 T1 实测项。不要因为它加了就以为分数一定涨。
 
 ## 相关

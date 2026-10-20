@@ -131,21 +131,25 @@ automations:
     path: automations/repo-discoverability
     entrypoint: apply_discoverability.py
     status: testing
-    version: 0.1.0
+    version: 0.2.0
     updated: "2026-10-20"
-    trigger_kind: monthly
+    trigger_kind: weekly
     executor: github-actions
     workflow: .github/workflows/automation-repo-discoverability.yml
     output:
       target: external-system
-      destination: 飞书 Base「AI 工具」多维表格：仓库发现性体检
+      destination: >
+        ① 每个不合规仓库开/更新一条 issue（幂等，修好自动关闭）；
+        ② Actions step summary
     description: >
       每月体检名下所有公开 GitHub 仓库的「发现性」——让 AI 和别人能搜到它。
       5 项按证据强度分级：topics(布尔门) / description / README 前三行 为实测项，
       llms.txt / AGENTS.md 为生态约定。自动补齐 description 与 llms.txt；
       topics 只从人工确认的 topics.plan.json 套用，不做关键词猜测。
     notes: >
-      为什么是 Automation：触发由时钟决定（每月），不需要人或模型参与。
+      为什么是 Automation：触发由时钟决定（每周一 22:10），不需要人或模型参与。
+      issue 幂等：同一仓库只维护一条（带隐藏 marker），修好会自动关闭，不会每周堆单。
+      跨仓库开 issue 需要 PAT（repo scope）—— GITHUB_TOKEN 只能写当前仓库。
       与 repo-baseline-audit 分工：那个修内功（安全/CI/合并纪律），这个修外功（能不能被找到）。
       topics 不自动派生的原因见 README：关键词匹配把文件树里的「AGENTS.md」当成 ai-agents 主题、
       把「project inventory」当成库存，错的 topic 比没有更糟。归档仓库直接跳过（只读）。
