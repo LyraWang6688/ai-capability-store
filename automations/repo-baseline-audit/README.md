@@ -45,6 +45,18 @@ GH_TOKEN=... python3 run_audit.py --owner LyraWang6688
 | `FEISHU_APP_ID` / `FEISHU_APP_SECRET` | 飞书应用身份（需是该 Base 的可编辑协作者） |
 | `BASELINE_CONFIG_JSON` | `{"base_token":"...","table_id":"..."}` |
 
+## 自动维护 issue（0.2.0）
+
+每周运行时：
+
+- 仓库没有 `[baseline]` issue → **创建**一个（含 FAIL 清单与修复路径）；
+- 已有 → 在 issue 里**追加一条评论**（本周计数 + 新增项 + 已修复项），不新建、不刷屏；
+- 全部通过且存在 issue → 评论「本轮全部通过，可关闭」。
+
+```bash
+python3 run_audit.py --owner X --sync-issues
+```
+
 ## 跳过已归档 / fork
 
 已归档仓库是"主动冻结"的，审计它们只会产生大量无意义 FAIL；fork 同理。
