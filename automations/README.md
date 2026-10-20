@@ -129,11 +129,16 @@ unattended is exactly the thing you may need to roll back. Run
 
 ## Executor: who runs it
 
+**The list stops at `quarterly` on purpose.** `yearly` is the same kind of gap, but it
+has no consumer yet — a cadence value nobody uses is a guess dressed as a contract. When
+a yearly job exists, adding it costs exactly the same edit in the same six places, so
+nothing is saved by guessing now.
+
 `executor` names the runner, and it is a **separate axis from `trigger_kind`**:
 
 | | question | values |
 |---|---|---|
-| `trigger_kind` | how often | `daily` / `weekly` / `monthly` / `manual` / `event` |
+| `trigger_kind` | how often | `daily` / `weekly` / `monthly` / `quarterly` / `manual` / `event` |
 | `executor` | what runs it | `github-actions` / `launchd` / `systemd` / `human` |
 | `external_trigger` | **who fires the clock**, when it is not the workflow | a path in this repository |
 
@@ -224,7 +229,7 @@ honestly is better than pretending every automation runs in CI.
 ## The cron lives in exactly one place
 
 For a `github-actions` automation, `registry.yaml` records **`trigger_kind`**
-(`daily` / `weekly` / `monthly` / `manual` / `event`), never the cron expression.
+(`daily` / `weekly` / `monthly` / `quarterly` / `manual` / `event`), never the cron expression.
 The authoritative schedule is the `on:` block of the **bound workflow file** named
 by `workflow:`. A `launchd` automation's schedule lives in its plist template for
 the same reason.

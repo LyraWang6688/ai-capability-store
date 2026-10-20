@@ -137,7 +137,12 @@ ALLOWED_AUTOMATION_STATUSES = {"draft", "testing", "active", "deprecated", "arch
 # `monthly` exists because a monthly cadence is a real clock, not a degenerate
 # daily: nothing schedules it from a workflow for us, and its catch-up behaviour
 # (launchd fires on wake) differs from a daily job's.
-ALLOWED_TRIGGER_KINDS = {"daily", "weekly", "monthly", "manual", "event"}
+# `quarterly` exists because "every 3 months" is a real cadence and every other value
+# would be a lie for it: `monthly` fires 4x/year, `manual` says a human starts it.
+# The list deliberately STOPS here. `yearly` is the obvious next instance of the same
+# gap, but it has no consumer yet, and a speculative enum value is a guess dressed as
+# a contract. Adding it later costs exactly the same six-file edit.
+ALLOWED_TRIGGER_KINDS = {"daily", "weekly", "monthly", "quarterly", "manual", "event"}
 # WHO runs it. The Automation Domain originally assumed GitHub Actions only, so
 # `workflow` was unconditionally required; that made a launchd-driven job
 # unrepresentable. Executor is a separate axis from trigger_kind:
@@ -1067,7 +1072,7 @@ def main() -> int:
         check("automation registry keeps 5 lifecycle statuses",
               allowed_auto == ALLOWED_AUTOMATION_STATUSES, f"allowed={sorted(allowed_auto)}")
         allowed_trigger = set(autos_reg.get("allowed_trigger_kinds") or [])
-        check("automation registry keeps 5 trigger kinds",
+        check("automation registry keeps 6 trigger kinds",
               allowed_trigger == ALLOWED_TRIGGER_KINDS, f"kinds={sorted(allowed_trigger)}")
         allowed_execs = set(autos_reg.get("allowed_executors") or [])
         check("automation registry keeps 4 executors",
