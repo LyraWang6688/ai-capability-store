@@ -32,6 +32,18 @@ MC_ROOT="$(cd "$(dirname "$(_mc_rp "${BASH_SOURCE[0]}")")" && pwd -P)"
 mc_load_config
 
 LABEL="${MC_LABEL:-local.mac-cleanup}"
+# 季度触发的「日」：1-28（29-31 在 2 月不存在，会静默永不触发）
+SCHEDULE_DAY="${MC_SCHEDULE_DAY:-1}"
+case "${SCHEDULE_DAY}" in
+  ''|*[!0-9]*)
+    printf 'ERROR: MC_SCHEDULE_DAY 必须是数字，当前=%s\n' "${SCHEDULE_DAY}" >&2
+    exit 1
+    ;;
+esac
+if [ "${SCHEDULE_DAY}" -lt 1 ] || [ "${SCHEDULE_DAY}" -gt 28 ]; then
+  printf 'ERROR: MC_SCHEDULE_DAY 必须在 1-28 之间（当前 %s）—— 29-31 日在 2 月不存在，任务会静默不触发\n' "${SCHEDULE_DAY}" >&2
+  exit 1
+fi
 # 安装来源：npm 形态下由 --install 把包复制到 ~/.mac-cleanup/app 再传进来
 APP_DIR="${MC_APP_DIR:-${MC_ROOT}}"
 TEMPLATE="${MC_ROOT}/deploy/launchd.plist.template"
@@ -48,6 +60,7 @@ render_plist() {
       -e "s|__PROJECT_DIR__|${APP_DIR}|g" \
       -e "s|__HOME__|${HOME}|g" \
       -e "s|__LOG_DIR__|${LOG_DIR}|g" \
+      -e "s|__DAY__|${SCHEDULE_DAY}|g" \
       "${TEMPLATE}"
 }
 
@@ -111,7 +124,7 @@ launchctl bootstrap "${DOMAIN}" "${TARGET}" || die "bootstrap 失败"
 launchctl enable "${DOMAIN}/${LABEL}" 2>/dev/null || true
 
 say "✅ 已安装：${TARGET}"
-say "   触发时间：1/4/7/10 月 1 日 10:00（睡眠时顺延到唤醒后）"
+say "   触发时间：1/4/7/10 月 ${SCHEDULE_DAY} 日 10:00（睡眠时顺延到唤醒后）"
 say "   日志：${LOG_DIR}/launchd.out.log"
 say "   报告：${LOG_DIR}/<年>-Q<季>.md"
 say

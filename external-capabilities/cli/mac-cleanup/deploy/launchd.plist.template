@@ -23,10 +23,10 @@
     <!-- 每季度一次：1/4/7/10 月 1 日 10:00 -->
     <key>StartCalendarInterval</key>
     <array>
-        <dict><key>Month</key><integer>1</integer><key>Day</key><integer>1</integer><key>Hour</key><integer>10</integer><key>Minute</key><integer>0</integer></dict>
-        <dict><key>Month</key><integer>4</integer><key>Day</key><integer>1</integer><key>Hour</key><integer>10</integer><key>Minute</key><integer>0</integer></dict>
-        <dict><key>Month</key><integer>7</integer><key>Day</key><integer>1</integer><key>Hour</key><integer>10</integer><key>Minute</key><integer>0</integer></dict>
-        <dict><key>Month</key><integer>10</integer><key>Day</key><integer>1</integer><key>Hour</key><integer>10</integer><key>Minute</key><integer>0</integer></dict>
+        <dict><key>Month</key><integer>1</integer><key>Day</key><integer>__DAY__</integer><key>Hour</key><integer>10</integer><key>Minute</key><integer>0</integer></dict>
+        <dict><key>Month</key><integer>4</integer><key>Day</key><integer>__DAY__</integer><key>Hour</key><integer>10</integer><key>Minute</key><integer>0</integer></dict>
+        <dict><key>Month</key><integer>7</integer><key>Day</key><integer>__DAY__</integer><key>Hour</key><integer>10</integer><key>Minute</key><integer>0</integer></dict>
+        <dict><key>Month</key><integer>10</integer><key>Day</key><integer>__DAY__</integer><key>Hour</key><integer>10</integer><key>Minute</key><integer>0</integer></dict>
     </array>
 
     <!-- 登录时不要跑（避免插上电源就清理） -->
