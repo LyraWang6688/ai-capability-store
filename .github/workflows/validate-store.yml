@@ -28,6 +28,23 @@ jobs:
       # reporting a clean run.
       - name: Validator fixtures
         run: python3 scripts/test_validator.py
+      # Every skill that ships scripts gets its own fixtures run here. `repo-wrapup`
+      # deletes branches — a deletion script with no test means a green build says
+      # "nobody looked", not "it works". Auto-discovered so a new skill needs no edit
+      # to this file, and a missing suite fails loudly instead of silently skipping.
+      - name: Skill script tests
+        run: |
+          set -euo pipefail
+          ran=0
+          for t in skills/*/scripts/test_scripts.sh; do
+            [ -f "$t" ] || continue
+            echo "::group::$t"
+            bash "$t"
+            echo "::endgroup::"
+            ran=$((ran + 1))
+          done
+          echo "ran $ran skill test suites"
+          [ "$ran" -gt 0 ] || { echo "no skill test suites found"; exit 1; }
       # Separate from the validator on purpose: that script is pure-filesystem
       # (no git, no subprocess) so a tarball or shallow checkout still validates.
       # "Is this file tracked?" is a git question and belongs in its own tool.

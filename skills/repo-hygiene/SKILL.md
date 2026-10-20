@@ -1,6 +1,6 @@
 ---
 name: repo-hygiene
-description: Audit and safely clean a Git repository by classifying caches, local data, historical documents, and legacy tool residue before any deletion or migration. Use for repository hygiene, workspace cleanup, stale tool directories, generated artifacts, or documentation relocation; do not use it to auto-dispose worktrees or unpushed work.
+description: 审计并安全清理 Git 仓库里的缓存、本地数据、历史文档和遗留工具目录 —— 先分类（KEEP / DELETE / MIGRATE / REVIEW）再删，删除前必须人授权。当用户说「仓库清理」「清一下这个仓库的垃圾」「这些缓存能删吗」「.venv / node_modules / dist 要不要留」「旧文档挪个位置」，或准备迁移 / 交接一个仓库、需要先搞清楚哪些文件是活的哪些是死的时使用。不负责分支 / worktree / PR（那是 repo-wrapup），也不自动处置 worktree 或未推送的提交。
 ---
 
 # Repository Hygiene
