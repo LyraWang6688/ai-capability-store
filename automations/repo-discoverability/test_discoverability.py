@@ -16,6 +16,7 @@ from unittest import mock
 
 import apply_discoverability as ap
 import audit_discoverability as au
+import traffic_baseline as tb
 
 README = """# Demo Project
 
@@ -105,6 +106,25 @@ class TestTopicsComeFromThePlanOnly(unittest.TestCase):
         result = self._run({})
         # 但建议不进 actions
         self.assertEqual([a for a in result["actions"] if a["field"] == "topics"], [])
+
+
+class TestTrafficBaseline(unittest.TestCase):
+    """The 14-day window is the reason this exists as its own script + storage."""
+
+    def test_days_between_counts_calendar_gap(self):
+        self.assertEqual(
+            tb.days_between("2026-10-20T00:00:00+00:00", "2026-11-03T00:00:00+00:00"), 14)
+
+    def test_compare_needs_two_snapshots(self):
+        with mock.patch.object(tb, "load_store", return_value={"snapshots": []}):
+            self.assertEqual(tb.cmd_compare(type("A", (), {})()), 1)
+
+    def test_store_default_shape_is_empty(self):
+        with mock.patch.object(tb.os.path, "isfile", return_value=False):
+            self.assertEqual(tb.load_store(), {"owner": None, "snapshots": []})
+
+    def test_window_constant_matches_github_retention(self):
+        self.assertEqual(tb.WINDOW_DAYS, 14, "GitHub traffic API 只保留 14 天")
 
 
 class TestAuditChecks(unittest.TestCase):

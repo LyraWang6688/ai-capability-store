@@ -50,11 +50,30 @@ repo clone 1,730 次 / 331 个独立来源
 | D4 | `llms.txt` | [llmstxt.org](https://llmstxt.org) 约定；两个范例仓库都有。给 agent 一个机器可读的入口索引 |
 | D5 | `AGENTS.md` | agent 工具（Claude Code / Codex 等）通用约定；进入仓库后先读的就是它 |
 
-### T3 · 需要时间窗 —— 先建基线
+### T3 · 需要时间窗 —— 已建基线
 
 | # | 项 | 做法 |
 |---|---|---|
-| D6 | traffic | GitHub 的 traffic API 只保留 **14 天**。改动的效果要在 14 天后用 `traffic/views` 和 `traffic/clones` 对比今天 |
+| D6 | traffic | GitHub 的 traffic API 只保留 **14 天**，超期由服务端删除，要也要不回来。所以基线必须自己存：`traffic_baseline.py --record` 写 `~/.automation-state/repo-discoverability/traffic.json`，14 天后 `--compare` 出增量 |
+
+**2026-10-20 记录的基线（14 天窗口）**：
+
+| 仓库 | 观看 / 独立访客 | clone / 独立来源 |
+|---|---|---|
+| `feishu-retail-ops` | 47 / 2 | **18,535 / 1,917** |
+| `ai-capability-store` | 27 / 1 | 1,730 / 331 |
+| `Teaming-Bot` | 7 / 1 | 358 / 153 |
+| `personal-ip-hub` | 0 / 0 | 10 / 10 |
+| `agent-context-architecture` | 0 / 0 | 25 / 17 |
+
+**这张表本身就是一个发现**：`feishu-retail-ops` 有 1,917 个独立来源 clone，却只有 2 个人打开网页
+（比值 958:1）。正常公开项目不会有这个比例 —— 要么是部署自动化在拉，要么是被批量爬取。
+**在解释任何 traffic 变化之前，先把这个异常查清楚**，否则增量都是噪声。
+
+**判读规则**：
+- 看 **`views`** 增量 —— 人/agent 真的打开了页面
+- `clones` 增量混着 CI checkout、定时 workflow、你自己的 `git fetch`，**只能当参考**
+- 单仓库的一次波动可能是某个人分享了一次；要看多个仓库的整体方向
 
 ## 自动化的边界
 
