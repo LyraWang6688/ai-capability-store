@@ -183,6 +183,20 @@ skills:
       WeChat article (see references/spec.md). Deterministic Pillow renderer,
       local only, no network. Requires Python 3 + Pillow and a macOS CJK font.
       Not a WeChat layout tool; complements wechat-html-css-layout.
+  beijing-theater-calendar:
+    name: beijing-theater-calendar
+    path: skills/beijing-theater-calendar
+    scope: shared
+    status: testing
+    version: 0.1.0
+    updated: "2026-10-21"
+    notes: >
+      「京城好戏」项目的日历 Skill：查询北京地区戏曲（京剧/昆曲/评剧/河北梆子/秦腔等）
+      与话剧的演出日程与购票信息。双轨工作流——用户提问走决策层（先查 Base 判新鲜度，
+      有缺口才补采），每周一/四 10:30 定时任务走更新层（抓未来 30 天新增、按「剧目+日期」
+      去重写入、过期改已结束）。Base「北京剧场演出日历」是唯一事实源；只收戏曲+话剧两品类，
+      术语统一用「戏曲」；禁止编造、每条必填信息来源；动态公式字段勿手写。
+      本目录为 Store 规范登记版，本地豆包 Work .user_skills 中另有运行副本。
 allowed_statuses:
   - draft
   - testing

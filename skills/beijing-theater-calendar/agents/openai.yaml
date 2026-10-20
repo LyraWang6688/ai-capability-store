@@ -1,0 +1,4 @@
+interface:
+  display_name: "京城好戏 · 北京戏曲/话剧演出日历"
+  short_description: "查询北京剧场戏曲/话剧演出日程与购票信息，支持日历定时更新"
+  default_prompt: "Use $beijing-theater-calendar to answer what xiqu (Chinese opera: Peking opera, Kunqu, Pingju, Hebei Bangzi, etc.) or drama shows are playing in Beijing theaters for a given date range or weekend, how to buy tickets, or to refresh the theater calendar with the latest shows."
