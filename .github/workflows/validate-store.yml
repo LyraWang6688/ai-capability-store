@@ -17,6 +17,13 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      # JS 包的测试需要 Node。这一条以前不存在，导致 mcpStdio 的 8 个用例
+      # 从 0.3.1 一直红到 0.3.2 —— 缺陷跨了两次 npm 发布才被发现。
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: external-capabilities/mcp/wechat-draft-mcp/package-lock.json
       - name: Install dev dependencies
         run: pip install -r requirements-dev.txt
       - name: Run store validator
@@ -56,5 +63,16 @@ jobs:
       # its package.json said 1.0.0, and every other check was green — the tag
       # agreed with the registry, --missing agreed, --audit agreed. Only the
       # thing that gets installed was wrong, which is the one place nobody looks.
+      # `npm test` 只跑 `build:test`（输出到 dist-test/），而 mcpStdio 的用例会
+      # spawn `dist/mcpServer.js`。`npm ci` 会通过 prepare 触发一次 build ——
+      # 这里仍然显式再 build 一次：一旦 prepare 被删掉，测试会以「子进程起不来」
+      # 的形式静默退化，而不是报配置错误。
+      - name: wechat-draft-mcp tests
+        working-directory: external-capabilities/mcp/wechat-draft-mcp
+        run: |
+          set -euo pipefail
+          npm ci --no-audit --no-fund
+          npm run build
+          npm test
       - name: Artifact versions agree with the registry
         run: python3 skills/store-publish/scripts/check_tag_version.py --package HEAD
