@@ -2,7 +2,8 @@
 
 **让你的仓库被 AI 搜到，并且被搜到之后愿意点进来。**
 
-审计 5 项、自动补 2 项，按证据强度分级 —— 没有证据的项不进标准。
+审计 6 项，按证据强度分级 —— 没有证据的项不进标准。
+**只读 + 开 issue，不写任何仓库。**
 
 > **给仓库负责的 AI 看的写作规范 → [`MAINTAINER-GUIDE.md`](./MAINTAINER-GUIDE.md)**
 >
@@ -94,34 +95,22 @@ repo clone 1,730 次 / 331 个独立来源
 - `clones` 增量混着 CI checkout、定时 workflow、你自己的 `git fetch`，**只能当参考**
 - 单仓库的一次波动可能是某个人分享了一次；要看多个仓库的整体方向
 
-## 自动化的边界
+## 边界：只读 + 开 issue，不写任何仓库
 
-| 项 | 自动？ | 为什么 |
-|---|---|---|
-| D2 description | ✅ 自动 | 从 README 标题下的 `> 一句话` 抽取 —— 确定性，可预测 |
-| D4 llms.txt | ✅ 自动 | 从 H1 + 引言 + `##` 标题生成 —— 确定性 |
-| D1 topics | ❌ **只建议，不自动写** | 见下 |
-| D3 README 前三行 | ❌ | 需要判断「这个项目到底解决谁的什么痛」，不能机造 |
-| D5 AGENTS.md | ❌ | 内容是项目特定的规则 |
-
-### 为什么 topics 不自动派生
-
-第一版用 README 关键词推导 topics，第一次 dry-run 就给出两个错答案：
+**这是硬边界**（用户 2026-10-20 明确）：
 
 ```
-feishu-retail-ops  → ai-agents
-  命中来源：文件树里的一行「├── AGENTS.md  # 仓库级 Agent 入口」
-  （文件名被当成了主题）
-
-personal-ip-hub    → inventory
-  命中来源：英文「The current public project inventory SSOT is:」
-  （inventory 在这里是「清单」，不是「库存」）
+✅ 读        审计 6 项，读 README / topics / description
+✅ 写 issue  只在「本仓库」开 / 改 / 关 issue（幂等）
+❌ 写仓库    不改任何仓库的 README / description / topics / llms.txt / 文件
 ```
 
-**关键词匹配分不清「文件名 / 通用词」和「主题」。而错的 topic 比没有 topic 更糟** ——
-它把仓库推进一个和它无关的 topic 页，正是这个自动化要避免的垃圾信号。
+**为什么**：「怎么按标准执行」是用户和各仓库负责的 AI 之间的约定，不归本自动化管。
+自动化管的是**发现差距并把它说清楚**，不是替人动手。
 
-所以 topics 走 `topics.plan.json`：一次性人工确认，之后自动套用。
+**因此也不再存在自动补**。`llms.txt` 的格式、徽章的代码，都写进
+[`MAINTAINER-GUIDE.md`](./MAINTAINER-GUIDE.md) 给仓库 AI 抄，而不是由脚本写进去。
+
 
 ## 输出到哪
 
@@ -145,17 +134,16 @@ personal-ip-hub    → inventory
 # 审计（只读）
 python3 audit_discoverability.py --all --owner LyraWang6688
 
-# 看会改什么（dry-run，默认不写）
-python3 apply_discoverability.py --owner LyraWang6688
+# 生成 / 更新 issue（幂等：有则改、好则关）
+python3 report_issues.py --owner LyraWang6688 --create
 
-# 真的写 description + llms.txt
-python3 apply_discoverability.py --owner LyraWang6688 --apply
-
-# 连 topics 一起写（只从 topics.plan.json 取）
-python3 apply_discoverability.py --owner LyraWang6688 --apply --apply-topics
+# traffic 基线
+python3 traffic_baseline.py --owner LyraWang6688 --record
+python3 traffic_baseline.py --owner LyraWang6688 --compare
 ```
 
-退出码：`audit` 0 = 全 PASS/SKIP，1 = 有 FAIL。`apply` 0 = 无错误，1 = 有写入失败。
+退出码：`audit` 0 = 全 PASS/SKIP，1 = 有 FAIL。`report_issues` 0 = 无错误，1 = 有仓库写入失败。
+
 
 ## 审计范围
 

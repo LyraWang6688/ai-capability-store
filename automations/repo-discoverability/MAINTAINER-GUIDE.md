@@ -230,29 +230,68 @@ personal-ip-hub   → inventory   ← 命中「The current public project invent
 
 ### 交接给别的 AI 时
 
-- [ ] 确认 topics 清单有出处（写进 `topics.plan.json`，不要让下一个人重新猜）
+- [ ] 确认 topics 清单有出处（写进新仓库的 `AGENTS.md` 或 README，不要让下一个人重新猜）
 
 ---
 
-## 六、我（审计自动化）负责什么
+## 六、审计方负责什么（边界很硬）
 
 | 做什么 | 怎么做 |
 |---|---|
-| 校验 6 项 | `audit_discoverability.py` —— 只读，可反复跑 |
-| 补 `llms.txt` | 从 README 结构自动生成（确定性） |
-| 补 DSH 徽章 | 固定字符串追加（确定性） |
-| 补 `description` | 从 README 标题下的引言抽取（确定性） |
-| 记录 traffic 基线 | `traffic_baseline.py`（traffic 只留 14 天，必须自己存） |
-| **不做什么** | **不写 README 正文、不选 topics、不绕过分支保护** |
+| **校验 6 项** | `audit_discoverability.py` —— 只读，可反复跑 |
+| **开 issue** | `report_issues.py` —— 不合格就开，修好自动关；幂等 |
+| **记 traffic 基线** | `traffic_baseline.py`（traffic 只留 14 天，必须自己存） |
+| **不写任何仓库** | 不改 README / description / topics / llms.txt / 文件 —— 一个字节都不写 |
 
-**校验命令**（任何时候可跑）：
+**为什么**：「怎么按标准执行」是你（仓库负责 AI）和用户的约定。
+审计方只负责**发现差距并把它说清楚**，不替人动手。
+
+所以下面这些**都得你自己做**，脚本不会代劳：
 
 ```bash
+# 自己跑校验，看还缺什么
 python3 ~/Documents/workplace/ai-capability-store/automations/repo-discoverability/audit_discoverability.py \
   LyraWang6688/<repo>
 ```
 
----
+
+## 六·补 · 两段可以直接抄的代码
+
+因为自动化**不写仓库**，这两样要你自己加。
+
+### `llms.txt` 模板
+
+放在仓库根目录。给 agent 一个机器可读的入口索引：
+
+```markdown
+# <项目名>
+
+> <README 标题下那句引言>
+
+## 核心文档
+
+- [README](./README.md)：项目说明与用法
+- [AGENTS.md](./AGENTS.md)：agent 进仓库前先读的规则   ← 有就写，没有删掉这行
+
+## 主要章节
+
+- <README 里的一级标题，3–8 条>
+
+## 怎么用这份索引
+
+这是给 LLM / agent 的机器可读入口：先读核心文档，再按章节名定位。
+```
+
+### DSH 徽章
+
+放在 README **末尾**：
+
+```markdown
+[![](https://img.shields.io/badge/powered_by-dsh-4D6BFE?style=flat-square&logo=deepseek&logoColor=white)](https://github.com/deepseek-ai/deepseek-harness)
+```
+
+**再提醒一次**：这是 `<img>`，GitHub 的 `in:readme` 索引文本不索引图片内容，
+所以它**不影响搜索结果**，纯粹是署名和生态可追溯。
 
 ## 七、这套标准的证据基础（别凭感觉改它）
 

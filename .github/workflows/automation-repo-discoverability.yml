@@ -3,11 +3,12 @@ name: automation-repo-discoverability
 # 每周一 08:00（Asia/Shanghai）体检所有公开仓库的「发现性」：
 # 能不能被 AI / 人搜到，搜到之后愿不愿意点进来。
 #
-# 两件事，分开做：
-#   ① 自动补确定性缺口（description / llms.txt / DSH 徽章）—— 幂等
-#   ② 把没过的项开成 issue 派给仓库负责的 AI —— 幂等，修好会自动关闭
+# 边界（用户 2026-10-20 明确）：本自动化**只读 + 开 issue，不写任何仓库**。
+#   · 只读：审计 6 项，不修改任何仓库内容
+#   · 写：只在「本仓库」开/改/关 issue
+#   · 不写：不改别的仓库的 README / description / topics / llms.txt / 文件
 #
-# topics 永远不自动写 —— 只从 automations/repo-discoverability/topics.plan.json 套用。
+# 「怎么按标准执行」由用户与各仓库负责的 AI 约定，不归本自动化管。
 on:
   schedule:
     - cron: "0 0 * * 1"        # 00:00 UTC = 08:00 Asia/Shanghai，每周一
@@ -50,20 +51,6 @@ jobs:
           set -euo pipefail
           python3 audit_discoverability.py --all --owner LyraWang6688 || true
 
-      - name: Apply deterministic fixes (description + llms.txt)
-        working-directory: automations/repo-discoverability
-        env:
-          # 跨仓库写：必须是带 repo scope 的 PAT，且由操作者本人授权
-          GH_TOKEN: ${{ secrets.GH_DISCOVERY_TOKEN || secrets.GH_AUDIT_TOKEN || github.token }}
-        run: |
-          set -euo pipefail
-          if [ "${{ inputs.dry-run }}" = "true" ] || [ "${{ github.event_name }}" = "schedule" ]; then
-            echo "::notice::dry-run —— 只打印，不写仓库"
-            python3 apply_discoverability.py --owner LyraWang6688
-          else
-            python3 apply_discoverability.py --owner LyraWang6688 --apply || true
-          fi
-
       - name: Open / update issues on non-compliant repos
         working-directory: automations/repo-discoverability
         env:
@@ -87,8 +74,8 @@ jobs:
             echo ""
             echo "- 标准与证据：\`automations/repo-discoverability/README.md\`"
             echo "- 写 README / 选 topics 的规范：\`automations/repo-discoverability/MAINTAINER-GUIDE.md\`"
-            echo "- **topics 不会被自动写入** —— 只在 \`--apply-topics\` 且 topics.plan.json 有条目时才写。"
-            echo "- 分支保护会拦住 llms.txt 的提交；脚本报错而不绕过保护，需要人工走 PR。"
+            echo "- **本自动化不写任何仓库**：只读审计 + 在本仓库开 issue。"
+            echo "- 「怎么按标准执行」由用户与各仓库负责的 AI 约定。"
             echo "- 归档仓库直接跳过（只读）。"
             echo "- issue 是幂等的：同一仓库只维护一条，修好会自动关闭。"
           } >> "$GITHUB_STEP_SUMMARY"
