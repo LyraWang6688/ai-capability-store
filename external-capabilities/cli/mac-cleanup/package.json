@@ -1,6 +1,6 @@
 {
   "name": "@lyra_wang/mac-cleanup",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "季度性 macOS 清理：给 Mole 的 mo clean 加三道护栏（白名单体检 / 日志核对 / 关键资产体检）",
   "license": "MIT",
   "author": "王颖 (LyraWang)",

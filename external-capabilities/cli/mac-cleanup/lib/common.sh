@@ -31,15 +31,18 @@ readonly MC_MOLE_LOG="${HOME}/Library/Logs/mole/operations.log"
 readonly MC_CLEAN_LIST="${MC_MOLE_HOME}/clean-list.txt"
 
 # ── 配置项默认值（config.local.sh 可覆盖）────────────────────
-MC_MO_BIN=""
-MC_LABEL="local.mac-cleanup"
+# 一律用 ${VAR:-默认}：这些是"默认值"，不是"强制值"——
+# 直接赋值会盖掉调用方传来的环境变量（测试与临时覆盖都靠它）。
+MC_MO_BIN="${MC_MO_BIN:-}"
+MC_LABEL="${MC_LABEL:-local.mac-cleanup}"
+MC_SCHEDULE_DAY="${MC_SCHEDULE_DAY:-1}"
 MC_REPORT_DIR="${MC_REPORT_DIR:-${HOME}/Library/Logs/mac-cleanup}"
 MC_DSH_RUNTIME=""          # 由 --init 探测；空 = 不做 DSH 相关检查
 MC_DSH_HOME=""             # 同上
 
 mc_load_config() {
   # 环境变量优先于配置文件：配置文件里是硬赋值，会盖掉调用方的重定向（测试/临时改路径）
-  local env_report="${MC_REPORT_DIR:-}"
+  local env_report="${MC_REPORT_DIR:-}" env_day="${MC_SCHEDULE_DAY:-}" env_label="${MC_LABEL:-}"
   if [ -f "${MC_CONFIG_DEFAULT}" ]; then
     # shellcheck disable=SC1090
     . "${MC_CONFIG_DEFAULT}"
@@ -48,7 +51,10 @@ mc_load_config() {
     # shellcheck disable=SC1090
     . "${MC_CONFIG_LOCAL}"
   fi
+  # 环境变量优先：配置文件里是硬赋值，会盖掉调用方传来的值（测试/临时覆盖都靠它）
   [ -n "${env_report}" ] && MC_REPORT_DIR="${env_report}"
+  [ -n "${env_day}" ] && MC_SCHEDULE_DAY="${env_day}"
+  [ -n "${env_label}" ] && MC_LABEL="${env_label}"
   MC_WORK_DIR="${MC_REPORT_DIR}/work"
 }
 

@@ -89,6 +89,16 @@ git clone <repo> && cd external-capabilities/cli/mac-cleanup
 生成物全部落在 **`~/.mac-cleanup/`**（可用环境变量 `MC_STATE_DIR` 覆盖）——
 **不在包目录里**，因为 npm/npx 把包装在缓存目录（`~/.npm/_npx/<hash>/…`），那里随时被回收，而且是只读语义。
 
+可调项（`~/.mac-cleanup/config.local.sh`）：
+
+| 键 | 默认 | 说明 |
+|---|---|---|
+| `MC_MO_BIN` | 自动探测 | `mo` 的绝对路径 |
+| `MC_LABEL` | `local.mac-cleanup` | launchd 标签 |
+| **`MC_SCHEDULE_DAY`** | `1` | 季度触发的「日」，1-28。月份固定 1/4/7/10 |
+| `MC_REPORT_DIR` | `~/Library/Logs/mac-cleanup` | 报告目录（会被自动加进 Mole 白名单） |
+| `MC_DSH_RUNTIME` / `MC_DSH_HOME` | 自动探测 | DSH 相关检查，空则跳过 |
+
 | 文件（`~/.mac-cleanup/` 下） | 内容 | 怎么来的 |
 |---|---|---|
 | `config.local.sh` | mo 路径、launchd 标签、报告目录、DSH 运行时 | 探测 + 现有配置 |
