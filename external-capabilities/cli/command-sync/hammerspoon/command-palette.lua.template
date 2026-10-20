@@ -1,51 +1,80 @@
--- command-sync 命令面板：⌥X 打开，输入搜索，回车复制命令
+-- command-sync 命令面板：⌥X 打开，两栏
+--   左栏：服务器入口 + 最近高频命令
+--   右栏：快捷键（含 ⚠️ 未登记）
+--
+-- 为什么用 hs.webview 而不是 hs.chooser：chooser 是系统原生的【单列】选择器，
+-- API 里没有 column / layout 任何一项 —— 单列是它的物理形态，不是配置问题。
+-- webview 里就是 HTML，想要几栏就几栏。
+--
+-- 代价（先说在前面）：
+--   1. 键盘焦点不如 chooser 稳。chooser 是系统控件，打字一定进得去；
+--      webview 要靠窗口成为 key window。所以窗口必须带标题栏 —— 纯 borderless
+--      在 Hammerspoon 1.1.1 上收不到键盘输入。
+--   2. 启动比 chooser 慢一点（本地 HTML，通常 <100ms）。
 local HOME = os.getenv("HOME")
 local BASE = os.getenv("COMMAND_SYNC_HOME") or (HOME .. "/.command-sync")
 local PALETTE = BASE .. "/palette.json"
+local TEMPLATE = BASE .. "/palette.html"
 local SCRIPT = BASE .. "/bin/palette.py"
 local PY = "/usr/bin/python3"
 
-local chooser = hs.chooser.new(function(choice)
-  if not choice then return end
-  hs.pasteboard.setContents(choice.cmd)
-  hs.alert.show("已复制：" .. string.sub(choice.cmd, 1, 48), 1.2)
-end)
-chooser:placeholderText("搜索命令或快捷键（回车复制到剪贴板）")
-chooser:width(46)
-chooser:rows(10)
+local panel
 
-local function loadPalette()
-  local f = io.open(PALETTE, "r")
-  if not f then return {} end
-  local content = f:read("*a")
+local function closePanel()
+  if panel then panel:delete(); panel = nil end
+end
+
+local function readFile(path)
+  local f = io.open(path, "r")
+  if not f then return nil end
+  local body = f:read("*a")
   f:close()
-  local ok, data = pcall(function() return hs.json.decode(content) end)
-  if not ok or type(data) ~= "table" then return {} end
-  local choices = {}
-  for _, it in ipairs(data.items or {}) do
-    local prefix = "⌘ "
-    if it.kind == "server" then prefix = "🌐 "
-    elseif it.kind == "recent" then prefix = "🕘 "
-    elseif it.kind == "shortcut" then prefix = "⌨️ " end
-    choices[#choices + 1] = {
-      text = prefix .. tostring(it.title),
-      subText = tostring(it.command),
-      cmd = tostring(it.command),
-    }
-  end
-  return choices
+  return body
+end
+
+local function show()
+  local tpl = readFile(TEMPLATE)
+  local json = readFile(PALETTE)
+  if not tpl then hs.alert.show("缺少 palette.html，重跑 install.sh") return end
+  if not json then hs.alert.show("缺少 palette.json，先跑 palette.py") return end
+
+  -- 注入 JSON。用函数式替换，避免 gsub 把 % 当转义（JSON 里可能有 %）。
+  local html = tpl:gsub("__PALETTE_JSON__", function() return json end)
+
+  local ucc = hs.webview.usercontent.new("dsh")
+  ucc:setCallback(function(msg)
+    if msg.body == "close" then closePanel() end
+  end)
+
+  local screen = hs.screen.mainScreen():frame()
+  local w, h = 760, 440
+  local rect = hs.geometry.rect(
+    screen.x + (screen.w - w) / 2,
+    screen.y + (screen.h - h) / 2 - 80,
+    w, h
+  )
+
+  panel = hs.webview.new(rect, {}, ucc)
+  -- 必须带 titled：纯 borderless 的 webview 在 1.1.1 上不是 key window，收不到键盘
+  panel:windowStyle({"titled", "closable"})
+  panel:windowTitle("⌥X")
+  -- hs.webview:level() 要数字，不是 "floating" 这种字符串（那是 hs.window 的写法）。
+  -- 3 = 浮动层。传字符串会抛 "incorrect type 'string' for argument 2"，
+  -- 而 pcall 之外的错误会让整个配置加载失败 —— 表现是「按了没反应」。
+  panel:level(3)
+  panel:closeOnEscape(false)
+  panel:html(html)
+  panel:show()
+  panel:bringToFront(true)
 end
 
 local function refreshAndShow()
-  hs.task.new(PY, function(code)
-    local choices = loadPalette()
-    if #choices == 0 then
-      hs.alert.show("没有命令数据（先跑 palette.py）")
-      return
-    end
-    chooser:choices(choices)
-    chooser:show()
-  end, {SCRIPT}):start()
+  closePanel()
+  local task = hs.task.new(PY, function(code)
+    if code ~= 0 then hs.alert.show("生成面板数据失败（看 ~/.command-sync/logs）") return end
+    show()
+  end, {SCRIPT})
+  task:start()
 end
 
 hs.hotkey.bind({"alt"}, "x", refreshAndShow)

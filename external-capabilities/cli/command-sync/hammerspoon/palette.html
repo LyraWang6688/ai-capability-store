@@ -1,0 +1,149 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<style>
+  :root{
+    --bg:#1f1f23; --bg2:#2b2b2f; --fg:#e6e6e9; --dim:#9a9aa2;
+    --line:#3a3a40; --accent:#4D6BFE; --sel:#3a3a44;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    background:var(--bg);color:var(--fg);
+    font:13px/1.5 -apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif;
+    display:flex;flex-direction:column;overflow:hidden;
+    border-radius:12px;border:1px solid var(--line);
+  }
+  #q{
+    all:unset;display:block;width:100%;padding:14px 18px;
+    font-size:16px;color:var(--fg);border-bottom:1px solid var(--line);
+    background:transparent;
+  }
+  #q::placeholder{color:var(--dim)}
+  #panes{flex:1;display:flex;min-height:0}
+  .pane{flex:1;overflow-y:auto;padding:8px 0}
+  .pane + .pane{border-left:1px solid var(--line)}
+  .pane::-webkit-scrollbar{width:8px}
+  .pane::-webkit-scrollbar-thumb{background:#3a3a44;border-radius:4px}
+  .grp{padding:10px 16px 4px;color:var(--dim);font-size:11px;letter-spacing:.04em}
+  .it{padding:7px 16px;cursor:default;display:flex;flex-direction:column;gap:1px;border-radius:6px;margin:0 6px}
+  .it.sel{background:var(--sel)}
+  .it .t{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .it .s{color:var(--dim);font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .empty{padding:20px 16px;color:var(--dim)}
+  #toast{
+    position:fixed;left:50%;bottom:14px;transform:translateX(-50%);
+    background:var(--bg2);border:1px solid var(--line);border-radius:8px;
+    padding:6px 12px;font-size:12px;opacity:0;transition:opacity .12s;pointer-events:none;
+  }
+  #toast.on{opacity:1}
+</style></head>
+<body>
+<input id="q" placeholder="搜索命令或快捷键…" autocomplete="off" spellcheck="false">
+<div id="panes">
+  <div class="pane" id="left"></div>
+  <div class="pane" id="right"></div>
+</div>
+<div id="toast"></div>
+<script>
+const DATA = __PALETTE_JSON__;
+const LEFT_KINDS = ["server","recent"];
+const RIGHT_KINDS = ["shortcut"];
+const GROUP_TITLE = {server:"🌐 服务器入口", recent:"🕘 最近高频命令", shortcut:"⌨️ 快捷键"};
+
+const items = (DATA.items || []).map(set => ({...set}));
+let visible = [];      // 当前过滤后、按显示顺序排列的项
+let cursor = 0;        // 在 visible 里的下标
+
+function matches(it, q){
+  if(!q) return true;
+  return (it.title + " " + (it.command||"")).toLowerCase().includes(q);
+}
+
+function renderPane(el, kinds, q){
+  el.innerHTML = "";
+  let any = false;
+  for(const kind of kinds){
+    const mine = items.filter(it => it.kind === kind && matches(it, q));
+    if(!mine.length) continue;
+    any = true;
+    const h = document.createElement("div");
+    h.className = "grp"; h.textContent = GROUP_TITLE[kind] || kind;
+    el.appendChild(h);
+    for(const it of mine){
+      const d = document.createElement("div");
+      d.className = "it";
+      d.dataset.key = it.title + "\u0000" + (it.command||"");
+      const t = document.createElement("div"); t.className = "t"; t.textContent = it.title;
+      const s = document.createElement("div"); s.className = "s"; s.textContent = it.command || "";
+      d.appendChild(t); d.appendChild(s);
+      d.addEventListener("click", () => { copy(it); flash("已复制"); setTimeout(close, 160); });
+      el.appendChild(d);
+    }
+  }
+  if(!any){
+    const e = document.createElement("div");
+    e.className = "empty"; e.textContent = "没有匹配";
+    el.appendChild(e);
+  }
+}
+
+function redraw(q){
+  renderPane(document.getElementById("left"), LEFT_KINDS, q);
+  renderPane(document.getElementById("right"), RIGHT_KINDS, q);
+  // 显示顺序：左栏（server → recent）再右栏（shortcut）
+  visible = [];
+  for(const kind of [...LEFT_KINDS, ...RIGHT_KINDS]){
+    for(const it of items){
+      if(it.kind === kind && matches(it, q)) visible.push(it);
+    }
+  }
+  cursor = 0;
+  paintSelection();
+}
+
+function paintSelection(){
+  if(!visible.length) return;
+  const target = visible[cursor];
+  const key = target.title + "\u0000" + (target.command||"");
+  document.querySelectorAll(".it").forEach(el => {
+    const on = el.dataset.key === key;
+    el.classList.toggle("sel", on);
+    if(on) el.scrollIntoView({block:"nearest"});
+  });
+}
+
+function copy(it){
+  const v = it.command || it.title || "";
+  const ta = document.createElement("textarea");
+  ta.value = v; document.body.appendChild(ta); ta.select();
+  document.execCommand("copy"); ta.remove();
+}
+
+let toastTimer;
+function flash(msg){
+  const el = document.getElementById("toast");
+  el.textContent = msg; el.classList.add("on");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove("on"), 900);
+}
+
+function close(){ if(window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.dsh) window.webkit.messageHandlers.dsh.postMessage("close"); }
+
+const q = document.getElementById("q");
+q.addEventListener("input", () => redraw(q.value.trim().toLowerCase()));
+document.addEventListener("keydown", (e) => {
+  // 输入法组字中不拦截
+  if(e.isComposing) return;
+  if(e.key === "ArrowDown"){ e.preventDefault(); if(visible.length){ cursor = (cursor+1) % visible.length; paintSelection(); } }
+  else if(e.key === "ArrowUp"){ e.preventDefault(); if(visible.length){ cursor = (cursor-1+visible.length) % visible.length; paintSelection(); } }
+  else if(e.key === "Enter"){
+    e.preventDefault();
+    if(visible.length){ copy(visible[cursor]); flash("已复制"); setTimeout(close, 140); }
+  }
+  else if(e.key === "Escape"){ e.preventDefault(); close(); }
+});
+window.addEventListener("blur", () => setTimeout(close, 120));
+q.focus();
+redraw("");
+</script>
+</body></html>
