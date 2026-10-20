@@ -1,0 +1,4 @@
+interface:
+  display_name: "AI 工具足迹与实践传播"
+  short_description: "积累 AI 实践证据，创作公众号文章与可视化 HTML"
+  default_prompt: "Use $ai-tool-footprint to collect or incrementally update my AI practice evidence, then create an evidence-backed WeChat article and matching visual HTML."

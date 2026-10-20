@@ -17,6 +17,21 @@ description: Skill identity, path, lifecycle status, version, and placement scop
 
 # One flat mapping keyed by Skill identifier (map key == name). No sections.
 skills:
+  ai-tool-footprint:
+    name: ai-tool-footprint
+    path: skills/ai-tool-footprint
+    scope: shared
+    status: testing
+    version: 0.1.0
+    updated: "2026-10-20"
+    notes: >
+      Store-native source migrated from the local Agent Skills directory; the
+      local installation is a symlink to this canonical directory, not an upstream.
+      First full-history collection followed by per-source incremental evidence;
+      produces WeChat articles and matching visual HTML. The bundled collector
+      remains a full auxiliary scan, not an automatic incremental collector.
+      Evidence: references/migration-validation.md. Full personal-data collection
+      and article generation have not been rerun for this registration.
   investdesk-portfolio:
     name: investdesk-portfolio
     path: skills/investdesk-portfolio
