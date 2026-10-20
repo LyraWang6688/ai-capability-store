@@ -134,13 +134,16 @@ python3 ~/Documents/workplace/ai-capability-store/automations/github-trending/da
 
 **只写采集数据里真正匹配到的项目。**
 
-```
-【仓库名】
-　跨日增长：+N 星（⭐prev → ⭐now）        ← 用相邻快照的星数差算
-　单日榜速度：+N（source=trending-daily）／ 测不到（source=trending-weekly）
-　和收录表比：表里记 ⭐X
-　一句话：还在涨 / 平了 / 该考虑降级或删掉
-```
+渲染成一张表，列固定为：
+
+| 仓库 | 它是什么 | 昨天 | 今天 | 跨日增长 | 今日榜速度 |
+| --- | --- | --- | --- | --- | --- |
+| `morluto/rea` | Reverse engineer anything with agents… | ⭐325,587 | ⭐336,612 | +11,025 | 测不到 |
+
+- **它是什么**：取仓库的 GitHub `description` 原文（不可省，见 §5）
+- **昨天 / 今天**：相邻两天快照里的星数
+- **跨日增长**：`今天 − 昨天`，**用星数差算**（不可用 `trend_gain` 代替）
+- **今日榜速度**：`+N`（source 含 trending-daily）／ `测不到`（只有 trending-weekly）
 
 ⚠️ **`trend_gain` 为 `null` 不是 0**：weekly 榜没有 `stars today` 字段。
 增长**必须用星数差算**，不要信 `trend_gain` —— `morluto/rea` 两天涨 11,701 星，
