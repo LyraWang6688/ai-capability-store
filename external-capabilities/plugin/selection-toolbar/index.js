@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
@@ -19,6 +19,7 @@ const ROUTE_PATH = '/plugins/selection-toolbar/note';
 const REWRITE_PATH = '/plugins/selection-toolbar/rewrite';
 const DELIVER_PATH = '/plugins/selection-toolbar/deliver';
 const SHORTCUT_PATH = '/plugins/selection-toolbar/shortcut';
+const REPO_COLLECT_PATH = '/plugins/selection-toolbar/repo-collect';
 const DEFAULT_CONFIG_PATH = join(homedir(), '.dsh', 'selection-toolbar.json');
 
 /** Read the operator config from outside the repository on every write. */
@@ -433,6 +434,85 @@ export function apply(ctx) {
     kind: 'exact',
     path: ROUTE_PATH,
     handler,
+  }));
+
+  // 「收录」：把选中的 owner/repo 交给 repo-collector 的 collect_one.py。
+  //
+  // 脚本路径不在包里 —— skill 装在哪由操作者决定（默认 ~/.agents/skills/）。
+  // 找不到就明确报错，而不是静默失败：一个点了没反应的按钮比没有按钮更糟。
+  const collectScript = () => {
+    const custom = process.env.DSH_REPO_COLLECTOR;
+    if (typeof custom === 'string' && custom.trim() !== '') return custom.trim();
+    return join(homedir(), '.agents', 'skills', 'repo-collector', 'scripts', 'collect_one.py');
+  };
+
+  const repoCollectHandler = async (req, res) => {
+    if (req.method !== 'POST') {
+      sendJson(res, 405, { ok: false, message: 'method not allowed' });
+      return;
+    }
+    const rejection = connectionRejection(ctx, req);
+    if (rejection !== undefined) {
+      sendJson(res, rejection, { ok: false, message: '未通过 DSH 连接鉴权（本地 token 无效）' });
+      return;
+    }
+    try {
+      const body = await readJsonBody(req);
+      const text = String(body.text ?? '').trim();
+      if (text === '') throw new Error('text is required');
+      if (text.length > 200) throw new Error('选中的文字太长（只收 owner/repo）');
+      const script = collectScript();
+      if (!existsSync(script)) {
+        throw new Error('找不到 collect_one.py：' + script + '（可用 DSH_REPO_COLLECTOR 指定）');
+      }
+      const handle = ctx.subprocess.spawn({
+        argv: ['python3', script, text],
+        cwd: process.env.HOME || '/tmp',
+        stdio: { stdout: { maxBytes: 256 * 1024 }, stderr: { maxBytes: 256 * 1024 } },
+        graceMs: 120_000,
+      });
+      const outcome = await handle.done;
+      const read = (reader) => {
+        if (reader === undefined) return '';
+        try {
+          return reader.readFrom(0).text;
+        } catch (error) {
+          return '';
+        }
+      };
+      const stdout = read(handle.collected.stdout).trim();
+      const stderr = read(handle.collected.stderr).trim();
+      let parsed = null;
+      try {
+        parsed = JSON.parse(stdout);
+      } catch (error) {
+        parsed = null;
+      }
+      if (parsed === null) {
+        sendJson(res, 500, {
+          ok: false,
+          code: outcome.exitCode,
+          message: (stderr || stdout).slice(0, 400) || 'collect_one.py 没有返回 JSON',
+        });
+        return;
+      }
+      if (parsed.ok === true) {
+        sendJson(res, 200, parsed);
+      } else {
+        // 退出码原样带回去：10 = 已收录，前端据此说人话
+        sendJson(res, 200, parsed);
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      ctx.logger?.warn?.(`selection-toolbar: repo collect failed: ${message}`);
+      sendJson(res, 500, { ok: false, message });
+    }
+  };
+
+  ctx.effect(() => ctx.webServer.register({
+    kind: 'exact',
+    path: REPO_COLLECT_PATH,
+    handler: repoCollectHandler,
   }));
 
   // 把选中的文字追加到快捷键表。文件归 command-sync 所有，所以路径和它对齐；

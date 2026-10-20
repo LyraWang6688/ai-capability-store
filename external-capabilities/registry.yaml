@@ -66,7 +66,7 @@ capabilities:
     type: plugin
     status: limited
     provider_path: external-capabilities/providers/lyrawang/README.md
-    version: 0.4.3
+    version: 0.5.0
     implementation_path: external-capabilities/plugin/selection-toolbar
     auth: "无凭据入仓。写飞书文档复用操作者本机已认证的 lark-cli profile（用户身份）；目标文档 token 与 lark-cli 路径存放在仓库外的 `~/.dsh/selection-toolbar.json`（600 权限），可用环境变量 `DSH_SELECTION_TOOLBAR_CONFIG` 覆盖配置路径。插件自身不接收、不保存、不记录任何凭据值"
     capabilities: "DSH 对话内的选区工具条：鼠标划选文字后浮出 复制 / 追问 / 注释 三个动作。复制=写入剪贴板；追问=把选中文字插入 DSH 输入框（不自动发送）；注释=把「原文引用 + 注释 + 北京时间」追加到配置指定的飞书文档末尾，并在本机 localStorage 留一份离线副本"
