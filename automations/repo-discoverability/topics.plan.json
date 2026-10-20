@@ -1,0 +1,11 @@
+{
+  "_comment": "确认过的 topics。自动化只在 --apply-topics 且本文件有条目时才写；不猜。",
+  "updated": "2026-10-20",
+  "topics": {
+    "LyraWang6688/ai-capability-store": ["agent-skills", "mcp", "claude-code", "ai-agents", "skills", "registry", "automation"],
+    "LyraWang6688/agent-context-architecture": ["ai-agents", "context-engineering", "agents-md", "prompt-engineering", "llm", "knowledge-base"],
+    "LyraWang6688/feishu-retail-ops": ["feishu", "bitable", "retail", "automation", "inventory", "erp", "javascript"],
+    "LyraWang6688/personal-ip-hub": ["personal-brand", "digital-identity", "astro", "static-site", "ai-agents", "portfolio"],
+    "LyraWang6688/Teaming-Bot": ["meeting-notes", "llm", "nextjs", "typescript", "ai-analysis", "team-dynamics"]
+  }
+}

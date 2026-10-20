@@ -1,0 +1,74 @@
+name: automation-repo-discoverability
+
+# 每月 1 号 22:10（Asia/Shanghai）体检所有公开仓库的「发现性」：
+# 能不能被 AI / 人搜到，搜到之后愿不愿意点进来。
+#
+# 默认 dry-run：只打印会改什么。要真的写 description / llms.txt 才关掉它。
+# topics 永远不自动写 —— 只从 automations/repo-discoverability/topics.plan.json 套用，
+# 而那个开关在脚本里（--apply-topics），本 workflow 故意不暴露。
+on:
+  schedule:
+    - cron: "10 14 1 * *"
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: "只打印会改什么，不写任何仓库"
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: automation-repo-discoverability
+  cancel-in-progress: false
+
+jobs:
+  discoverability:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Offline tests
+        working-directory: automations/repo-discoverability
+        run: python3 test_discoverability.py
+
+      - name: Audit (read-only)
+        working-directory: automations/repo-discoverability
+        env:
+          # 跨仓库读公开信息：github.token 只覆盖当前仓库，必须用 PAT
+          GH_TOKEN: ${{ secrets.GH_AUDIT_TOKEN || github.token }}
+        run: |
+          set -euo pipefail
+          python3 audit_discoverability.py --all --owner LyraWang6688 || true
+
+      - name: Apply deterministic fixes (description + llms.txt)
+        working-directory: automations/repo-discoverability
+        env:
+          # 跨仓库写：必须是带 repo scope 的 PAT，且由操作者本人授权
+          GH_TOKEN: ${{ secrets.GH_DISCOVERY_TOKEN || secrets.GH_AUDIT_TOKEN || github.token }}
+        run: |
+          set -euo pipefail
+          if [ "${{ inputs.dry-run }}" = "true" ] || [ "${{ github.event_name }}" = "schedule" ]; then
+            echo "::notice::dry-run —— 只打印，不写仓库"
+            python3 apply_discoverability.py --owner LyraWang6688
+          else
+            python3 apply_discoverability.py --owner LyraWang6688 --apply || true
+          fi
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "## repo-discoverability"
+            echo ""
+            echo "- 标准与证据：\`automations/repo-discoverability/README.md\`"
+            echo "- **topics 不会被自动写入** —— 只在 \`--apply-topics\` 且 topics.plan.json 有条目时才写。"
+            echo "- 分支保护会拦住 llms.txt 的提交；脚本报错而不绕过保护，需要人工走 PR。"
+            echo "- 归档仓库直接跳过（只读）。"
+          } >> "$GITHUB_STEP_SUMMARY"
