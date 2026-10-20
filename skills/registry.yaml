@@ -48,8 +48,8 @@ skills:
     path: skills/repo-hygiene
     scope: shared
     status: testing
-    version: 0.1.0
-    updated: "2026-10-03"
+    version: 0.1.1
+    updated: "2026-10-20"
   teaming-meeting-analysis:
     name: teaming-meeting-analysis
     path: skills/teaming-meeting-analysis
@@ -119,8 +119,8 @@ skills:
     path: skills/repo-wrapup
     scope: shared
     status: testing
-    version: 0.1.0
-    updated: "2026-10-19"
+    version: 0.1.1
+    updated: "2026-10-20"
     notes: >
       多 agent 协作的收尾工具。审计分支 / worktree / PR 的残留状态，按安全边界
       清理已合并且无风险的分支，并在交付时生成「收尾报告」——让
