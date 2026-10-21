@@ -3,8 +3,48 @@
   "days": 90,
   "min_visits": 8,
   "limit": 60,
-  "exclude_hosts": ["mail.google.com", "accounts.google.com", "localhost", "127.0.0.1"],
+  "exclude_hosts": [
+    "mail.google.com",
+    "accounts.google.com",
+    "localhost",
+    "127.0.0.1"
+  ],
   "base_token": "ZNjDb9TrpalLuCsw0macCeVdnld",
   "table_id": "tblDejemWsgqKSA2",
-  "identity": "user"
+  "identity": "user",
+  "rules": {
+    "drop_hosts": [
+      "yfsp.tv",
+      "iyf.tv",
+      "yifan.tv"
+    ],
+    "drop_url_contains": [
+      "mp.weixin.qq.com/cgi-bin",
+      "open.feishu.cn/app",
+      "open.feishu.cn/page/",
+      "open.feishu.cn/document",
+      "open.feishu.cn/open-apis",
+      "/pulls",
+      "/pull/",
+      "/releases",
+      "checkout",
+      "escalate/webauthn",
+      "/authorize",
+      "oauth",
+      "/callback",
+      "applink.feishu.cn"
+    ],
+    "root_only_hosts": [
+      "github.com"
+    ],
+    "drop_titles": [
+      "Docs",
+      "没有权限访问",
+      "没有权限访问 - 飞书云文档",
+      "File not found",
+      "飞书云文档"
+    ],
+    "keep_urls": [],
+    "one_per_host": true
+  }
 }

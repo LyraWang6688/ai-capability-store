@@ -29,6 +29,25 @@ python3 main.py --days 30 --min-visits 5      # 临时调窗口与阈值
 | `base_token` / `table_id` | 目标飞书表坐标 |
 | `identity` | `user`（默认）或 `bot` |
 | `ignored_urls_file` | 忽略清单（一行一个 URL）；表里删掉的行会写进这里，避免下次重新收录 |
+| `rules.drop_hosts` | 整站丢弃（娱乐视频站等）|
+| `rules.drop_url_contains` | URL 含指定片段即丢弃（开发者后台、PR/Releases、OAuth、支付等）|
+| `rules.root_only_hosts` | 只保留站点根域名（如 `github.com` 只留首页）|
+| `rules.drop_titles` | 标题命中即丢（失效/无权限文档）|
+| `rules.keep_urls` | 白名单，优先级最高 |
+| `rules.one_per_host` | 每个域名只保留访问最多的一页 |
+
+## 规则（学自实际操作）
+
+```json
+"rules": {
+  "drop_hosts": ["yfsp.tv", "iyf.tv", "yifan.tv"],
+  "drop_url_contains": ["open.feishu.cn/app", "open.feishu.cn/document", "/pulls", "/releases", "checkout", "oauth"],
+  "root_only_hosts": ["github.com"],
+  "drop_titles": ["Docs", "没有权限访问", "File not found"],
+  "keep_urls": ["https://platform.deepseek.com/api_keys"],
+  "one_per_host": true
+}
+```
 
 ## 写入策略
 
