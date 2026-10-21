@@ -32,11 +32,23 @@ lark-cli base +record-list \
 ## 写
 
 ```bash
+# 合并成批量请求体：+record-batch-create 只接受 {"create_records":[...]} 包装，
+# 直接传扁平记录会被 API 拒绝：Unrecognized key(s) in object: 'Project', ...
+python3 tools/make_batch.py record.json batch.json
+
 lark-cli base +record-batch-create \
   --base-token NeujbbOfcaPEvMsPIxscaJImn9d \
   --table-id tblenXNEDtNtVIf4 \
-  --json @record.json --as user
+  --json @batch.json --as user
 ```
+
+> 两个格式各管一段：`validate_record.py` 吃**扁平**记录；`+record-batch-create` 吃
+> `{"create_records":[扁平记录...]}`。不要为了绕过校验把包装塞进 validate 的输入。
+> 包装可以一行完成：
+>
+> ```bash
+> python3 -c "import json,sys; json.dump({'create_records':[json.load(open(sys.argv[1]))]}, open(sys.argv[2],'w'), ensure_ascii=False)" record.json batch.json
+> ```
 
 单批最多 200 条；同一张表**串行写入**，并行会触发 `1254291` 并发冲突。
 
