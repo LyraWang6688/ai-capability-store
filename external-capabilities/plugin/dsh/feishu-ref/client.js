@@ -83,7 +83,7 @@ window.__ModuleLoader__.load({
       return date.toISOString().slice(0, 10);
     }
 
-    function FeishuRef(props, serviceRef, ctx) {
+    function FeishuRef(props) {
       const inputActions = props && props.inputActions;
       const [open, setOpen] = useState(false);
       const [query, setQuery] = useState('');
@@ -160,55 +160,6 @@ window.__ModuleLoader__.load({
         return () => clearTimeout(timer);
       }, [query, open]);
 
-      const resolveSidebarService = () => {
-        try {
-          if (ctx && ctx.reflect && typeof ctx.reflect.get === 'function') {
-            const svc = ctx.reflect.get('sidebarRight', false);
-            if (svc) return svc;
-          }
-        } catch (err) { /* ignored */ }
-        try {
-          if (ctx && typeof ctx.get === 'function') return ctx.get('sidebarRight') || null;
-        } catch (err) { /* ignored */ }
-        return null;
-      };
-
-      const openInSidebar = (url, fail) => {
-        const getService = () => {
-          if (serviceRef && serviceRef.current) return serviceRef.current;
-          const svc = resolveSidebarService();
-          if (svc) serviceRef.current = svc;
-          return svc;
-        };
-        const tryOpen = () => {
-          const service = getService();
-          if (!service || typeof service.openTab !== 'function') {
-            throw new Error('sidebarRight service unavailable');
-          }
-          service.openTab('browser', { params: { url }, revealIfOpened: true });
-        };
-        const expandSidebar = () => {
-          const panel = document.querySelector('[data-sidebar-right-panel]');
-          if (panel && panel.hasAttribute('data-sidebar-right-open')) return false;
-          const toggle = document.querySelector('[data-sidebar-right-toggle]')
-            || document.querySelector('[data-sidebar-right-expand]');
-          if (toggle) { toggle.click(); return true; }
-          return false;
-        };
-        try { tryOpen(); return; } catch (err) { /* 大概率还没挂载，展开后重试 */ }
-        const expanded = expandSidebar();
-        const delays = expanded ? [120, 400, 900] : [200, 700];
-        let attempt = 0;
-        const retry = () => {
-          try { tryOpen(); return; } catch (err) {
-            if (attempt < delays.length) { setTimeout(retry, delays[attempt++]); return; }
-            if (typeof fail === 'function') fail('右侧打开失败：' + (err && err.message ? err.message : String(err)));
-            if (typeof console !== 'undefined') console.warn('[feishu-ref] open browser failed:', err);
-          }
-        };
-        setTimeout(retry, delays[attempt++]);
-      };
-
       const choose = (item) => {
         const next = [item].concat(loadRecent().filter((entry) => entry.url !== item.url)).slice(0, RECENT_KEEP);
         saveRecent(next);
@@ -224,11 +175,6 @@ window.__ModuleLoader__.load({
         } catch (err) {
           if (navigator.clipboard) navigator.clipboard.writeText(text);
         }
-        // 顺手在右侧内置浏览器打开这个文档。右侧栏收起时先展开，等它挂载后再打开。
-        openInSidebar(item.url, (message) => {
-          setError(message);
-          setOpen(true);
-        });
         close();
       };
 
@@ -346,23 +292,11 @@ window.__ModuleLoader__.load({
     return {
       inject: ['slots'],
       apply(ctx) {
-        // 右侧栏服务由 reflect.provide 提供，普通 inject/ctx.get 都拿不到；
-        // 用 Cordis 的反射 API 取实现（取不到也不抛，避免影响启动）。
-        const resolveService = () => {
-          try {
-            if (ctx.reflect && typeof ctx.reflect.get === 'function') {
-              const svc = ctx.reflect.get('sidebarRight', false);
-              if (svc) return svc;
-            }
-          } catch (err) { /* ignored */ }
-          try { return (typeof ctx.get === 'function' ? ctx.get('sidebarRight') : null) || null; } catch (err) { return null; }
-        };
-        const serviceRef = { current: resolveService() };
         ctx.slots.inject('conversation.input.left', () => ctx.slots.register({
           name: 'conversation.input.left',
           id: 'feishu-ref',
           order: 2,
-        }, (props) => h(FeishuRef, props, serviceRef, ctx)));
+        }, (props) => h(FeishuRef, props)));
       },
     };
   },
