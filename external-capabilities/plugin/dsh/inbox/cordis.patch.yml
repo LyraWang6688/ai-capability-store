@@ -1,0 +1,5 @@
+# 收件箱插件：Host 路由（读列表 / 标已读 / 投递）+ Client 面板。
+# 表坐标在 index.js 里给默认值，可用环境变量覆盖（DSH_INBOX_BASE_TOKEN 等）。
+- insert:
+    - id: dsh-inbox
+      name: "@lyra_wang/dsh-inbox"
