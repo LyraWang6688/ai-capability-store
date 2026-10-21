@@ -32,7 +32,10 @@
       "/authorize",
       "oauth",
       "/callback",
-      "applink.feishu.cn"
+      "applink.feishu.cn",
+      "google.com.hk/url",
+      "/admin/appCenter",
+      "/admin"
     ],
     "root_only_hosts": [
       "github.com"
@@ -44,7 +47,9 @@
       "File not found",
       "飞书云文档"
     ],
-    "keep_urls": [],
+    "keep_urls": [
+      "https://scnzoiwpgxik.feishu.cn/admin/index"
+    ],
     "one_per_host": true
   }
 }
