@@ -8,7 +8,8 @@ HS_DIR="$HOME/.hammerspoon"
 
 echo "== 安装到 $BASE =="
 mkdir -p "$BASE/bin" "$BASE/logs"
-cp "$HERE/palette.py" "$BASE/bin/"
+# 脚本用软链指向 npm 包（Store 唯一源码，不复制副本）
+ln -sf "$HERE/palette.py" "$BASE/bin/palette.py"
 chmod +x "$BASE/bin/palette.py"
 
 # 1) 配置

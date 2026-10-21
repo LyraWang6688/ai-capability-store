@@ -5,7 +5,14 @@
 只读 Chrome History（复制到临时目录后再读，不锁 Chrome），归一化 URL 后按
 「域名 + 路径」聚合访问次数，过滤登录页 / 搜索页 / 本地地址。
 
-## 用法
+## 安装（npm，推荐）
+
+```bash
+npm install -g --prefix ~/.local @lyra_wang/chrome-frequent-pages
+chrome-frequent-pages --dry-run
+```
+
+## 用法（仓库目录直接跑）
 
 ```bash
 # 配置（默认 ~/.config/chrome-frequent-pages/config.json）
