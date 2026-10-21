@@ -161,7 +161,12 @@ window.__ModuleLoader__.load({
       }, [query, open]);
 
       const openInSidebar = (url, fail) => {
-        const getService = () => (serviceRef && serviceRef.current) || null;
+        const getService = () => {
+          if (serviceRef && serviceRef.current) return serviceRef.current;
+          const svc = resolveService();
+          if (svc) serviceRef.current = svc;
+          return svc;
+        };
         const tryOpen = () => {
           const service = getService();
           if (!service || typeof service.openTab !== 'function') {
@@ -328,8 +333,18 @@ window.__ModuleLoader__.load({
     return {
       inject: ['slots'],
       apply(ctx) {
-        // sidebar-right 已通过 dsh.client.inject 声明为模块依赖，apply 时服务已就绪。
-        const serviceRef = { current: ctx.sidebarRight || (typeof ctx.get === 'function' ? ctx.get('sidebarRight') : null) };
+        // 右侧栏服务由 reflect.provide 提供，普通 inject/ctx.get 都拿不到；
+        // 用 Cordis 的反射 API 取实现（取不到也不抛，避免影响启动）。
+        const resolveService = () => {
+          try {
+            if (ctx.reflect && typeof ctx.reflect.get === 'function') {
+              const svc = ctx.reflect.get('sidebarRight', false);
+              if (svc) return svc;
+            }
+          } catch (err) { /* ignored */ }
+          try { return (typeof ctx.get === 'function' ? ctx.get('sidebarRight') : null) || null; } catch (err) { return null; }
+        };
+        const serviceRef = { current: resolveService() };
         ctx.slots.inject('conversation.input.left', () => ctx.slots.register({
           name: 'conversation.input.left',
           id: 'feishu-ref',
