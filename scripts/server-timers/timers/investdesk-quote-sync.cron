@@ -1,0 +1,9 @@
+# investdesk 持仓价格同步 —— 敲 GitHub Actions
+#
+# 时间：每天 20:00 周一至周五（服务器时区 CST，与北京同区）
+#       20:00 时 A 股收盘价已定、场外基金净值开始公布。
+# 成功判定：/var/log/ai-capability-store-dispatch.log 出现 "OK dispatched (204)"
+# 历史：2026-10-19 起装在 /etc/cron.d/investdesk-quote-sync；2026-10-22 收进总目录。
+SHELL=/bin/bash
+PATH=/usr/local/bin:/usr/bin:/bin
+0 20 * * 1-5 root /usr/local/bin/ai-capability-store-dispatch automation-investdesk-quote-sync.yml
