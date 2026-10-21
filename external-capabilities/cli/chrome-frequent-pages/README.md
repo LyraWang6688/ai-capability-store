@@ -41,10 +41,11 @@ python3 main.py --days 30 --min-visits 5      # 临时调窗口与阈值
 ```json
 "rules": {
   "drop_hosts": ["yfsp.tv", "iyf.tv", "yifan.tv"],
-  "drop_url_contains": ["open.feishu.cn/app", "open.feishu.cn/document", "/pulls", "/releases", "checkout", "oauth"],
+  "drop_url_contains": ["open.feishu.cn/app", "open.feishu.cn/document", "/pulls", "/releases", "checkout", "oauth",
+                          "google.com.hk/url", "/admin/appCenter", "/admin"],
   "root_only_hosts": ["github.com"],
   "drop_titles": ["Docs", "没有权限访问", "File not found"],
-  "keep_urls": ["https://platform.deepseek.com/api_keys"],
+  "keep_urls": ["https://platform.deepseek.com/api_keys", "https://scnzoiwpgxik.feishu.cn/admin/index"],
   "one_per_host": true
 }
 ```
