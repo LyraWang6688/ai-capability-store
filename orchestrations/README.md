@@ -21,15 +21,44 @@ orchestrations/         —— 按什么顺序连（这一次任务）
 
 一个编排可以**被** automation 定时触发；编排自己不当时钟。
 
-## 布局
+## 布局：三层
 
 ```text
 orchestrations/
-  registry.yaml            ← 唯一机器真相（验证器查这个）
-  <kebab-name>/
-    README.md              ← 人读：流程 + 衔接规则
-    <link>  →  ../.. 里的资产       ← 软链，给人看的那一份
+  registry.yaml                     ← 唯一机器真相（验证器查这个）
+  <模式>/<生态>/<任务>/
+    README.md                       ← 人读：流程 + 衔接规则
+    <link>  →  ../../../里的资产      ← 软链，给人看的那一份
 ```
+
+| 层 | 回答什么 | 现在有哪些 |
+|---|---|---|
+| **模式** | 这一类任务**是怎么被发起的** | `manual`（人说一句就做）· `scheduled-task`（钟来叫）|
+| **生态** | 它动用了**哪个平台**的资产 | `wechat` · `dsh` · `doubao-work` |
+| **任务** | 具体那一条 | `wechat-article` · `investdesk-daily-report` |
+
+### 为什么第二级是「生态」而不是「谁执行」
+
+```text
+"谁执行"已经在 automations/registry.yaml 的 executor 字段里记过一次了
+        ↓
+再在编排里记一遍，就是两个真相
+        ↓
+而"动用了哪个平台的资产"是编排自己的事 —— 看 steps 里的 use: 就知道
+```
+
+`wechat-article` 放在 `manual/wechat/` 而不是某个 agent 下面，因为它的四步
+（写 / 排版 / 动图 / 上传）没有一步是「只能在某个 agent 上跑」的。
+
+**两个都是封闭集合**（`ORCHESTRATION_MODES` / `ORCHESTRATION_ECOSYSTEMS`），和货架、生态同一套纪律。
+
+> 模式不描述"跑什么"，只描述"怎么被发起"。所以它不叫 `scheduled-dsh-task` ——
+> 那样第二层再分 `dsh/` 和 `doubao-work/` 就自相矛盾了。
+
+### 三级路径的代价
+
+软链要多退一级：从任务目录到仓库根是 **4 层**（任务 → 目标 → 模式 → orchestrations → 根），
+所以是 `../../../../skills/...`。少退一级 = 断链，而验证器会抓住它。
 
 **软链和 `registry.yaml` 的 `steps` 是同一份事实的两个视图。** 验证器保证两者一致。
 
@@ -62,8 +91,26 @@ steps:
 
 ## 加一个编排
 
-1. 建 `orchestrations/<kebab-name>/`
+1. 选模式 + 生态：`orchestrations/<模式>/<生态>/<任务>/`
 2. 写 `README.md`（流程 + 衔接规则）
-3. 建软链，每个指向一个已登记资产
+3. 建软链，每个指向一个已登记资产（Skill 的 path / Capability 的 implementation_path /
+   Automation 的 path）
 4. 在 `orchestrations/registry.yaml` 登记，`steps` 和软链一一对应
 5. 跑 `python3 scripts/validate_store.py`
+
+**任务名不能和它引用的资产重名** —— 否则 tag 也会重名
+（`investdesk-quote-sync` 是 automation 的名字，所以那条编排叫 `investdesk-daily-report`）。
+
+---
+
+## 两个模式各自的通用流程
+
+| 模式 | 通用流程 |
+|---|---|
+| `scheduled-task/` | **五段**：① 敲钟 → ② 执行 → ③ 推事件 → ④ 消费 → ⑤ 执行 skill |
+| `manual/` | 没有钟：人触发 → 调几个资产 → 交付 |
+
+见各自的 `README.md`。
+
+**五段是骨架，`steps` 是可校验的落点。** 一个 automation 可能把 ②③④ 全包在内部，
+那时它们只能共享一个 `use:` —— 具体编排不必凑够五段。

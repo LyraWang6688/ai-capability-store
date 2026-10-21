@@ -1,10 +1,16 @@
 # Orchestration Domain — 一次任务的完整编排
 #
-# 它只【引用】其它域，不复制任何实现。改排版规则去 skills/wechat-html-css-layout，
-# 改上传逻辑去 external-capabilities/mcp/wechat-draft-mcp —— 这里一个字都不放。
+# 布局三层：<模式>/<生态>/<任务>/
 #
-# `steps` 是唯一机器真相。目录里的软链是给人和 GitHub 看的那一份，验证器负责
-# 保证两者一致 —— 因为 git 不会告诉你软链断了（实测：删掉目标后 git status 干净）。
+#   模式  这是一类【怎么被发起】的任务。不是某个具体任务，也不是运行环境。
+#   生态  这个编排动用了哪个平台的资产（wechat / dsh / doubao-work）。
+#   任务  具体那一条。
+#
+# 它只【引用】其它域，不复制任何实现。改排版去 skills/wechat-html-css-layout，
+# 改价格同步去 automations/investdesk-quote-sync —— 这里一个字都不放。
+#
+# `steps` 是唯一机器真相。目录里的软链是给人看的那一份，验证器保证两者一致
+# —— 因为 git 不会告诉你软链断了（实测：删掉目标后 git status 干净）。
 schema_version: 1
 
 allowed_statuses:
@@ -15,10 +21,10 @@ allowed_statuses:
 orchestrations:
   wechat-article:
     name: wechat-article
-    path: orchestrations/wechat-article
+    path: orchestrations/manual/wechat/wechat-article
     status: testing
     version: 0.1.0
-    updated: "2026-10-21"
+    updated: "2026-10-22"
     goal: 从选题到公众号草稿箱
     steps:
       - id: write
@@ -40,3 +46,21 @@ orchestrations:
         use: external-capabilities/mcp/wechat-draft-mcp
         needs: [layout, chart]
         produces: 公众号草稿
+
+  investdesk-daily-report:
+    name: investdesk-daily-report
+    path: orchestrations/scheduled-task/doubao-work/investdesk-daily-report
+    status: testing
+    version: 0.1.0
+    updated: "2026-10-22"
+    goal: 价格同步完成后，把「持仓日报该生成了」作为事件推给豆包
+    steps:
+      - id: trigger-and-execute
+        link: 1-trigger-and-execute
+        use: automations/investdesk-quote-sync
+        produces: 飞书 Base「持仓价格表」已更新 + 一条含触发关键词的飞书单聊消息
+      - id: consume
+        link: 2-consume
+        use: skills/investdesk-portfolio
+        needs: [trigger-and-execute]
+        produces: 持仓日报
