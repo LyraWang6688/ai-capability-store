@@ -28,12 +28,15 @@ python3 main.py --days 30 --min-visits 5      # 临时调窗口与阈值
 | `exclude_hosts` | 排除的域名（邮箱、登录等）|
 | `base_token` / `table_id` | 目标飞书表坐标 |
 | `identity` | `user`（默认）或 `bot` |
+| `ignored_urls_file` | 忽略清单（一行一个 URL）；表里删掉的行会写进这里，避免下次重新收录 |
 
 ## 写入策略
 
 - 以 `URL` 去重：已存在则更新访问次数/最近访问，不存在才新建；
 - 同一页面不同 query/fragment 会归一化成同一条（飞书 `/base/<token>`、`/wiki/<token>` 按 token 聚合）；
-- 状态默认「已收录」，方便你之后标「已加入书签」或「忽略」。
+- 状态默认「已收录」，方便你之后标「已加入书签」或「忽略」；
+- 忽略清单：`~/.config/chrome-frequent-pages/ignored_urls.txt`，一行一个 URL，命中即跳过；
+  在表里删掉的页面记得同步进这个文件（或让工具写）。
 
 ## 书签替换（安全流程）
 
