@@ -1,0 +1,3 @@
+- insert:
+    - id: feishu-ref
+      name: '@lyra_wang/dsh-feishu-ref'

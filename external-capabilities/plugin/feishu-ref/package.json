@@ -1,0 +1,50 @@
+{
+  "name": "@lyra_wang/dsh-feishu-ref",
+  "version": "0.1.0",
+  "description": "Composer + button: search your Feishu docs / bitables and insert the link into the DSH input box.",
+  "license": "MIT",
+  "type": "module",
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "deepseek-harness",
+    "cordis",
+    "client-plugin",
+    "feishu",
+    "reference"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/LyraWang6688/ai-capability-store.git",
+    "directory": "external-capabilities/plugin/feishu-ref"
+  },
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js"
+  },
+  "files": [
+    "index.js",
+    "client.js",
+    "cordis.patch.yml",
+    "README.md",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-layout"
+      ]
+    }
+  }
+}
