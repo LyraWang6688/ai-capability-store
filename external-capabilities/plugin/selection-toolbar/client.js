@@ -364,7 +364,7 @@ window.__ModuleLoader__.load({
           });
           const payload = await response.json().catch(() => ({}));
           if (response.ok && payload && payload.ok === true) {
-            say((payload.message || t('repoSaved')) + (payload.enrichment && payload.enrichment.queued ? ' · AI 正在补全' : ''));
+            say(payload.message || t('repoSaved'));
           } else if (payload && payload.code === 10) {
             say(t('repoExists') + '：' + String(payload.message || '').slice(0, 80));
           } else {
