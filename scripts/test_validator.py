@@ -202,6 +202,20 @@ def pristine_tree(dest):
         if not rel:
             continue
         src = os.path.join(ROOT, rel)
+
+        # 软链必须【先】判断，不能放在 isfile 之后：
+        # 指向目录的软链 os.path.isfile() 返回 False，会被当成"工作区里已删除"而跳过。
+        # 而复制本身也必须保留链接 —— shutil.copy2 默认跟随软链，会把
+        # orchestrations/… 里指向别处的链接复制成普通文件，于是验证器的
+        # "link is a symlink" 永远失败，失败信息看起来却像是在说编排写错了。
+        if os.path.islink(src):
+            dst = os.path.join(dest, rel)
+            os.makedirs(os.path.dirname(dst), exist_ok=True)
+            if os.path.lexists(dst):
+                os.remove(dst)
+            os.symlink(os.readlink(src), dst)
+            continue
+
         if not os.path.isfile(src):
             continue  # deleted in the working tree
         dst = os.path.join(dest, rel)
@@ -212,7 +226,10 @@ def pristine_tree(dest):
 def run_case(pristine, base, label, want, relpath, mutation):
     case = os.path.join(base, "case")
     shutil.rmtree(case, ignore_errors=True)
-    shutil.copytree(pristine, case)
+    # symlinks=True 不是默认值。默认情况下 copytree 会【跟随】软链并递归复制目标，
+    # 于是 orchestrations/… 里那些链接在 case 里变成了真目录 —— 验证器的
+    # "link is a symlink" 失败，而报错看起来像在说编排写错了。
+    shutil.copytree(pristine, case, symlinks=True)
 
     target = os.path.join(case, relpath)
     with open(target, encoding="utf-8") as fh:

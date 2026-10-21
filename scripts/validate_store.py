@@ -182,6 +182,10 @@ CAPABILITY_SHELVES = {"mcp", "connectors", "cli", "api", "plugin"}
 # 其它货架暂时平的。强制所有货架都加一层会让 8 个不需要分类的资产凭空多一级。
 CAPABILITY_ECOSYSTEMS = {"dsh"}
 
+# ---- Orchestration Domain ----
+ORCHESTRATION_DIR = "orchestrations"
+ALLOWED_ORCHESTRATION_STATUSES = {"testing", "available", "deprecated"}
+
 KEBAB_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 VERSION_RE = re.compile(r"^\d+\.\d+\.\d+$")
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
@@ -197,6 +201,8 @@ REQUIRED_POLICY_FILES = [
     "registry.yaml",
     "skills/README.md",
     "skills/registry.yaml",
+    "orchestrations/README.md",
+    "orchestrations/registry.yaml",
     "skills/LIFECYCLE.md",
     "skills/ACCEPTANCE.md",
     "external-capabilities/README.md",
@@ -1016,7 +1022,8 @@ def main() -> int:
     refs = check_mapping(top.get("registries"), "top-level registries")
     if refs is None:
         return report(1)
-    expected_domains = ("skills", "external_capabilities", "dependencies", "automations")
+    expected_domains = ("skills", "external_capabilities", "dependencies", "automations",
+                       "orchestrations")
     check("top-level registry routes all domains", set(refs.keys()) == set(expected_domains),
           f"routes: {sorted(refs.keys())}")
     routed = {}
@@ -1056,6 +1063,11 @@ def main() -> int:
     if autos_ok:
         autos_reg = check_mapping(autos_reg, "automation registry")
         autos_ok = autos_reg is not None
+    orc_rel = _routed("orchestrations")
+    orc_reg, orc_ok = load_yaml(orc_rel) if orc_rel else (None, False)
+    if orc_ok:
+        orc_reg = check_mapping(orc_reg, "orchestration registry")
+        orc_ok = orc_reg is not None
 
     # ---- 3. Domain registry headers ----
     if skills_ok:
@@ -1360,7 +1372,160 @@ def main() -> int:
     for rel in scan_targets:
         scan_for_secrets(rel)
 
+    # ---- 14. Orchestration Domain ----
+    validate_orchestrations(orc_reg if orc_ok else {})
+
     return report(0)
+
+
+def validate_orchestrations(orc_reg: dict) -> None:
+    """编排域：一次任务按什么顺序、用哪些已登记的资产。
+
+    它只引用，不复制 —— 所以这里查的全是【引用是否成立】，不是内容：
+
+      · use 指向的路径真的注册过（Skill 的 path / Capability 的 implementation_path）
+      · 目录里的软链存在、不是断链、且目标等于 use
+      · needs 指向的 id 存在
+      · 没有环（Kahn 拓扑排序能跑完）
+      · 没有孤儿（所有步骤都能从入口到达）
+
+    后三条不是洁癖。软链断了 git 不会告诉你 —— 实测删掉目标之后 git status 是干净的，
+    软链仍然指着不存在的地方。而环和孤儿会让"编排"退化成一张读不懂的图。
+    """
+    known = set()
+    for rel, section in (("skills/registry.yaml", "skills"),
+                         ("external-capabilities/registry.yaml", "capabilities")):
+        data, ok = load_yaml(rel)
+        if not ok or not isinstance(data, dict):
+            continue
+        for entry in (data.get(section) or {}).values():
+            if not isinstance(entry, dict):
+                continue
+            for field in ("path", "implementation_path"):
+                value = entry.get(field)
+                if isinstance(value, str) and value:
+                    known.add(value.rstrip("/"))
+
+    entries = orc_reg.get(ORCHESTRATION_DIR) or {}
+    check("orchestration registry declares orchestrations", isinstance(entries, dict),
+          type(entries).__name__)
+    if not isinstance(entries, dict):
+        return
+
+    declared = set()
+    for name, entry in entries.items():
+        check(f"orchestration {name} kebab-case", bool(KEBAB_RE.match(name)), name)
+        if not isinstance(entry, dict):
+            check(f"orchestration {name} is a mapping", False, type(entry).__name__)
+            continue
+        declared.add(name)
+
+        status = entry.get("status")
+        check(f"orchestration {name} status legal", status in ALLOWED_ORCHESTRATION_STATUSES,
+              f"status={status!r}")
+        version = entry.get("version")
+        check(f"orchestration {name} version is X.Y.Z",
+              isinstance(version, str) and bool(VERSION_RE.match(version)), f"version={version!r}")
+        path = entry.get("path")
+        check(f"orchestration {name} path is declared",
+              path == f"{ORCHESTRATION_DIR}/{name}", f"path={path!r}")
+
+        steps = entry.get("steps")
+        if not isinstance(steps, list) or not steps:
+            check(f"orchestration {name} declares steps", False, f"steps={steps!r}")
+            continue
+
+        ids, needs_by, links = [], {}, {}
+        for index, step in enumerate(steps):
+            if not isinstance(step, dict):
+                check(f"orchestration {name} step {index} is a mapping", False, type(step).__name__)
+                continue
+            sid = step.get("id")
+            check(f"orchestration {name} step {index} id is kebab-case",
+                  isinstance(sid, str) and bool(KEBAB_RE.match(sid)), f"id={sid!r}")
+            if not isinstance(sid, str) or not sid:
+                continue
+            ids.append(sid)
+            needs_by[sid] = set(step.get("needs") or [])
+            links[sid] = step.get("link")
+
+            use = step.get("use")
+            check(f"orchestration {name} step {sid} uses a registered asset",
+                  isinstance(use, str) and use.rstrip("/") in known,
+                  f"use={use!r} — 不指向任何已登记的 Skill path 或 Capability implementation_path")
+
+            link = step.get("link")
+            base = os.path.join(ROOT, ORCHESTRATION_DIR, name)
+            link_path = os.path.join(base, link) if isinstance(link, str) and link else None
+            if link_path is None:
+                check(f"orchestration {name} step {sid} declares a link", False, f"link={link!r}")
+                continue
+            check(f"orchestration {name} step {sid} link exists",
+                  os.path.lexists(link_path), str(link))
+            if not os.path.lexists(link_path):
+                continue
+            check(f"orchestration {name} step {sid} link is a symlink",
+                  os.path.islink(link_path), f"{link} 不是软链")
+            check(f"orchestration {name} step {sid} link is not dangling",
+                  os.path.exists(link_path), f"{link} 是断链")
+            if os.path.islink(link_path) and isinstance(use, str) and use:
+                target = os.readlink(link_path)
+                resolved = os.path.normpath(os.path.join(os.path.dirname(link_path), target))
+                check(f"orchestration {name} step {sid} link matches use",
+                      os.path.relpath(resolved, ROOT).replace(os.sep, "/") == use.rstrip("/"),
+                      f"{link} → {target}，但 use 是 {use}")
+
+        idset = set(ids)
+        for sid, needs in needs_by.items():
+            for need in needs:
+                check(f"orchestration {name} step {sid} need {need} exists",
+                      need in idset, f"needs={sorted(needs)}")
+
+        # 环：Kahn 拓扑排序必须能把所有步骤排完
+        indeg = {sid: len(needs_by.get(sid, set()) & idset) for sid in ids}
+        ready = [sid for sid in ids if indeg[sid] == 0]
+        ordered = 0
+        while ready:
+            current = ready.pop()
+            ordered += 1
+            for sid in ids:
+                if current in needs_by.get(sid, set()):
+                    indeg[sid] -= 1
+                    if indeg[sid] == 0:
+                        ready.append(sid)
+        check(f"orchestration {name} has no cycle", ordered == len(ids),
+              f"{ordered}/{len(ids)} 个步骤能拓扑排序 —— 剩下的成环")
+
+        # 孤儿 + 入口唯一
+        roots = [sid for sid in ids if not (needs_by.get(sid, set()) & idset)]
+        check(f"orchestration {name} has exactly one entry step", len(roots) == 1,
+              f"无前置的步骤={roots}")
+        # 从入口往下游走（"谁依赖我"），不是往上游走。"needs" 指向上游，
+        # 顺着它走只能走到入口自己 —— 第一版就是这么写的，验证器立刻报
+        # "从入口到不了：['chart', 'layout', 'upload']"。
+        dependents = {sid: set() for sid in ids}
+        for sid, needs in needs_by.items():
+            for upstream in needs & idset:
+                dependents[upstream].add(sid)
+        reachable, stack = set(), list(roots)
+        while stack:
+            current = stack.pop()
+            if current in reachable:
+                continue
+            reachable.add(current)
+            stack.extend(dependents[current])
+        check(f"orchestration {name} has no orphan step", reachable == idset,
+              f"从入口到不了：{sorted(idset - reachable)}")
+
+    base = os.path.join(ROOT, ORCHESTRATION_DIR)
+    if os.path.isdir(base):
+        for child in sorted(os.listdir(base)):
+            full = os.path.join(base, child)
+            if child.startswith(".") or not os.path.isdir(full):
+                continue
+            check(f"filesystem orchestration directory is registered: {child}",
+                  child in declared,
+                  "directory exists under orchestrations/ but no registry entry points at it")
 
 
 def report(exit_code: int) -> int:

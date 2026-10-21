@@ -12,3 +12,5 @@ registries:
   external_capabilities: external-capabilities/registry.yaml
   dependencies: dependencies/capability-map.yaml
   automations: automations/registry.yaml
+
+  orchestrations: orchestrations/registry.yaml

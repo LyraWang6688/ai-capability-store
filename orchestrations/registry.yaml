@@ -1,0 +1,42 @@
+# Orchestration Domain — 一次任务的完整编排
+#
+# 它只【引用】其它域，不复制任何实现。改排版规则去 skills/wechat-html-css-layout，
+# 改上传逻辑去 external-capabilities/mcp/wechat-draft-mcp —— 这里一个字都不放。
+#
+# `steps` 是唯一机器真相。目录里的软链是给人和 GitHub 看的那一份，验证器负责
+# 保证两者一致 —— 因为 git 不会告诉你软链断了（实测：删掉目标后 git status 干净）。
+schema_version: 1
+
+allowed_statuses:
+  - testing
+  - available
+  - deprecated
+
+orchestrations:
+  wechat-article:
+    name: wechat-article
+    path: orchestrations/wechat-article
+    status: testing
+    version: 0.1.0
+    updated: "2026-10-21"
+    goal: 从选题到公众号草稿箱
+    steps:
+      - id: write
+        link: 1-write
+        use: skills/geo-content
+        produces: 正文 Markdown
+      - id: layout
+        link: 2-layout
+        use: skills/wechat-html-css-layout
+        needs: [write]
+        produces: body HTML
+      - id: chart
+        link: 3-chart
+        use: skills/animated-chart-gif
+        needs: [layout]
+        produces: 配图 GIF
+      - id: upload
+        link: 4-upload
+        use: external-capabilities/mcp/wechat-draft-mcp
+        needs: [layout, chart]
+        produces: 公众号草稿
