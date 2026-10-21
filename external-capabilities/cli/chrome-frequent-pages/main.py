@@ -205,15 +205,16 @@ def lark(args):
     result = subprocess.run(["lark-cli"] + args + ["--as", "user", "--format", "json"], capture_output=True, text=True, timeout=120)
     if result.returncode != 0:
         raise SystemExit("lark-cli 失败：" + (result.stderr or result.stdout).strip()[:400])
-    return json.loads(result.stdout or "{}")
+    payload = json.loads(result.stdout or "{}")
+    if payload.get("ok") is False:
+        err = payload.get("error") or {}
+        raise SystemExit("lark-cli 返回失败：" + str(err.get("message") or err)[:400])
+    return payload
 
 
 def existing_urls(cfg):
-    try:
-        data = lark(["base", "+record-list", "--base-token", cfg["base_token"], "--table-id", cfg["table_id"], "--limit", "500"])
-    except SystemExit as exc:
-        print(f"[提示] 读表失败，按空表处理：{exc}", file=sys.stderr)
-        return {}
+    # 读失败必须中止：按空表处理会重复插入（0.2.1 就是这样写出了两倍的记录）。
+    data = lark(["base", "+record-list", "--base-token", cfg["base_token"], "--table-id", cfg["table_id"], "--limit", "200"])
     meta = data.get("data") or {}
     cols = meta.get("fields") or []
     rows = meta.get("data") or []
