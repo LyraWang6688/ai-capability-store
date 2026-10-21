@@ -78,7 +78,7 @@ capabilities:
     type: plugin
     status: limited
     provider_path: external-capabilities/providers/lyrawang/README.md
-    version: 0.3.0
+    version: 0.3.1
     implementation_path: external-capabilities/plugin/dsh/feishu-ref
     auth: "无凭据入仓。复用操作者本机已认证的 lark-cli（用户身份）做只读搜索；插件不接收、不保存任何 token 或账号信息"
     capabilities: "DSH 输入框左侧新增「＋ 引用」按钮：点击弹出面板，搜索飞书文档 / 多维表格 / 表格 / 知识库（留空看最近 30 天编辑），选中后把 Markdown 链接插入草稿（可撤销、不自动发送）。宿主侧只注册一个同源只读路由 `/plugins/feishu-ref/search`（POST），转发给 `lark-cli drive +search`"
