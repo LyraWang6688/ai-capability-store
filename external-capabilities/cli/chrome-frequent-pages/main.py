@@ -242,14 +242,15 @@ def aggregate_by_host(items):
             grouped[host] = {
                 "域名": host,
                 "访问次数": item["visits"],
-                "标题": (item["title"] or host)[:80],
+                # 标题统一用域名（按操作者要求：书签/表格一眼对齐域名）
+                "标题": host,
                 "_top": item["visits"],
             }
         else:
             rec["访问次数"] += item["visits"]
             if item["visits"] > rec["_top"]:
                 rec["_top"] = item["visits"]
-                rec["标题"] = (item["title"] or host)[:80]
+                rec["标题"] = host
     rows = sorted(grouped.values(), key=lambda r: r["访问次数"], reverse=True)
     for row in rows:
         row.pop("_top", None)
