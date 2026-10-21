@@ -21,15 +21,31 @@ orchestrations/         —— 按什么顺序连（这一次任务）
 
 一个编排可以**被** automation 定时触发；编排自己不当时钟。
 
-## 布局
+## 布局：三层
 
 ```text
 orchestrations/
-  registry.yaml            ← 唯一机器真相（验证器查这个）
-  <kebab-name>/
-    README.md              ← 人读：流程 + 衔接规则
-    <link>  →  ../.. 里的资产       ← 软链，给人看的那一份
+  registry.yaml                     ← 唯一机器真相（验证器查这个）
+  <模式>/<目标>/<任务>/
+    README.md                       ← 人读：流程 + 衔接规则
+    <link>  →  ../../../里的资产      ← 软链，给人看的那一份
 ```
+
+| 层 | 回答什么 | 现在有哪些 |
+|---|---|---|
+| **模式** | 这一类任务**是怎么被发起的** | `manual`（人说一句就做）· `scheduled-task`（钟来叫）|
+| **目标** | 它最后**落在谁的怀里** | `dsh` · `doubao-work` |
+| **任务** | 具体那一条 | `wechat-article` · `investdesk-daily-report` |
+
+**两个都是封闭集合**（`ORCHESTRATION_MODES` / `ORCHESTRATION_TARGETS`），和货架、生态同一套纪律。
+
+> 模式不描述"跑什么"，只描述"怎么被发起"。所以它不叫 `scheduled-dsh-task` ——
+> 那样第二层再分 `dsh/` 和 `doubao-work/` 就自相矛盾了。
+
+### 三级路径的代价
+
+软链要多退一级：从任务目录到仓库根是 **4 层**（任务 → 目标 → 模式 → orchestrations → 根），
+所以是 `../../../../skills/...`。少退一级 = 断链，而验证器会抓住它。
 
 **软链和 `registry.yaml` 的 `steps` 是同一份事实的两个视图。** 验证器保证两者一致。
 
@@ -62,8 +78,12 @@ steps:
 
 ## 加一个编排
 
-1. 建 `orchestrations/<kebab-name>/`
+1. 选模式 + 目标：`orchestrations/<模式>/<目标>/<任务>/`
 2. 写 `README.md`（流程 + 衔接规则）
-3. 建软链，每个指向一个已登记资产
+3. 建软链，每个指向一个已登记资产（Skill 的 path / Capability 的 implementation_path /
+   Automation 的 path）
 4. 在 `orchestrations/registry.yaml` 登记，`steps` 和软链一一对应
 5. 跑 `python3 scripts/validate_store.py`
+
+**任务名不能和它引用的资产重名** —— 否则 tag 也会重名
+（`investdesk-quote-sync` 是 automation 的名字，所以那条编排叫 `investdesk-daily-report`）。

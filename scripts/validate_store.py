@@ -186,6 +186,16 @@ CAPABILITY_ECOSYSTEMS = {"dsh"}
 ORCHESTRATION_DIR = "orchestrations"
 ALLOWED_ORCHESTRATION_STATUSES = {"testing", "available", "deprecated"}
 
+# 布局是三层：<模式>/<目标>/<任务>/
+#
+# 模式回答"这一类任务是怎么被发起的"—— 不是具体任务，也不是运行环境。
+# 目标回答"最后落在谁的怀里"。
+#
+# 两个都是封闭集合，理由和货架、生态一样：加一个是一次分类决策，
+# 不该由某人随手建个目录来引入。
+ORCHESTRATION_MODES = {"manual", "scheduled-task"}
+ORCHESTRATION_TARGETS = {"dsh", "doubao-work"}
+
 KEBAB_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 VERSION_RE = re.compile(r"^\d+\.\d+\.\d+$")
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
@@ -1394,7 +1404,10 @@ def validate_orchestrations(orc_reg: dict) -> None:
     """
     known = set()
     for rel, section in (("skills/registry.yaml", "skills"),
-                         ("external-capabilities/registry.yaml", "capabilities")):
+                         ("external-capabilities/registry.yaml", "capabilities"),
+                         # 编排可以引用一个 automation：它的第一步就是"敲钟+执行"，
+                         # 而那件事整个装在 automation 里。
+                         ("automations/registry.yaml", "automations")):
         data, ok = load_yaml(rel)
         if not ok or not isinstance(data, dict):
             continue
@@ -1418,7 +1431,9 @@ def validate_orchestrations(orc_reg: dict) -> None:
         if not isinstance(entry, dict):
             check(f"orchestration {name} is a mapping", False, type(entry).__name__)
             continue
-        declared.add(name)
+        # 登记的路径（三层），文件系统遍历时拿它比对
+        if isinstance(entry.get("path"), str):
+            declared.add(entry["path"].rstrip("/"))
 
         status = entry.get("status")
         check(f"orchestration {name} status legal", status in ALLOWED_ORCHESTRATION_STATUSES,
@@ -1427,8 +1442,13 @@ def validate_orchestrations(orc_reg: dict) -> None:
         check(f"orchestration {name} version is X.Y.Z",
               isinstance(version, str) and bool(VERSION_RE.match(version)), f"version={version!r}")
         path = entry.get("path")
-        check(f"orchestration {name} path is declared",
-              path == f"{ORCHESTRATION_DIR}/{name}", f"path={path!r}")
+        parts = path.split("/") if isinstance(path, str) else []
+        check(f"orchestration {name} path is <mode>/<target>/<name>",
+              len(parts) == 4 and parts[0] == ORCHESTRATION_DIR
+              and parts[1] in ORCHESTRATION_MODES
+              and parts[2] in ORCHESTRATION_TARGETS
+              and parts[3] == name,
+              f"path={path!r} — 期望 {ORCHESTRATION_DIR}/<mode>/<target>/{name}")
 
         steps = entry.get("steps")
         if not isinstance(steps, list) or not steps:
@@ -1455,7 +1475,7 @@ def validate_orchestrations(orc_reg: dict) -> None:
                   f"use={use!r} — 不指向任何已登记的 Skill path 或 Capability implementation_path")
 
             link = step.get("link")
-            base = os.path.join(ROOT, ORCHESTRATION_DIR, name)
+            base = os.path.join(ROOT, *parts) if len(parts) == 4 else os.path.join(ROOT, ORCHESTRATION_DIR, name)
             link_path = os.path.join(base, link) if isinstance(link, str) and link else None
             if link_path is None:
                 check(f"orchestration {name} step {sid} declares a link", False, f"link={link!r}")
@@ -1519,13 +1539,28 @@ def validate_orchestrations(orc_reg: dict) -> None:
 
     base = os.path.join(ROOT, ORCHESTRATION_DIR)
     if os.path.isdir(base):
-        for child in sorted(os.listdir(base)):
-            full = os.path.join(base, child)
-            if child.startswith(".") or not os.path.isdir(full):
+        for mode in sorted(os.listdir(base)):
+            mode_dir = os.path.join(base, mode)
+            if mode.startswith(".") or not os.path.isdir(mode_dir):
                 continue
-            check(f"filesystem orchestration directory is registered: {child}",
-                  child in declared,
-                  "directory exists under orchestrations/ but no registry entry points at it")
+            check(f"orchestration mode is declared: {mode}",
+                  mode in ORCHESTRATION_MODES,
+                  f"unknown mode {mode!r} — declare it in ORCHESTRATION_MODES")
+            for target in sorted(os.listdir(mode_dir)):
+                target_dir = os.path.join(mode_dir, target)
+                if target.startswith(".") or not os.path.isdir(target_dir):
+                    continue
+                check(f"orchestration target is declared: {mode}/{target}",
+                      target in ORCHESTRATION_TARGETS,
+                      f"unknown target {target!r} — declare it in ORCHESTRATION_TARGETS")
+                for task in sorted(os.listdir(target_dir)):
+                    task_dir = os.path.join(target_dir, task)
+                    if task.startswith(".") or not os.path.isdir(task_dir):
+                        continue
+                    rel = f"{ORCHESTRATION_DIR}/{mode}/{target}/{task}"
+                    check(f"filesystem orchestration directory is registered: {rel}",
+                          rel in declared,
+                          "directory exists under orchestrations/ but no registry entry points at it")
 
 
 def report(exit_code: int) -> int:
