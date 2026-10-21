@@ -1,6 +1,6 @@
 {
   "name": "@lyra_wang/dsh-feishu-ref",
-  "version": "0.3.1",
+  "version": "0.3.3",
   "description": "Composer + button: search your Feishu docs / bitables and insert the link into the DSH input box.",
   "license": "MIT",
   "type": "module",
