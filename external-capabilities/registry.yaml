@@ -66,7 +66,7 @@ capabilities:
     type: plugin
     status: limited
     provider_path: external-capabilities/providers/lyrawang/README.md
-    version: 0.2.1
+    version: 0.3.0
     implementation_path: external-capabilities/plugin/dsh/image-ocr
     auth: "无凭据入仓，不需要任何账号或 API Key。OCR 完全本地（macOS Vision），图片不出本机"
     capabilities: "DSH 输入框左侧「＋ 识图」按钮：读取剪贴板里的截图，用本地 Vision 引擎识别中英文字，把文字插入草稿（可撤销、不自动发送）。宿主侧注册同源只读路由 `/plugins/image-ocr/ocr`，并带一份 Swift 源码在首次使用时编译缓存"
