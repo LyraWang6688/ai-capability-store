@@ -51,3 +51,4 @@ dsh plugin --profile desktop add @lyra_wang/dsh-inbox
 - 0.1.0：Host 路由 + Client 面板（按钮/弹窗/标已读/轮询）
 - 0.1.1：投递改用 `+record-batch-create`（lark-cli 没有 `+record-create`）
 - 0.1.2：去掉 patch 里的 config（插件不声明 schema，传 config 有挂载风险）；坐标改由环境变量覆盖
+- 0.1.3：修正 Base token（收件箱表在「项目管理」Base）；本机实测通过
