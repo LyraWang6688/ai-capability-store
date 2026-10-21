@@ -25,5 +25,11 @@
     "keep_urls": [],
     "one_per_host": true
   },
-  "ignored_urls_file": ""
+  "ignored_urls_file": "",
+  "domain_labels": {
+    "meeting.bamamei.online": "组队会议分析",
+    "eos.douyin.com": "抖音生活服务 · 直播",
+    "github.com": "GitHub",
+    "platform.deepseek.com": "DeepSeek 开放平台"
+  }
 }
