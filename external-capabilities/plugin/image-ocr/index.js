@@ -135,7 +135,7 @@ export function apply(ctx) {
         const buffer = Buffer.from(base64, 'base64');
         if (buffer.length === 0) throw new Error('图片数据为空');
         if (buffer.length > 12 * 1024 * 1024) throw new Error('图片太大（上限 12MB）');
-        tempPath = join(os.tmpdir(), 'dsh-image-ocr-' + Date.now() + '-' + Math.random().toString(16).slice(2, 8) + '.png');
+        tempPath = join(tmpdir(), 'dsh-image-ocr-' + Date.now() + '-' + Math.random().toString(16).slice(2, 8) + '.png');
         writeFileSync(tempPath, buffer);
       }
       const text = await runOcr(binary, tempPath);
