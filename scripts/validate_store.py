@@ -216,6 +216,7 @@ REQUIRED_POLICY_FILES = [
     "skills/README.md",
     "skills/registry.yaml",
     "orchestrations/README.md",
+    "docs/README.md",
     "orchestrations/registry.yaml",
     "skills/LIFECYCLE.md",
     "skills/ACCEPTANCE.md",
