@@ -471,12 +471,14 @@ export function apply(ctx) {
       '完成后用一句话汇报：仓库名 + 类型 + 亮点摘要；失败就直说哪一步失败、为什么。不要向我确认，直接做。',
     ].join('\n');
     try {
+      // prompt(request, signal)：第二个参数是 AbortSignal，缺了会在内部 throwIfAborted 处崩。
+      const controllerSignal = new AbortController();
       await controller.prompt({
         requestId: 'collect-' + Date.now() + '-' + Math.random().toString(16).slice(2, 10),
         sessionId: target.sessionId,
         mode: 'queue',
         content: [{ type: 'text', text }],
-      });
+      }, controllerSignal.signal);
       return { queued: true, sessionId: target.sessionId };
     } catch (error) {
       return { queued: false, reason: 'prompt failed: ' + (error instanceof Error ? error.message : String(error)) };
@@ -503,10 +505,11 @@ export function apply(ctx) {
       }
       const result = await enqueueRepoCollect(project);
       if (result.queued !== true) {
-        sendJson(res, 503, {
-          ok: false,
-          message: '没有可用的活跃会话，收录未执行：' + (result.reason || 'unknown') + '。请先打开一个会话再点收录。',
-        });
+        const reason = String(result.reason || 'unknown');
+        const message = reason.includes('no ordinary session')
+          ? '没有可用的活跃会话，收录未执行。请先打开一个会话再点收录。'
+          : '投递收录任务失败：' + reason;
+        sendJson(res, 503, { ok: false, message });
         return;
       }
       sendJson(res, 200, {
