@@ -16,7 +16,19 @@
     "drop_hosts": [
       "yfsp.tv",
       "iyf.tv",
-      "yifan.tv"
+      "yifan.tv",
+      "tv.cctv.com",
+      "pan.baidu.com",
+      "pan.quark.cn",
+      "mail.163.com",
+      "mail.qq.com",
+      "coze.cn",
+      "trae.ai",
+      "market.windalice.com",
+      "alice.wind.com.cn",
+      "developers.weixin.qq.com",
+      "cc.oceanengine.com",
+      "workbench.bamamei.online"
     ],
     "drop_url_contains": [
       "mp.weixin.qq.com/cgi-bin",
@@ -35,7 +47,10 @@
       "applink.feishu.cn",
       "google.com.hk/url",
       "/admin/appCenter",
-      "/admin"
+      "/admin",
+      "/exception/",
+      "/account-setting",
+      "BAD_GATEWAY"
     ],
     "root_only_hosts": [
       "github.com"
