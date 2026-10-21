@@ -160,6 +160,35 @@ window.__ModuleLoader__.load({
         return () => clearTimeout(timer);
       }, [query, open]);
 
+      const openInSidebar = (url, fail) => {
+        const tryOpen = () => {
+          if (!sidebarRight || typeof sidebarRight.openTab !== 'function') {
+            throw new Error('sidebarRight service unavailable');
+          }
+          sidebarRight.openTab('browser', { params: { url }, revealIfOpened: true });
+        };
+        const expandSidebar = () => {
+          const panel = document.querySelector('[data-sidebar-right-panel]');
+          if (panel && panel.hasAttribute('data-sidebar-right-open')) return false;
+          const toggle = document.querySelector('[data-sidebar-right-toggle]')
+            || document.querySelector('[data-sidebar-right-expand]');
+          if (toggle) { toggle.click(); return true; }
+          return false;
+        };
+        try { tryOpen(); return; } catch (err) { /* 大概率还没挂载，展开后重试 */ }
+        const expanded = expandSidebar();
+        const delays = expanded ? [120, 400, 900] : [200, 700];
+        let attempt = 0;
+        const retry = () => {
+          try { tryOpen(); return; } catch (err) {
+            if (attempt < delays.length) { setTimeout(retry, delays[attempt++]); return; }
+            if (typeof fail === 'function') fail('右侧打开失败：' + (err && err.message ? err.message : String(err)));
+            if (typeof console !== 'undefined') console.warn('[feishu-ref] open browser failed:', err);
+          }
+        };
+        setTimeout(retry, delays[attempt++]);
+      };
+
       const choose = (item) => {
         const next = [item].concat(loadRecent().filter((entry) => entry.url !== item.url)).slice(0, RECENT_KEEP);
         saveRecent(next);
@@ -175,23 +204,11 @@ window.__ModuleLoader__.load({
         } catch (err) {
           if (navigator.clipboard) navigator.clipboard.writeText(text);
         }
-        // 顺手在右侧内置浏览器打开这个文档（服务/面板不可用时只记日志，不影响插入）。
-        try {
-          if (sidebarRight) {
-            const anchor = btnRef.current || null;
-            if (typeof sidebarRight.commandTarget === 'function' && typeof sidebarRight.openTabFromTarget === 'function') {
-              const target = sidebarRight.commandTarget(anchor);
-              if (target) sidebarRight.openTabFromTarget('browser', target);
-              else if (typeof sidebarRight.openTab === 'function') sidebarRight.openTab('browser', { params: { url: item.url }, revealIfOpened: true });
-            } else if (typeof sidebarRight.openTab === 'function') {
-              sidebarRight.openTab('browser', { params: { url: item.url }, revealIfOpened: true });
-            }
-          } else if (typeof console !== 'undefined') {
-            console.warn('[feishu-ref] sidebarRight service unavailable');
-          }
-        } catch (err) {
-          if (typeof console !== 'undefined') console.warn('[feishu-ref] open browser failed:', err);
-        }
+        // 顺手在右侧内置浏览器打开这个文档。右侧栏收起时先展开，等它挂载后再打开。
+        openInSidebar(item.url, (message) => {
+          setError(message);
+          setOpen(true);
+        });
         close();
       };
 
