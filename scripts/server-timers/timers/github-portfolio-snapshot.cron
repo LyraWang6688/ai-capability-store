@@ -1,7 +1,7 @@
 # GitHub 作品集快照 —— 敲 GitHub Actions
 #
-# 时间：每月 1 日 20:17（北京时间）。
-# ⚠️ 原来 workflow 里的 UTC cron `17 20 1 * *` 实际是北京 2 日 04:17 —— 晚 8 小时。
+# 时间：每月 1 日 18:00（服务器时区 CST = 北京）
+# 来源：飞书「项目管理」→「定时任务」表（2026-10-22 王颖调整）
 SHELL=/bin/bash
 PATH=/usr/local/bin:/usr/bin:/bin
-17 20 1 * * root /usr/local/bin/ai-capability-store-dispatch automation-github-portfolio-snapshot.yml
+0 18 1 * * root /usr/local/bin/ai-capability-store-dispatch automation-github-portfolio-snapshot.yml

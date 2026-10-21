@@ -91,28 +91,47 @@ sudo rm /etc/cron.d/<name> /etc/ai-capability-store/timers/<name>.cron
 |---|---|---|---|---|
 | investdesk | `investdesk-quote-sync.cron` | 敲 GitHub Actions（持仓价格同步）| root | 工作日 20:00 |
 | box2bitable | `box2bitable-observability.cron` | 在服务器本机跑观测日报 | ubuntu | 每天 09:00 |
-| github-trending | `github-trending-daily.cron` | 敲 GitHub Actions（日报）| root | 每天 05:17 |
-| github-trending | `github-trending-weekly.cron` | 敲 GitHub Actions（周报）| root | 周日 19:17 |
-| github-portfolio | `github-portfolio-snapshot.cron` | 敲 GitHub Actions（作品集快照）| root | 每月 1 日 20:17 |
+| github-trending | `github-trending-daily.cron` | 敲 GitHub Actions（日报）| root | 每天 20:00 |
+| github-trending | `github-trending-weekly.cron` | 敲 GitHub Actions（周报）| root | 周日 21:00 |
+| github-portfolio | `github-portfolio-snapshot.cron` | 敲 GitHub Actions（作品集快照）| root | 每月 1 日 18:00 |
 | repo-health | `repo-discoverability.cron` | 敲 GitHub Actions（发现性体检）| root | 周一 20:00 |
 | repo-health | `repo-baseline-audit.cron` | 敲 GitHub Actions（基线体检）| root | 周一 09:00 |
 | frontier | `frontier-watch.cron` | 敲 GitHub Actions（前沿观察）| root | 周一 10:00 |
 
-### ⚠️ 迁过来时修掉了一个 8 小时偏差
+### 时间以飞书表为准
 
-`github-trending-daily` / `github-trending-weekly` / `github-portfolio-snapshot`
-原来的 workflow 里写的是 GitHub 的 **UTC** cron，但注释把它们当成了北京时间：
+**「什么时候跑」这件事，唯一真相在飞书**：
+
+> [项目管理](https://my.feishu.cn/wiki/P3qAws8yjiU4eSkJDfTcYEbJnlg) → 数据表 **「定时任务」**
+> 字段：任务名称（主字段）· 执行周期 · 执行时间 · 具体链路
+
+改时间改表，然后同步到这里：
+
+```bash
+lark-cli base +record-list --base-token NeujbbOfcaPEvMsPIxscaJImn9d \
+  --table-id tbl4k7ggY1paqoUn --as user --format json \
+  | python3 -c "import json,sys; [print(r[0], r[3]) for r in json.load(sys.stdin)['data']['data']]"
+# 然后改对应的 .cron，跑 install.sh
+```
+
+**为什么不在代码里当真相**：改一个时间要动 4 个地方（`.cron`、两个 README、注册表），
+而表是你能直接打开看的地方。代码这边只保证「和表一致」。
+
+### 历史：迁过来时修掉过一个 8 小时偏差
+
+原来这 3 个 workflow 写的是 GitHub 的 **UTC** cron，注释却把它们当成北京时间：
 
 ```text
-17 5 * * *  (UTC)  注释以为 05:17 Asia/Shanghai  实际 13:17 北京
-17 19 * * 0 (UTC)  注释以为 19:17 Asia/Shanghai  实际 次日 03:17 北京
-17 20 1 * * (UTC)  注释以为 20:17 Asia/Shanghai  实际 次日 04:17 北京
+17 5 * * *    (UTC)   注释以为 05:17 Asia/Shanghai   实际 13:17 北京
+17 19 * * 0   (UTC)   注释以为 19:17 Asia/Shanghai   实际 次日 03:17 北京
+17 20 1 * *   (UTC)   注释以为 20:17 Asia/Shanghai   实际 次日 04:17 北京
 ```
 
 `github-trending-daily` 的注释明确写着它要「在 09:00 的 DSH 消费任务前 3h45m 跑完」——
-而 13:17 已经晚于 09:00。**也就是说这份日报一直比预期晚 8 小时。**
+而 13:17 已经晚于 09:00。**这份日报一直比预期晚 8 小时。**
 
-搬进服务器后时间由我们自己的 crontab 控制，写的就是北京时间，这个偏差自然消失。
+搬进服务器后时间由我们自己的 crontab 控制；2026-10-22 王颖在飞书表里重新定了时间
+（日报 20:00 / 周报周日 21:00 / 快照 18:00），代码按表同步。
 
 ### 一条检查防"名字写错"
 
