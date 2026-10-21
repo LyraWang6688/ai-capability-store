@@ -50,7 +50,9 @@
 npx @lyra_wang/dsh-feishu-remote init
 ```
 
-`init` 会：读取你当前 lark-cli 账号的 open_id 作为白名单 → 询问工作目录 → 写配置（`~/.dsh-feishu-remote/config.json`，600）→ 安装 launchd 开机自启（macOS）。
+`init` 会：读取你当前 lark-cli 账号的 open_id 作为白名单 → 询问工作目录 → 写配置（`~/.dsh-feishu-remote/config.json`，600）→ 安装开机自启：
+- **macOS**：launchd（`com.lyrawang.dsh-feishu-remote`）
+- **Linux**：systemd user unit（`~/.config/systemd/user/com.lyrawang.dsh-feishu-remote.service`，并执行 `loginctl enable-linger`）
 
 然后 **在飞书私聊机器人**发一句「帮助」即可。
 
@@ -63,7 +65,7 @@ npx @lyra_wang/dsh-feishu-remote init
 | `status` | 配置摘要 + 服务状态 + 最近任务 |
 | `logs [--lines N]` | 看审计日志 |
 | `run` | 前台运行（调试用） |
-| `install-service` / `uninstall-service` | launchd 安装 / 卸载（macOS） |
+| `install-service` / `uninstall-service` | 开机自启安装 / 卸载（macOS launchd / Linux systemd） |
 | `config` | 打印配置路径与当前值 |
 
 ## 配置（`~/.dsh-feishu-remote/config.json`）
@@ -97,7 +99,25 @@ dsh-feishu-remote doctor
 
 重点看「飞书事件订阅」和「白名单」两项。
 
-**电脑睡眠后不响应？** 安装服务时会用 `caffeinate` 包裹进程；把 macOS 的睡眠时间设为"永不"或接电源。
+**电脑睡眠后不响应？** macOS 安装服务时会用 `caffeinate` 包裹进程；把睡眠时间设为"永不"或接电源。
+
+## 在 Linux 服务器上常驻（推荐）
+
+```bash
+# 1. 依赖：node 20+、lark-cli、dsh
+npm install -g --prefix ~/.local @lyra_wang/dsh-feishu-remote
+# 2. 先授权飞书机器人
+lark-cli auth login --as bot
+# 3. 初始化（会写配置并安装 systemd user unit）
+~/.local/bin/dsh-feishu-remote init --workdir ~/work
+# 4. 把模型 key 写进环境文件（systemd 启动时读取）
+echo 'DEEPSEEK_API_KEY=sk-...' > ~/.dsh-feishu-remote/env && chmod 600 ~/.dsh-feishu-remote/env
+# 5. 重启服务并看状态
+systemctl --user restart com.lyrawang.dsh-feishu-remote
+systemctl --user status com.lyrawang.dsh-feishu-remote
+```
+
+> 服务器上的 `dsh` 需要用 `--profile headless` 能跑通（先 `dsh headless "你好"` 验证 API Key）。
 
 **想换执行后端？** 改 `dshCli` 与 `agentArgs`，例如 `{"dshCli": "claude", "agentArgs": ["-p"]}`。
 

@@ -28,9 +28,9 @@ const HELP = `dsh-feishu-remote ${PKG.version} — 用飞书私聊远程操作�
   dsh-feishu-remote doctor
   dsh-feishu-remote status
   dsh-feishu-remote logs [--lines 50]
-  dsh-feishu-remote run                前台运行（调试用；服务模式由 launchd 调用）
-  dsh-feishu-remote install-service    安装 launchd 开机自启（macOS）
-  dsh-feishu-remote uninstall-service  卸载 launchd 服务
+  dsh-feishu-remote run                前台运行（调试用；服务模式由 launchd/systemd 调用）
+  dsh-feishu-remote install-service    安装开机自启（macOS launchd / Linux systemd）
+  dsh-feishu-remote uninstall-service  卸载开机自启服务
   dsh-feishu-remote config             打印配置路径与当前值
   dsh-feishu-remote --version | --help
 
@@ -113,10 +113,10 @@ async function init(args) {
 
   if (!has(args, '--no-service')) {
     if (!isMac()) {
-      console.log('ℹ 非 macOS：请用 systemd / PM2 运行 `dsh-feishu-remote run`');
+      console.log('ℹ 非 macOS / Linux：请用 PM2 等方式运行 `dsh-feishu-remote run`');
       return;
     }
-    const install = yes ? 'y' : await prompt('安装开机自启（launchd）？[Y/n]: ', 'y');
+    const install = yes ? 'y' : await prompt('安装开机自启（macOS launchd / Linux systemd）？[Y/n]: ', 'y');
     if (/^y/i.test(install) || install === '') {
       try {
         const result = installService(next, { nodePath: resolveNode(), cliPath: CLI_PATH });
