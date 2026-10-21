@@ -446,7 +446,48 @@ export function apply(ctx) {
     return join(homedir(), '.agents', 'skills', 'repo-collector', 'scripts', 'collect_one.py');
   };
 
-  const repoCollectHandler = async (req, res) => {
+  
+/** Queue an enrichment task into the most recently active ordinary Session. */
+async function enqueueEnrichment(ctx, project) {
+  const controller = typeof ctx.get === 'function' ? ctx.get('sessionController') : undefined;
+  if (!controller || typeof controller.list !== 'function' || typeof controller.prompt !== 'function') {
+    return { queued: false, reason: 'sessionController unavailable' };
+  }
+  let sessions = [];
+  try {
+    const listed = await controller.list({}, new AbortController().signal);
+    sessions = Array.isArray(listed && listed.items) ? listed.items : [];
+  } catch (error) {
+    return { queued: false, reason: 'list failed: ' + (error instanceof Error ? error.message : String(error)) };
+  }
+  const ordinary = sessions.filter((item) => item && item.sessionId && item.origin !== 'subagent');
+  if (ordinary.length === 0) return { queued: false, reason: 'no ordinary session' };
+  const target = ordinary.find((item) => item.running) || ordinary[0];
+  const text = [
+    '【后台补全】刚通过划词插件的「收录」按钮收录了 GitHub 仓库 ' + project + '。',
+    '',
+    '请按 repo-collector 技能补全这一行的语义字段，然后更新飞书「GitHub 优质项目收录」表中 Project 等于 ' + project + ' 的那一条记录：',
+    '- 项目简介：中文一句话（不要照抄英文描述）',
+    '- 核心亮点：它具体做了什么、技术要点',
+    '- 参考价值：对你/Store 有什么用，或为什么不该照搬',
+    '- 主题标签 + 项目类型：按技能里的表契约选',
+    '',
+    '要求：先读仓库 README（必要时用 web_fetch），禁止凭记忆编造；用 lark-cli base +record-update 更新，不要插入新行；完成后一句话汇报。',
+  ].join('\n');
+  try {
+    await controller.prompt({
+      requestId: 'enrich-' + Date.now() + '-' + Math.random().toString(16).slice(2, 10),
+      sessionId: target.sessionId,
+      mode: 'queue',
+      content: [{ type: 'text', text }],
+    });
+    return { queued: true, sessionId: target.sessionId };
+  } catch (error) {
+    return { queued: false, reason: 'prompt failed: ' + (error instanceof Error ? error.message : String(error)) };
+  }
+}
+
+const repoCollectHandler = async (req, res) => {
     if (req.method !== 'POST') {
       sendJson(res, 405, { ok: false, message: 'method not allowed' });
       return;
@@ -465,6 +506,7 @@ export function apply(ctx) {
       if (!existsSync(script)) {
         throw new Error('找不到 collect_one.py：' + script + '（可用 DSH_REPO_COLLECTOR 指定）');
       }
+      const project = text.split(/\s+/)[0];
       const handle = ctx.subprocess.spawn({
         argv: ['python3', script, text],
         cwd: process.env.HOME || '/tmp',
@@ -497,7 +539,12 @@ export function apply(ctx) {
         return;
       }
       if (parsed.ok === true) {
-        sendJson(res, 200, parsed);
+        // 秒级落库之后再叫醒会话，让 AI 补全语义字段；失败不影响收录结果。
+        const enrichment = await enqueueEnrichment(ctx, String(parsed.project || project));
+        if (enrichment.queued !== true) {
+          ctx.logger?.warn?.('selection-toolbar: enrichment not queued: ' + (enrichment.reason || 'unknown'));
+        }
+        sendJson(res, 200, { ...parsed, enrichment });
       } else {
         // 退出码原样带回去：10 = 已收录，前端据此说人话
         sendJson(res, 200, parsed);
