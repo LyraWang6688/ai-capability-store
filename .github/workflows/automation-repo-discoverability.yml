@@ -10,8 +10,6 @@ name: automation-repo-discoverability
 #
 # 「怎么按标准执行」由用户与各仓库负责的 AI 约定，不归本自动化管。
 on:
-  schedule:
-    - cron: "0 12 * * 1"       # 12:00 UTC = 20:00 Asia/Shanghai，每周一晚 8 点
   workflow_dispatch:
     inputs:
       dry-run:

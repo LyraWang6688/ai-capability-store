@@ -203,7 +203,7 @@ clock moved.
 trigger_kind: daily
 executor: github-actions
 workflow: .github/workflows/automation-investdesk-quote-sync.yml
-external_trigger: automations/investdesk-quote-sync/deploy/server-trigger.cron
+external_trigger: scripts/server-timers/timers/investdesk-quote-sync.cron
 ```
 
 The field is **a path to evidence**, and the validator treats it as one: it must exist

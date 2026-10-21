@@ -1,0 +1,12 @@
+# GitHub 日报 —— 敲 GitHub Actions
+#
+# 时间：每天 05:17（服务器时区 CST = 北京）
+#
+# ⚠️ 这修掉一个 8 小时偏差：原来 workflow 里写的是 GitHub 的 UTC cron
+#    `17 5 * * *`，但它的注释以为这是"05:17 Asia/Shanghai"。
+#    实际 05:17 UTC = 北京 13:17 —— 而注释说它要"在 09:00 的 DSH 消费任务前 3h45m 跑完"。
+#    也就是说这份日报一直比预期晚 8 小时，DSH 09:00 去读时读到的是昨天的。
+#    搬进服务器后时间由我们自己的 crontab 控制，写的就是北京时间。
+SHELL=/bin/bash
+PATH=/usr/local/bin:/usr/bin:/bin
+17 5 * * * root /usr/local/bin/ai-capability-store-dispatch automation-github-trending-daily.yml

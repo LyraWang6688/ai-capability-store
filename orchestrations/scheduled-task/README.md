@@ -22,7 +22,7 @@
 
 | 通用段 | 在具体编排里落在哪 |
 |---|---|
-| ① 敲钟 | `automations/investdesk-quote-sync/deploy/server-trigger.cron` |
+| ① 敲钟 | `scripts/server-timers/timers/investdesk-quote-sync.cron` |
 | ② 执行 | `automations/investdesk-quote-sync/.github/workflows/…yml` |
 | ③ 推事件 | `automations/investdesk-quote-sync/src/notify.ts` |
 | ④ 消费 | 豆包侧监听（**不在本仓库**）|

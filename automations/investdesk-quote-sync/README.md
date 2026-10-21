@@ -29,7 +29,7 @@ MCP 能力包 `investdesk-quotes` 已按架构调整移除——那个 MCP 形�
 ```text
 工作流里       只有 workflow_dispatch（schedule 已移除）
 registry       外部钟由 external_trigger 指向下面那个 cron 描述
-准点来源       deploy/server-trigger.cron（{{HOUR}} 按服务器时区换算）
+准点来源       scripts/server-timers/timers/investdesk-quote-sync.cron
 安装与运维     deploy/SERVER-TRIGGER.md
 ```
 

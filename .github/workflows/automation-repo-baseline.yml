@@ -3,8 +3,6 @@ name: automation-repo-baseline
 # 每周一 09:00（Asia/Shanghai）体检所有公开仓库的公开项目基线。
 # 手动触发可勾选 dry-run（只打印，不写飞书）。
 on:
-  schedule:
-    - cron: "0 1 * * 1"
   workflow_dispatch:
     inputs:
       dry-run:

@@ -830,9 +830,17 @@ def validate_automation_entries(reg: dict):
                 check(f"automation {key} external_trigger relative",
                       not os.path.isabs(ext) and ".." not in ext_parts, ext)
                 if isinstance(path, str) and path:
-                    check(f"automation {key} external_trigger under its directory",
-                          ext.startswith(path.rstrip("/") + "/"),
-                          f"{ext} is outside {path}")
+                    # 两个合法位置：
+                    #   ① automation 自己的目录（历史位置，也是"这个 automation 自带钟"）
+                    #   ② 服务器定时器总目录（所有项目的钟集中在一处，见 scripts/server-timers/）
+                    #
+                    # ② 是为了让人在一个地方看到"这台机器上到底有哪些钟"。
+                    # 只允许这两个位置：别处出现的 external_trigger 大多是指错了。
+                    in_own_dir = ext.startswith(path.rstrip("/") + "/")
+                    in_timer_dir = ext.startswith("scripts/server-timers/timers/")
+                    check(f"automation {key} external_trigger under its directory or the timer root",
+                          in_own_dir or in_timer_dir,
+                          f"{ext} is neither under {path} nor under scripts/server-timers/timers/")
                 check(f"automation {key} external_trigger exists",
                       os.path.isfile(os.path.join(ROOT, ext)), ext)
 
@@ -1389,7 +1397,39 @@ def main() -> int:
     # ---- 14. Orchestration Domain ----
     validate_orchestrations(orc_reg if orc_ok else {})
 
+    # ---- 15. 服务器定时器 ----
+    validate_server_timers()
+
     return report(0)
+
+
+def validate_server_timers() -> None:
+    """服务器定时器：每个 .cron 里引用的 workflow 必须真的存在。
+
+    为什么需要这条：`.cron` 只是给 cron 读的文本，没有任何东西会把它的
+    workflow 名和 .github/workflows/ 下的实际文件对上。名字写错不会报错 ——
+    cron 照常到点执行，脚本照常 POST，GitHub 返回 404，而那行日志没人看。
+
+    这正是这条检查要防的：一个永远不会成功的定时器，看起来和正常的一模一样。
+    """
+    timers_dir = os.path.join(ROOT, "scripts", "server-timers", "timers")
+    workflows_dir = os.path.join(ROOT, ".github", "workflows")
+    if not os.path.isdir(timers_dir):
+        return
+    pattern = re.compile(r"(automation-[a-z0-9-]+\.yml)")
+    for name in sorted(os.listdir(timers_dir)):
+        if not name.endswith(".cron"):
+            continue
+        rel = f"scripts/server-timers/timers/{name}"
+        try:
+            body = open(os.path.join(timers_dir, name), encoding="utf-8").read()
+        except OSError:
+            check(f"server timer readable: {rel}", False, "unreadable")
+            continue
+        for workflow in pattern.findall(body):
+            check(f"server timer {name} dispatches an existing workflow",
+                  os.path.isfile(os.path.join(workflows_dir, workflow)),
+                  f"{workflow} 不存在于 .github/workflows/ —— 这个定时器到点会 404")
 
 
 def validate_orchestrations(orc_reg: dict) -> None:

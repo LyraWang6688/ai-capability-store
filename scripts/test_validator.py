@@ -84,11 +84,14 @@ MUTATIONS = {
     "allowed-tools-empty": _append_frontmatter('allowed-tools: ""'),
     "allowed-tools-space-separated": _append_frontmatter("allowed-tools: Read Write Bash"),
     # external_trigger — shape added in this change
+    # 2026-10-22：钟迁到 scripts/server-timers/timers/ 之后，这里的目标路径跟着变。
+    # 用同一个字符串替换两处，是为了让"合法位置"和"错误位置"只差一个词 ——
+    # 如果哪天迁移路径，这两个 fixture 会一起失败，不会悄悄放行。
     "external-trigger-missing": lambda t: t.replace(
-        "automations/investdesk-quote-sync/deploy/server-trigger.cron",
-        "automations/investdesk-quote-sync/deploy/nope.cron", 1),
+        "scripts/server-timers/timers/investdesk-quote-sync.cron",
+        "scripts/server-timers/timers/nope.cron", 1),
     "external-trigger-outside": lambda t: t.replace(
-        "automations/investdesk-quote-sync/deploy/server-trigger.cron",
+        "scripts/server-timers/timers/investdesk-quote-sync.cron",
         "README.md", 1),
     # systemd executor — added in this change
     "systemd-no-timer": lambda t: t.replace(

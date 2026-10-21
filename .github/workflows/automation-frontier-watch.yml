@@ -22,11 +22,6 @@
 name: automation-frontier-watch
 
 on:
-  schedule:
-    # 02:00 UTC Monday = 10:00 Asia/Shanghai Monday.
-    # Minute 0 is fine here: GitHub defers top-of-hour schedules under load, and a
-    # deferred weekly digest is harmless.
-    - cron: "0 2 * * 1"
   workflow_dispatch:
     inputs:
       dry-run:

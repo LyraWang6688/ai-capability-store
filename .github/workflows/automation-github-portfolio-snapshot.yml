@@ -26,12 +26,6 @@
 name: automation-github-portfolio-snapshot
 
 on:
-  schedule:
-    # 20:17 Asia/Shanghai on the 1st. Replaces the launchd job that ran at
-    # Day=1 Hour=20 Minute=0. Minute 17 rather than 0: GitHub defers schedules
-    # queued at the top of the hour under load.
-    - cron: "17 20 1 * *"
-      timezone: "Asia/Shanghai"
   workflow_dispatch:
     inputs:
       dry-run:
