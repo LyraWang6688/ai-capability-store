@@ -83,7 +83,7 @@ window.__ModuleLoader__.load({
       return date.toISOString().slice(0, 10);
     }
 
-    function FeishuRef(props) {
+    function FeishuRef(props, ctx) {
       const inputActions = props && props.inputActions;
       const [open, setOpen] = useState(false);
       const [query, setQuery] = useState('');
@@ -160,6 +160,52 @@ window.__ModuleLoader__.load({
         return () => clearTimeout(timer);
       }, [query, open]);
 
+      // 按官方文档：client 插件在 exports 里声明 inject，apply 里使用 ctx.sidebarRight。
+      // 这里在点击时再读一次（服务可能晚于 apply 就绪），并用 DOM 展开兜底。
+      const readSidebarRight = () => {
+        try {
+          const svc = ctx && ctx.sidebarRight;
+          if (svc && typeof svc.openTab === 'function') return svc;
+        } catch (err) { /* 服务未就绪 */ }
+        try {
+          if (ctx && ctx.reflect && typeof ctx.reflect.get === 'function') {
+            const svc = ctx.reflect.get('sidebarRight', false);
+            if (svc) return svc;
+          }
+        } catch (err) { /* ignored */ }
+        return null;
+      };
+
+      const openInSidebar = (url, fail) => {
+        const attempt = () => {
+          const svc = readSidebarRight();
+          if (!svc) return false;
+          try {
+            svc.openTab('browser', { params: { url }, revealIfOpened: true });
+            return true;
+          } catch (err) {
+            if (typeof console !== 'undefined') console.warn('[feishu-ref] openTab failed:', err);
+            return false;
+          }
+        };
+        if (attempt()) return;
+        const panel = document.querySelector('[data-sidebar-right-panel]');
+        const expanded = panel && panel.hasAttribute('data-sidebar-right-open');
+        if (!expanded) {
+          const toggle = document.querySelector('[data-sidebar-right-toggle]')
+            || document.querySelector('[data-sidebar-right-expand]');
+          if (toggle) toggle.click();
+        }
+        const delays = [120, 400, 900, 1600];
+        let i = 0;
+        const retry = () => {
+          if (attempt()) return;
+          if (i < delays.length) { setTimeout(retry, delays[i]); i += 1; return; }
+          if (typeof fail === 'function') fail('右侧打开失败：服务不可用（sidebarRight）');
+        };
+        setTimeout(retry, delays[i]); i += 1;
+      };
+
       const choose = (item) => {
         const next = [item].concat(loadRecent().filter((entry) => entry.url !== item.url)).slice(0, RECENT_KEEP);
         saveRecent(next);
@@ -175,6 +221,7 @@ window.__ModuleLoader__.load({
         } catch (err) {
           if (navigator.clipboard) navigator.clipboard.writeText(text);
         }
+        openInSidebar(item.url, (message) => { setError(message); setOpen(true); });
         close();
       };
 
@@ -290,13 +337,13 @@ window.__ModuleLoader__.load({
     }
 
     return {
-      inject: ['slots'],
+      inject: ['slots', 'sidebarRight'],
       apply(ctx) {
         ctx.slots.inject('conversation.input.left', () => ctx.slots.register({
           name: 'conversation.input.left',
           id: 'feishu-ref',
           order: 2,
-        }, (props) => h(FeishuRef, props)));
+        }, (props) => h(FeishuRef, props, ctx)));
       },
     };
   },
