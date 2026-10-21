@@ -325,17 +325,21 @@ def bookmarks_from_table(cfg, path):
         "<TITLE>Bookmarks</TITLE>",
         "<H1>Bookmarks</H1>",
         "<DL><p>",
-        "    <DT><H3>常用网页</H3>",
-        "    <DL><p>",
     ]
     ordered = [c for c in CATEGORY_ORDER if c in groups] + sorted(c for c in groups if c not in CATEGORY_ORDER)
+
+    def emit_folder(name, entries):
+        lines.append(f"    <DT><H3>{html.escape(name)}</H3>")
+        lines.append("    <DL><p>")
+        for entry in sorted(entries, key=lambda e: e["name"]):
+            lines.append(f'        <DT><A HREF="https://{html.escape(entry["host"])}/">{html.escape(entry["name"])}</A>')
+        lines.append("    </DL><p>")
+
+    # 同级结构：常用网页（全部） + 各分类文件夹，都在书签栏同一层
+    emit_folder("常用网页", [e for cat in ordered for e in groups[cat]])
     for cat in ordered:
-        lines.append(f"        <DT><H3>{html.escape(cat)}</H3>")
-        lines.append("        <DL><p>")
-        for entry in sorted(groups[cat], key=lambda e: e["name"]):
-            lines.append(f'            <DT><A HREF="https://{html.escape(entry["host"])}/">{html.escape(entry["name"])}</A>')
-        lines.append("        </DL><p>")
-    lines += ["    </DL><p>", "</DL><p>"]
+        emit_folder(cat, groups[cat])
+    lines.append("</DL><p>")
     with open(os.path.expanduser(path), "w", encoding="utf-8") as fh:
         fh.write("\n".join(lines) + "\n")
     return ordered, groups
