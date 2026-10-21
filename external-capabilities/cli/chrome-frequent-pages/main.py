@@ -34,6 +34,14 @@ DEFAULT_CONFIG = {
     "table_id": "",
     "identity": "user",
     "ignored_urls_file": os.path.join(HOME, ".config", "chrome-frequent-pages", "ignored_urls.txt"),
+    "rules": {
+        "drop_hosts": [],
+        "drop_url_contains": [],
+        "root_only_hosts": [],
+        "drop_titles": [],
+        "keep_urls": [],
+        "one_per_host": False,
+    },
 }
 
 # chrome time: microseconds since 1601-01-01
@@ -73,11 +81,12 @@ def normalize(url):
     if host.startswith("www."):
         host = host[4:]
     path = parsed.path.rstrip("/")
-    # 飞书文档/表格按 token 聚合
-    for kind in ("/base/", "/wiki/", "/docx/", "/sheets/", "/docs/"):
-        if kind in path:
-            token = path.split(kind, 1)[1].split("/")[0]
-            return host, f"{kind}{token}"
+    # 飞书文档/表格按 token 聚合：只认路径开头的 /base/<token> 之类，
+    # 避免把 open.feishu.cn/document/.../docs/bitable-v1 这种开发文档误折叠。
+    import re as _re
+    match = _re.match(r"^/(base|wiki|docx|sheets|docs|mindnote|slides)/([A-Za-z0-9]+)", path)
+    if match:
+        return host, f"/{match.group(1)}/{match.group(2)}"
     return host, path or "/"
 
 
@@ -106,8 +115,35 @@ def load_ignored(cfg):
         return {line.strip() for line in fh if line.strip()}
 
 
+def apply_rules(url, host, title, rules):
+    """Return None to drop, or the url to keep (root_only may rewrite it)."""
+    keep_urls = set(rules.get("keep_urls") or [])
+    if url in keep_urls:
+        return url
+    low = url.lower()
+    for needle in (rules.get("drop_url_contains") or []):
+        if needle.lower() in low:
+            return None
+    for dropped in (rules.get("drop_hosts") or []):
+        if host == dropped.lower() or host.endswith("." + dropped.lower()):
+            return None
+    clean_title = (title or "").strip()
+    for dead in (rules.get("drop_titles") or []):
+        if clean_title == dead:
+            return None
+    root_only = {h.lower() for h in (rules.get("root_only_hosts") or [])}
+    if host in root_only:
+        from urllib.parse import urlsplit
+        path = urlsplit(url).path or "/"
+        if path.rstrip("/") != "":
+            return None
+        return "https://" + host + "/"
+    return url
+
+
 def collect(cfg):
     ignored = load_ignored(cfg)
+    rules = cfg.get("rules") or {}
     tmp, db = copy_history(cfg["chrome_profile_dir"])
     try:
         conn = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
@@ -124,6 +160,9 @@ def collect(cfg):
     for url, title, visits, last_us in rows:
         host, path = normalize(url)
         if is_noise(url, host, set(cfg["exclude_hosts"])):
+            continue
+        kept = apply_rules(url, host, title, rules)
+        if kept is None:
             continue
         key = host + path
         last_ts = last_us / 1_000_000 - CHROME_EPOCH_OFFSET
@@ -146,6 +185,15 @@ def collect(cfg):
 
     items = [e for e in aggregated.values() if e["visits"] >= cfg["min_visits"] and e["url"] not in ignored]
     items.sort(key=lambda e: (e["visits"], e["last"]), reverse=True)
+    if rules.get("one_per_host"):
+        seen_hosts = set()
+        collapsed = []
+        for item in items:
+            if item["host"] in seen_hosts:
+                continue
+            seen_hosts.add(item["host"])
+            collapsed.append(item)
+        items = collapsed
     if cfg["limit"]:
         items = items[: cfg["limit"]]
     for item in items:
