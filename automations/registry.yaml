@@ -315,8 +315,8 @@ automations:
     path: automations/deepseek-invoice
     entrypoint: run.mjs
     status: testing
-    version: 0.1.0
-    updated: "2026-10-20"
+    version: 0.1.1
+    updated: "2026-10-22"
     trigger_kind: monthly
     executor: systemd
     systemd:
