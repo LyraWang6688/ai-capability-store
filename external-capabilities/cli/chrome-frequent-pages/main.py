@@ -159,6 +159,7 @@ def collect(cfg):
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 
+    # 按根域名聚合：访问次数 = 该域名下所有页面之和
     aggregated = {}
     for url, title, visits, last_us in rows:
         host, path = normalize(url)
@@ -167,13 +168,14 @@ def collect(cfg):
         kept = apply_rules(url, host, title, rules)
         if kept is None:
             continue
-        key = host + path
+        key = host
         last_ts = last_us / 1_000_000 - CHROME_EPOCH_OFFSET
         entry = aggregated.get(key)
         if entry is None:
             aggregated[key] = {
                 "key": key,
-                "url": f"https://{host}{path}" if host else url,
+                # 输出根域名，不带路径
+                "url": f"https://{host}/",
                 "title": (title or "").strip(),
                 "host": host,
                 "visits": visits,
@@ -186,9 +188,10 @@ def collect(cfg):
             if not entry["title"] and title:
                 entry["title"] = title.strip()
 
-    items = [e for e in aggregated.values() if e["visits"] >= cfg["min_visits"] and e["url"] not in ignored]
+    # 规则：根域名访问次数「超过」min_visits（严格大于）
+    items = [e for e in aggregated.values() if e["visits"] > cfg["min_visits"] and e["url"] not in ignored]
     items.sort(key=lambda e: (e["visits"], e["last"]), reverse=True)
-    if rules.get("one_per_host"):
+    if False and rules.get("one_per_host"):
         seen_hosts = set()
         collapsed = []
         for item in items:
@@ -199,8 +202,10 @@ def collect(cfg):
         items = collapsed
     if cfg["limit"]:
         items = items[: cfg["limit"]]
+    labels = cfg.get("domain_labels") or {}
     for item in items:
         item["last_iso"] = datetime.fromtimestamp(item["last"]).strftime("%Y-%m-%d %H:%M")
+        item["title"] = labels.get(item["host"]) or item["host"]
     return items
 
 

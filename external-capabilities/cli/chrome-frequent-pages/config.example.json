@@ -23,7 +23,7 @@
     "root_only_hosts": [],
     "drop_titles": [],
     "keep_urls": [],
-    "one_per_host": true
+    "one_per_host": false
   },
   "ignored_urls_file": "",
   "domain_labels": {
