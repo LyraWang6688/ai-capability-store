@@ -50,23 +50,21 @@ python3 main.py --days 30 --min-visits 5      # 临时调窗口与阈值
 | `rules.keep_urls` | 白名单，优先级最高 |
 | `rules.one_per_host` | 每个域名只保留访问最多的一页 |
 
-## 规则（0.3.0 简化版）
+## 规则（0.4.0：根域名级）
 
 ```
-10 天窗口 → ≥5 次访问 → 仅 https → 排除本地页 → 丢弃娱乐影视 → 每个域名只留一页
+最近 10 天 → 按「根域名」加总访问次数 → 超过 5 次 → 只排除影视娱乐与本地页 → 一行一个根域名
 ```
 
 | 项 | 当前值 |
 |---|---|
 | `days` | 10 |
-| `min_visits` | 5 |
-| 协议 | 只统计 `https://`（http/file/localhost 不看）|
-| 娱乐影视 | `drop_hosts`: yfsp.tv / iyf.tv / yifan.tv / tv.cctv.com |
-| 去重 | `one_per_host: true`（一个域名只保留访问最多的一页）|
-| 忽略清单 | 默认关闭（`ignored_urls_file: ""`）|
-
-需要更细的规则时，在 `rules` 里重新加 `drop_url_contains` / `root_only_hosts` /
-`drop_titles` / `keep_urls` 即可，引擎仍支持。
+| `min_visits` | 5（**严格超过**，即 6 次起）|
+| 统计口径 | 该根域名下**所有页面**的访问次数之和（不是单页）|
+| 协议 | 只统计 `https://` |
+| 排除 | 影视娱乐（yfsp / iyf / yifan / tv.cctv）+ 本地页（localhost / 127.0.0.1 / file）|
+| 输出 | `https://<根域名>/` 一行；标题取 `domain_labels`，缺省用域名 |
+| 黑名单 | 无（只有影视娱乐与本地页被排除）|
 
 ## 表结构（域名级）
 
