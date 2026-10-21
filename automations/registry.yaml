@@ -51,6 +51,7 @@ automations:
     trigger_kind: daily
     executor: github-actions
     workflow: .github/workflows/automation-github-trending-daily.yml
+    external_trigger: scripts/server-timers/timers/github-trending-daily.cron
     output:
       target: git-branch
       branch: data
@@ -72,6 +73,7 @@ automations:
     trigger_kind: weekly
     executor: github-actions
     workflow: .github/workflows/automation-github-trending-weekly.yml
+    external_trigger: scripts/server-timers/timers/github-trending-weekly.cron
     output:
       target: git-branch
       branch: data
@@ -93,6 +95,7 @@ automations:
     trigger_kind: monthly
     executor: github-actions
     workflow: .github/workflows/automation-github-portfolio-snapshot.yml
+    external_trigger: scripts/server-timers/timers/github-portfolio-snapshot.cron
     output:
       target: external-system
       destination: "Feishu Base「项目管理」的多维表格：Repo Snapshot History / Snapshot Runs / Deleted Repos"
@@ -137,6 +140,7 @@ automations:
     trigger_kind: weekly
     executor: github-actions
     workflow: .github/workflows/automation-repo-discoverability.yml
+    external_trigger: scripts/server-timers/timers/repo-discoverability.cron
     output:
       target: external-system
       destination: >
@@ -164,6 +168,7 @@ automations:
     trigger_kind: weekly
     executor: github-actions
     workflow: .github/workflows/automation-repo-baseline.yml
+    external_trigger: scripts/server-timers/timers/repo-baseline-audit.cron
     output:
       target: external-system
       destination: "飞书知识库「GitHub 优质项目收录」多维表格：仓库基线体检"
@@ -188,6 +193,7 @@ automations:
     trigger_kind: weekly
     executor: github-actions
     workflow: .github/workflows/automation-frontier-watch.yml
+    external_trigger: scripts/server-timers/timers/frontier-watch.cron
     output:
       target: external-system
       destination: "Feishu Base「AI 工具」多维表格：前沿功能与插件灵感"
@@ -233,7 +239,7 @@ automations:
     # 谁敲钟。GitHub 的 schedule 在本仓库实测延迟 4-5 小时，对「必须赶在次日
     # 09:00 消费前落地」的任务太晚；改由自建服务器的 crontab 准点调
     # workflow_dispatch，workflow 自身的 cron 已移除。
-    external_trigger: automations/investdesk-quote-sync/deploy/server-trigger.cron
+    external_trigger: scripts/server-timers/timers/investdesk-quote-sync.cron
     output:
       target: external-system
       destination: "飞书多维表格：持仓价格表"

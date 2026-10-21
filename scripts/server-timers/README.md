@@ -87,7 +87,37 @@ sudo rm /etc/cron.d/<name> /etc/ai-capability-store/timers/<name>.cron
 
 ## 清单
 
-| 项目 | 文件 | 它做什么 | 谁执行 |
-|---|---|---|---|
-| investdesk | `investdesk-quote-sync.cron` | 敲 GitHub Actions（持仓价格同步）| root |
-| box2bitable | `box2bitable-observability.cron` | 在服务器本机跑观测日报 | ubuntu |
+| 项目 | 文件 | 它做什么 | 谁执行 | 时间（北京）|
+|---|---|---|---|---|
+| investdesk | `investdesk-quote-sync.cron` | 敲 GitHub Actions（持仓价格同步）| root | 工作日 20:00 |
+| box2bitable | `box2bitable-observability.cron` | 在服务器本机跑观测日报 | ubuntu | 每天 09:00 |
+| github-trending | `github-trending-daily.cron` | 敲 GitHub Actions（日报）| root | 每天 05:17 |
+| github-trending | `github-trending-weekly.cron` | 敲 GitHub Actions（周报）| root | 周日 19:17 |
+| github-portfolio | `github-portfolio-snapshot.cron` | 敲 GitHub Actions（作品集快照）| root | 每月 1 日 20:17 |
+| repo-health | `repo-discoverability.cron` | 敲 GitHub Actions（发现性体检）| root | 周一 20:00 |
+| repo-health | `repo-baseline-audit.cron` | 敲 GitHub Actions（基线体检）| root | 周一 09:00 |
+| frontier | `frontier-watch.cron` | 敲 GitHub Actions（前沿观察）| root | 周一 10:00 |
+
+### ⚠️ 迁过来时修掉了一个 8 小时偏差
+
+`github-trending-daily` / `github-trending-weekly` / `github-portfolio-snapshot`
+原来的 workflow 里写的是 GitHub 的 **UTC** cron，但注释把它们当成了北京时间：
+
+```text
+17 5 * * *  (UTC)  注释以为 05:17 Asia/Shanghai  实际 13:17 北京
+17 19 * * 0 (UTC)  注释以为 19:17 Asia/Shanghai  实际 次日 03:17 北京
+17 20 1 * * (UTC)  注释以为 20:17 Asia/Shanghai  实际 次日 04:17 北京
+```
+
+`github-trending-daily` 的注释明确写着它要「在 09:00 的 DSH 消费任务前 3h45m 跑完」——
+而 13:17 已经晚于 09:00。**也就是说这份日报一直比预期晚 8 小时。**
+
+搬进服务器后时间由我们自己的 crontab 控制，写的就是北京时间，这个偏差自然消失。
+
+### 一条检查防"名字写错"
+
+`validate_store.py` 会核对每个 `.cron` 里引用的 `automation-*.yml` 是否真的存在于
+`.github/workflows/`。为什么需要它：`.cron` 只是给 cron 读的文本，名字写错不会报错 ——
+cron 照常到点执行、脚本照常 POST、GitHub 返回 404，而那行日志没人看。
+
+**一个永远不会成功的定时器，看起来和正常的一模一样。**

@@ -7,19 +7,6 @@
 name: automation-github-trending-daily
 
 on:
-  schedule:
-    # 05:17 Asia/Shanghai — ~3h45m before the DSH consumer task at 09:00.
-    #
-    # Why so early: on 2026-10-18 the first scheduled run was QUEUED FOR 4h14m —
-    # cron said 08:17 CST, the run actually started at 12:31 CST — so the 09:00
-    # consumer found no data for the day and reported "云端数据缺失". GitHub
-    # documents that scheduled workflows may be delayed under load; a 43-minute
-    # buffer (the previous value) cannot absorb that.
-    #
-    # Still not minute 0: GitHub also defers schedules queued at the top of the
-    # hour under load.
-    - cron: "17 5 * * *"
-      timezone: "Asia/Shanghai"
   workflow_dispatch:
 
 permissions:

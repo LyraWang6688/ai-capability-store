@@ -1,0 +1,7 @@
+# GitHub 周报 —— 敲 GitHub Actions
+#
+# 时间：每周日 19:17（北京时间）。原本要说的是"在 20:00 的 DSH 消费任务前 43 分钟跑完"。
+# ⚠️ 原来 workflow 里的 UTC cron `17 19 * * 0` 实际是北京周一 03:17 —— 晚 8 小时。
+SHELL=/bin/bash
+PATH=/usr/local/bin:/usr/bin:/bin
+17 19 * * 0 root /usr/local/bin/ai-capability-store-dispatch automation-github-trending-weekly.yml

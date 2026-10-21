@@ -1,5 +1,23 @@
 # Server trigger — 让这个 automation 准点跑
 
+> **⚠️ 2026-10-22 起，钟已迁到 `scripts/server-timers/`。**
+>
+> 本目录里的 `server-trigger.sh` / `server-trigger.cron` 是**历史记录**，服务器上已不再使用：
+>
+> ```text
+> 旧：/usr/local/bin/investdesk-quote-sync-trigger  +  /etc/cron.d/investdesk-quote-sync
+> 新：/usr/local/bin/ai-capability-store-dispatch   +  /etc/ai-capability-store/timers/*.cron
+> ```
+>
+> 服务器上所有项目的钟现在集中在一个目录里（`ls /etc/ai-capability-store/timers/`），
+> 安装与运维见 [`scripts/server-timers/README.md`](../../../scripts/server-timers/README.md)。
+>
+> **下面这份文档保留下来，是因为它解释了"为什么不能用 GitHub 的 schedule"、
+> "为什么服务器只需要一个只读令牌"、"为什么命令不能直接写进 crontab"——
+> 那三条推理现在仍然成立，只是安装位置变了。**
+
+
+
 ## 为什么需要它
 
 这个 automation 由 GitHub Actions 执行，但**不再由 GitHub 的定时器触发**。
