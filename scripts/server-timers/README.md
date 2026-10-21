@@ -1,0 +1,93 @@
+# 服务器定时器总目录
+
+**所有项目的"钟"集中在这一处。** 每个项目一个 `.cron` 文件，不散落在
+`/etc/cron.d/` 和各自的 crontab 里。
+
+```text
+服务器：
+  /etc/ai-capability-store/
+    github-token                         ← 只读代码、只触发 Actions 的令牌
+    timers/                              ← 【总目录】
+      investdesk-quote-sync.cron
+      box2bitable-observability.cron
+      README.md
+  /etc/cron.d/                           ← cron 只读这里
+    investdesk-quote-sync         ← 由 install.sh 从总目录复制
+    box2bitable-observability     ← 同上
+```
+
+---
+
+## 为什么要有这个总目录
+
+### 1. 钟必须在 24 小时常驻的机器上
+
+```text
+放本机：关机就断，而且关机跨过时间点不会累积（cron 直接跳过）
+放服务器：不管本机开不开，任务都准点
+```
+
+### 2. GitHub 的 schedule 是 best-effort
+
+```text
+本仓库实测延迟 4-5 小时（workflow 注释里留着 "QUEUED FOR 4h14m"）
+        ↓
+而消费方 09:00 就要数据
+        ↓
+【所以钟换成自建服务器的 crontab：workflow_dispatch 会立刻开始，不走调度队列】
+```
+
+### 3. 集中以后，两件事变得可查
+
+```text
+"这台机器上到底有哪些定时任务？"   → ls /etc/ai-capability-store/timers/
+"某条链的钟在哪？"                → grep -r <项目名> /etc/ai-capability-store/timers/
+```
+
+以前答案是："`/etc/cron.d/` 里翻一遍 + 每个用户的 crontab 各看一遍 + 再想想有没有 systemd timer"。
+
+---
+
+## 为什么 `cron.d` 里还是复制而不是软链
+
+**cron 只读 `/etc/cron.d/`，这一层绕不过去。** 总目录是源，`install.sh` 负责复制到
+`/etc/cron.d/` —— 不用软链，因为 Debian 的 cron 会检查文件的属主与权限，软链会让
+"检查的是谁"变成一个需要解释的问题。
+
+---
+
+## 为什么命令写在脚本里，不直接写进 cron
+
+`crontab` 里 **未转义的 `%` 会被换成换行**，而且**第一个 `%` 之后的所有内容会作为
+stdin 传给命令**。`curl -w '%{http_code}'` 正好含 `%` —— 直接写会让整行被截断成
+shell 语法错误，而且是**静默失效**：cron 只在本地邮件里报错。
+
+第一版就是这么写的，装上去之后每天 20:00 悄悄失败。
+
+---
+
+## 装 / 改 / 卸
+
+```bash
+# 装（幂等，可反复跑）
+bash scripts/server-timers/install.sh
+
+# 改了一个 .cron 之后
+bash scripts/server-timers/install.sh
+sudo systemctl reload cron     # 或 service cron reload
+
+# 卸掉某个项目
+sudo rm /etc/cron.d/<name> /etc/ai-capability-store/timers/<name>.cron
+```
+
+**`install.sh` 只复制 `.cron` 文件**，脚本本身（`dispatch.sh` 等）装到
+`/usr/local/bin/`，两者分开 —— 改时间不用重装脚本，改脚本不用动时间。
+
+---
+
+## 清单
+
+| 项目 | 文件 | 它做什么 | 谁执行 |
+|---|---|---|---|
+| investdesk | `investdesk-quote-sync.cron` | 敲 GitHub Actions（持仓价格同步）| root |
+| box2bitable | `box2bitable-observability.cron` | 在服务器本机跑观测日报 | ubuntu |
