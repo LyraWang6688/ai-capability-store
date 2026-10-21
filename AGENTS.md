@@ -21,6 +21,10 @@ Any Agent (human or AI) modifying this repository MUST read, in order, before ma
    `automations/LIFECYCLE.md`)
 10. The current target entity (skill / capability / dependency record) before editing it
 
+Cross-Domain explanations live in `docs/` — handoffs next to the work they describe
+(e.g. `orchestrations/scheduled-task/HANDOFF.md`), external-dependency problems in
+`docs/known-issues/`. `docs/` holds no assets and no policy.
+
 AGENTS.md is the Control Plane / Router. It does NOT duplicate policy.
 Domain-specific policy lives in the Domain directories.
 
@@ -34,6 +38,7 @@ Domain-specific policy lives in the Domain directories.
 | Add / change an Automation (scheduled or event-driven job) | `automations/` |
 | Record a Skill ↔ External Capability dependency | `dependencies/capability-map.yaml` |
 | Change store-wide policy | top-level policy files |
+| Record an explanation that spans Domains (handoff, known external issue) | `docs/` |
 
 Skills, External Capabilities, Automations and Orchestrations are **peer Domains**.
 
