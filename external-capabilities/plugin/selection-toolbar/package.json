@@ -1,6 +1,6 @@
 {
   "name": "@lyra_wang/dsh-selection-toolbar",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "description": "Floating toolbar on selected text in the DSH conversation: copy / follow up / collect to Feishu / deliver to the inbox Base / rewrite.",
   "license": "MIT",
   "type": "module",
