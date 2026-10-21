@@ -100,3 +100,17 @@ steps:
 
 **任务名不能和它引用的资产重名** —— 否则 tag 也会重名
 （`investdesk-quote-sync` 是 automation 的名字，所以那条编排叫 `investdesk-daily-report`）。
+
+---
+
+## 两个模式各自的通用流程
+
+| 模式 | 通用流程 |
+|---|---|
+| `scheduled-task/` | **五段**：① 敲钟 → ② 执行 → ③ 推事件 → ④ 消费 → ⑤ 执行 skill |
+| `manual/` | 没有钟：人触发 → 调几个资产 → 交付 |
+
+见各自的 `README.md`。
+
+**五段是骨架，`steps` 是可校验的落点。** 一个 automation 可能把 ②③④ 全包在内部，
+那时它们只能共享一个 `use:` —— 具体编排不必凑够五段。
