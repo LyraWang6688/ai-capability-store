@@ -16,7 +16,7 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/LyraWang6688/ai-capability-store.git",
-    "directory": "external-capabilities/plugin/image-ocr"
+    "directory": "external-capabilities/plugin/dsh/image-ocr"
   },
   "exports": {
     ".": "./index.js",

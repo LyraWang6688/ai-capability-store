@@ -53,6 +53,31 @@ If that policy ever changes, the schema must gain an **explicit hosting
 declaration** (a required enum field). Do not infer intent from a missing
 `implementation_path` — that is precisely the ambiguity this policy removes.
 
+### Ecosystem layer (`<shelf>/<ecosystem>/…`)
+
+A shelf may hold one optional extra level for **ecosystems** — a group of assets that
+belong to the same platform. It exists because three plugins are all `@lyra_wang/dsh-*`
+and their kinship is not a guess:
+
+```text
+external-capabilities/plugin/dsh/
+  selection-toolbar/    @lyra_wang/dsh-selection-toolbar
+  image-ocr/            @lyra_wang/dsh-image-ocr
+  feishu-ref/           @lyra_wang/dsh-feishu-ref
+```
+
+**Ecosystem names are a closed set** (`CAPABILITY_ECOSYSTEMS` in
+`scripts/validate_store.py`), for the same reason shelves are: adding one is a
+classification decision, not something that should arrive by someone creating a
+directory.
+
+The rules inside an ecosystem are exactly the shelf rules — kebab-case, and every
+directory must be pointed at by some registry entry. A directory nobody registered is an
+asset nobody governs, whichever depth it sits at.
+
+The layer is **optional on purpose**. Only `plugin/` currently needs it; forcing all four
+shelves to grow a level would add depth to eight assets that need no grouping.
+
 Store-managed implementations live under a **shelf**: `mcp/` for MCP servers,
 `connectors/` for deployments that connect two systems rather than expose tools,
 and `cli/` / `api/` / `plugin/` when a real asset of that shape appears. The

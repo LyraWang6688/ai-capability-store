@@ -174,6 +174,14 @@ NON_ASSET_DIR_NAMES = {"__pycache__", "node_modules", "dist", ".venv", ".git"}
 RESERVED_CAPABILITY_DIRS = {"providers", "use-cases"}
 CAPABILITY_SHELVES = {"mcp", "connectors", "cli", "api", "plugin"}
 
+# 生态层：货架下的【可选】一层，按"这个资产属于哪个生态"分组。
+# 名字是封闭集合，理由和 CAPABILITY_SHELVES 一样 —— 新增一个生态是一次分类决策，
+# 不该由某人随手建个目录来引入。
+#
+# 为什么是可选而不是必选：现在只有 plugin/ 下的三个 DSH 插件需要分组，
+# 其它货架暂时平的。强制所有货架都加一层会让 8 个不需要分类的资产凭空多一级。
+CAPABILITY_ECOSYSTEMS = {"dsh"}
+
 KEBAB_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 VERSION_RE = re.compile(r"^\d+\.\d+\.\d+$")
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
@@ -1238,8 +1246,28 @@ def main() -> int:
                 for child in sorted(os.listdir(full)):
                     if child.startswith(".") or child in NON_ASSET_DIR_NAMES:
                         continue
-                    if not os.path.isdir(os.path.join(full, child)):
+                    child_full = os.path.join(full, child)
+                    if not os.path.isdir(child_full):
                         continue
+
+                    # 生态层：名字在 CAPABILITY_ECOSYSTEMS 里就当成"生态"而不是资产，
+                    # 往下再走一层。两层的规则完全一样（kebab + 必须已注册），
+                    # 所以一个生态里偷偷放个未登记的目录，一样会被抓住。
+                    if child in CAPABILITY_ECOSYSTEMS:
+                        for asset in sorted(os.listdir(child_full)):
+                            if asset.startswith(".") or asset in NON_ASSET_DIR_NAMES:
+                                continue
+                            if not os.path.isdir(os.path.join(child_full, asset)):
+                                continue
+                            asset_rel = f"{rel}/{child}/{asset}"
+                            check(f"capability directory kebab-case: {asset_rel}",
+                                  bool(KEBAB_RE.match(asset)), asset)
+                            check(f"capability directory is registered: {asset_rel}",
+                                  asset_rel in registered_impls,
+                                  "directory exists under a capability ecosystem but no "
+                                  "registry entry points at it")
+                        continue
+
                     child_rel = f"{rel}/{child}"
                     check(f"capability directory kebab-case: {child_rel}",
                           bool(KEBAB_RE.match(child)), child)
