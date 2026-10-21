@@ -118,20 +118,14 @@ bash install.sh   # 生成 ~/.local/bin/chrome-frequent-pages 并注册每周一
 python3 main.py --bookmarks-from-table ~/Desktop/常用网页书签.html
 ```
 
-按表里的 `分类` 列分组：
+按表里的 `分类` 列生成**同级**文件夹（都在书签栏一层）：
 
 ```
-常用网页
-├── 工作
-│   ├── 飞书管理后台 → scnzoiwpgxik.feishu.cn
-│   ├── 组队会议分析 → meeting.bamamei.online
-│   └── …
-├── 学习
-│   ├── Wind Alice 金融数据 → alice.wind.com.cn
-│   └── …
-└── 工具
-    ├── GitHub → github.com
-    └── …
+书签栏
+├── 常用网页   （全部 27 条，平铺）
+├── 工作       （9 条）
+├── 学习       （3 条）
+└── 工具       （15 条）
 ```
 
 没填分类的域名会进「其他」。
