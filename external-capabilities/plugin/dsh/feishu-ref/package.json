@@ -1,6 +1,6 @@
 {
   "name": "@lyra_wang/dsh-feishu-ref",
-  "version": "0.3.5",
+  "version": "0.3.6",
   "description": "Composer + button: search your Feishu docs / bitables and insert the link into the DSH input box.",
   "license": "MIT",
   "type": "module",
@@ -43,8 +43,7 @@
       "platform": "web",
       "immediately": true,
       "inject": [
-        "@deepseek-ai/dsh-client-ui-layout",
-        "@deepseek-ai/dsh-client-ui-sidebar-right"
+        "@deepseek-ai/dsh-client-ui-layout"
       ]
     }
   }
