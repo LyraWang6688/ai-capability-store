@@ -175,13 +175,22 @@ window.__ModuleLoader__.load({
         } catch (err) {
           if (navigator.clipboard) navigator.clipboard.writeText(text);
         }
-        // 顺手在右侧内置浏览器打开这个文档（服务不存在时静默跳过）。
+        // 顺手在右侧内置浏览器打开这个文档（服务/面板不可用时只记日志，不影响插入）。
         try {
-          if (sidebarRight && typeof sidebarRight.openTab === 'function') {
-            sidebarRight.openTab('browser', { params: { url: item.url }, revealIfOpened: true });
+          if (sidebarRight) {
+            const anchor = btnRef.current || null;
+            if (typeof sidebarRight.commandTarget === 'function' && typeof sidebarRight.openTabFromTarget === 'function') {
+              const target = sidebarRight.commandTarget(anchor);
+              if (target) sidebarRight.openTabFromTarget('browser', target);
+              else if (typeof sidebarRight.openTab === 'function') sidebarRight.openTab('browser', { params: { url: item.url }, revealIfOpened: true });
+            } else if (typeof sidebarRight.openTab === 'function') {
+              sidebarRight.openTab('browser', { params: { url: item.url }, revealIfOpened: true });
+            }
+          } else if (typeof console !== 'undefined') {
+            console.warn('[feishu-ref] sidebarRight service unavailable');
           }
         } catch (err) {
-          /* 浏览器面板不可用时不影响链接插入 */
+          if (typeof console !== 'undefined') console.warn('[feishu-ref] open browser failed:', err);
         }
         close();
       };
@@ -300,7 +309,7 @@ window.__ModuleLoader__.load({
     return {
       inject: ['slots', 'sidebarRight'],
       apply(ctx) {
-        const sidebarRight = typeof ctx.get === 'function' ? ctx.get('sidebarRight') : undefined;
+        const sidebarRight = ctx.sidebarRight || (typeof ctx.get === 'function' ? ctx.get('sidebarRight') : undefined);
         ctx.slots.inject('conversation.input.left', () => ctx.slots.register({
           name: 'conversation.input.left',
           id: 'feishu-ref',
