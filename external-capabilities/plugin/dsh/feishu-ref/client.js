@@ -83,7 +83,7 @@ window.__ModuleLoader__.load({
       return date.toISOString().slice(0, 10);
     }
 
-    function FeishuRef(props, serviceRef) {
+    function FeishuRef(props, serviceRef, ctx) {
       const inputActions = props && props.inputActions;
       const [open, setOpen] = useState(false);
       const [query, setQuery] = useState('');
@@ -160,10 +160,23 @@ window.__ModuleLoader__.load({
         return () => clearTimeout(timer);
       }, [query, open]);
 
+      const resolveSidebarService = () => {
+        try {
+          if (ctx && ctx.reflect && typeof ctx.reflect.get === 'function') {
+            const svc = ctx.reflect.get('sidebarRight', false);
+            if (svc) return svc;
+          }
+        } catch (err) { /* ignored */ }
+        try {
+          if (ctx && typeof ctx.get === 'function') return ctx.get('sidebarRight') || null;
+        } catch (err) { /* ignored */ }
+        return null;
+      };
+
       const openInSidebar = (url, fail) => {
         const getService = () => {
           if (serviceRef && serviceRef.current) return serviceRef.current;
-          const svc = resolveService();
+          const svc = resolveSidebarService();
           if (svc) serviceRef.current = svc;
           return svc;
         };
@@ -349,7 +362,7 @@ window.__ModuleLoader__.load({
           name: 'conversation.input.left',
           id: 'feishu-ref',
           order: 2,
-        }, (props) => h(FeishuRef, props, serviceRef)));
+        }, (props) => h(FeishuRef, props, serviceRef, ctx)));
       },
     };
   },
