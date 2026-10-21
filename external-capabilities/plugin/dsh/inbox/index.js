@@ -9,7 +9,7 @@ import { homedir } from 'node:os';
 
 export const inject = ['webServer', 'subprocess'];
 
-const BASE_TOKEN = process.env.DSH_INBOX_BASE_TOKEN || 'ZNjDb9TrpalLuCsw0macCeVdnld';
+const BASE_TOKEN = process.env.DSH_INBOX_BASE_TOKEN || 'NeujbbOfcaPEvMsPIxscaJImn9d';
 const TABLE_ID = process.env.DSH_INBOX_TABLE_ID || 'tbl9LghPBTjFLH4N';
 const TASK_TABLE_ID = process.env.DSH_INBOX_TASK_TABLE_ID || 'tbl4k7ggY1paqoUn';
 const IDENTITY = process.env.DSH_INBOX_IDENTITY || 'user';
