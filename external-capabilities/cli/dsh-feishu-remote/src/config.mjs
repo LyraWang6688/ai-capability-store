@@ -11,6 +11,7 @@ export const ROOT_DIR = process.env.DSH_FEISHU_REMOTE_HOME || join(HOME, '.dsh-f
 export const CONFIG_PATH = join(ROOT_DIR, 'config.json');
 export const LOG_DIR = join(ROOT_DIR, 'logs');
 export const STATE_PATH = join(ROOT_DIR, 'state.json');
+export const ENV_FILE = join(ROOT_DIR, 'env');
 export const SERVICE_SCRIPT = join(ROOT_DIR, 'service.sh');
 export const PLIST_LABEL = 'com.lyrawang.dsh-feishu-remote';
 
