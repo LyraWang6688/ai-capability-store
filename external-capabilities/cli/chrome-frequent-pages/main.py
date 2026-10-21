@@ -214,44 +214,62 @@ def lark(args):
     return payload
 
 
-def existing_urls(cfg):
-    # 读失败必须中止：按空表处理会重复插入（0.2.1 就是这样写出了两倍的记录）。
+def existing_domains(cfg):
+    # 表结构是「一行一个域名」；读失败必须中止，避免重复插入。
     data = lark(["base", "+record-list", "--base-token", cfg["base_token"], "--table-id", cfg["table_id"], "--limit", "200"])
     meta = data.get("data") or {}
     cols = meta.get("fields") or []
     rows = meta.get("data") or []
     ids = meta.get("record_id_list") or []
-    if "URL" not in cols:
-        return {}
+    if "域名" not in cols:
+        raise SystemExit("表里没有「域名」列；请检查表结构")
     idx = {name: i for i, name in enumerate(cols)}
     out = {}
     for rid, row in zip(ids, rows):
-        url = str(row[idx["URL"]] or "").strip()
-        if url:
-            out[url] = rid
+        host = str(row[idx["域名"]] or "").strip()
+        if host:
+            out[host] = rid
     return out
+
+
+def aggregate_by_host(items):
+    """把页面级结果压成域名级：访问次数求和，标题取访问最多的那页。"""
+    grouped = {}
+    for item in items:
+        host = item["host"]
+        rec = grouped.get(host)
+        if rec is None:
+            grouped[host] = {
+                "域名": host,
+                "访问次数": item["visits"],
+                "标题": (item["title"] or host)[:80],
+                "_top": item["visits"],
+            }
+        else:
+            rec["访问次数"] += item["visits"]
+            if item["visits"] > rec["_top"]:
+                rec["_top"] = item["visits"]
+                rec["标题"] = (item["title"] or host)[:80]
+    rows = sorted(grouped.values(), key=lambda r: r["访问次数"], reverse=True)
+    for row in rows:
+        row.pop("_top", None)
+    return rows
 
 
 def write_table(cfg, items):
     if not cfg["base_token"] or not cfg["table_id"]:
         raise SystemExit("配置里缺 base_token / table_id")
-    today = datetime.now().strftime("%Y-%m-%d")
-    known = existing_urls(cfg)
+    known = existing_domains(cfg)
     create, update = [], []
-    for item in items:
+    for row in aggregate_by_host(items):
         record = {
-            "URL": item["url"],
-            "标题": item["title"] or item["host"],
-            "域名": item["host"],
-            "访问次数": item["visits"],
-            "最近访问": item["last_iso"],
+            "域名": row["域名"],
+            "标题": row["标题"],
+            "访问次数": row["访问次数"],
             "状态": ["已收录"],
-            "来源": "chrome-history",
-            "收录日期": today,
         }
-        if item["url"] in known:
-            record["状态"] = ["已收录"]
-            update.append((known[item["url"]], record))
+        if row["域名"] in known:
+            update.append((known[row["域名"]], record))
         else:
             create.append(record)
 
