@@ -62,3 +62,43 @@ automation is triggered by a clock.
 | Store registry routing | `registry.yaml` (top level, router only) |
 
 A single core fact is maintained in exactly one registry. Do not duplicate Domain state into the top level.
+
+## Local Consumption — the Store is the Only Source
+
+This machine develops assets **only here**. An asset's source must exist exactly once:
+in this repository. Local machines consume published artifacts, never a second copy of the source.
+
+### Hard rules
+
+| Rule | Meaning |
+|---|---|
+| No source copies outside the Store | No clones, vendored copies, "temp" dev directories, or backups of an asset's code under `~/Documents`, `~/Desktop`, or another project. |
+| Local use goes through npm | CLIs, plugins and MCP servers are installed from the published package (`npm i -g --prefix ~/.local @lyra_wang/<pkg>@<version>`), not by running a path inside this repository. |
+| DSH plugins via npm only | `dsh plugin --profile <p> add <npm-tarball-or-name>`. Installing by local path is a development shortcut only and must be removed before the work is done. |
+| Runtime directories hold data, not code | `~/.command-sync`, `~/.mac-cleanup`, `~/.dsh-feishu-remote`, `~/.ai-quote-clip`, `~/.config/chrome-frequent-pages` may hold config, logs and snapshots. Any script in them must be a **symlink** to the installed npm package, never a copied file. |
+| Skills are the one documented exception | `~/.agents/skills/<name>` is a symlink into `skills/<name>`. Skills are declarative files an agent reads, not executable packages. Publish a Skill to npm only when a non-local consumer needs it (`npx skills add`). |
+
+### Upgrade procedure
+
+```
+edit here → bump version (+ registry + tag) → npm publish → install from npm → restart / rerun the asset's install command
+```
+
+For command-sync, rerun `command-sync install` after upgrading so `~/.command-sync/bin/palette.py`
+is re-linked to the new npm package.
+
+### Audit checklist (run before calling the work done)
+
+```bash
+# 1) no source copies outside the Store
+find ~/Documents/workplace -maxdepth 4 \( -name .git -o -path "*ai-capability-store*" \) -prune -o \
+  -type d \( -name selection-toolbar -o -name feishu-ref -o -name image-ocr -o -name command-sync \
+  -o -name ai-quote-clip -o -name mac-cleanup \) -print
+
+# 2) installed packages are real npm installs, not symlinks into this repo
+ls -la ~/.local/lib/node_modules/@lyra_wang
+ls -la ~/.local/bin/{chrome-frequent-pages,command-sync,mac-cleanup,ai-quote-clip}
+
+# 3) runtime scripts are symlinks, not copies
+ls -la ~/.command-sync/bin
+```
