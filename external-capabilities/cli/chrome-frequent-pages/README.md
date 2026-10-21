@@ -75,7 +75,7 @@ python3 main.py --days 30 --min-visits 5      # 临时调窗口与阈值
 | 字段 | 写入内容 |
 |---|---|
 | `域名` | host（判重键）|
-| `标题` | 与 `域名` 相同（按操作者要求）|
+| `标题` | 取 `domain_labels` 里的中文说明；没有配置时退回域名 |
 | `访问次数` | 该域名所有页面的访问次数之和 |
 | `状态` | `已收录` |
 
@@ -102,6 +102,17 @@ python3 main.py --days 30 --min-visits 5      # 临时调窗口与阈值
 ```bash
 bash install.sh   # 生成 ~/.local/bin/chrome-frequent-pages 并注册每周一 09:30 的 launchd 任务
 ```
+
+## 中文标签（domain_labels）
+
+```json
+"domain_labels": {
+  "meeting.bamamei.online": "组队会议分析",
+  "github.com": "GitHub"
+}
+```
+
+表里的 `标题` 列与导出的书签名称都优先用这里的文字；没配置的域名退回域名本身。
 
 ## 书签：按「域名」导出
 

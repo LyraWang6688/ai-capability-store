@@ -34,6 +34,7 @@ DEFAULT_CONFIG = {
     "table_id": "",
     "identity": "user",
     "ignored_urls_file": os.path.join(HOME, ".config", "chrome-frequent-pages", "ignored_urls.txt"),
+    "domain_labels": {},
     "rules": {
         # 只保留一条：娱乐影视整站丢弃；其余精细规则已按需求移除
         "drop_hosts": ["yfsp.tv", "iyf.tv", "yifan.tv", "tv.cctv.com"],
@@ -232,8 +233,9 @@ def existing_domains(cfg):
     return out
 
 
-def aggregate_by_host(items):
-    """把页面级结果压成域名级：访问次数求和，标题取访问最多的那页。"""
+def aggregate_by_host(items, labels=None):
+    """把页面级结果压成域名级：访问次数求和，标题用中文标签（缺省退回域名）。"""
+    labels = labels or {}
     grouped = {}
     for item in items:
         host = item["host"]
@@ -242,15 +244,14 @@ def aggregate_by_host(items):
             grouped[host] = {
                 "域名": host,
                 "访问次数": item["visits"],
-                # 标题统一用域名（按操作者要求：书签/表格一眼对齐域名）
-                "标题": host,
+                "标题": labels.get(host) or host,
                 "_top": item["visits"],
             }
         else:
             rec["访问次数"] += item["visits"]
             if item["visits"] > rec["_top"]:
                 rec["_top"] = item["visits"]
-                rec["标题"] = host
+                rec["标题"] = labels.get(host) or host
     rows = sorted(grouped.values(), key=lambda r: r["访问次数"], reverse=True)
     for row in rows:
         row.pop("_top", None)
@@ -262,7 +263,7 @@ def write_table(cfg, items):
         raise SystemExit("配置里缺 base_token / table_id")
     known = existing_domains(cfg)
     create, update = [], []
-    for row in aggregate_by_host(items):
+    for row in aggregate_by_host(items, cfg.get("domain_labels") or {}):
         record = {
             "域名": row["域名"],
             "标题": row["标题"],
@@ -292,6 +293,7 @@ def bookmarks_from_table(cfg, path):
     if "域名" not in cols:
         raise SystemExit("表里没有「域名」列")
     idx = {name: i for i, name in enumerate(cols)}
+    labels = cfg.get("domain_labels") or {}
     hosts = sorted({str(row[idx["域名"]]).strip() for row in rows if str(row[idx["域名"]]).strip()})
     lines = [
         "<!DOCTYPE NETSCAPE-Bookmark-file-1>",
@@ -303,7 +305,8 @@ def bookmarks_from_table(cfg, path):
         "    <DL><p>",
     ]
     for host in hosts:
-        lines.append(f'        <DT><A HREF="https://{html.escape(host)}/">{html.escape(host)}</A>')
+        name = labels.get(host) or host
+        lines.append(f'        <DT><A HREF="https://{html.escape(host)}/">{html.escape(name)}</A>')
     lines += ["    </DL><p>", "</DL><p>"]
     with open(os.path.expanduser(path), "w", encoding="utf-8") as fh:
         fh.write("\n".join(lines) + "\n")
