@@ -71,16 +71,19 @@ class TestNaming(unittest.TestCase):
             return {"count": 10, "top_name": "x/y", "top_star": 1}
         self.assertEqual(self._analyze(fake)["status"], "FAIL")
 
-    def test_ecosystem_is_context_not_score(self):
+    def test_no_ecosystem_column(self):
+        """「可借的生态」列已删除 —— 它给不出能让人听懂的解释。
+
+        mac  → awesome-mac（软件清单，不是 Mac 生态）
+        geo  → pytorch_geometric（geo 只是 geometric 的一部分）
+        repo → repomix（repo 只是 repomix 的一部分）
+        store → TrollStore（iOS 商店）
+        """
         def fake(term):
-            if term == "mac-cleanup-guard":
-                return {"count": 0, "top_name": "", "top_star": 0}
-            if term == "mac":
-                return {"count": 1000000, "top_name": "jaywcjlove/awesome-mac", "top_star": 116563}
-            return {"count": 10, "top_name": "", "top_star": 0}
+            return {"count": 0, "top_name": "", "top_star": 0}
         result = self._analyze(fake)
-        self.assertIsNotNone(result["ecosystem"], "应报告可借的生态")
-        self.assertEqual(result["status"], "PASS", "借势不加分也不扣分")
+        self.assertNotIn("ecosystem", result, "这一列已删除，不该再出现在结果里")
+
 
     def test_tokens_split_on_hyphen_and_underscore(self):
         self.assertEqual(nm.tokens("mac_cleanup-guard"), ["mac", "cleanup", "guard"])

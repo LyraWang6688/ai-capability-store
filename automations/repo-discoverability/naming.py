@@ -125,19 +125,20 @@ def analyze(name: str) -> dict:
             "含泛词（" + "、".join(f"{g['token']}({g['count']:,})" for g in generic)
             + "）—— 单独搜这个词轮不到你，你的机会在整串精确匹配")
 
-    # "Clinging to a hot ecosystem" is context, not a score.
-    ecosystem = None
-    if len(parts) > 1:
-        parent = search(parts[0])
-        if parent["count"] >= 100 and parent["top_star"] >= 1000:
-            ecosystem = {"token": parts[0], "top_name": parent["top_name"],
-                         "top_star": parent["top_star"], "count": parent["count"]}
+    # 「可借的生态」这一列删掉了。
+    #
+    # 它原本想回答「能不能借势」，实际测的是「这个词出现在哪个最热门的仓库名里」：
+    #   mac  → awesome-mac（一个软件推荐清单，不是 Mac 生态）
+    #   geo  → pytorch_geometric（geo 只是 geometric 的一部分）
+    #   repo → repomix（repo 只是 repomix 的一部分）
+    #   store → TrollStore（iOS 越狱商店，和能力仓库无关）
+    # 四行里没有一行能给出人能听懂的解释。误导比没有更糟。
 
     status = "FAIL" if problems else "PASS"
     return {"name": name, "status": status, "tokens": parts,
             "collisions": full["count"], "top_name": full["top_name"],
             "top_star": full["top_star"], "generic_tokens": generic,
-            "ecosystem": ecosystem, "problems": problems, "notes": notes}
+            "problems": problems, "notes": notes}
 
 
 def public_repos(owner: str) -> list[str]:
@@ -146,23 +147,29 @@ def public_repos(owner: str) -> list[str]:
 
 
 def store_assets(store: str) -> list[str]:
-    """Asset names inside a capability store — they are publishable projects too."""
-    names = []
-    for sub in ("skills", "external-capabilities"):
-        root = os.path.join(store, sub)
-        if not os.path.isdir(root):
+    """Asset names registered in a capability store.
+
+    Reads the registries, not the directory tree. Scanning directories picked up
+    `providers/wechat` and `providers/feishu` — platform metadata, not publishable
+    assets — and those two promptly became the worst-scoring "names" in the whole
+    table simply because `wechat` and `feishu` are common words. A false alarm in
+    the report is worse than a missing row.
+
+    The registry is the source of truth for what an asset is.
+    """
+    names: list[str] = []
+    for rel, key in (("skills/registry.yaml", "skills"),
+                     ("external-capabilities/registry.yaml", "capabilities")):
+        path = os.path.join(store, rel)
+        if not os.path.isfile(path):
             continue
-        for entry in sorted(os.listdir(root)):
-            path = os.path.join(root, entry)
-            if not os.path.isdir(path) or entry.startswith("."):
-                continue
-            if sub == "external-capabilities":
-                for child in sorted(os.listdir(path)):
-                    cpath = os.path.join(path, child)
-                    if os.path.isdir(cpath) and not child.startswith("."):
-                        names.append(child)
-            else:
-                names.append(entry)
+        try:
+            import yaml  # noqa: PLC0415 — 只有这个函数需要
+            with open(path, encoding="utf-8") as handle:
+                data = yaml.safe_load(handle) or {}
+        except Exception:
+            continue
+        names.extend(sorted((data.get(key) or {}).keys()))
     return names
 
 
@@ -171,10 +178,6 @@ def render(result: dict) -> None:
     print(f"  {icon} {result['name']}")
     print(f"      近名 {result['collisions']} 个 · 第一名 "
           f"{result['top_name'] or '—'} ⭐{result['top_star']:,}")
-    if result["ecosystem"]:
-        e = result["ecosystem"]
-        print(f"      生态借势：`{e['token']}` 对应 {e['top_name']} ⭐{e['top_star']:,}"
-              f"（{e['count']:,} 个仓库用这个词）—— 只是上下文，不加分也不扣分")
     for p in result["problems"]:
         print(f"      ✗ {p}")
     for n in result["notes"]:
