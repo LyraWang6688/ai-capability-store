@@ -15,6 +15,27 @@ window.__ModuleLoader__.load({
 
     const NS = '@lyra_wang/dsh-feishu-ref';
     const ROOT = 'dsh-feishu-ref';
+    const RECENT_KEY = NS + ':recent';
+    const RECENT_LIMIT = 3;
+    const RECENT_KEEP = 8;
+
+    function loadRecent() {
+      try {
+        const raw = window.localStorage.getItem(RECENT_KEY);
+        const list = raw ? JSON.parse(raw) : [];
+        return Array.isArray(list) ? list.filter((item) => item && item.url).slice(0, RECENT_KEEP) : [];
+      } catch {
+        return [];
+      }
+    }
+
+    function saveRecent(list) {
+      try {
+        window.localStorage.setItem(RECENT_KEY, JSON.stringify(list.slice(0, RECENT_KEEP)));
+      } catch {
+        /* localStorage 不可用时静默降级：不影响插入 */
+      }
+    }
 
     const CSS = `
       .${ROOT}-btn{all:unset;cursor:pointer;display:inline-flex;align-items:center;gap:5px;
@@ -34,6 +55,7 @@ window.__ModuleLoader__.load({
       .${ROOT}-item:hover,.${ROOT}-item[data-active="true"]{background:var(--dsw-alias-bg-layer-2,#3a3a41)}
       .${ROOT}-title{font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
       .${ROOT}-meta{font-size:11px;color:var(--dsw-alias-label-secondary,#9a9aa2);display:flex;gap:8px}
+      .${ROOT}-section{padding:8px 10px 4px;font-size:11px;color:var(--dsw-alias-label-secondary,#9a9aa2)}
       .${ROOT}-hint{padding:10px 12px;color:var(--dsw-alias-label-secondary,#9a9aa2);font-size:11.5px}
       .${ROOT}-err{color:#ff7a7a}
       .${ROOT}-badge{font-size:10px;padding:1px 5px;border-radius:5px;border:1px solid var(--dsw-alias-border-l1,#3a3a40)}
@@ -66,6 +88,7 @@ window.__ModuleLoader__.load({
       const [open, setOpen] = useState(false);
       const [query, setQuery] = useState('');
       const [items, setItems] = useState([]);
+      const [recent, setRecent] = useState([]);
       const [loading, setLoading] = useState(false);
       const [error, setError] = useState('');
       const [active, setActive] = useState(0);
@@ -107,6 +130,7 @@ window.__ModuleLoader__.load({
         }
         setOpen(true);
         setQuery('');
+        setRecent(loadRecent());
         search('');
       };
 
@@ -137,6 +161,9 @@ window.__ModuleLoader__.load({
       }, [query, open]);
 
       const choose = (item) => {
+        const next = [item].concat(loadRecent().filter((entry) => entry.url !== item.url)).slice(0, RECENT_KEEP);
+        saveRecent(next);
+        setRecent(next);
         const text = '[' + item.title + '](' + item.url + ') ';
         try {
           if (inputActions && typeof inputActions.captureInsertion === 'function' && typeof inputActions.insertText === 'function') {
@@ -151,6 +178,13 @@ window.__ModuleLoader__.load({
         close();
       };
 
+      const showRecent = open && query.trim() === '';
+      const recentRows = showRecent ? recent.slice(0, RECENT_LIMIT) : [];
+      const results = showRecent
+        ? items.filter((item) => !recentRows.some((entry) => entry.url === item.url))
+        : items;
+      const visibleRows = recentRows.concat(results);
+
       const onKeyDown = (event) => {
         if (event.key === 'Escape') {
           event.preventDefault();
@@ -159,7 +193,7 @@ window.__ModuleLoader__.load({
         }
         if (event.key === 'ArrowDown') {
           event.preventDefault();
-          setActive((index) => Math.min(index + 1, Math.max(items.length - 1, 0)));
+          setActive((index) => Math.min(index + 1, Math.max(visibleRows.length - 1, 0)));
           return;
         }
         if (event.key === 'ArrowUp') {
@@ -169,7 +203,7 @@ window.__ModuleLoader__.load({
         }
         if (event.key === 'Enter') {
           event.preventDefault();
-          const item = items[active];
+          const item = visibleRows[active];
           if (item) choose(item);
         }
       };
@@ -206,23 +240,47 @@ window.__ModuleLoader__.load({
           loading
             ? h('div', { key: 'loading', className: ROOT + '-hint' }, '搜索中…')
             : null,
-          h('div', { key: 'list', className: ROOT + '-list' }, items.map((item, index) => h('div', {
-            key: item.url,
-            className: ROOT + '-item',
-            'data-active': index === active ? 'true' : 'false',
-            onMouseEnter: () => setActive(index),
-            onMouseDown: (event) => {
-              event.preventDefault();
-              choose(item);
-            },
-          }, [
-            h('div', { key: 't', className: ROOT + '-title' }, item.title),
-            h('div', { key: 'm', className: ROOT + '-meta' }, [
-              h('span', { key: 'type', className: ROOT + '-badge' }, TYPE_LABEL[item.type] || item.type || '文档'),
-              h('span', { key: 'time' }, shortTime(item.editedAt)),
-            ]),
-          ]))),
-          items.length === 0 && !loading && error === ''
+          h('div', { key: 'list', className: ROOT + '-list' }, [
+            recentRows.length > 0
+              ? h('div', { key: 'recent-label', className: ROOT + '-section' }, '最近使用')
+              : null,
+            ...recentRows.map((item, index) => h('div', {
+              key: 'recent-' + item.url,
+              className: ROOT + '-item',
+              'data-active': index === active ? 'true' : 'false',
+              onMouseEnter: () => setActive(index),
+              onMouseDown: (event) => {
+                event.preventDefault();
+                choose(item);
+              },
+            }, [
+              h('div', { key: 't', className: ROOT + '-title' }, item.title),
+              h('div', { key: 'm', className: ROOT + '-meta' }, [
+                h('span', { key: 'type', className: ROOT + '-badge' }, TYPE_LABEL[item.type] || item.type || '文档'),
+                h('span', { key: 'time' }, shortTime(item.editedAt)),
+              ]),
+            ])),
+            recentRows.length > 0 && results.length > 0
+              ? h('div', { key: 'result-label', className: ROOT + '-section' }, showRecent ? '最近编辑' : '搜索结果')
+              : null,
+            ...results.map((item, index) => h('div', {
+              key: 'item-' + item.url,
+              className: ROOT + '-item',
+              'data-active': recentRows.length + index === active ? 'true' : 'false',
+              onMouseEnter: () => setActive(recentRows.length + index),
+              onMouseDown: (event) => {
+                event.preventDefault();
+                choose(item);
+              },
+            }, [
+              h('div', { key: 't', className: ROOT + '-title' }, item.title),
+              h('div', { key: 'm', className: ROOT + '-meta' }, [
+                h('span', { key: 'type', className: ROOT + '-badge' }, TYPE_LABEL[item.type] || item.type || '文档'),
+                h('span', { key: 'time' }, shortTime(item.editedAt)),
+              ]),
+            ])),
+          ]),
+          visibleRows.length === 0 && !loading && error === ''
             ? h('div', { key: 'empty', className: ROOT + '-hint' }, '没有找到文档，换个关键词试试')
             : null,
         ])
