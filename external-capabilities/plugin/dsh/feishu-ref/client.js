@@ -328,12 +328,8 @@ window.__ModuleLoader__.load({
     return {
       inject: ['slots'],
       apply(ctx) {
-        // 右侧栏服务可能比本插件晚就绪：用 ctx.inject 等它，存进 holder 供点击时读取。
-        const serviceRef = { current: null };
-        ctx.inject(['sidebarRight'], (scoped) => {
-          serviceRef.current = scoped.sidebarRight;
-          return () => { serviceRef.current = null; };
-        });
+        // sidebar-right 已通过 dsh.client.inject 声明为模块依赖，apply 时服务已就绪。
+        const serviceRef = { current: ctx.sidebarRight || (typeof ctx.get === 'function' ? ctx.get('sidebarRight') : null) };
         ctx.slots.inject('conversation.input.left', () => ctx.slots.register({
           name: 'conversation.input.left',
           id: 'feishu-ref',
