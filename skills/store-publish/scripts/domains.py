@@ -25,6 +25,10 @@ DOMAIN_ENTRY_KEYS = {
     "skills": "skills",
     "external_capabilities": "capabilities",
     "automations": "automations",
+    # 编排是一个【资产】域：每个编排各有 identity / path / version，
+    # 只是它没有实现代码，所以没有 package.json，--package 会跳过它。
+    # 但 --missing 要管它 —— 登记了版本就必须有 tag。
+    "orchestrations": "orchestrations",
 }
 
 # Routed in registry.yaml, but holds relationships between assets rather than

@@ -35,12 +35,13 @@ DEFAULT_CONFIG = {
     "identity": "user",
     "ignored_urls_file": os.path.join(HOME, ".config", "chrome-frequent-pages", "ignored_urls.txt"),
     "rules": {
-        "drop_hosts": [],
+        # 只保留一条：娱乐影视整站丢弃；其余精细规则已按需求移除
+        "drop_hosts": ["yfsp.tv", "iyf.tv", "yifan.tv", "tv.cctv.com"],
         "drop_url_contains": [],
         "root_only_hosts": [],
         "drop_titles": [],
         "keep_urls": [],
-        "one_per_host": False,
+        "one_per_host": True,
     },
 }
 
@@ -91,7 +92,8 @@ def normalize(url):
 
 
 def is_noise(url, host, exclude_hosts):
-    if not url.startswith(("http://", "https://")):
+    # 只看 https；http、file://、localhost 等本地页面一律不看
+    if not url.startswith("https://"):
         return True
     if not host:
         return True
@@ -205,50 +207,69 @@ def lark(args):
     result = subprocess.run(["lark-cli"] + args + ["--as", "user", "--format", "json"], capture_output=True, text=True, timeout=120)
     if result.returncode != 0:
         raise SystemExit("lark-cli 失败：" + (result.stderr or result.stdout).strip()[:400])
-    return json.loads(result.stdout or "{}")
+    payload = json.loads(result.stdout or "{}")
+    if payload.get("ok") is False:
+        err = payload.get("error") or {}
+        raise SystemExit("lark-cli 返回失败：" + str(err.get("message") or err)[:400])
+    return payload
 
 
-def existing_urls(cfg):
-    try:
-        data = lark(["base", "+record-list", "--base-token", cfg["base_token"], "--table-id", cfg["table_id"], "--limit", "500"])
-    except SystemExit as exc:
-        print(f"[提示] 读表失败，按空表处理：{exc}", file=sys.stderr)
-        return {}
+def existing_domains(cfg):
+    # 表结构是「一行一个域名」；读失败必须中止，避免重复插入。
+    data = lark(["base", "+record-list", "--base-token", cfg["base_token"], "--table-id", cfg["table_id"], "--limit", "200"])
     meta = data.get("data") or {}
     cols = meta.get("fields") or []
     rows = meta.get("data") or []
     ids = meta.get("record_id_list") or []
-    if "URL" not in cols:
-        return {}
+    if "域名" not in cols:
+        raise SystemExit("表里没有「域名」列；请检查表结构")
     idx = {name: i for i, name in enumerate(cols)}
     out = {}
     for rid, row in zip(ids, rows):
-        url = str(row[idx["URL"]] or "").strip()
-        if url:
-            out[url] = rid
+        host = str(row[idx["域名"]] or "").strip()
+        if host:
+            out[host] = rid
     return out
+
+
+def aggregate_by_host(items):
+    """把页面级结果压成域名级：访问次数求和，标题取访问最多的那页。"""
+    grouped = {}
+    for item in items:
+        host = item["host"]
+        rec = grouped.get(host)
+        if rec is None:
+            grouped[host] = {
+                "域名": host,
+                "访问次数": item["visits"],
+                "标题": (item["title"] or host)[:80],
+                "_top": item["visits"],
+            }
+        else:
+            rec["访问次数"] += item["visits"]
+            if item["visits"] > rec["_top"]:
+                rec["_top"] = item["visits"]
+                rec["标题"] = (item["title"] or host)[:80]
+    rows = sorted(grouped.values(), key=lambda r: r["访问次数"], reverse=True)
+    for row in rows:
+        row.pop("_top", None)
+    return rows
 
 
 def write_table(cfg, items):
     if not cfg["base_token"] or not cfg["table_id"]:
         raise SystemExit("配置里缺 base_token / table_id")
-    today = datetime.now().strftime("%Y-%m-%d")
-    known = existing_urls(cfg)
+    known = existing_domains(cfg)
     create, update = [], []
-    for item in items:
+    for row in aggregate_by_host(items):
         record = {
-            "URL": item["url"],
-            "标题": item["title"] or item["host"],
-            "域名": item["host"],
-            "访问次数": item["visits"],
-            "最近访问": item["last_iso"],
+            "域名": row["域名"],
+            "标题": row["标题"],
+            "访问次数": row["访问次数"],
             "状态": ["已收录"],
-            "来源": "chrome-history",
-            "收录日期": today,
         }
-        if item["url"] in known:
-            record["状态"] = ["已收录"]
-            update.append((known[item["url"]], record))
+        if row["域名"] in known:
+            update.append((known[row["域名"]], record))
         else:
             create.append(record)
 
@@ -259,6 +280,33 @@ def write_table(cfg, items):
         lark(["base", "+record-upsert", "--base-token", cfg["base_token"], "--table-id", cfg["table_id"],
               "--record-id", record_id, "--json", json.dumps(record, ensure_ascii=False)])
     return len(create), len(update)
+
+
+def bookmarks_from_table(cfg, path):
+    """把飞书表里每个唯一「域名」写成一个书签 HTML（https://域名/）。"""
+    data = lark(["base", "+record-list", "--base-token", cfg["base_token"], "--table-id", cfg["table_id"], "--limit", "200"])
+    meta = data.get("data") or {}
+    cols = meta.get("fields") or []
+    rows = meta.get("data") or []
+    if "域名" not in cols:
+        raise SystemExit("表里没有「域名」列")
+    idx = {name: i for i, name in enumerate(cols)}
+    hosts = sorted({str(row[idx["域名"]]).strip() for row in rows if str(row[idx["域名"]]).strip()})
+    lines = [
+        "<!DOCTYPE NETSCAPE-Bookmark-file-1>",
+        '<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=UTF-8">',
+        "<TITLE>Bookmarks</TITLE>",
+        "<H1>Bookmarks</H1>",
+        "<DL><p>",
+        "    <DT><H3>常用网页（域名）</H3>",
+        "    <DL><p>",
+    ]
+    for host in hosts:
+        lines.append(f'        <DT><A HREF="https://{html.escape(host)}/">{html.escape(host)}</A>')
+    lines += ["    </DL><p>", "</DL><p>"]
+    with open(os.path.expanduser(path), "w", encoding="utf-8") as fh:
+        fh.write("\n".join(lines) + "\n")
+    return hosts
 
 
 def write_html(items, path):
@@ -291,13 +339,20 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--dry-run", action="store_true", help="只打印结果")
     parser.add_argument("--write", action="store_true", help="写入飞书表")
-    parser.add_argument("--html", metavar="PATH", help="导出可导入 Chrome 的书签 HTML")
+    parser.add_argument("--html", metavar="PATH", help="导出可导入 Chrome 的书签 HTML（按页面链接）")
+    parser.add_argument("--bookmarks-from-table", metavar="PATH", help="按飞书表的「域名」列导出书签 HTML")
     parser.add_argument("--limit", type=int)
     parser.add_argument("--days", type=int)
     parser.add_argument("--min-visits", type=int)
     args = parser.parse_args()
 
     cfg = load_config()
+    if args.bookmarks_from_table:
+        hosts = bookmarks_from_table(cfg, args.bookmarks_from_table)
+        print(f"已按域名导出书签：{os.path.expanduser(args.bookmarks_from_table)}（{len(hosts)} 个域名）")
+        for host in hosts:
+            print("  -", host)
+        return 0
     for key in ("limit", "days", "min_visits"):
         if getattr(args, key) is not None:
             cfg[key] = getattr(args, key)

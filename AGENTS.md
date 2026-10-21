@@ -11,6 +11,7 @@ Any Agent (human or AI) modifying this repository MUST read, in order, before ma
 6. `RETIREMENT.md` (how to end an asset — the one operation that shrinks the Store)
 7. `registry.yaml` (top-level store router)
 8. The README of the Domain being touched:
+   - `orchestrations/README.md` for Orchestration Domain work
    - `skills/README.md` for Skill Domain work
    - `external-capabilities/README.md` for External Capability Domain work
    - `automations/README.md` for Automation Domain work
@@ -27,13 +28,26 @@ Domain-specific policy lives in the Domain directories.
 
 | Intent | Route |
 |---|---|
-| Add / change a Skill (how-to procedure / workflow) | `skills/` |
+| Add / change a Skill (how to do one thing) | `skills/` |
+| Add / change an Orchestration (in what order several things run, for one task) | `orchestrations/` |
 | Add / change an External Capability (plugin / MCP / connector / CLI / API / integration) | `external-capabilities/` |
 | Add / change an Automation (scheduled or event-driven job) | `automations/` |
 | Record a Skill ↔ External Capability dependency | `dependencies/capability-map.yaml` |
 | Change store-wide policy | top-level policy files |
 
-Skills, External Capabilities and Automations are **peer Domains**. A Plugin is NOT a
+Skills, External Capabilities, Automations and Orchestrations are **peer Domains**.
+
+What separates them is the question each one answers:
+
+| Domain | Question |
+|---|---|
+| `skills/` | **how** to do one thing |
+| `external-capabilities/` | **what** can be called |
+| `automations/` | **when** something runs (a clock) |
+| `orchestrations/` | **in what order** several of the above run, for one task |
+
+An orchestration only **references** the other three — it holds no implementation, no rules
+and no code. Changing how a step works still means changing it in its own Domain. A Plugin is NOT a
 sub-entity of a Skill. An Automation is NOT a Capability: a capability is called, an
 automation is triggered by a clock.
 
