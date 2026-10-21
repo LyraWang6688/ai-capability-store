@@ -40,12 +40,10 @@ dsh plugin --profile <profile> add @lyra_wang/dsh-feishu-ref
 - 面板打开时顶部显示最近 3 条，和搜索结果分组、不重复；
 - 只保存在本机浏览器里，不上传、不进仓库。
 
-## 0.3.0：选中后自动在右侧浏览器打开
 
 选中一条后：
 
 1. 链接插入输入框（保持原行为）；
 2. 同时调用 `sidebarRight.openTab('browser', { params: { url }, revealIfOpened: true })`，
-   在 DSH 右侧内置浏览器打开该文档。
 
 服务不存在或浏览器面板不可用时静默跳过，不影响插入。
