@@ -35,10 +35,11 @@ window.__ModuleLoader__.load({
         color:var(--dsw-alias-label-secondary,#9a9aa2);text-align:center;outline:none}
       .${ROOT}-drop[data-over="true"]{border-color:#4c8dff;background:rgba(76,141,255,.08)}
       .${ROOT}-drop img{max-width:100%;max-height:120px;border-radius:6px}
-      .${ROOT}-textarea{all:unset;box-sizing:border-box;width:100%;min-height:120px;max-height:260px;overflow:auto;
+      .${ROOT}-textarea{all:unset;box-sizing:border-box;display:block;width:100%;min-height:120px;max-height:260px;overflow:auto;
         padding:8px 10px;border-radius:8px;background:var(--dsw-alias-bg-layer-1,#1f1f23);
         border:1px solid var(--dsw-alias-border-l1,#3a3a40);color:var(--dsw-alias-label-primary,#e6e6e9);
-        font:12px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;white-space:pre-wrap;user-select:text}
+        font:12px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;white-space:pre-wrap;user-select:text;
+        resize:vertical}
       .${ROOT}-row{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
       .${ROOT}-action{all:unset;cursor:pointer;padding:5px 10px;border-radius:7px;
         background:var(--dsw-alias-bg-layer-2,#3a3a41);color:var(--dsw-alias-label-primary,#e6e6e9);font-size:12px}
@@ -82,6 +83,7 @@ window.__ModuleLoader__.load({
       const btnRef = useRef(null);
       const panelRef = useRef(null);
       const dropRef = useRef(null);
+      const textRef = useRef(null);
 
       const openPanel = () => {
         const rect = btnRef.current ? btnRef.current.getBoundingClientRect() : null;
@@ -169,21 +171,31 @@ window.__ModuleLoader__.load({
         return () => document.removeEventListener('keydown', onKey, true);
       }, [open]);
 
+      const selectedText = () => {
+        const el = textRef.current;
+        if (!el) return '';
+        const start = el.selectionStart ?? 0;
+        const end = el.selectionEnd ?? 0;
+        return start !== end ? text.slice(start, end) : '';
+      };
+
       const insert = () => {
-        if (text.trim() === '') return;
+        const payload = selectedText() || text;
+        if (payload.trim() === '') return;
         if (inputActions && typeof inputActions.captureInsertion === 'function' && typeof inputActions.insertText === 'function') {
           const span = inputActions.captureInsertion();
-          inputActions.insertText(text, span);
+          inputActions.insertText(payload, span);
           close();
         } else if (navigator.clipboard) {
-          navigator.clipboard.writeText(text);
+          navigator.clipboard.writeText(payload);
           close();
         }
       };
 
       const copy = () => {
-        if (text === '') return;
-        if (navigator.clipboard) navigator.clipboard.writeText(text);
+        const payload = selectedText() || text;
+        if (payload === '') return;
+        if (navigator.clipboard) navigator.clipboard.writeText(payload);
       };
 
       const button = h('button', {
@@ -243,7 +255,17 @@ window.__ModuleLoader__.load({
           busy ? h('div', { key: 'busy', className: ROOT + '-hint' }, '识别中…（第一次可能需要 30–60 秒编译引擎）') : null,
           error !== '' ? h('div', { key: 'err', className: ROOT + '-error' }, error) : null,
           text !== '' || busy
-            ? h('div', { key: 'out', className: ROOT + '-textarea' }, text)
+            ? h('textarea', {
+              key: 'out',
+              ref: textRef,
+              className: ROOT + '-textarea',
+              value: text,
+              spellCheck: false,
+              onChange: (event) => setText(event.target.value),
+            })
+            : null,
+          text !== ''
+            ? h('div', { key: 'select-hint', className: ROOT + '-hint' }, '可在结果里选中一段，再点「插入输入框」或「复制」只处理选中的部分')
             : null,
           h('div', { key: 'row', className: ROOT + '-row' }, [
             h('button', {
