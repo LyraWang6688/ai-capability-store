@@ -60,6 +60,18 @@ capabilities:
     permissions: "飞书侧需要 docs 与 base 两个资源域的读写授权（以 lark-cli profile 实际授权为准）；MCP 侧按工具分别要求 docs:read、docs:write、base:read、base:write。写操作另需 confirm=true"
     notes: "自研、Store-managed。来源仓库为独立 git 仓库，已通过 git subtree 导入并保留完整提交历史。status 取 limited：需要 lark-cli 1.0.93+ 与一个已认证的 profile，远端模式还需 Auth0 + HTTPS，并非装上即用。包内 .agents/skills/feishu-mcp-tool-extension/ 为开发资料，不在 Store Skill 域登记。不经 npm 分发：它是自托管 HTTP 服务（nginx + pm2 + OAuth），没有 bin，deploy/ 含生产基础设施标识 —— 见 PUBLISHING.md §D"
 
+  feishu-ref:
+    name: feishu-ref
+    provider: lyrawang
+    type: plugin
+    status: limited
+    provider_path: external-capabilities/providers/lyrawang/README.md
+    version: 0.1.0
+    implementation_path: external-capabilities/plugin/feishu-ref
+    auth: "无凭据入仓。复用操作者本机已认证的 lark-cli（用户身份）做只读搜索；插件不接收、不保存任何 token 或账号信息"
+    capabilities: "DSH 输入框左侧新增「＋ 引用」按钮：点击弹出面板，搜索飞书文档 / 多维表格 / 表格 / 知识库（留空看最近 30 天编辑），选中后把 Markdown 链接插入草稿（可撤销、不自动发送）。宿主侧只注册一个同源只读路由 `/plugins/feishu-ref/search`（POST），转发给 `lark-cli drive +search`"
+    permissions: "需要操作者本机安装并登录 lark-cli（用户身份，具备文档可见权限）；按钮与链接插入本身不需要额外权限。宿主侧不开放外部网络监听"
+    notes: "自研、Store-managed。0.1.0 首次登记：client 注册在 `conversation.input.left` 槽位（compact controls at the left of the composer tool row），order=2；插入走 `inputActions.captureInsertion()` + `insertText()`，属普通可撤销文本编辑。与 selection-toolbar 共用 DSH 的同源鉴权方式（`connection.requestRejection`）。搜索上限 30 字符（飞书 Search v2 限制），面板最多展示 12 条。理由说明：为什么不用系统「＋」菜单——菜单项是命令（host command），无法直接往输入框写文本，需要额外命令↔UI 桥接；自建按钮路径最短且失败可降级为复制链接"
   selection-toolbar:
     name: selection-toolbar
     provider: lyrawang
