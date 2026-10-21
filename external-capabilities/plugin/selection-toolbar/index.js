@@ -440,54 +440,50 @@ export function apply(ctx) {
   //
   // 脚本路径不在包里 —— skill 装在哪由操作者决定（默认 ~/.agents/skills/）。
   // 找不到就明确报错，而不是静默失败：一个点了没反应的按钮比没有按钮更糟。
-  const collectScript = () => {
-    const custom = process.env.DSH_REPO_COLLECTOR;
-    if (typeof custom === 'string' && custom.trim() !== '') return custom.trim();
-    return join(homedir(), '.agents', 'skills', 'repo-collector', 'scripts', 'collect_one.py');
+
+  /** Queue a full "collect this repo" task into the most recently active ordinary Session. */
+  const enqueueRepoCollect = async (project) => {
+    const controller = typeof ctx.get === 'function' ? ctx.get('sessionController') : undefined;
+    if (!controller || typeof controller.list !== 'function' || typeof controller.prompt !== 'function') {
+      return { queued: false, reason: 'sessionController unavailable' };
+    }
+    let sessions = [];
+    try {
+      const listed = await controller.list({}, new AbortController().signal);
+      sessions = Array.isArray(listed && listed.items) ? listed.items : [];
+    } catch (error) {
+      return { queued: false, reason: 'list failed: ' + (error instanceof Error ? error.message : String(error)) };
+    }
+    const ordinary = sessions.filter((item) => item && item.sessionId && item.origin !== 'subagent');
+    if (ordinary.length === 0) return { queued: false, reason: 'no ordinary session' };
+    const target = ordinary.find((item) => item.running) || ordinary[0];
+    const text = [
+      '【收录任务】用户在划词面板点了「收录」，选中的仓库是 ' + project + '。',
+      '',
+      '请按 repo-collector 技能完整执行：',
+      '1. 查重：scripts/check_duplicate.py ' + project + '（退出码 10 = 已收录，停下来告诉我，不要插新行）',
+      '2. 拉事实：scripts/repo_meta.py ' + project + '（stars/owner/描述/homepage，禁止凭记忆填）',
+      '3. 读仓库 README（必要时 web_fetch），写中文「项目简介」「核心亮点」「参考价值」；「主题标签」「项目类型」按技能的表契约选，跟进状态默认「待深入」',
+      '4. 门禁：scripts/validate_record.py，不通过就按报错改，不许绕过',
+      '5. 用 lark-cli base +record-batch-create 写入「GitHub 优质项目收录」',
+      '6. 回读那一行，确认字段真的落库',
+      '',
+      '完成后用一句话汇报：仓库名 + 类型 + 亮点摘要；失败就直说哪一步失败、为什么。不要向我确认，直接做。',
+    ].join('\n');
+    try {
+      await controller.prompt({
+        requestId: 'collect-' + Date.now() + '-' + Math.random().toString(16).slice(2, 10),
+        sessionId: target.sessionId,
+        mode: 'queue',
+        content: [{ type: 'text', text }],
+      });
+      return { queued: true, sessionId: target.sessionId };
+    } catch (error) {
+      return { queued: false, reason: 'prompt failed: ' + (error instanceof Error ? error.message : String(error)) };
+    }
   };
 
-  
-/** Queue an enrichment task into the most recently active ordinary Session. */
-async function enqueueEnrichment(ctx, project) {
-  const controller = typeof ctx.get === 'function' ? ctx.get('sessionController') : undefined;
-  if (!controller || typeof controller.list !== 'function' || typeof controller.prompt !== 'function') {
-    return { queued: false, reason: 'sessionController unavailable' };
-  }
-  let sessions = [];
-  try {
-    const listed = await controller.list({}, new AbortController().signal);
-    sessions = Array.isArray(listed && listed.items) ? listed.items : [];
-  } catch (error) {
-    return { queued: false, reason: 'list failed: ' + (error instanceof Error ? error.message : String(error)) };
-  }
-  const ordinary = sessions.filter((item) => item && item.sessionId && item.origin !== 'subagent');
-  if (ordinary.length === 0) return { queued: false, reason: 'no ordinary session' };
-  const target = ordinary.find((item) => item.running) || ordinary[0];
-  const text = [
-    '【后台补全】刚通过划词插件的「收录」按钮收录了 GitHub 仓库 ' + project + '。',
-    '',
-    '请按 repo-collector 技能补全这一行的语义字段，然后更新飞书「GitHub 优质项目收录」表中 Project 等于 ' + project + ' 的那一条记录：',
-    '- 项目简介：中文一句话（不要照抄英文描述）',
-    '- 核心亮点：它具体做了什么、技术要点',
-    '- 参考价值：对你/Store 有什么用，或为什么不该照搬',
-    '- 主题标签 + 项目类型：按技能里的表契约选',
-    '',
-    '要求：先读仓库 README（必要时用 web_fetch），禁止凭记忆编造；用 lark-cli base +record-update 更新，不要插入新行；完成后一句话汇报。',
-  ].join('\n');
-  try {
-    await controller.prompt({
-      requestId: 'enrich-' + Date.now() + '-' + Math.random().toString(16).slice(2, 10),
-      sessionId: target.sessionId,
-      mode: 'queue',
-      content: [{ type: 'text', text }],
-    });
-    return { queued: true, sessionId: target.sessionId };
-  } catch (error) {
-    return { queued: false, reason: 'prompt failed: ' + (error instanceof Error ? error.message : String(error)) };
-  }
-}
-
-const repoCollectHandler = async (req, res) => {
+  const repoCollectHandler = async (req, res) => {
     if (req.method !== 'POST') {
       sendJson(res, 405, { ok: false, message: 'method not allowed' });
       return;
@@ -499,56 +495,27 @@ const repoCollectHandler = async (req, res) => {
     }
     try {
       const body = await readJsonBody(req);
-      const text = String(body.text ?? '').trim();
-      if (text === '') throw new Error('text is required');
-      if (text.length > 200) throw new Error('选中的文字太长（只收 owner/repo）');
-      const script = collectScript();
-      if (!existsSync(script)) {
-        throw new Error('找不到 collect_one.py：' + script + '（可用 DSH_REPO_COLLECTOR 指定）');
+      const raw = String(body.text ?? '').trim();
+      const project = raw.split(/\s+/)[0];
+      if (!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(project)) {
+        sendJson(res, 400, { ok: false, message: '请选中 owner/repo 形式的仓库名（例如 vercel/next.js）' });
+        return;
       }
-      const project = text.split(/\s+/)[0];
-      const handle = ctx.subprocess.spawn({
-        argv: ['python3', script, text],
-        cwd: process.env.HOME || '/tmp',
-        stdio: { stdout: { maxBytes: 256 * 1024 }, stderr: { maxBytes: 256 * 1024 } },
-        graceMs: 120_000,
-      });
-      const outcome = await handle.done;
-      const read = (reader) => {
-        if (reader === undefined) return '';
-        try {
-          return reader.readFrom(0).text;
-        } catch (error) {
-          return '';
-        }
-      };
-      const stdout = read(handle.collected.stdout).trim();
-      const stderr = read(handle.collected.stderr).trim();
-      let parsed = null;
-      try {
-        parsed = JSON.parse(stdout);
-      } catch (error) {
-        parsed = null;
-      }
-      if (parsed === null) {
-        sendJson(res, 500, {
+      const result = await enqueueRepoCollect(project);
+      if (result.queued !== true) {
+        sendJson(res, 503, {
           ok: false,
-          code: outcome.exitCode,
-          message: (stderr || stdout).slice(0, 400) || 'collect_one.py 没有返回 JSON',
+          message: '没有可用的活跃会话，收录未执行：' + (result.reason || 'unknown') + '。请先打开一个会话再点收录。',
         });
         return;
       }
-      if (parsed.ok === true) {
-        // 秒级落库之后再叫醒会话，让 AI 补全语义字段；失败不影响收录结果。
-        const enrichment = await enqueueEnrichment(ctx, String(parsed.project || project));
-        if (enrichment.queued !== true) {
-          ctx.logger?.warn?.('selection-toolbar: enrichment not queued: ' + (enrichment.reason || 'unknown'));
-        }
-        sendJson(res, 200, { ...parsed, enrichment });
-      } else {
-        // 退出码原样带回去：10 = 已收录，前端据此说人话
-        sendJson(res, 200, parsed);
-      }
+      sendJson(res, 200, {
+        ok: true,
+        queued: true,
+        project,
+        sessionId: result.sessionId,
+        message: '已交给 AI 收录 ' + project,
+      });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       ctx.logger?.warn?.(`selection-toolbar: repo collect failed: ${message}`);
