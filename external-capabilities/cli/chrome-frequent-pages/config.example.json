@@ -17,54 +17,13 @@
       "yfsp.tv",
       "iyf.tv",
       "yifan.tv",
-      "tv.cctv.com",
-      "pan.baidu.com",
-      "pan.quark.cn",
-      "mail.163.com",
-      "mail.qq.com",
-      "coze.cn",
-      "trae.ai",
-      "market.windalice.com",
-      "alice.wind.com.cn",
-      "developers.weixin.qq.com",
-      "cc.oceanengine.com",
-      "workbench.bamamei.online"
+      "tv.cctv.com"
     ],
-    "drop_url_contains": [
-      "mp.weixin.qq.com/cgi-bin",
-      "open.feishu.cn/app",
-      "open.feishu.cn/page/",
-      "open.feishu.cn/document",
-      "open.feishu.cn/open-apis",
-      "/pulls",
-      "/pull/",
-      "/releases",
-      "checkout",
-      "escalate/webauthn",
-      "/authorize",
-      "oauth",
-      "/callback",
-      "applink.feishu.cn",
-      "google.com.hk/url",
-      "/admin/appCenter",
-      "/admin",
-      "/exception/",
-      "/account-setting",
-      "BAD_GATEWAY"
-    ],
-    "root_only_hosts": [
-      "github.com"
-    ],
-    "drop_titles": [
-      "Docs",
-      "没有权限访问",
-      "没有权限访问 - 飞书云文档",
-      "File not found",
-      "飞书云文档"
-    ],
-    "keep_urls": [
-      "https://scnzoiwpgxik.feishu.cn/admin/index"
-    ],
+    "drop_url_contains": [],
+    "root_only_hosts": [],
+    "drop_titles": [],
+    "keep_urls": [],
     "one_per_host": true
-  }
+  },
+  "ignored_urls_file": ""
 }
