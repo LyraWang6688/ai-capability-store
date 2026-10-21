@@ -11,8 +11,13 @@ import subprocess
 import sys
 from datetime import date, timedelta
 
-BASE_TOKEN = os.environ.get("BASELINE_BASE_TOKEN") or "NeujbbOfcaPEvMsPIxscaJImn9d"
-TABLE_ID = os.environ.get("BASELINE_TABLE_ID") or "tblJVkJkpo8w7yHr"
+BASE_TOKEN = os.environ.get("BASELINE_BASE_TOKEN", "")
+TABLE_ID = os.environ.get("BASELINE_TABLE_ID", "")
+if not BASE_TOKEN or not TABLE_ID:
+    raise SystemExit(
+        "缺少 BASELINE_BASE_TOKEN / BASELINE_TABLE_ID —— Base 与表标识是内部坐标，"
+        "不入库；请从运行环境提供（见 README）。"
+    )
 
 
 def lark(args):

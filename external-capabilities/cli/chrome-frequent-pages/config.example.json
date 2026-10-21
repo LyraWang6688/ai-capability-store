@@ -9,8 +9,8 @@
     "localhost",
     "127.0.0.1"
   ],
-  "base_token": "ZNjDb9TrpalLuCsw0macCeVdnld",
-  "table_id": "tblDejemWsgqKSA2",
+  "base_token": "<feishu-base-token>",
+  "table_id": "<table-id>",
   "identity": "user",
   "rules": {
     "drop_hosts": [

@@ -130,8 +130,10 @@ A 和 B 在不同机器上，但只要 A 能调 B 的接口，就是直连。
 # 六、现有的 11 条（以飞书「定时任务」表为准）
 
 > **「什么时候跑」和「链路长什么样」的唯一真相在飞书**：
-> [项目管理](https://my.feishu.cn/wiki/P3qAws8yjiU4eSkJDfTcYEbJnlg) → 数据表 **「定时任务」**
-> （`table_id = tbl4k7ggY1paqoUn`，字段：任务名称 · 执行周期 · 执行时间 · 具体链路 · 输入 · 处理 · 输出）
+> [项目管理](https://my.feishu.cn/wiki/&lt;wiki-token&gt;) → 数据表 **「定时任务」**
+> （`table_id = <table-id>`，字段：任务名称 · 执行周期 · 执行时间 · 具体链路 · 输入 · 处理 · 输出）
+>
+> 具体的 wiki / base / table 标识是内部坐标，不入库；运行时从本地配置提供。
 
 当前 11 条里：
 

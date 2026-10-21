@@ -8,8 +8,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-const E = '/Users/wangying/Documents/workplace/teaming-bot/.env.local';
-
 // 必须在 import lark.mjs 之前设好
 process.env.LARK_CLI = new URL('./helpers/fake-lark-cli.mjs', import.meta.url).pathname;
 process.env.FAKE_LARK_MODE = 'minute-ok';
