@@ -17,13 +17,27 @@ python3 main.py --html ~/Desktop/常用网页.html  # 导出可导入 Charter �
 python3 main.py --days 30 --min-visits 5      # 临时调窗口与阈值
 ```
 
+## 统计窗口
+
+`days` 决定"最近多少天内访问过的页面才参与统计"：
+
+| 值 | 效果 |
+|---|---|
+| 7 | 只看最近一周（最灵敏，候选最少）|
+| **10** | **当前设置** |
+| 30 | 一个月 |
+| 90 | 一个季度（旧默认）|
+
+改法：编辑 `~/.config/chrome-frequent-pages/config.json` 的 `days`，
+或临时用 `python3 main.py --days 7 --dry-run`。
+
 ## 配置字段
 
 | 字段 | 说明 |
 |---|---|
 | `chrome_profile_dir` | Chrome profile 目录（默认 `~/Library/Application Support/Google/Chrome/Default`）|
-| `days` | 统计窗口（默认 90 天）|
-| `min_visits` | 最少访问次数（默认 8）|
+| `days` | 统计窗口（可配置；当前设为 **10 天**）|
+| `min_visits` | 最少访问次数（当前设为 **5**）|
 | `limit` | 最多收录条数（默认 60，`0` = 不限）|
 | `exclude_hosts` | 排除的域名（邮箱、登录等）|
 | `base_token` / `table_id` | 目标飞书表坐标 |
