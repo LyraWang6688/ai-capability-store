@@ -32,6 +32,12 @@ npm install playwright --no-audit --no-fund --registry=https://registry.npmmirro
 PLAYWRIGHT_DOWNLOAD_HOST=https://cdn.npmmirror.com/binaries/playwright npx playwright install chromium
 sudo npx playwright install-deps chromium
 
+echo "== 4b. 版本标记 =="
+# 只认本项目的 tag：Store 是多项目共用一个仓库，--tags 会挑到别人的 tag
+VERSION="$(git -C "$SRC" describe --tags --match 'deepseek-invoice-v*' --always 2>/dev/null || echo "unknown")"
+echo "$VERSION" | sudo tee "$TARGET/VERSION" >/dev/null
+echo "   VERSION = $VERSION"
+
 echo "== 5. systemd =="
 sudo cp "$SRC/deploy/deepseek-invoice.service" /etc/systemd/system/
 sudo cp "$SRC/deploy/deepseek-invoice.timer" /etc/systemd/system/
