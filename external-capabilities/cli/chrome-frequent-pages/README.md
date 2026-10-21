@@ -37,7 +37,7 @@ python3 main.py --days 30 --min-visits 5      # 临时调窗口与阈值
 |---|---|
 | `chrome_profile_dir` | Chrome profile 目录（默认 `~/Library/Application Support/Google/Chrome/Default`）|
 | `days` | 统计窗口（可配置；当前设为 **10 天**）|
-| `min_visits` | 最少访问次数（默认 8）|
+| `min_visits` | 最少访问次数（当前设为 **5**）|
 | `limit` | 最多收录条数（默认 60，`0` = 不限）|
 | `exclude_hosts` | 排除的域名（邮箱、登录等）|
 | `base_token` / `table_id` | 目标飞书表坐标 |

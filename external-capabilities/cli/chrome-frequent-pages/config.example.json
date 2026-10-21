@@ -1,7 +1,7 @@
 {
   "chrome_profile_dir": "~/Library/Application Support/Google/Chrome/Default",
   "days": 10,
-  "min_visits": 8,
+  "min_visits": 5,
   "limit": 60,
   "exclude_hosts": [
     "mail.google.com",
