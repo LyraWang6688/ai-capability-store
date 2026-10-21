@@ -55,9 +55,9 @@ declaration** (a required enum field). Do not infer intent from a missing
 
 ### Ecosystem layer (`<shelf>/<ecosystem>/…`)
 
-A shelf may hold one optional extra level for **ecosystems** — a group of assets that
-belong to the same platform. It exists because three plugins are all `@lyra_wang/dsh-*`
-and their kinship is not a guess:
+A shelf may hold one **optional** extra level for **ecosystems** — a group of assets that
+are specific to one platform. Optional is the whole point: a general asset belongs flat at
+its shelf.
 
 ```text
 external-capabilities/plugin/dsh/
@@ -75,8 +75,25 @@ The rules inside an ecosystem are exactly the shelf rules — kebab-case, and ev
 directory must be pointed at by some registry entry. A directory nobody registered is an
 asset nobody governs, whichever depth it sits at.
 
-The layer is **optional on purpose**. Only `plugin/` currently needs it; forcing all four
-shelves to grow a level would add depth to eight assets that need no grouping.
+#### The test: specific, or general?
+
+> **Remove the ecosystem — does this asset still make sense?**
+
+| Answer | Where it goes | Example |
+|---|---|---|
+| **No** | **inside** the ecosystem | `selection-toolbar` without DSH is a JS file with nowhere to load. It exists only as a DSH plugin. |
+| **Yes** | **flat**, at the shelf | `command-sync` reads zsh history and works in any setup. Nothing about it depends on one platform. |
+
+**An ecosystem is not a promotion and not a sign of quality.** It is a statement that the
+asset is *specific to a platform*. Filing a general asset under an ecosystem makes it
+**harder** to find, because the reader has to know which platform to look under for
+something that does not belong to any of them.
+
+**Most assets are general.** File under an ecosystem only when the "remove it" test comes
+back No.
+
+Current ecosystems: `dsh` — three plugins whose npm names are `@lyra_wang/dsh-*`. The
+kinship is written in the package names, not inferred.
 
 Store-managed implementations live under a **shelf**: `mcp/` for MCP servers,
 `connectors/` for deployments that connect two systems rather than expose tools,
