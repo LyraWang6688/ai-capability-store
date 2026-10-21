@@ -83,7 +83,7 @@ window.__ModuleLoader__.load({
       return date.toISOString().slice(0, 10);
     }
 
-    function FeishuRef(props) {
+    function FeishuRef(props, sidebarRight) {
       const inputActions = props && props.inputActions;
       const [open, setOpen] = useState(false);
       const [query, setQuery] = useState('');
@@ -174,6 +174,14 @@ window.__ModuleLoader__.load({
           }
         } catch (err) {
           if (navigator.clipboard) navigator.clipboard.writeText(text);
+        }
+        // 顺手在右侧内置浏览器打开这个文档（服务不存在时静默跳过）。
+        try {
+          if (sidebarRight && typeof sidebarRight.openTab === 'function') {
+            sidebarRight.openTab('browser', { params: { url: item.url }, revealIfOpened: true });
+          }
+        } catch (err) {
+          /* 浏览器面板不可用时不影响链接插入 */
         }
         close();
       };
@@ -290,13 +298,14 @@ window.__ModuleLoader__.load({
     }
 
     return {
-      inject: ['slots'],
+      inject: ['slots', 'sidebarRight'],
       apply(ctx) {
+        const sidebarRight = typeof ctx.get === 'function' ? ctx.get('sidebarRight') : undefined;
         ctx.slots.inject('conversation.input.left', () => ctx.slots.register({
           name: 'conversation.input.left',
           id: 'feishu-ref',
           order: 2,
-        }, (props) => h(FeishuRef, props)));
+        }, (props) => h(FeishuRef, props, sidebarRight)));
       },
     };
   },
