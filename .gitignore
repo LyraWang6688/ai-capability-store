@@ -18,3 +18,15 @@ node_modules/
 
 # TypeScript 构建产物（各能力包自己的 .gitignore 未必覆盖）
 dist/
+
+# 交接文档与内部问题记录 —— 不进公开仓库
+#
+# 理由：它们包含服务器地址、飞书 base/table token、内部部署路径、会话 id。
+# 这些不是"秘密"（都不是凭据），但它们是【内部坐标】——
+# 公开仓库里列出"哪台机器跑什么"，等于替人画了一张地图。
+#
+# 它们仍然需要存在（交接的人要读），所以：
+#   - 文件留在工作区（gitignored，不提交）
+#   - 位置在它所描述的工作旁边（orchestrations/scheduled-task/HANDOFF.md）
+orchestrations/**/HANDOFF.md
+docs/
