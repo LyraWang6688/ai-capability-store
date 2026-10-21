@@ -33,6 +33,7 @@ DEFAULT_CONFIG = {
     "base_token": "",
     "table_id": "",
     "identity": "user",
+    "ignored_urls_file": os.path.join(HOME, ".config", "chrome-frequent-pages", "ignored_urls.txt"),
 }
 
 # chrome time: microseconds since 1601-01-01
@@ -94,7 +95,19 @@ def is_noise(url, host, exclude_hosts):
     return False
 
 
+def load_ignored(cfg):
+    path = cfg.get("ignored_urls_file") or ""
+    if not path:
+        return set()
+    path = os.path.expanduser(path)
+    if not os.path.exists(path):
+        return set()
+    with open(path, encoding="utf-8") as fh:
+        return {line.strip() for line in fh if line.strip()}
+
+
 def collect(cfg):
+    ignored = load_ignored(cfg)
     tmp, db = copy_history(cfg["chrome_profile_dir"])
     try:
         conn = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
@@ -131,7 +144,7 @@ def collect(cfg):
             if not entry["title"] and title:
                 entry["title"] = title.strip()
 
-    items = [e for e in aggregated.values() if e["visits"] >= cfg["min_visits"]]
+    items = [e for e in aggregated.values() if e["visits"] >= cfg["min_visits"] and e["url"] not in ignored]
     items.sort(key=lambda e: (e["visits"], e["last"]), reverse=True)
     if cfg["limit"]:
         items = items[: cfg["limit"]]
