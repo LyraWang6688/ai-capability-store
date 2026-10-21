@@ -194,7 +194,11 @@ ALLOWED_ORCHESTRATION_STATUSES = {"testing", "available", "deprecated"}
 # 两个都是封闭集合，理由和货架、生态一样：加一个是一次分类决策，
 # 不该由某人随手建个目录来引入。
 ORCHESTRATION_MODES = {"manual", "scheduled-task"}
-ORCHESTRATION_TARGETS = {"dsh", "doubao-work"}
+
+# 第二级是【生态】—— 这个编排动用了哪个平台的资产。不是"谁执行"：
+# 谁执行已经在 automations/registry.yaml 的 executor 字段里记过一次了，
+# 再记一遍就是两个真相。
+ORCHESTRATION_ECOSYSTEMS = {"dsh", "doubao-work", "wechat"}
 
 KEBAB_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 VERSION_RE = re.compile(r"^\d+\.\d+\.\d+$")
@@ -1446,7 +1450,7 @@ def validate_orchestrations(orc_reg: dict) -> None:
         check(f"orchestration {name} path is <mode>/<target>/<name>",
               len(parts) == 4 and parts[0] == ORCHESTRATION_DIR
               and parts[1] in ORCHESTRATION_MODES
-              and parts[2] in ORCHESTRATION_TARGETS
+              and parts[2] in ORCHESTRATION_ECOSYSTEMS
               and parts[3] == name,
               f"path={path!r} — 期望 {ORCHESTRATION_DIR}/<mode>/<target>/{name}")
 
@@ -1550,9 +1554,9 @@ def validate_orchestrations(orc_reg: dict) -> None:
                 target_dir = os.path.join(mode_dir, target)
                 if target.startswith(".") or not os.path.isdir(target_dir):
                     continue
-                check(f"orchestration target is declared: {mode}/{target}",
-                      target in ORCHESTRATION_TARGETS,
-                      f"unknown target {target!r} — declare it in ORCHESTRATION_TARGETS")
+                check(f"orchestration ecosystem is declared: {mode}/{target}",
+                      target in ORCHESTRATION_ECOSYSTEMS,
+                      f"unknown ecosystem {target!r} — declare it in ORCHESTRATION_ECOSYSTEMS")
                 for task in sorted(os.listdir(target_dir)):
                     task_dir = os.path.join(target_dir, task)
                     if task.startswith(".") or not os.path.isdir(task_dir):

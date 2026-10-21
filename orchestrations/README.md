@@ -26,7 +26,7 @@ orchestrations/         —— 按什么顺序连（这一次任务）
 ```text
 orchestrations/
   registry.yaml                     ← 唯一机器真相（验证器查这个）
-  <模式>/<目标>/<任务>/
+  <模式>/<生态>/<任务>/
     README.md                       ← 人读：流程 + 衔接规则
     <link>  →  ../../../里的资产      ← 软链，给人看的那一份
 ```
@@ -34,10 +34,23 @@ orchestrations/
 | 层 | 回答什么 | 现在有哪些 |
 |---|---|---|
 | **模式** | 这一类任务**是怎么被发起的** | `manual`（人说一句就做）· `scheduled-task`（钟来叫）|
-| **目标** | 它最后**落在谁的怀里** | `dsh` · `doubao-work` |
+| **生态** | 它动用了**哪个平台**的资产 | `wechat` · `dsh` · `doubao-work` |
 | **任务** | 具体那一条 | `wechat-article` · `investdesk-daily-report` |
 
-**两个都是封闭集合**（`ORCHESTRATION_MODES` / `ORCHESTRATION_TARGETS`），和货架、生态同一套纪律。
+### 为什么第二级是「生态」而不是「谁执行」
+
+```text
+"谁执行"已经在 automations/registry.yaml 的 executor 字段里记过一次了
+        ↓
+再在编排里记一遍，就是两个真相
+        ↓
+而"动用了哪个平台的资产"是编排自己的事 —— 看 steps 里的 use: 就知道
+```
+
+`wechat-article` 放在 `manual/wechat/` 而不是某个 agent 下面，因为它的四步
+（写 / 排版 / 动图 / 上传）没有一步是「只能在某个 agent 上跑」的。
+
+**两个都是封闭集合**（`ORCHESTRATION_MODES` / `ORCHESTRATION_ECOSYSTEMS`），和货架、生态同一套纪律。
 
 > 模式不描述"跑什么"，只描述"怎么被发起"。所以它不叫 `scheduled-dsh-task` ——
 > 那样第二层再分 `dsh/` 和 `doubao-work/` 就自相矛盾了。
@@ -78,7 +91,7 @@ steps:
 
 ## 加一个编排
 
-1. 选模式 + 目标：`orchestrations/<模式>/<目标>/<任务>/`
+1. 选模式 + 生态：`orchestrations/<模式>/<生态>/<任务>/`
 2. 写 `README.md`（流程 + 衔接规则）
 3. 建软链，每个指向一个已登记资产（Skill 的 path / Capability 的 implementation_path /
    Automation 的 path）

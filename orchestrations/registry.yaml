@@ -1,9 +1,9 @@
 # Orchestration Domain — 一次任务的完整编排
 #
-# 布局三层：<模式>/<目标>/<任务>/
+# 布局三层：<模式>/<生态>/<任务>/
 #
 #   模式  这是一类【怎么被发起】的任务。不是某个具体任务，也不是运行环境。
-#   目标  这个任务最后落在谁的怀里（dsh / doubao-work）。
+#   生态  这个编排动用了哪个平台的资产（wechat / dsh / doubao-work）。
 #   任务  具体那一条。
 #
 # 它只【引用】其它域，不复制任何实现。改排版去 skills/wechat-html-css-layout，
@@ -21,7 +21,7 @@ allowed_statuses:
 orchestrations:
   wechat-article:
     name: wechat-article
-    path: orchestrations/manual/dsh/wechat-article
+    path: orchestrations/manual/wechat/wechat-article
     status: testing
     version: 0.1.0
     updated: "2026-10-22"

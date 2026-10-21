@@ -3,7 +3,7 @@
 **一次做一篇公众号文章的完整流程。** 这个目录只有引用，没有实现。
 
 ```text
-orchestrations/manual/dsh/wechat-article/   ← 模式=manual（人说一句就做），目标=dsh
+orchestrations/manual/wechat/wechat-article/   ← 模式=manual（人说一句就做），生态=wechat
 ```
 
 ```text
