@@ -83,7 +83,7 @@ window.__ModuleLoader__.load({
       return date.toISOString().slice(0, 10);
     }
 
-    function FeishuRef(props, sidebarRight) {
+    function FeishuRef(props, serviceRef) {
       const inputActions = props && props.inputActions;
       const [open, setOpen] = useState(false);
       const [query, setQuery] = useState('');
@@ -161,11 +161,13 @@ window.__ModuleLoader__.load({
       }, [query, open]);
 
       const openInSidebar = (url, fail) => {
+        const getService = () => (serviceRef && serviceRef.current) || null;
         const tryOpen = () => {
-          if (!sidebarRight || typeof sidebarRight.openTab !== 'function') {
+          const service = getService();
+          if (!service || typeof service.openTab !== 'function') {
             throw new Error('sidebarRight service unavailable');
           }
-          sidebarRight.openTab('browser', { params: { url }, revealIfOpened: true });
+          service.openTab('browser', { params: { url }, revealIfOpened: true });
         };
         const expandSidebar = () => {
           const panel = document.querySelector('[data-sidebar-right-panel]');
@@ -324,14 +326,19 @@ window.__ModuleLoader__.load({
     }
 
     return {
-      inject: ['slots', 'sidebarRight'],
+      inject: ['slots'],
       apply(ctx) {
-        const sidebarRight = ctx.sidebarRight || (typeof ctx.get === 'function' ? ctx.get('sidebarRight') : undefined);
+        // 右侧栏服务可能比本插件晚就绪：用 ctx.inject 等它，存进 holder 供点击时读取。
+        const serviceRef = { current: null };
+        ctx.inject(['sidebarRight'], (scoped) => {
+          serviceRef.current = scoped.sidebarRight;
+          return () => { serviceRef.current = null; };
+        });
         ctx.slots.inject('conversation.input.left', () => ctx.slots.register({
           name: 'conversation.input.left',
           id: 'feishu-ref',
           order: 2,
-        }, (props) => h(FeishuRef, props, sidebarRight)));
+        }, (props) => h(FeishuRef, props, serviceRef)));
       },
     };
   },
