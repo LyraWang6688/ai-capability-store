@@ -6,8 +6,8 @@
  * Compilation happens once on first use and is cached outside the package.
  */
 import { execFile } from 'node:child_process';
-import { existsSync, mkdirSync } from 'node:fs';
-import { homedir } from 'node:os';
+import { existsSync, mkdirSync, unlinkSync, writeFileSync } from 'node:fs';
+import { homedir, tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -27,7 +27,7 @@ function sendJson(res, status, payload) {
   res.end(JSON.stringify(payload));
 }
 
-function readJsonBody(req, limit = 64 * 1024) {
+function readJsonBody(req, limit = 16 * 1024 * 1024) {
   return new Promise((resolve, reject) => {
     const chunks = [];
     let size = 0;
@@ -88,9 +88,9 @@ function ensureEngine() {
   return enginePromise;
 }
 
-function runOcr(binary) {
+function runOcr(binary, imagePath) {
   return new Promise((resolve, reject) => {
-    execFile(binary, ['--clipboard'], { timeout: 120_000, maxBuffer: 8 * 1024 * 1024 }, (error, stdout, stderr) => {
+    execFile(binary, imagePath ? [imagePath] : ['--clipboard'], { timeout: 120_000, maxBuffer: 8 * 1024 * 1024 }, (error, stdout, stderr) => {
       if (error) {
         reject(new Error('OCR 执行失败：' + String(stderr || error.message).slice(0, 300)));
         return;
@@ -116,8 +116,9 @@ export function apply(ctx) {
       sendJson(res, rejection, { ok: false, message: '未通过 DSH 连接鉴权（本地 token 无效）' });
       return;
     }
+    let tempPath;
     try {
-      await readJsonBody(req);
+      const body = await readJsonBody(req);
       let binary;
       try {
         binary = await ensureEngine();
@@ -128,12 +129,25 @@ export function apply(ctx) {
         });
         return;
       }
-      const text = await runOcr(binary);
+      const image = typeof body.image === 'string' ? body.image : '';
+      if (image !== '') {
+        const base64 = image.includes(',') ? image.slice(image.indexOf(',') + 1) : image;
+        const buffer = Buffer.from(base64, 'base64');
+        if (buffer.length === 0) throw new Error('图片数据为空');
+        if (buffer.length > 12 * 1024 * 1024) throw new Error('图片太大（上限 12MB）');
+        tempPath = join(os.tmpdir(), 'dsh-image-ocr-' + Date.now() + '-' + Math.random().toString(16).slice(2, 8) + '.png');
+        writeFileSync(tempPath, buffer);
+      }
+      const text = await runOcr(binary, tempPath);
       sendJson(res, 200, { ok: true, text, lines: text === '' ? 0 : text.split('\n').length });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       ctx.logger?.warn?.('image-ocr: ocr failed: ' + message);
       sendJson(res, 500, { ok: false, message });
+    } finally {
+      if (tempPath) {
+        try { unlinkSync(tempPath); } catch { /* 忽略清理失败 */ }
+      }
     }
   };
 
