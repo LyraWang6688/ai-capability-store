@@ -102,14 +102,16 @@ sudo rm /etc/cron.d/<name> /etc/ai-capability-store/timers/<name>.cron
 
 **「什么时候跑」这件事，唯一真相在飞书**：
 
-> [项目管理](https://my.feishu.cn/wiki/P3qAws8yjiU4eSkJDfTcYEbJnlg) → 数据表 **「定时任务」**
+> [项目管理](https://my.feishu.cn/wiki/&lt;wiki-token&gt;) → 数据表 **「定时任务」**
 > 字段：任务名称（主字段）· 执行周期 · 执行时间 · 具体链路
+>
+> wiki / base / table 标识是内部坐标，不入库；下面命令里的两个变量从本地环境取。
 
 改时间改表，然后同步到这里：
 
 ```bash
-lark-cli base +record-list --base-token NeujbbOfcaPEvMsPIxscaJImn9d \
-  --table-id tbl4k7ggY1paqoUn --as user --format json \
+lark-cli base +record-list --base-token "$TIMER_BASE_TOKEN" \
+  --table-id "$TIMER_TABLE_ID" --as user --format json \
   | python3 -c "import json,sys; [print(r[0], r[3]) for r in json.load(sys.stdin)['data']['data']]"
 # 然后改对应的 .cron，跑 install.sh
 ```

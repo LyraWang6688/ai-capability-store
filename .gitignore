@@ -30,3 +30,11 @@ dist/
 #   - 位置在它所描述的工作旁边（orchestrations/scheduled-task/HANDOFF.md）
 orchestrations/**/HANDOFF.md
 docs/
+
+# 兜底：任何位置的交接产物都不入库（DSH user-global G07）。
+# 上面的路径规则只覆盖已知位置；换一个目录写交接时，这几行也会挡住
+# `git add -A`。Go 大小写敏感，所以 HANDOFF / handoff 两种都写。
+HANDOFF.md
+HANDOFF/
+handoff-*.md
+*handoff*.md

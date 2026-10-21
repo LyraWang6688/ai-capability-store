@@ -100,8 +100,8 @@ GitHub Actions 的全部理由。
 ### 另有：飞书收录表
 
 ```
-base   NeujbbOfcaPEvMsPIxscaJImn9d
-table  tblenXNEDtNtVIf4     「GitHub 优质项目收录」
+base   <feishu-base-token>
+table  <table-id>           「GitHub 优质项目收录」
 用途   分析时读，用来把候选分成「已有项目 / 新增项目」
 ```
 
