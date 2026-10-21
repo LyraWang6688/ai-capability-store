@@ -160,8 +160,8 @@ skills:
     name: repo-collector
     path: skills/repo-collector
     status: testing
-    version: 0.1.0
-    updated: "2026-10-20"
+    version: 0.1.2
+    updated: "2026-10-21"
   wechat-html-css-layout:
     name: wechat-html-css-layout
     path: skills/wechat-html-css-layout
