@@ -44,7 +44,16 @@
   > 没有这个机制，你新加的快捷键永远不会出现在面板里 —— 而面板的意义就是
   > 「记不住的时候有个地方找」。补上描述后会变成正常条目。
 
-## 安装
+## 安装（npm，推荐）
+
+```bash
+npm install -g --prefix ~/.local @lyra_wang/command-sync
+command-sync install     # 装到 ~/.command-sync + Hammerspoon ⌥X
+```
+
+脚本以软链方式指向 npm 包，源码只在 Store/npm 一份。
+
+## 安装（仓库目录直接跑）
 
 前置：Python 3（系统自带）、Hammerspoon（`brew install --cask hammerspoon`，面板宿主，免费开源）。
 

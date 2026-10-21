@@ -103,7 +103,7 @@ capabilities:
     type: cli
     status: limited
     provider_path: external-capabilities/providers/lyrawang/README.md
-    version: 0.1.6
+    version: 0.1.7
     implementation_path: external-capabilities/cli/command-sync
     auth: "无凭据入仓。配置放 `~/.command-sync/config.json`（600）：history 路径、sshHost/sshUser、serverPaths；运行数据（历史快照、文档、报告）也都在 `~/.command-sync/`。仓库内只有 config.example.json 模板"
     capabilities: "把终端里手动输入的命令做成快捷键面板：Hammerspoon 绑定 ⌥X → 两块候选（服务器入口 3 条 / 最近 7 天用得最多的 5 条本地命令）→ 选中复制到剪贴板。只读 zsh 历史，不执行任何命令"
@@ -115,7 +115,7 @@ capabilities:
     type: cli
     status: limited
     provider_path: external-capabilities/providers/lyrawang/README.md
-    version: 0.4.2
+    version: 0.4.3
     implementation_path: external-capabilities/cli/chrome-frequent-pages
     auth: "无凭据入仓。配置放 `~/.config/chrome-frequent-pages/config.json`（Chrome profile 路径、统计窗口、目标飞书表坐标）；飞书写入复用本机已认证的 lark-cli（用户身份）"
     capabilities: "读 Chrome History（复制到临时目录避免锁），按「域名 + 路径」归一化聚合访问次数，过滤登录页/搜索页/本地地址，把高频页面写进飞书「常用网页」表（URL 去重、已存在则更新次数），并可导出可导入 Chrome 的书签 HTML。实测 90 天窗口 60 条：飞书 Base 顶置表 4601 次、爱壹帆 264 次、飞书开放平台开发者后台 244 次"

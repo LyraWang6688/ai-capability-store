@@ -2,8 +2,12 @@
 set -eu
 HERE="$(cd "$(dirname "$0")" && pwd)"
 BIN_DIR="$HOME/.local/bin"
-mkdir -p "$BIN_DIR" "$HOME/.config/chrome-frequent-pages"
-ln -sf "$HERE/main.py" "$BIN_DIR/chrome-frequent-pages"
+DATA_DIR="$HOME/.local/share/chrome-frequent-pages"
+mkdir -p "$BIN_DIR" "$DATA_DIR" "$HOME/.config/chrome-frequent-pages"
+# launchd 读不了 ~/Documents（TCC），所以把脚本复制到不受保护的目录再跑
+cp "$HERE/main.py" "$DATA_DIR/main.py"
+chmod +x "$DATA_DIR/main.py"
+ln -sf "$DATA_DIR/main.py" "$BIN_DIR/chrome-frequent-pages"
 chmod +x "$HERE/main.py"
 [ -f "$HOME/.config/chrome-frequent-pages/config.json" ] || cp "$HERE/config.example.json" "$HOME/.config/chrome-frequent-pages/config.json"
 PLIST="$HOME/Library/LaunchAgents/com.lyrawang.chrome-frequent-pages.plist"
@@ -13,7 +17,7 @@ cat > "$PLIST" <<EOF
 <plist version="1.0"><dict>
   <key>Label</key><string>com.lyrawang.chrome-frequent-pages</string>
   <key>ProgramArguments</key><array>
-    <string>/usr/bin/python3</string><string>$HERE/main.py</string><string>--write</string>
+    <string>/usr/bin/python3</string><string>$DATA_DIR/main.py</string><string>--write</string>
   </array>
   <key>StartCalendarInterval</key><dict><key>Weekday</key><integer>1</integer><key>Hour</key><integer>9</integer><key>Minute</key><integer>30</integer></dict>
   <key>StandardOutPath</key><string>$HOME/.config/chrome-frequent-pages/run.log</string>
