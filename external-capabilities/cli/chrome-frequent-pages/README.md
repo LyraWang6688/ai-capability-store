@@ -50,25 +50,23 @@ python3 main.py --days 30 --min-visits 5      # 临时调窗口与阈值
 | `rules.keep_urls` | 白名单，优先级最高 |
 | `rules.one_per_host` | 每个域名只保留访问最多的一页 |
 
-## 规则（学自实际操作）
+## 规则（0.3.0 简化版）
 
-```json
-"rules": {
-  "drop_hosts": ["yfsp.tv", "iyf.tv", "yifan.tv"],
-  "drop_url_contains": ["open.feishu.cn/app", "open.feishu.cn/document", "/pulls", "/releases", "checkout", "oauth",
-                          "google.com.hk/url", "/admin/appCenter", "/admin"],
-  "root_only_hosts": ["github.com"],
-  "drop_titles": ["Docs", "没有权限访问", "File not found"],
-  "keep_urls": ["https://platform.deepseek.com/api_keys", "https://scnzoiwpgxik.feishu.cn/admin/index"],
-  "one_per_host": true
-}
+```
+10 天窗口 → ≥5 次访问 → 仅 https → 排除本地页 → 丢弃娱乐影视 → 每个域名只留一页
 ```
 
-## 幂等写入（0.2.2）
+| 项 | 当前值 |
+|---|---|
+| `days` | 10 |
+| `min_visits` | 5 |
+| 协议 | 只统计 `https://`（http/file/localhost 不看）|
+| 娱乐影视 | `drop_hosts`: yfsp.tv / iyf.tv / yifan.tv / tv.cctv.com |
+| 去重 | `one_per_host: true`（一个域名只保留访问最多的一页）|
+| 忽略清单 | 默认关闭（`ignored_urls_file: ""`）|
 
-- 读表用 `--limit 200`（飞书上限 200；0.2.1 用 500 会被拒，却被 fallback 成"空表"导致重复插入）；
-- 读表失败直接**中止写入**，不再按空表处理；
-- 已验证：连续执行两次，第二次 `新增 0 条，更新 36 条`。
+需要更细的规则时，在 `rules` 里重新加 `drop_url_contains` / `root_only_hosts` /
+`drop_titles` / `keep_urls` 即可，引擎仍支持。
 
 ## 写入策略
 
@@ -91,3 +89,11 @@ python3 main.py --days 30 --min-visits 5      # 临时调窗口与阈值
 ```bash
 bash install.sh   # 生成 ~/.local/bin/chrome-frequent-pages 并注册每周一 09:30 的 launchd 任务
 ```
+
+## 书签：按「域名」导出
+
+```bash
+python3 main.py --bookmarks-from-table ~/Desktop/常用网页书签.html
+```
+
+读取飞书表每个唯一「域名」，生成 `https://<域名>/` 书签 HTML（Chrome 书签管理器导入）。

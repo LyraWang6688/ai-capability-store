@@ -35,12 +35,13 @@ DEFAULT_CONFIG = {
     "identity": "user",
     "ignored_urls_file": os.path.join(HOME, ".config", "chrome-frequent-pages", "ignored_urls.txt"),
     "rules": {
-        "drop_hosts": [],
+        # 只保留一条：娱乐影视整站丢弃；其余精细规则已按需求移除
+        "drop_hosts": ["yfsp.tv", "iyf.tv", "yifan.tv", "tv.cctv.com"],
         "drop_url_contains": [],
         "root_only_hosts": [],
         "drop_titles": [],
         "keep_urls": [],
-        "one_per_host": False,
+        "one_per_host": True,
     },
 }
 
@@ -91,7 +92,8 @@ def normalize(url):
 
 
 def is_noise(url, host, exclude_hosts):
-    if not url.startswith(("http://", "https://")):
+    # 只看 https；http、file://、localhost 等本地页面一律不看
+    if not url.startswith("https://"):
         return True
     if not host:
         return True
@@ -262,6 +264,33 @@ def write_table(cfg, items):
     return len(create), len(update)
 
 
+def bookmarks_from_table(cfg, path):
+    """把飞书表里每个唯一「域名」写成一个书签 HTML（https://域名/）。"""
+    data = lark(["base", "+record-list", "--base-token", cfg["base_token"], "--table-id", cfg["table_id"], "--limit", "200"])
+    meta = data.get("data") or {}
+    cols = meta.get("fields") or []
+    rows = meta.get("data") or []
+    if "域名" not in cols:
+        raise SystemExit("表里没有「域名」列")
+    idx = {name: i for i, name in enumerate(cols)}
+    hosts = sorted({str(row[idx["域名"]]).strip() for row in rows if str(row[idx["域名"]]).strip()})
+    lines = [
+        "<!DOCTYPE NETSCAPE-Bookmark-file-1>",
+        '<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=UTF-8">',
+        "<TITLE>Bookmarks</TITLE>",
+        "<H1>Bookmarks</H1>",
+        "<DL><p>",
+        "    <DT><H3>常用网页（域名）</H3>",
+        "    <DL><p>",
+    ]
+    for host in hosts:
+        lines.append(f'        <DT><A HREF="https://{html.escape(host)}/">{html.escape(host)}</A>')
+    lines += ["    </DL><p>", "</DL><p>"]
+    with open(os.path.expanduser(path), "w", encoding="utf-8") as fh:
+        fh.write("\n".join(lines) + "\n")
+    return hosts
+
+
 def write_html(items, path):
     lines = [
         "<!DOCTYPE NETSCAPE-Bookmark-file-1>",
@@ -292,13 +321,20 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--dry-run", action="store_true", help="只打印结果")
     parser.add_argument("--write", action="store_true", help="写入飞书表")
-    parser.add_argument("--html", metavar="PATH", help="导出可导入 Chrome 的书签 HTML")
+    parser.add_argument("--html", metavar="PATH", help="导出可导入 Chrome 的书签 HTML（按页面链接）")
+    parser.add_argument("--bookmarks-from-table", metavar="PATH", help="按飞书表的「域名」列导出书签 HTML")
     parser.add_argument("--limit", type=int)
     parser.add_argument("--days", type=int)
     parser.add_argument("--min-visits", type=int)
     args = parser.parse_args()
 
     cfg = load_config()
+    if args.bookmarks_from_table:
+        hosts = bookmarks_from_table(cfg, args.bookmarks_from_table)
+        print(f"已按域名导出书签：{os.path.expanduser(args.bookmarks_from_table)}（{len(hosts)} 个域名）")
+        for host in hosts:
+            print("  -", host)
+        return 0
     for key in ("limit", "days", "min_visits"):
         if getattr(args, key) is not None:
             cfg[key] = getattr(args, key)
