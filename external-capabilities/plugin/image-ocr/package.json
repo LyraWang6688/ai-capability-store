@@ -1,0 +1,21 @@
+{
+  "name": "@lyra_wang/dsh-image-ocr",
+  "version": "0.1.0",
+  "description": "Composer + button: OCR the clipboard image locally (macOS Vision) and insert the text into the DSH input box.",
+  "license": "MIT",
+  "type": "module",
+  "keywords": ["dsh", "dsh-plugin", "deepseek-harness", "cordis", "client-plugin", "ocr", "vision"],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/LyraWang6688/ai-capability-store.git",
+    "directory": "external-capabilities/plugin/image-ocr"
+  },
+  "exports": { ".": "./index.js", "./client": "./client.js" },
+  "files": ["index.js", "client.js", "cordis.patch.yml", "ocr.swift", "README.md", "LICENSE"],
+  "publishConfig": { "access": "public" },
+  "engines": { "node": ">=20" },
+  "dsh": {
+    "bundle": { "patch": "./cordis.patch.yml" },
+    "client": { "platform": "web", "immediately": true, "inject": ["@deepseek-ai/dsh-client-ui-layout"] }
+  }
+}

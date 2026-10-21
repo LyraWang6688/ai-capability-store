@@ -60,6 +60,18 @@ capabilities:
     permissions: "飞书侧需要 docs 与 base 两个资源域的读写授权（以 lark-cli profile 实际授权为准）；MCP 侧按工具分别要求 docs:read、docs:write、base:read、base:write。写操作另需 confirm=true"
     notes: "自研、Store-managed。来源仓库为独立 git 仓库，已通过 git subtree 导入并保留完整提交历史。status 取 limited：需要 lark-cli 1.0.93+ 与一个已认证的 profile，远端模式还需 Auth0 + HTTPS，并非装上即用。包内 .agents/skills/feishu-mcp-tool-extension/ 为开发资料，不在 Store Skill 域登记。不经 npm 分发：它是自托管 HTTP 服务（nginx + pm2 + OAuth），没有 bin，deploy/ 含生产基础设施标识 —— 见 PUBLISHING.md §D"
 
+  image-ocr:
+    name: image-ocr
+    provider: lyrawang
+    type: plugin
+    status: limited
+    provider_path: external-capabilities/providers/lyrawang/README.md
+    version: 0.1.0
+    implementation_path: external-capabilities/plugin/image-ocr
+    auth: "无凭据入仓，不需要任何账号或 API Key。OCR 完全本地（macOS Vision），图片不出本机"
+    capabilities: "DSH 输入框左侧「＋ 识图」按钮：读取剪贴板里的截图，用本地 Vision 引擎识别中英文字，把文字插入草稿（可撤销、不自动发送）。宿主侧注册同源只读路由 `/plugins/image-ocr/ocr`，并带一份 Swift 源码在首次使用时编译缓存"
+    permissions: "需要 macOS 13+ 与 Xcode Command Line Tools（xcrun swiftc）。宿主进程读取剪贴板图片；不读屏幕、不联网"
+    notes: "自研、Store-managed。0.1.0 首次登记：client 注册在 `conversation.input.left`（order=3，紧邻 feishu-ref 的「＋ 引用」）；插入走 `inputActions.captureInsertion()` + `insertText()`。OCR 引擎编译缓存在仓库外（~/Library/Application Support/dsh-image-ocr/ocr），首次点击可能等 30–60s，apply 时会后台预热。实测：整屏截图 53 行，冷启动 31s（编译+模型初始化），热启动 0.66s；中文长句识别良好，UI 图标会带来少量短符号噪声"
   feishu-ref:
     name: feishu-ref
     provider: lyrawang
