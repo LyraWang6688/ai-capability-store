@@ -112,6 +112,30 @@ bash install.sh   # 生成 ~/.local/bin/chrome-frequent-pages 并注册每周一
 
 表里的 `标题` 列与导出的书签名称都优先用这里的文字；没配置的域名退回域名本身。
 
+## 书签：按分类子文件夹导出（0.4.1）
+
+```bash
+python3 main.py --bookmarks-from-table ~/Desktop/常用网页书签.html
+```
+
+按表里的 `分类` 列分组：
+
+```
+常用网页
+├── 工作
+│   ├── 飞书管理后台 → scnzoiwpgxik.feishu.cn
+│   ├── 组队会议分析 → meeting.bamamei.online
+│   └── …
+├── 学习
+│   ├── Wind Alice 金融数据 → alice.wind.com.cn
+│   └── …
+└── 工具
+    ├── GitHub → github.com
+    └── …
+```
+
+没填分类的域名会进「其他」。
+
 ## 书签：按「域名」导出
 
 ```bash

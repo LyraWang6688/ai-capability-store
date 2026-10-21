@@ -289,8 +289,11 @@ def write_table(cfg, items):
     return len(create), len(update)
 
 
+CATEGORY_ORDER = ["工作", "学习", "工具", "内容", "其他"]
+
+
 def bookmarks_from_table(cfg, path):
-    """把飞书表里每个唯一「域名」写成一个书签 HTML（https://域名/）。"""
+    """按飞书表导出书签：常用网页/<分类>/<域名书签>。"""
     data = lark(["base", "+record-list", "--base-token", cfg["base_token"], "--table-id", cfg["table_id"], "--limit", "200"])
     meta = data.get("data") or {}
     cols = meta.get("fields") or []
@@ -299,23 +302,43 @@ def bookmarks_from_table(cfg, path):
         raise SystemExit("表里没有「域名」列")
     idx = {name: i for i, name in enumerate(cols)}
     labels = cfg.get("domain_labels") or {}
-    hosts = sorted({str(row[idx["域名"]]).strip() for row in rows if str(row[idx["域名"]]).strip()})
+    groups = {}
+    for row in rows:
+        host = str(row[idx["域名"]] or "").strip()
+        if not host:
+            continue
+        cat = "其他"
+        if "分类" in idx:
+            raw = row[idx["分类"]]
+            if isinstance(raw, list) and raw:
+                cat = str(raw[0])
+            elif isinstance(raw, str) and raw.strip():
+                cat = raw.strip()
+        groups.setdefault(cat, []).append({
+            "host": host,
+            "name": str(row[idx["标题"]]).strip() if "标题" in idx and row[idx["标题"]] else labels.get(host) or host,
+        })
+
     lines = [
         "<!DOCTYPE NETSCAPE-Bookmark-file-1>",
         '<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=UTF-8">',
         "<TITLE>Bookmarks</TITLE>",
         "<H1>Bookmarks</H1>",
         "<DL><p>",
-        "    <DT><H3>常用网页（域名）</H3>",
+        "    <DT><H3>常用网页</H3>",
         "    <DL><p>",
     ]
-    for host in hosts:
-        name = labels.get(host) or host
-        lines.append(f'        <DT><A HREF="https://{html.escape(host)}/">{html.escape(name)}</A>')
+    ordered = [c for c in CATEGORY_ORDER if c in groups] + sorted(c for c in groups if c not in CATEGORY_ORDER)
+    for cat in ordered:
+        lines.append(f"        <DT><H3>{html.escape(cat)}</H3>")
+        lines.append("        <DL><p>")
+        for entry in sorted(groups[cat], key=lambda e: e["name"]):
+            lines.append(f'            <DT><A HREF="https://{html.escape(entry["host"])}/">{html.escape(entry["name"])}</A>')
+        lines.append("        </DL><p>")
     lines += ["    </DL><p>", "</DL><p>"]
     with open(os.path.expanduser(path), "w", encoding="utf-8") as fh:
         fh.write("\n".join(lines) + "\n")
-    return hosts
+    return ordered, groups
 
 
 def write_html(items, path):
@@ -357,10 +380,13 @@ def main():
 
     cfg = load_config()
     if args.bookmarks_from_table:
-        hosts = bookmarks_from_table(cfg, args.bookmarks_from_table)
-        print(f"已按域名导出书签：{os.path.expanduser(args.bookmarks_from_table)}（{len(hosts)} 个域名）")
-        for host in hosts:
-            print("  -", host)
+        ordered, groups = bookmarks_from_table(cfg, args.bookmarks_from_table)
+        total = sum(len(v) for v in groups.values())
+        print(f"已导出分类书签：{os.path.expanduser(args.bookmarks_from_table)}（{total} 个域名 / {len(ordered)} 个分类）")
+        for cat in ordered:
+            print(f"  [{cat}]")
+            for entry in sorted(groups[cat], key=lambda e: e["name"]):
+                print("    -", entry["name"], "->", "https://" + entry["host"] + "/")
         return 0
     for key in ("limit", "days", "min_visits"):
         if getattr(args, key) is not None:
