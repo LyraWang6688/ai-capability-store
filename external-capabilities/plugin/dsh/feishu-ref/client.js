@@ -91,6 +91,7 @@ window.__ModuleLoader__.load({
       const [recent, setRecent] = useState([]);
       const [loading, setLoading] = useState(false);
       const [error, setError] = useState('');
+      const [diag, setDiag] = useState('');
       const [active, setActive] = useState(0);
       const [anchor, setAnchor] = useState(null);
       const btnRef = useRef(null);
@@ -176,19 +177,30 @@ window.__ModuleLoader__.load({
         return null;
       };
 
-      const openInSidebar = (url, fail) => {
+      const openInSidebar = (url, report) => {
         const attempt = () => {
           const svc = readSidebarRight();
-          if (!svc) return false;
+          if (!svc) return { ok: false, reason: 'no-service' };
           try {
             svc.openTab('browser', { params: { url }, revealIfOpened: true });
-            return true;
+            let detail = '';
+            try {
+              const inv = typeof svc.openTabs?.getSnapshot === 'function' ? svc.openTabs.getSnapshot() : [];
+              const selected = Array.isArray(inv) ? inv.find((v) => v && v.selected) : undefined;
+              const sessionId = selected && selected.sessionId;
+              const tabs = sessionId && typeof svc.tabsIn === 'function' ? svc.tabsIn(sessionId) : [];
+              detail = ' tabs=' + (Array.isArray(tabs) ? tabs : []).map((t) => (t.kind || '?') + ((t.navigation && t.navigation.params && t.navigation.params.url) ? ':url' : ':nourl')).join(',');
+            } catch (err) { detail = ' (inspect-failed)'; }
+            return { ok: true, reason: 'ok' + detail };
           } catch (err) {
-            if (typeof console !== 'undefined') console.warn('[feishu-ref] openTab failed:', err);
-            return false;
+            return { ok: false, reason: 'throw:' + (err && err.message ? err.message : String(err)) };
           }
         };
-        if (attempt()) return;
+        const first = attempt();
+        if (first.ok || first.reason.startsWith('throw:')) {
+          if (typeof report === 'function') report(first);
+          return;
+        }
         const panel = document.querySelector('[data-sidebar-right-panel]');
         const expanded = panel && panel.hasAttribute('data-sidebar-right-open');
         if (!expanded) {
@@ -199,9 +211,10 @@ window.__ModuleLoader__.load({
         const delays = [120, 400, 900, 1600];
         let i = 0;
         const retry = () => {
-          if (attempt()) return;
+          const r = attempt();
+          if (r.ok || r.reason.startsWith('throw:')) { if (typeof report === 'function') report(r); return; }
           if (i < delays.length) { setTimeout(retry, delays[i]); i += 1; return; }
-          if (typeof fail === 'function') fail('右侧打开失败：服务不可用（sidebarRight）');
+          if (typeof report === 'function') report({ ok: false, reason: 'retry-exhausted:no-service' });
         };
         setTimeout(retry, delays[i]); i += 1;
       };
@@ -221,8 +234,9 @@ window.__ModuleLoader__.load({
         } catch (err) {
           if (navigator.clipboard) navigator.clipboard.writeText(text);
         }
-        openInSidebar(item.url, (message) => { setError(message); setOpen(true); });
-        close();
+        openInSidebar(item.url, (result) => {
+          setDiag((result.ok ? '✅ openTab: ' : '❌ openTab: ') + result.reason);
+        });
       };
 
       const showRecent = open && query.trim() === '';
@@ -327,6 +341,9 @@ window.__ModuleLoader__.load({
               ]),
             ])),
           ]),
+          diag !== ''
+            ? h('div', { key: 'diag', className: ROOT + '-hint' }, diag)
+            : null,
           visibleRows.length === 0 && !loading && error === ''
             ? h('div', { key: 'empty', className: ROOT + '-hint' }, '没有找到文档，换个关键词试试')
             : null,
