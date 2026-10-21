@@ -1,12 +1,10 @@
 # GitHub 日报 —— 敲 GitHub Actions
 #
-# 时间：每天 05:17（服务器时区 CST = 北京）
+# 时间：每天 20:00（服务器时区 CST = 北京）
+# 来源：飞书「项目管理」→「定时任务」表（2026-10-22 王颖调整）
 #
-# ⚠️ 这修掉一个 8 小时偏差：原来 workflow 里写的是 GitHub 的 UTC cron
-#    `17 5 * * *`，但它的注释以为这是"05:17 Asia/Shanghai"。
-#    实际 05:17 UTC = 北京 13:17 —— 而注释说它要"在 09:00 的 DSH 消费任务前 3h45m 跑完"。
-#    也就是说这份日报一直比预期晚 8 小时，DSH 09:00 去读时读到的是昨天的。
-#    搬进服务器后时间由我们自己的 crontab 控制，写的就是北京时间。
+# 为什么不再是 GitHub 的 schedule：GitHub 的定时器在本仓库实测延迟 4-5 小时，
+# 而这份数据要被下游消费。改成服务器准点调 workflow_dispatch，run 会立刻开始。
 SHELL=/bin/bash
 PATH=/usr/local/bin:/usr/bin:/bin
-17 5 * * * root /usr/local/bin/ai-capability-store-dispatch automation-github-trending-daily.yml
+0 20 * * * root /usr/local/bin/ai-capability-store-dispatch automation-github-trending-daily.yml
