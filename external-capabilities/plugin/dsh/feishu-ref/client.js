@@ -264,7 +264,7 @@ window.__ModuleLoader__.load({
             key: 'q',
             ref: inputRef,
             className: ROOT + '-search',
-            placeholder: '搜索飞书文档 / 多维表格…（留空看最近编辑）',
+            placeholder: '搜索飞书文档 / 多维表格…',
             value: query,
             onChange: (event) => setQuery(event.target.value),
           }),
