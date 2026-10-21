@@ -128,6 +128,8 @@ MUTATIONS = {
         "    trigger_kind: daily\n", "    trigger_kind: quarterly\n", 1),
     "trigger-kind-yearly": lambda t: t.replace(
         "    trigger_kind: daily\n", "    trigger_kind: yearly\n", 1),
+    # 生态层（plugin/dsh/…）：和货架同一套规则，未登记的目录必须被抓
+    "ecosystem-orphan": lambda t: t,
     # whitelist
     "unknown-field": _append_frontmatter("version: 9.9.9"),
     "duplicate-key": _duplicate_key,
