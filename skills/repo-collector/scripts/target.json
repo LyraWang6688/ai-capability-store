@@ -54,10 +54,12 @@
         "桌面工具",
         "网络工具",
         "MCP 服务",
-        "插件集"
+        "插件集",
+        "文档站"
       ],
       "_note": "2026-10-16 授权新增「MCP 服务」（chrome-devtools-mcp / playwright-mcp / browser-tools-mcp 收录用）",
-      "_note_2": "2026-10-17 授权新增「插件集」（anthropics 插件仓库收录用）"
+      "_note_2": "2026-10-17 授权新增「插件集」（anthropics 插件仓库收录用）",
+      "_note_3": "2026-10-23 授权新增「文档站」（GoogleChrome/developer.chrome.com 收录用）"
     },
     {
       "name": "主题标签",
