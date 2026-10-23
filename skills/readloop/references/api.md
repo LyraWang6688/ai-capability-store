@@ -52,6 +52,7 @@
     "model": "deepseek-chat",
     "api_key": "sk-..."
   },
+  "performance": { "attempts": 20, "correct": 16 },
   "points": [
     {
       "知识点": "subsequent",
@@ -74,6 +75,9 @@
 - `model`：**必填**，服务端会校验（必须 https、不能指向内网）。当前版本的题面由服务端**确定性生成**，不调用模型；`model` 是为将来的模型润色预留，传了也不会产生模型调用。
 - `points`：**不能为空**；`状态` 用英文枚举（`new` / `learning` / `review` / `relearning` / `mastered`）；数字字段接受数字或数字字符串；`下次复习` 接受 `YYYY-MM-DD`、ISO 8601、毫秒时间戳。
 - `date`：`YYYY-MM-DD`（上海时区）；不传则用服务端当天。
+- `performance`（可选）：宿主从 `practice_events` 取**最近 20 题**算出的 `{ attempts, correct }`。
+  服务端据此调今日难度（新点配额）：**样本 < 20 题不调整**，正确率做贝叶斯平滑后再判断，
+  避免「昨天运气好就加难」。不传 = 没有数据，用默认配额。
 
 返回：
 
@@ -97,6 +101,15 @@
     "new_count": 2,
     "due_count": 5,
     "weak_points": ["the percentage of", "主谓一致"]
+  },
+  "difficulty": {
+    "level": "steady",
+    "newQuota": 2,
+    "leechQuota": 2,
+    "successRate": 0.8,
+    "smoothedSuccessRate": 0.793,
+    "prior": { "rate": 0.78, "weight": 10 },
+    "reason": "正确率 80%（平滑后 79%）在目标区内，维持"
   }
 }
 ```
@@ -113,6 +126,8 @@
 - `context` **当前恒为 `null`**：作答前不下发未掩码原句（会直接泄露答案），语境已经写在掩码后的 `stem` 里。不要把它当「原句」渲染。
 - `answered` 恒为 `0`：服务端不记进度，宿主自己数已答数（每成功 submit 一次 +1）。
 - `hint`：难词（答错 ≥4 次）会给「首字母 + 字母数」，否则 `null`；不要把 hint 当答案。
+- `difficulty`：今日难度（`level` / `newQuota` / `leechQuota` / 原始与平滑正确率 / `reason`）。
+  宿主可以用 `reason` 向用户解释「为什么今天题多/题少」；不要自己改配额。
 
 **`question_id` 是服务端签名的不透明串**，内含知识点、正确答案与作答前状态，客户端不要解析、不要修改、不要缓存到表格。题目对象本身**不含正确答案**。有效期 48 小时（跨天补答仍可判分）。
 
@@ -120,7 +135,7 @@
 
 | 状态码 | 含义 |
 |---|---|
-| 400 | `date` 格式不对 / `model` 配置非法 |
+| 400 | `date` 格式不对 / `model` 配置非法 / `performance` 不合法 |
 | 401 | `host_token` 无效 |
 | 402 | 授权到期 |
 | 422 | `points` 为空，或某条知识点字段不全 |
@@ -187,11 +202,73 @@
 
 ---
 
-## 4. 初始化接口（一键创建插件写入应用）
+## 4. POST /api/review/metrics（学习效果指标）
+
+用来回答「规则有没有效果」，不是出题。宿主把答题记录 + 当前知识点传上来，服务算完即忘。
+
+请求：
+
+```json
+{
+  "date": "2026-10-23",
+  "windowDays": 28,
+  "practice": [
+    { "答题时间": "2026-10-20", "知识点": "subsequent", "题型": "choice",
+      "是否正确": "correct", "信号强度": "自己译对", "用时毫秒": 12000,
+      "题源": "到期", "复习间隔": 7 }
+  ],
+  "points": [
+    { "归一化内容": "subsequent", "状态": "review", "答错次数": 0 }
+  ]
+}
+```
+
+返回（节选）：
+
+```json
+{
+  "window": { "start": "2026-09-26", "end": "2026-10-23", "days": 28, "practiceRows": 120, "skippedRows": 2 },
+  "overall": { "attempts": 120, "correct": 96, "successRate": 0.8, "smoothedSuccessRate": 0.812,
+               "avgElapsedMs": 24000, "hintUsedRate": 0.15, "hintSample": 120 },
+  "byInterval": [
+    { "key": "7_13", "label": "7–13 天", "attempts": 18, "correct": 14,
+      "successRate": 0.778, "smoothedSuccessRate": 0.757 }
+  ],
+  "byType": [ { "type": "choice", "attempts": 60, "correct": 52, "successRate": 0.867 } ],
+  "leech": { "activePoints": 40, "leechPoints": 6, "leechRatio": 0.15 },
+  "adherence": { "activeDays": 20, "windowDays": 28, "rate": 0.714 },
+  "target": { "min": 0.7, "max": 0.85, "inBand": true, "decisionRate": 0.812 },
+  "sample": { "attempts": 120, "minSample": 20, "enough": true },
+  "missing": [],
+  "recommendations": [
+    { "code": "LONG_INTERVAL_WEAK", "level": "warn", "message": "长间隔（7 天以上）保持率 68% 偏低：缩短间隔，或答对后给提示" }
+  ]
+}
+```
+
+| 指标 | 含义 |
+|---|---|
+| `byInterval` | **间隔分档保持率**：当天 / 1–2 / 3–6 / 7–13 / 14+ 天，每档 attempts/correct/正确率；需要 `practice` 里的 `复习间隔` 字段 |
+| `overall` | 整体 attempts/correct、原始与平滑正确率、平均用时、提示使用率 |
+| `target` | 原始正确率是否落在 70–85%（合意困难）；`decisionRate` 是平滑值 |
+| `byType` / `bySource` | 按题型 / 题源分组的正确率 |
+| `leech` | 活跃点里「答错 ≥4 次」的比例（`mastered` 不计） |
+| `adherence` | 窗口内有作答的天数 / 窗口天数 |
+| `sample.enough` | 是否 ≥20 题（不够时不下难度结论） |
+| `missing` | 缺哪些字段导致哪些指标算不出 |
+| `recommendations` | 确定性建议（样本不足/太简单/太难/长间隔弱/难词多/完成率低/太慢/缺字段），最多 3 条 |
+
+- `windowDays`：1–90，默认 28；`practice` / `points` 各最多 5000 行
+- `practice` 行必填 `答题时间` + `是否正确`；`复习间隔` = **作答前的间隔天数**
+- 校验失败返回 400（`practice` 非数组、`windowDays` 越界等）
+
+> 改规则前先用它跑「改前 / 改后」对比；不要用线上用户做试验。
+
+## 5. 初始化接口（一键创建插件写入应用）
 
 > 流程见 `SKILL.md` §3.3。这里只列契约。
 
-### 4.1 POST /api/setup/app/start
+### 5.1 POST /api/setup/app/start
 
 用飞书 Device Grant 帮用户创建**属于他自己的**飞书自建应用。
 
@@ -207,7 +284,7 @@
 
 `app_token` 只接受纯 token（`/base/<token>` 里那段）。传整条链接会返回 400，**宿主自己解析 URL**。创建失败/无法启动返回 503。
 
-### 4.2 GET /api/setup/app/status?session=…
+### 5.2 GET /api/setup/app/status?session=…
 
 ```json
 {
@@ -240,10 +317,10 @@
 { "token": "ok", "read": "ok", "write": "ok", "publish": "ok", "details": "", "publish_details": "" }
 ```
 
-**`app_secret` 默认是 `null`。** 主路径不要读它——Secret 由 Chrome 插件用配对码自取（见 4.3）。
+**`app_secret` 默认是 `null`。** 主路径不要读它——Secret 由 Chrome 插件用配对码自取（见 5.3）。
 只有兜底手动路径需要时，才带 `&reveal_secret=1` 取一次（取过之后不再返回，凭证也不会被销毁）。
 
-### 4.3 配对（把凭证交给 Chrome 插件）
+### 5.3 配对（把凭证交给 Chrome 插件）
 
 插件在用户浏览器里，没有 `host_token`，用户也不该手抄 Secret。流程：
 
@@ -274,7 +351,7 @@
 
 ---
 
-## 5. 数据通道说明
+## 6. 数据通道说明
 
 | 谁写表 | 用什么身份 |
 |---|---|
@@ -295,5 +372,6 @@
 | 404 | setup 会话 / 配对码不存在 | 让用户重新发起「一键创建」或核对配对码 |
 | 410 | setup 会话过期 | 让用户重新点一次验证链接 |
 | 422 | `points` 为空或字段不全 | 回到读表步骤，检查字段名 |
+| 400（metrics） | 答题记录入参不合法 | 检查 `practice` 是否是数组、`windowDays` 是否在 1–90 |
 | 429 | 配对尝试过多 | 让用户重新生成配对码 |
 | 5xx | 服务异常 | 最多重试 2 次，如实告知，不要编题 |

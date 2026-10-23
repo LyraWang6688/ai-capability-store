@@ -99,7 +99,7 @@ skills:
     path: skills/readloop
     scope: shared
     status: testing
-    version: 0.2.3
+    version: 0.2.4
     updated: "2026-10-23"
     notes: >
       Daily English review loop built on real reading. The host reads and writes
@@ -110,6 +110,13 @@ skills:
       is four steps: pick model, create the Bitable from template, install the
       Chrome extension, create a host scheduled task (daily/weekly + time).
       `testing`: not yet validated end-to-end on Doubao Work.
+      0.2.4 (minor): adds the learning-metrics loop. New `POST /api/review/metrics`
+      turns practice logs into interval-bucketed retention, target-band status,
+      leech ratio, adherence, time-per-answer and deterministic recommendations;
+      `today` now accepts optional `performance { attempts, correct }` and returns
+      a `difficulty` block (20-review minimum + Bayesian smoothing). practice_events
+      gains an optional `复习间隔` column (interval before the review) needed for the
+      retention buckets; SKILL documents the weekly review flow.
       0.2.3 (patch): docs audit against the shipped service + extension. Plugin install
       points at the real GitHub Release (unpacked zip) instead of a placeholder;
       README no longer claims the model generates questions (the current service
