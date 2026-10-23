@@ -33,6 +33,8 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SKILL_MD = os.path.join("skills", "repo-hygiene", "SKILL.md")
 SKILL_REGISTRY = os.path.join("skills", "registry.yaml")
 AUTOMATION_REGISTRY = os.path.join("automations", "registry.yaml")
+CAPABILITY_REGISTRY = os.path.join("external-capabilities", "registry.yaml")
+ORCHESTRATION_REGISTRY = os.path.join("orchestrations", "registry.yaml")
 
 VERBOSE = "-v" in sys.argv or "--verbose" in sys.argv
 
@@ -133,6 +135,25 @@ MUTATIONS = {
         "    trigger_kind: daily\n", "    trigger_kind: yearly\n", 1),
     # 生态层（plugin/dsh/…）：和货架同一套规则，未登记的目录必须被抓
     "ecosystem-orphan": lambda t: t,
+    # hosting：两种形态，声明必须显式 —— 缺字段不是"external"，是笔误
+    "capability-missing-hosting": lambda t: t.replace(
+        "    hosting: store-managed\n", "", 1),
+    "external-capability-with-implementation": lambda t: t.replace(
+        "    hosting: external\n",
+        "    hosting: external\n"
+        "    implementation_path: external-capabilities/mcp/teaming-mcp\n", 1),
+    "external-capability-no-endpoint": lambda t: t.replace(
+        "    endpoint: https://meeting.bamamei.online\n", "", 1),
+    # service-call：边界两侧的交接必须可校验
+    "service-call-no-trigger": lambda t: t.replace(
+        "    trigger: human\n", "", 1),
+    "calls-unregistered-service": lambda t: t.replace(
+        "service: meeting-analysis-service", "service: nope-service", 1),
+    "egress-misses-service": lambda t: t.replace(
+        "egress: [meeting.bamamei.online]", "egress: [example.org]", 1),
+    "calls-contract-mismatch": lambda t: t.replace(
+        "contract: skills/teaming-meeting-analysis/SKILL.md",
+        "contract: README.md", 1),
     # whitelist
     "unknown-field": _append_frontmatter("version: 9.9.9"),
     "duplicate-key": _duplicate_key,
@@ -181,6 +202,22 @@ CASES = [
      AUTOMATION_REGISTRY, "trigger-kind-quarterly"),
     ("yearly trigger_kind is rejected", 1,
      AUTOMATION_REGISTRY, "trigger-kind-yearly"),
+    # hosting: the two shapes are declared, not inferred from a missing field.
+    ("capability without hosting is rejected", 1,
+     CAPABILITY_REGISTRY, "capability-missing-hosting"),
+    ("external capability carrying implementation_path is rejected", 1,
+     CAPABILITY_REGISTRY, "external-capability-with-implementation"),
+    ("external capability without endpoint is rejected", 1,
+     CAPABILITY_REGISTRY, "external-capability-no-endpoint"),
+    # service-call: the boundary has to be declared, and every claim is checked.
+    ("service-call without trigger is rejected", 1,
+     ORCHESTRATION_REGISTRY, "service-call-no-trigger"),
+    ("calls pointing at an unregistered service is rejected", 1,
+     ORCHESTRATION_REGISTRY, "calls-unregistered-service"),
+    ("service endpoint absent from egress is rejected", 1,
+     ORCHESTRATION_REGISTRY, "egress-misses-service"),
+    ("calls contract differing from the service record is rejected", 1,
+     ORCHESTRATION_REGISTRY, "calls-contract-mismatch"),
 ]
 
 # The first case is the baseline: untouched, so it must pass.

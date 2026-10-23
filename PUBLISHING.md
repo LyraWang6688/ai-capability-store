@@ -71,8 +71,10 @@ Tag / Release when applicable (namespaced Git Tag; Release for distributable art
    - Provider documentation: `external-capabilities/providers/<provider-name>/README.md`
 4. Preserve the native protocol structure (e.g. a Node/Python/Go MCP keeps its own project layout — the Store only fixes where the asset root lives, not the internal source layout).
 5. Register in `external-capabilities/registry.yaml`:
-   - Required: name / provider / type / status / provider_path
-   - Store-managed (has `implementation_path`): also requires `version` (semantic X.Y.Z)
+   - Required: name / provider / type / hosting / status / provider_path / version (semantic X.Y.Z)
+   - `hosting: store-managed` → also requires `implementation_path` (must exist under `external-capabilities/`)
+   - `hosting: external` (service code in a separate project) → requires `endpoint` (https)
+     and `contract_path` (the contract must live in this repository); `implementation_path` is forbidden
    - Optional: auth metadata / capabilities / permissions / notes
 6. Never register credential values — Authentication Metadata ≠ Credential Storage (`external-capabilities/SECURITY.md`).
 7. Bring or link tests and evidence for the capability.

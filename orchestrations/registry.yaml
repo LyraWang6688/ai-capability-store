@@ -2,7 +2,9 @@
 #
 # 布局三层：<模式>/<生态>/<任务>/
 #
-#   模式  这是一类【怎么被发起】的任务。不是某个具体任务，也不是运行环境。
+#   模式  这一类任务靠什么跑完：人说的那一句（manual）/ 一个钟（scheduled-task）/
+#         一个自建的后端服务（service-call）。不是某个具体任务，也不是运行环境。
+#         service-call 不回答「谁发起」，所以它必须另写 trigger。
 #   生态  这个编排动用了哪个平台的资产（wechat / dsh / doubao-work）。
 #   任务  具体那一条。
 #
@@ -64,3 +66,60 @@ orchestrations:
         use: skills/investdesk-portfolio
         needs: [trigger-and-execute]
         produces: 持仓日报
+
+  # ---- service-call：自建服务在后端，接口写在 SOP 里 ----------------------
+  # 这两条和前两条的区别不是"定时与否"，而是：有一段执行没有资产承载 ——
+  # 不是 MCP、不是 CLI、不是插件，而是 skill 正文里的一次 HTTP 调用，打到一个
+  # 我们自己维护的后端服务上。能不能跑，取决于宿主的执行与出网能力。
+  #
+  # `calls` 是这一步的运行时依赖，不是 `use`：店外服务没有 implementation_path，
+  # 不是可引用的落地资产。它记的是"接口对应哪个后端服务"，契约必须与服务记录
+  # 里那份是同一个文件。
+
+  teaming-meeting-review:
+    name: teaming-meeting-review
+    path: orchestrations/service-call/doubao-work/teaming-meeting-review
+    status: testing
+    version: 0.1.0
+    updated: "2026-10-23"
+    trigger: human
+    goal: 人问一场会，宿主取妙记逐字稿、调分析服务、把报告链接交回
+    execution:
+      requires: [bash, curl, network, feishu-native]
+      egress: [meeting.bamamei.online]
+    steps:
+      - id: analyze
+        link: 1-analyze
+        use: skills/teaming-meeting-analysis
+        calls:
+          service: meeting-analysis-service
+          contract: skills/teaming-meeting-analysis/SKILL.md
+          endpoints:
+            - POST /api/host/v1/enroll
+            - POST /api/host/v1/analyze
+        produces: 四部分报告结论 + reportUrl
+
+  readloop-daily:
+    name: readloop-daily
+    path: orchestrations/service-call/doubao-work/readloop-daily
+    status: testing
+    version: 0.1.0
+    updated: "2026-10-23"
+    trigger: host-schedule
+    goal: 宿主定时叫醒，按记忆曲线每天出题、判分、把状态写回用户自己的表
+    execution:
+      requires: [bash, curl, network, feishu-native]
+      # open.feishu.cn 只出现在首次配置的「一键创建用户自己的飞书应用」段（SKILL.md 3.3）。
+      egress: [readinsight.bamamei.online, open.feishu.cn]
+    steps:
+      - id: coach
+        link: 1-coach
+        use: skills/readloop
+        calls:
+          service: readloop-service
+          contract: skills/readloop/references/api.md
+          endpoints:
+            - POST /api/license/activate
+            - POST /api/review/today
+            - POST /api/review/submit
+        produces: 今日题目、判分与状态更新（写回用户的多维表格）

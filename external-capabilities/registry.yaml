@@ -1,5 +1,5 @@
 # External Capability Domain Registry
-# Source of Truth for: external capability identity / provider / type / availability / auth model / permission model / capabilities / version / implementation
+# Source of Truth for: external capability identity / provider / type / hosting / availability / auth model / permission model / capabilities / version / implementation (store-managed) or endpoint+contract (external)
 schema_version: 1
 
 domain: external_capabilities
@@ -21,8 +21,45 @@ allowed_statuses:
   - archived
 
 capabilities:
+  # ---- 店外服务（hosting: external）------------------------------------
+  # 「自建后端 + 店里只有 skill 和契约」的形态：代码在独立项目里，店里登记
+  # 端点、契约与授权模型，不登记实现。它们由 service-call 编排的 step.calls
+  # 引用，不参与 use —— use 只指向有落地路径的资产。
+  # 老规矩不变：店里不存任何凭据值，只写「需要什么」。
+
+  meeting-analysis-service:
+    name: meeting-analysis-service
+    hosting: external
+    provider: lyrawang
+    type: external-api
+    status: available
+    provider_path: external-capabilities/providers/lyrawang/README.md
+    version: 0.1.0
+    endpoint: https://meeting.bamamei.online
+    contract_path: skills/teaming-meeting-analysis/SKILL.md
+    auth: "两层。(1) 宿主 → 服务：Bearer host token，由 8 位接入码经 POST /api/host/v1/enroll 兑换，服务端只存 SHA-256、可单独吊销；token 存 `~/.teaming-mcp/host-token`（600）。(2) 服务 → 大模型：服务端自己的凭证，不在用户侧"
+    capabilities: "接收调用方提供的会议逐字稿，产出四部分团队动力报告（团队状态定位／互动概览／未完成的对话与非共识／给领导者的建议），返回带四象限图与互动网络图的网页报告页（reportUrl）；按 feishuMeetingId 幂等，同一场会不重复分析"
+    permissions: "无需飞书授权 —— 逐字稿由宿主自己的飞书能力导出，服务不接触飞书。调用需有效 host token；与 ABC 向善公益无关的会由服务端返回 not_abc_related 并跳过"
+    notes: "自研、自托管。**代码在独立仓库 `~/Documents/workplace/teaming-bot`，不在 Store 内** —— 按 hosting: external 登记，只登记契约与端点。契约即 skills/teaming-meeting-analysis/SKILL.md 的「标准流程」段。同一个后端还有一个 Store-managed 的 MCP 客户端 teaming-mcp；当前 skill 刻意不依赖它（豆包工作看不到 MCP 工具，2026-10-15 实测），所以这两个客户端并存、互不替代。"
+
+  readloop-service:
+    name: readloop-service
+    hosting: external
+    provider: lyrawang
+    type: external-api
+    status: available
+    provider_path: external-capabilities/providers/lyrawang/README.md
+    version: 0.1.0
+    endpoint: https://readinsight.bamamei.online
+    contract_path: skills/readloop/references/api.md
+    auth: "8 位授权码经 POST /api/license/activate 换 host token（按年授权，过期一律 402）；token 存 `~/.readloop/config.json`（600）。服务 → 大模型用用户自带的 API Key（BYOK），随请求传入、服务不保存"
+    capabilities: "确定性复习规则引擎：选题、组卷、判分、间隔调度；另有首次配置用的授权接口与飞书应用一键创建接口（/api/setup/app/*，写在 SKILL.md 的 3.3 段）。用户的表格数据不在服务端保存"
+    permissions: "无需飞书授权 —— 读写多维表格由宿主自己的飞书能力完成，服务不直接访问用户的表。调用需有效 host token"
+    notes: "自研、自托管。**代码在独立仓库 `~/Documents/workplace/ReadInsight`，不在 Store 内** —— 按 hosting: external 登记，只登记契约与端点。与 meeting-analysis-service 的区别：这个服务无状态，记忆状态存在用户自己的多维表格里。"
+
   wechat-draft-mcp:
     name: wechat-draft-mcp
+    hosting: store-managed
     provider: wechat
     type: mcp
     status: limited
@@ -36,6 +73,7 @@ capabilities:
 
   teaming-mcp:
     name: teaming-mcp
+    hosting: store-managed
     provider: lyrawang
     type: mcp
     status: limited
@@ -49,6 +87,7 @@ capabilities:
 
   feishu-cli-mcp-server:
     name: feishu-cli-mcp-server
+    hosting: store-managed
     provider: feishu
     type: mcp
     status: limited
@@ -62,6 +101,7 @@ capabilities:
 
   image-ocr:
     name: image-ocr
+    hosting: store-managed
     provider: lyrawang
     type: plugin
     status: limited
@@ -74,6 +114,7 @@ capabilities:
     notes: "自研、Store-managed。0.1.0 首次登记：client 注册在 `conversation.input.left`（order=3，紧邻 feishu-ref 的「＋ 引用」）；插入走 `inputActions.captureInsertion()` + `insertText()`。OCR 引擎编译缓存在仓库外（~/Library/Application Support/dsh-image-ocr/ocr），首次点击可能等 30–60s，apply 时会后台预热。实测：整屏截图 53 行，冷启动 31s（编译+模型初始化），热启动 0.66s；中文长句识别良好，UI 图标会带来少量短符号噪声"
   feishu-ref:
     name: feishu-ref
+    hosting: store-managed
     provider: lyrawang
     type: plugin
     status: limited
@@ -86,6 +127,7 @@ capabilities:
     notes: "自研、Store-managed。0.1.0 首次登记：client 注册在 `conversation.input.left` 槽位（compact controls at the left of the composer tool row），order=2；插入走 `inputActions.captureInsertion()` + `insertText()`，属普通可撤销文本编辑。与 selection-toolbar 共用 DSH 的同源鉴权方式（`connection.requestRejection`）。搜索上限 30 字符（飞书 Search v2 限制），面板最多展示 12 条。理由说明：为什么不用系统「＋」菜单——菜单项是命令（host command），无法直接往输入框写文本，需要额外命令↔UI 桥接；自建按钮路径最短且失败可降级为复制链接"
   selection-toolbar:
     name: selection-toolbar
+    hosting: store-managed
     provider: lyrawang
     type: plugin
     status: limited
@@ -99,6 +141,7 @@ capabilities:
 
   command-sync:
     name: command-sync
+    hosting: store-managed
     provider: lyrawang
     type: cli
     status: limited
@@ -111,6 +154,7 @@ capabilities:
     notes: "自研、Store-managed。从 `~/command-sync` 迁入 Store 并参数化：脚本装到 `~/.command-sync/bin/`，数据与配置留在 `~/.command-sync/`，仓库不含任何个人主机/路径。面板只复制不执行（npm publish/ssh 等需人工确认）。数据源只含用户手动输入的命令，不含 AI 执行的命令。历史准确性依赖 zsh 的 INC_APPEND_HISTORY + EXTENDED_HISTORY（README 有说明）。0.1.3：移除月度巡检脚本（scan.py/run-check.sh）——巡检由另一个项目负责，本资产只做命令面板。"
   chrome-frequent-pages:
     name: chrome-frequent-pages
+    hosting: store-managed
     provider: lyrawang
     type: cli
     status: limited
@@ -123,6 +167,7 @@ capabilities:
     notes: "自研、Store-managed。0.1.0 首次登记。设计取舍：不做「直接改 Bookmarks JSON」——Chrome 运行时会覆盖，写坏会丢全部书签；改为生成 Netscape 书签 HTML 由用户手动导入，并提供备份命令。归一化按飞书 `/base/<token>`、`/wiki/<token>` 聚合，避免同一张表因 query 不同被拆成十几条（实测发生过）。可选 install.sh 注册每周一 09:30 launchd 任务。"
   ai-quote-clip:
     name: ai-quote-clip
+    hosting: store-managed
     provider: lyrawang
     type: cli
     status: limited
@@ -135,6 +180,7 @@ capabilities:
     notes: "自研、Store-managed。全新资产，首次提交即其第一份历史。产品定位：AI 金句/素材收录器——现有剪藏工具只覆盖网页，收不了 ChatGPT/Codex/豆包工作这类对话；本工具跨 App 通用。快捷键实现随包分发 Swift 源码、由 `hotkey install` 在本机用 swiftc 编译并按 LaunchAgent 常驻，避免分发预编译 App 的签名问题。0.1.0 仅收录（原文 + 时间 + 来源）；改写（公众号风/小红书风）、按日期分节、MCP 形态（供 Codex/豆包工作 agent 调用）为后续版本。0.1.1：快捷键字母可配置（`hotkey install --key <a-z>`，默认 ⌃⌥Z），热键码由配置文件读取，换字母不用改代码。0.1.2：抓取选区改为三级兜底——AXSelectedText → 模拟 ⌘C（带重试）→ 手动复制的内容；二进制按源码哈希缓存，源码没变不再重编译（避免重新编译导致 macOS 辅助功能授权失效）；未授权时只提示一次并打开设置页；调 lark-cli 时补全 PATH、init 时把 larkCli 解析成绝对路径（launchd 窄 PATH 下也能用）。0.1.3：加 --capture-once 无界面抓取模式与 logs/capture.log 日志（记录前台应用、AX 读取结果、复制重试），用于定位个别应用抓不到选区的问题。0.2.0：快捷键默认改由 Hammerspoon（免费开源、Apple 公证签名）实现——写入 ~/.hammerspoon/ai-quote-clip.lua 并在 init.lua 中引用，避免自研 app 因未签名导致辅助功能授权反复作废；自研 App 保留为 --mode app 备用；只绑一个快捷键（默认 ⌃⌥Z），读取选区前先清空剪贴板、事后还原，不会收录旧剪贴板内容。实测 DSH / Codex / 豆包工作三处均可用。0.2.1：status 命令显示 Hammerspoon/自研 App 两种模式与当前快捷键，便于排查。"
   dsh-feishu-remote:
     name: dsh-feishu-remote
+    hosting: store-managed
     provider: lyrawang
     type: cli
     status: limited
@@ -147,6 +193,7 @@ capabilities:
     notes: "自研、Store-managed。全新资产，从未进过版本控制，首次提交即其第一份历史（按 first-publish §0 ② 直接复制）。status 取 limited：需先建飞书自建应用、配事件订阅与权限、绑 lark-cli 并授权，不是装上即用。0.1.0 分发形态为 npm CLI：`npx @lyra_wang/dsh-feishu-remote init`（npm 上的 `dsh-feishu-remote` 无 scope 名已被第三方 shixiangyu2 占用，且那是 DSH 插件形态的同类项目；本项目是独立常驻 CLI、执行后端可替换、内置高风险确认与审计，两者无关）。macOS 用 launchd 常驻；其他平台用 systemd/PM2 运行 `dsh-feishu-remote run`。2026-10-19 本机实测：doctor 全绿（lark-cli 1.0.97、事件订阅就绪、DSH 内置 CLI、DEEPSEEK_API_KEY 钥匙串就绪）；同一套逻辑先用 launchd 版验证了「列出桌面文件（9.3s 完成）」与「删除类指令先确认、取消零执行」。"
   mac-cleanup:
     name: mac-cleanup
+    hosting: store-managed
     provider: lyrawang
     type: cli
     status: limited
@@ -160,6 +207,7 @@ capabilities:
 
   dsh-inbox:
     name: dsh-inbox
+    hosting: store-managed
     provider: lyrawang
     type: plugin
     status: limited

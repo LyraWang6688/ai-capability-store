@@ -46,15 +46,33 @@ because adding a shelf is a policy decision worth reviewing.
 
 Use lowercase kebab-case for provider identifiers.
 
-## Scope Policy — Store-managed only
+## Scope Policy — two hosting shapes
 
-**This Store accepts Store-managed capabilities ONLY** — code the Store itself
-hosts and maintains. Third-party capabilities whose code lives elsewhere (pure
-external connectors / APIs) are **NOT** registered here.
+Capabilities are classified by **where the code lives**, declared explicitly in a
+required field `hosting`:
 
-If that policy ever changes, the schema must gain an **explicit hosting
-declaration** (a required enum field). Do not infer intent from a missing
-`implementation_path` — that is precisely the ambiguity this policy removes.
+| `hosting` | Code | Registry must carry | Example |
+|---|---|---|---|
+| `store-managed` | in this repository | `implementation_path` (must exist under `external-capabilities/`) | `wechat-draft-mcp`, `teaming-mcp` |
+| `external` | in a separate project we maintain | `endpoint` + `contract_path` (contract lives in this repository) | `meeting-analysis-service`, `readloop-service` |
+
+**Why `external` exists.** A product whose backend is its own repository but whose
+client-side skill is distributed here had nowhere to put the service: the skill
+called it with a literal `curl`, and no registry knew the service existed. The
+dependency could not be recorded in `capability-map.yaml` either, because the
+capability it would point at could not be registered.
+
+**Why it is not just "missing implementation_path".** A missing field is an
+omission, not a declaration. `hosting` is required and closed: an entry either
+declares `store-managed` (and is held to the old path checks) or declares
+`external` (and is then **forbidden** from carrying `implementation_path`,
+because that would claim the Store hosts code it does not host). The validator
+enforces both directions.
+
+The old policy — "Store-managed only" — existed to stop entries that point at
+nothing. `external` keeps that guarantee by making the entry point at something
+the Store *does* have: the contract. If a service's contract is not in this
+repository, it is not registrable here.
 
 ### Ecosystem layer (`<shelf>/<ecosystem>/…`)
 
@@ -120,12 +138,13 @@ thing this Store exists to prevent.
 - capability identity
 - provider
 - type
+- hosting (where the code lives)
 - availability status
 - auth model
 - permission model
 - capabilities
 - version (Store-recommended version)
-- implementation (Store-managed code location)
+- implementation (Store-managed code location) **or** endpoint + contract (external)
 
 A capability record requires:
 
@@ -134,19 +153,28 @@ A capability record requires:
                     capability depends on, and whose rules therefore bound what
                     it can do (lowercase kebab-case). See **Provider Semantics**.
 - `type`          — one of: plugin / mcp / connector / cli / external-api / integration
+- `hosting`       — `store-managed` or `external`; decides which block below applies
 - `status`        — one of: available / limited / disabled / unknown
 - `provider_path` — `external-capabilities/providers/<provider>/README.md` (must exist)
 - `version`       — semantic X.Y.Z (Store-recommended version; see `VERSIONING.md`)
-- `implementation_path`
+
+Then exactly one of:
+
+- `implementation_path` (hosting: store-managed)
                   — relative repo path to the Store-managed code; must exist,
                     must be relative with no `../`, and must live under
                     `external-capabilities/`
+- `endpoint` + `contract_path` (hosting: external)
+                  — the service base URL (https) and the repository path holding
+                    its interface contract. `implementation_path` is forbidden
+                    here: the code lives in a separate project, and claiming a
+                    Store path would describe code the Store does not host.
 
-> `version` and `implementation_path` are **required, not optional**. While they
-> were optional, an entry that simply omitted `implementation_path` skipped
-> every implementation check and still reported a clean run — pointing at no
-> code at all. A missing field is now an error rather than a
-> different-but-valid shape.
+> These fields are **required, not optional**, and `hosting` is required too.
+> While `implementation_path` was optional, an entry that simply omitted it
+> skipped every implementation check and still reported a clean run — pointing
+> at no code at all. `hosting` closes the other half of the same hole: an entry
+> may not become "external" by leaving a field out; it must say so.
 
 Optional, when known:
 
@@ -171,9 +199,10 @@ The test is: **who decides what this capability can do?** If the answer is "the
 platform's API", the provider is the platform. If the answer is "our own
 design", it is the self-provider.
 
-**`provider` is not a maintainer field.** This Store accepts Store-managed
-capabilities only (see Scope Policy above), so every registered capability has
-the same maintainer. A maintainer field would be constant and carry no
+**`provider` is not a maintainer field.** This Store accepts only capabilities we
+ourselves maintain (code in the Store, or a service of our own with its contract
+in the Store — see Scope Policy above), so every registered capability has the
+same maintainer. A maintainer field would be constant and carry no
 information; `provider` exists to record *which external rules apply*.
 
 Worked example — `teaming-mcp` uses Feishu, an LLM service and a self-built
