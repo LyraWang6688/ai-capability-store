@@ -25,7 +25,7 @@ const HELP = `dsh-feishu-remote ${PKG.version} — 用飞书私聊远程操作�
 
 用法:
   dsh-feishu-remote init [--workdir <dir>] [--lark-profile <name>] [--dsh <cmd>] [--open-id <ou_xxx>] [--yes] [--no-service]
-  dsh-feishu-remote doctor
+  dsh-feishu-remote doctor [--full]
   dsh-feishu-remote status
   dsh-feishu-remote logs [--lines 50]
   dsh-feishu-remote run                前台运行（调试用；服务模式由 launchd/systemd 调用）
@@ -180,8 +180,8 @@ async function runForeground() {
   process.on('SIGINT', shutdown);
 }
 
-async function doctor() {
-  const checks = await runDoctor();
+async function doctor(args) {
+  const checks = await runDoctor({ full: has(args, '--full') });
   const icon = { ok: '✓', warn: '⚠', fail: '✗' };
   for (const check of checks) {
     console.log(`${icon[check.status]} ${check.name}: ${check.detail}`);
@@ -215,7 +215,7 @@ const [command, ...rest] = process.argv.slice(2);
 try {
   switch (command) {
     case 'init': await init(rest); break;
-    case 'doctor': await doctor(); break;
+    case 'doctor': await doctor(rest); break;
     case 'status': status(); break;
     case 'logs': logs(rest); break;
     case 'run': await runForeground(); break;

@@ -71,7 +71,7 @@ npx @lyra_wang/dsh-feishu-remote init
 | 命令 | 作用 |
 |---|---|
 | `init` | 交互式初始化（`--yes` 非交互，`--no-service` 不装服务，`--open-id` 用于只有 bot 身份的机器） |
-| `doctor` | 环境体检：lark-cli / 授权 / 事件订阅 / 执行后端 / Key / 服务 |
+| `doctor` | 环境体检：lark-cli / 授权 / 事件订阅 / **执行后端能否真正产出输出** / Key / 服务；加 `--full` 会真跑一句任务验证模型 |
 | `status` | 配置摘要 + 服务状态 + 最近任务 |
 | `logs [--lines N]` | 看审计日志 |
 | `run` | 前台运行（调试用） |
@@ -112,6 +112,8 @@ dsh-feishu-remote doctor
 重点看「飞书事件订阅」和「白名单」两项。
 
 **电脑睡眠后不响应？** macOS 安装服务时会用 `caffeinate` 包裹进程；把睡眠时间设为"永不"或接电源。
+
+**`doctor` 说执行后端「退出码 0，但没有任何输出」？** 说明 `dsh` 跑在了 Node <24 上（`import.meta.main` 不存在 → 静默退出 0）。把 config 的 `extraEnv.PATH` 指到运行 DSH 的 node 目录即可。
 
 **飞书授权到期了怎么办？** 正常情况下 token 每 6 小时自动滚动续期，不需要手动处理。真失效时，在飞书里回复「重新授权」，会收到一张带按钮的卡片，点按钮即可续期。
 
