@@ -1,0 +1,4 @@
+interface:
+  display_name: "对话内卡片图"
+  short_description: "把层级与流程画成 DSH 回复里的结构化卡片图，由 diagram-card 插件渲染"
+  default_prompt: "Use $dsh-diagram to explain this as a card diagram: pick layered for hierarchy or flow for a step sequence, keep it to one diagram per reply."

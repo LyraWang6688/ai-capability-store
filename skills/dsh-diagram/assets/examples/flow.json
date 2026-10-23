@@ -1,0 +1,13 @@
+{
+  "type": "flow",
+  "title": "Agent Loop：一次任务中的持续执行",
+  "start": "接收任务",
+  "steps": [
+    { "n": 1, "title": "Observe · 观察", "desc": "读取文件、页面、工具反馈" },
+    { "n": 2, "title": "Think / Decide · 决策", "desc": "判断下一步应该做什么" },
+    { "n": 3, "title": "Act · 行动", "desc": "调用工具或修改环境" },
+    { "n": 4, "title": "Evaluate · 检查", "desc": "验证是否达到目标" }
+  ],
+  "loopback": "未通过 → 利用反馈继续循环",
+  "end": "完成并通过验收 → 停止"
+}

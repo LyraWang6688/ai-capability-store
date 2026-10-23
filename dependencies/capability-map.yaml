@@ -32,6 +32,14 @@ dependencies:
         required: true
         notes: 选题 / 判分 / 间隔调度由服务计算；skill 只读写用户的表、呈现题目、把 updates 原样写回
 
+  # 卡片是插件在客户端渲染的，skill 只产出 JSON。
+  # 没有这个插件，```dsh-diagram 块退化成一段普通代码块 —— 内容还在，但读者看到的是 JSON。
+  - skill: dsh-diagram
+    requires:
+      - capability: diagram-card
+        required: true
+        notes: 渲染完全由插件负责；skill 只决定该不该画、以及 JSON 怎么写。插件缺失时读者看到原始代码块
+
 # A dependency entry:
 #   - skill: <skill-name>              # must exist in skills/registry.yaml
 #     requires:

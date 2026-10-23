@@ -239,6 +239,21 @@ skills:
       deterministic standalone HTML/SVG with playback controls or looping GIF.
       New renderer uses Python stdlib for HTML; GIF adds Pillow and a CJK font.
       Legacy bar/line/flow GIF inputs remain compatible. No static-image output.
+  dsh-diagram:
+    name: dsh-diagram
+    path: skills/dsh-diagram
+    scope: shared
+    status: testing
+    version: 0.1.0
+    updated: "2026-10-24"
+    notes: >
+      在 DSH 回复里输出 ```dsh-diagram 代码块，由 diagram-card 插件渲染成卡片图。
+      本 Skill 只负责「该不该画」和「怎么写」：判断条件与抑制条件、layered / flow
+      两种模板的选择、文案长度与图标清单、发送前的 JSON 校验脚本
+      （scripts/check_spec.py）。不产出图片、不绘图、不碰数据趋势。
+      依赖外部能力 diagram-card（见 external-capabilities/registry.yaml），
+      宿主未安装该插件时读者只会看到 JSON，因此 SKILL.md 明确限定适用范围。
+
   beijing-theater-calendar:
     name: beijing-theater-calendar
     path: skills/beijing-theater-calendar
