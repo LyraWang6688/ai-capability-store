@@ -60,7 +60,7 @@ automations:
     notes: >
       0.6.1 起两段式：Actions 只抓数据（不调模型、不写飞书），SSH 推给服务器 DSH；
       服务器判断有无变化、需要时调 DeepSeek 出报告、渲染 HTML 到 automation.bamamei.online、
-      写飞书 Base 与任务收件箱。`data` 分支仍保留原始快照（给 weekly 聚合，属归档）。
+      写任务收件箱。日报**不写飞书 Base**（只给 HTML）。`data` 分支仍保留原始快照（归档）。
 
   github-trending-weekly:
     name: github-trending-weekly
