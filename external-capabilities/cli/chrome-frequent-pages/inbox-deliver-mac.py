@@ -47,8 +47,8 @@ def main():
     ap.add_argument("--summary", required=True)
     args = ap.parse_args()
     summary = args.summary.strip()
-    if len(summary) > 100:
-        summary = summary[:99] + "…"
+    if len(summary) > 300:
+        summary = summary[:299] + "…"
     record = {
         "结果摘要": summary,
         "结果": [args.result],
