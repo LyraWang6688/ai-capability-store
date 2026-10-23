@@ -6,7 +6,10 @@
 
 | 文档 | 说明 | 状态 | 实测日期 |
 |---|---|---|---|
-| _待填充_ | | | |
+| [doubao-work.md](./doubao-work.md) | 豆包工作（DoubaoWork.app） | 未验证 | 2026-10-24 |
+| [codex-desktop.md](./codex-desktop.md) | Codex 桌面版（ChatGPT.app 内的 Codex） | 未验证 | 2026-10-24 |
+| [wechat.md](./wechat.md) | 微信（WeChat.app） | 未验证 | 2026-10-24 |
+| [macos.md](./macos.md) | macOS 桌面操作（系统级：Finder / 系统设置 / 原生 App） | 未验证 | 2026-10-24 |
 
 ## 每篇文档必答
 
