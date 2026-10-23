@@ -22,6 +22,9 @@ External Capability  = What can be called
 
 Skills and External Capabilities are **peer Domains**. A Plugin is NOT a sub-entity of a Skill.
 
+> DSH 插件（plugin/dsh/*）的工程经验与已验证 API 清单，见
+> [`plugin/dsh/README.md`](./plugin/dsh/README.md)。
+
 ## Placement
 
 ```text
