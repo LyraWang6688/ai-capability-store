@@ -16,6 +16,41 @@
     box2bitable-observability     ← 同上
 ```
 
+## 规则（2026-10-24 定）
+
+| 规则 | 内容 |
+|---|---|
+| 新任务 / 改造任务 | **一律 systemd timer**（cron 只留旧的，下次触及再迁）|
+| 触发器位置 | 全部在 `scripts/server-timers/`：cron → `timers/*.cron`；systemd → `systemd/*.service|.timer` |
+| 安装入口 | 只有一个：`sudo bash install.sh`（同时装 cron 与 systemd）|
+| 投递脚本 | `deliver/*` → `/srv/dsh-jobs/scripts/`（`dshjobs` 身份，只它持有飞书凭据）|
+
+### 为什么选 systemd timer
+
+- `Persistent=true`：服务器重启/维护错过时间点会补跑（钱账类任务不能丢）
+- `After=`：投递等执行结束，不用 `sleep`
+- `User=dshjobs` + `EnvironmentFile`：凭据隔离
+- `journalctl -u`：日志按单元聚集
+- `RandomizedDelaySec`：多个任务错峰
+
+### 当前 systemd 触发器
+
+| 任务 | 执行 | 投递 | 结果去向 |
+|---|---|---|---|
+| `ops-audit` | 每月 1 日 21:00 | 21:15 | 飞书「任务收件箱」→ DSH 面板待读 |
+| `deepseek-invoice` | 每月 1 日 10:00 | 10:20 | 同上 |
+
+执行器以原用户（`ubuntu`）跑；投递器以 `dshjobs` 跑。
+
+### 新增一个 systemd 任务的步骤
+
+1. 在 `systemd/` 加 `xxx.service` + `xxx.timer`（`Unit=xxx.service`）
+2. 在 `deliver/` 加投递脚本（读结果 → 调 `inbox-deliver`）
+3. 在 `systemd/` 加 `xxx-inbox.service` + `xxx-inbox.timer`（`User=dshjobs`）
+4. `sudo bash install.sh`
+5. 用 `systemctl list-timers --all | grep xxx` 确认
+
+
 ---
 
 ## 为什么要有这个总目录

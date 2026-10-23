@@ -1,0 +1,87 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""inbox-deliver —— 把一条任务结果写进飞书「任务收件箱」。
+
+用法:
+  inbox-deliver --task ops-audit --result 成功 --summary "磁盘 78%，2 个证书 7 天内到期" \
+                [--detail-url /var/lib/ops-audit/reports/2026-10-23.html] [--executed-at <ms>]
+
+约定:
+- --task 必须与「定时任务」表的「任务名称」一致；找不到则不写「关联任务」。
+- 写表身份由 DSH_INBOX_IDENTITY 控制（服务器上默认 bot）。
+- 失败以非零码退出，并把 lark-cli 的错误原样打印。
+"""
+import argparse, json, os, subprocess
+from datetime import datetime
+
+BASE = os.environ.get("DSH_INBOX_BASE_TOKEN", "NeujbbOfcaPEvMsPIxscaJImn9d")
+INBOX = os.environ.get("DSH_INBOX_TABLE_ID", "tbl9LghPBTjFLH4N")
+TASKS = os.environ.get("DSH_INBOX_TASK_TABLE_ID", "tbl4k7ggY1paqoUn")
+IDENTITY = os.environ.get("DSH_INBOX_IDENTITY", "bot")
+LARK = os.environ.get("DSH_LARK_CLI", "lark-cli")
+LOG = os.environ.get("DSH_INBOX_LOG", "/srv/dsh-jobs/logs/inbox-deliver.log")
+MAX_SUMMARY = int(os.environ.get("DSH_INBOX_MAX_SUMMARY", "300"))
+
+def log(line):
+    try:
+        os.makedirs(os.path.dirname(LOG), exist_ok=True)
+        with open(LOG, "a", encoding="utf-8") as fh:
+            fh.write(datetime.now().isoformat(timespec="seconds") + " " + line + "\n")
+    except Exception:
+        pass
+
+def lark(args):
+    cmd = [LARK] + args + ["--as", IDENTITY, "--format", "json"]
+    res = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+    try:
+        payload = json.loads(res.stdout or "{}")
+    except Exception:
+        payload = {}
+    if payload.get("ok") is False:
+        raise SystemExit("lark-cli failed: " + json.dumps(payload.get("error", payload), ensure_ascii=False))
+    if res.returncode != 0:
+        raise SystemExit("lark-cli exited %s: %s" % (res.returncode, (res.stderr or "")[:300]))
+    return payload
+
+def task_record_id(name):
+    payload = lark(["base", "+record-list", "--base-token", BASE, "--table-id", TASKS, "--limit", "200"])
+    meta = payload.get("data") or {}
+    fields = meta.get("fields") or []
+    rows = meta.get("data") or []
+    ids = meta.get("record_id_list") or []
+    if "任务名称" not in fields:
+        return ""
+    idx = fields.index("任务名称")
+    for rid, row in zip(ids, rows):
+        if str(row[idx]).strip() == name:
+            return str(rid)
+    return ""
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--task", required=True)
+    ap.add_argument("--result", required=True, choices=["成功", "失败", "超时"])
+    ap.add_argument("--summary", required=True)
+    ap.add_argument("--detail-url", default="")
+    ap.add_argument("--executed-at", type=int, default=0)
+    args = ap.parse_args()
+
+    summary = args.summary.strip()
+    if len(summary) > MAX_SUMMARY:
+        summary = summary[:MAX_SUMMARY - 1] + "…"
+    record = {
+        "结果摘要": summary,
+        "结果": [args.result],
+        "状态": ["未读"],
+        "执行任务": args.executed_at or int(datetime.now().timestamp() * 1000),
+    }
+    rid = task_record_id(args.task)
+    if rid:
+        record["关联任务"] = [rid]
+    lark(["base", "+record-batch-create", "--base-token", BASE, "--table-id", INBOX,
+          "--json", json.dumps({"create_records": [record]}, ensure_ascii=False)])
+    log("ok task=%s result=%s link=%s summary=%s" % (args.task, args.result, rid or "-", summary))
+    print(json.dumps({"ok": True, "task": args.task, "linked": bool(rid), "summary": summary}, ensure_ascii=False))
+
+if __name__ == "__main__":
+    main()

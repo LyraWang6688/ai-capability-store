@@ -51,3 +51,36 @@ echo "装好了。验证："
 echo "  ls -l $TIMERS_DIR"
 echo "  ls -l $CRON_D"
 echo "  crontab -u ubuntu -l   # 应该已经没有 box2bitable 那一行了"
+
+# ---------------------------------------------------------------
+# systemd 类（需要补跑/依赖/独立用户的）：systemd/*.service|*.timer
+# 投递脚本：deliver/* → /srv/dsh-jobs/scripts（dshjobs 身份）
+# ---------------------------------------------------------------
+SYSD_UNITS="$HERE/systemd"
+DELIVER_SRC="$HERE/deliver"
+SCRIPTS_DIR="/srv/dsh-jobs/scripts"
+LOG_DIR="/srv/dsh-jobs/logs"
+
+if [[ -d "$SYSD_UNITS" ]]; then
+  install -d -m 0755 "$SCRIPTS_DIR" "$LOG_DIR"
+
+  for f in "$DELIVER_SRC"/*; do
+    [ -f "$f" ] || continue
+    install -m 0700 -o dshjobs -g dshjobs "$f" "$SCRIPTS_DIR/$(basename "$f")"
+    echo "✓ 投递脚本 $SCRIPTS_DIR/$(basename "$f")"
+  done
+
+  for f in "$SYSD_UNITS"/*; do
+    [ -f "$f" ] || continue
+    install -m 0644 "$f" "/etc/systemd/system/$(basename "$f")"
+    echo "✓ systemd 单元 $(basename "$f")"
+  done
+  systemctl daemon-reload
+
+  for t in "$SYSD_UNITS"/*.timer; do
+    [ -f "$t" ] || continue
+    name="$(basename "$t")"
+    systemctl enable --now "$name" >/dev/null
+    echo "✓ 已启用 $name"
+  done
+fi

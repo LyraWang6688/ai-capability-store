@@ -1,0 +1,13 @@
+[Unit]
+Description=ops-audit monthly server audit (read-only)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=ubuntu
+WorkingDirectory=/opt/ops-audit
+ExecStart=/usr/bin/python3 /opt/ops-audit/ops_audit.py run
+# 退出码 3 = 发现问题（约定），不算系统失败
+SuccessExitStatus=3
+Nice=10

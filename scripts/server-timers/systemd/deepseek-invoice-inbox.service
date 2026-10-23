@@ -1,0 +1,12 @@
+[Unit]
+Description=Deliver the latest DeepSeek invoice run into the Feishu task inbox
+After=network-online.target deepseek-invoice.service
+
+[Service]
+Type=oneshot
+User=dshjobs
+Environment=HOME=/srv/dsh-jobs
+Environment=PATH=/srv/dsh-jobs/node/bin:/srv/dsh-jobs/.local/bin:/usr/local/bin:/usr/bin:/bin
+EnvironmentFile=-/srv/dsh-jobs/env/app.env
+ExecStart=/srv/dsh-jobs/scripts/deepseek-invoice-inbox.py
+Nice=10

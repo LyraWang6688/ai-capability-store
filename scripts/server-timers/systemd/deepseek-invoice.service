@@ -1,0 +1,18 @@
+[Unit]
+Description=DeepSeek monthly invoice (browser automation)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/opt/deepseek-invoice
+Environment=HOME=/home/ubuntu
+Environment=NODE_ENV=production
+ExecStart=/usr/bin/node /opt/deepseek-invoice/run.mjs --live
+TimeoutStartSec=600
+Nice=10
+
+[Install]
+WantedBy=multi-user.target
