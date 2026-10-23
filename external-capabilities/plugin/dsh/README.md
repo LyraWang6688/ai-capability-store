@@ -9,6 +9,39 @@
 
 ---
 
+## 〇、结论速览：已跑通 / 未跑通
+
+### ✅ 已跑通（在生产里用着）
+
+| 能力 | 落在哪个插件 | 备注 |
+|---|---|---|
+| 输入框左侧加按钮 | feishu-ref / image-ocr / inbox | `conversation.input.left` |
+| 自绘面板 / 弹窗 / 划词工具条 | 四个插件都用 | `shell.overlay` + `position:fixed` |
+| 往草稿插入文本（可撤销） | feishu-ref / image-ocr | `inputActions.captureInsertion()` + `insertText()` |
+| 划词取选区 → 工具条动作 | selection-toolbar | `window.getSelection()` |
+| Host 自定义路由 + 连接鉴权 | 四个插件的 Host 半 | `ctx.webServer.register` + `requestRejection` |
+| 调本机 CLI（lark-cli 等） | feishu-ref / image-ocr / inbox | `ctx.subprocess.spawn` |
+| 读写飞书多维表格 | inbox | `/plugins/inbox/list|read|deliver` |
+| 面板轮询（30 分钟） | inbox | 客户端 `setInterval` |
+| **点对话里的链接 → 右侧栏打开该 URL** | 宿主自带（`linkOpening: sidebar`）| 设置项即可，不需要插件 |
+| **侧边栏会被打开**（程序化） | feishu-ref 0.3.9 验证过 | 见下方"未跑通"的边界 |
+
+### ❌ 未跑通（明确记录，别再重复踩）
+
+| 想做的事 | 现状 | 证据 |
+|---|---|---|
+| **插件主动打开右侧栏 + 把 URL 填进地址栏** | 侧栏能被打开，但 **URL 不会自动填充**；地址栏仍是空白/旧页面 | 0.3.9 拿到服务后侧栏展开；0.4.0 诊断显示 `openTab` 调用后无导航、控制台无报错；根因是第三方拿不到 `sidebarRight`（第四节）|
+| 第三方获取 `ctx.sidebarRight` | 4 种方式全失败（`ctx.get` / `inject` / `reflect.get` / `dsh.client.inject`），最后一种会让 App 启动失败 | 第四节表格 |
+| 往 `conversation.input.dock` 塞引用条 | 注册成功但长期 `active:false`，界面不渲染 | 第三节 3.1 |
+| 富文本多行插入 | 换行被吞，`> a\n> b` 会变成一行 | 第三节 3.2 |
+
+> 跟踪 issue：[feishu-ref：自动在右侧浏览器打开引用文档（阻塞中）](https://github.com/LyraWang6688/ai-capability-store/issues/268)
+> 上游：[feature request #10592](https://github.com/deepseek-ai/deepseek-harness/discussions/10592)
+
+**当前可行的替代**：链接由 agent 写在回复里，靠宿主 `linkOpening: sidebar` 在右侧栏打开——不需要插件，但需要用户点链接。
+
+---
+
 ## 一、一个 DSH 插件由什么组成
 
 ```
