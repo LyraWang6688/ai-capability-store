@@ -76,3 +76,49 @@ export function buildReplyCard({ kind = 'done', title, text, meta, maxChars = 35
     },
   };
 }
+
+
+/**
+ * High-risk confirmation card: two buttons whose `action_value` carries
+ * `{action, taskId}`, consumed from the `card.action.trigger` event.
+ * Text replies ("确认" / "取消") keep working as a fallback.
+ */
+export function buildConfirmCard({ text, taskId, maxChars = 3500 } = {}) {
+  const limit = Math.max(1, Number(maxChars) || 3500);
+  const content = String(text ?? '').trim().slice(0, limit) || '（无内容）';
+  const value = (action) => ({ action, taskId });
+  return {
+    schema: '2.0',
+    config: { update_multi: true, width_mode: 'default' },
+    header: {
+      title: { tag: 'plain_text', content: '需要确认' },
+      subtitle: { tag: 'plain_text', content: '这条指令含高风险操作' },
+      template: PRESETS.confirm.template,
+      icon: PRESETS.confirm.icon,
+    },
+    body: {
+      direction: 'vertical',
+      padding: '12px 12px 20px 12px',
+      elements: [
+        { tag: 'markdown', content, margin: '0px 0px 12px 0px' },
+        {
+          tag: 'column_set',
+          flex_mode: 'none',
+          horizontal_spacing: '8px',
+          margin: '0px 0px 8px 0px',
+          columns: [
+            { tag: 'column', width: 'weighted', weight: 1, elements: [
+              { tag: 'button', text: { tag: 'plain_text', content: '确认执行' }, type: 'primary_filled', width: 'fill',
+                behaviors: [{ type: 'callback', value: value('confirm') }] },
+            ]},
+            { tag: 'column', width: 'weighted', weight: 1, elements: [
+              { tag: 'button', text: { tag: 'plain_text', content: '取消' }, type: 'default', width: 'fill',
+                behaviors: [{ type: 'callback', value: value('cancel') }] },
+            ]},
+          ],
+        },
+        { tag: 'markdown', content: "<font color='grey'>也可以直接回复「确认」或「取消」。</font>", margin: '0px' },
+      ],
+    },
+  };
+}
