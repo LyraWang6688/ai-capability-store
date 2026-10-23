@@ -50,6 +50,18 @@ export function currentOpenId(status) {
   return (user && user.openId) || status.openId || null;
 }
 
+/**
+ * The bridge only calls the API as the bot (`--as bot`): it reads p2p messages
+ * and sends replies. A machine may legitimately be bot-only — a headless Linux
+ * server usually is, because user login is a device-code flow. `init` still
+ * needs a human open_id for the whitelist, which is why it accepts `--open-id`.
+ */
+export function botReady(status) {
+  if (!status) return false;
+  const bot = status.identities && status.identities.bot;
+  return Boolean(bot && bot.status === 'ready');
+}
+
 export async function sendText(cfg, chatId, text) {
   const body = String(text || '').trim().slice(0, cfg.maxReplyChars) || '（无内容）';
   return run(cfg, ['im', '+messages-send', '--chat-id', chatId, '--text', body, '--as', 'bot']);

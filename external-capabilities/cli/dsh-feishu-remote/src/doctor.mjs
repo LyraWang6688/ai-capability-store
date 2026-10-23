@@ -4,7 +4,7 @@
 import { spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { CONFIG_PATH, loadConfig } from './config.mjs';
-import { authStatus, currentOpenId, eventDryRun } from './feishu.mjs';
+import { authStatus, botReady, currentOpenId, eventDryRun } from './feishu.mjs';
 import { serviceStatus } from './service.mjs';
 
 function which(command) {
@@ -35,13 +35,19 @@ export async function runDoctor() {
   if (cfg && larkPath) {
     const status = await authStatus(cfg);
     const openId = currentOpenId(status);
-    add('飞书授权', openId ? 'ok' : 'fail',
-      openId ? `user open_id=${openId}` : '未登录或授权失效',
-      openId ? '' : `lark-cli ${cfg.larkProfile ? `--profile ${cfg.larkProfile} ` : ''}auth login --domain im`);
-    if (openId && Array.isArray(cfg.allowedOpenIds) && cfg.allowedOpenIds.length > 0 && !cfg.allowedOpenIds.includes(openId)) {
-      add('白名单', 'warn', `当前账号不在 allowedOpenIds 中（${openId}）`, '把该 open_id 加入 config.json 的 allowedOpenIds');
-    } else if (openId) {
-      add('白名单', 'ok', `${(cfg.allowedOpenIds || []).length} 人`, '');
+    const bot = botReady(status);
+    add('飞书机器人身份', bot ? 'ok' : 'fail',
+      bot ? 'bot identity ready（收发消息只需要它）' : 'bot 身份不可用',
+      bot ? '' : `lark-cli ${cfg.larkProfile ? `--profile ${cfg.larkProfile} ` : ''}profile add / auth login`);
+    if (openId) {
+      if (Array.isArray(cfg.allowedOpenIds) && cfg.allowedOpenIds.length > 0 && !cfg.allowedOpenIds.includes(openId)) {
+        add('白名单', 'warn', `当前账号不在 allowedOpenIds 中（${openId}）`, '把该 open_id 加入 config.json 的 allowedOpenIds');
+      } else {
+        add('白名单', 'ok', `${(cfg.allowedOpenIds || []).length} 人`, '');
+      }
+    } else {
+      add('白名单', 'warn', `仅 bot 身份：读不到用户 open_id，无法自动核对（配置里 ${(cfg.allowedOpenIds || []).length} 人）`,
+        '确认 allowedOpenIds 里是你的 open_id；初始化时可用 init --open-id ou_xxx');
     }
 
     const dry = await eventDryRun(cfg);
