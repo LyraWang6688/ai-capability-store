@@ -15,7 +15,7 @@ window.__ModuleLoader__.load({
 
     const NS = '@lyra_wang/dsh-inbox';
     const ROOT = 'dsh-inbox';
-    const POLL_MS = 30 * 60 * 1000;
+    const POLL_MS = 2 * 60 * 1000;
 
     const store = { items: [], unread: 0, open: false, loading: false, error: '', fetchedAt: 0, autoOpened: false };
     const listeners = new Set();
@@ -157,7 +157,13 @@ window.__ModuleLoader__.load({
       useEffect(() => {
         refresh();
         const timer = setInterval(refresh, POLL_MS);
-        return () => clearInterval(timer);
+        // 窗口重新获得焦点时也刷新一次（切回 DSH 就能看到新任务）
+        const onFocus = () => { void refresh(); };
+        window.addEventListener('focus', onFocus);
+        return () => {
+          clearInterval(timer);
+          window.removeEventListener('focus', onFocus);
+        };
       }, []);
       return null;
     }
