@@ -63,5 +63,14 @@ for name in "${LEGACY_CRONS[@]}"; do
   fi
 done
 
+# 6) 清理旧的固定投递 timer（现在由 OnSuccess/OnFailure 触发）
+for legacy in ops-audit-inbox.timer deepseek-invoice-inbox.timer; do
+  if [[ -f "/etc/systemd/system/$legacy" ]]; then
+    systemctl disable --now "$legacy" 2>/dev/null || true
+    rm -f "/etc/systemd/system/$legacy" && echo "✓ 移除旧投递 timer $legacy"
+  fi
+done
+systemctl daemon-reload
+
 echo
 echo "查看触发器：systemctl list-timers --all | grep -E '($(IFS='|'; echo "${LEGACY_CRONS[*]}")|ops-audit|deepseek-invoice)'"

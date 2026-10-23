@@ -8,6 +8,25 @@ import datetime, glob, json, os, re, subprocess, sys
 
 LOG_DIR = os.environ.get("DEEPSEEK_INVOICE_LOG_DIR", "/opt/deepseek-invoice/logs")
 DELIVER = os.environ.get("DSH_INBOX_DELIVER", "/srv/dsh-jobs/scripts/inbox-deliver")
+
+STATE_DIR = os.environ.get("DSH_INBOX_STATE_DIR", "/srv/dsh-jobs/state")
+
+def already_delivered(task):
+    path = os.path.join(STATE_DIR, task + ".delivered")
+    try:
+        with open(path, encoding="utf-8") as fh:
+            return fh.read().strip() == datetime.date.today().isoformat()
+    except OSError:
+        return False
+
+def mark_delivered(task):
+    try:
+        os.makedirs(STATE_DIR, exist_ok=True)
+        with open(os.path.join(STATE_DIR, task + ".delivered"), "w", encoding="utf-8") as fh:
+            fh.write(datetime.date.today().isoformat())
+    except OSError:
+        pass
+
 UNIT = os.environ.get("DEEPSEEK_INVOICE_UNIT", "deepseek-invoice.service")
 
 def latest_log():
@@ -52,12 +71,17 @@ def main():
                 break
     essentials = [re.sub(r"^\[[^\]]+\]\s*", "", l) for l in picked[:3]]
     summary = "；".join(essentials) if essentials else (lines[-1] if lines else "无日志输出")
+    if not force and already_delivered('deepseek-invoice'):
+        print(json.dumps({"ok": True, "skipped": "already delivered today"}, ensure_ascii=False))
+        return 0
     cmd = [DELIVER, "--task", "deepseek-invoice", "--result", result,
            "--summary", "deepseek-invoice：" + summary[:200], "--detail-url", path]
     res = subprocess.run(cmd, capture_output=True, text=True)
     print(res.stdout.strip())
     if res.returncode != 0:
         print(res.stderr.strip(), file=sys.stderr)
+    else:
+        mark_delivered('deepseek-invoice')
     return res.returncode
 
 if __name__ == "__main__":

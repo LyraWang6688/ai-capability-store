@@ -45,8 +45,8 @@ scripts/server-timers/
 
 | 任务 | 时间 | 形式 | 执行身份 | 结果去向 |
 |---|---|---|---|---|
-| `ops-audit` | 每月 1 日 21:00 | 本机脚本 | ubuntu | 报告 → 21:15 投递收件箱 |
-| `deepseek-invoice` | 每月 1 日 10:00 | 本机浏览器自动化 | ubuntu | 日志 → 10:20 投递收件箱 |
+| `ops-audit` | 每月 1 日 21:00 | 本机脚本 | ubuntu | 报告 → **执行结束即投递**收件箱 |
+| `deepseek-invoice` | 每月 1 日 10:00 | 本机浏览器自动化 | ubuntu | 日志 → **执行结束即投递**收件箱 |
 | `box2bitable-observability` | 每天 09:00 | 本机 node 脚本 | ubuntu | 报告文件（未接收件箱）|
 | `frontier-watch` | 每周一 10:00 | 敲 Actions | root | Actions 结果（未接收件箱）|
 | `github-portfolio-snapshot` | 每月 1 日 18:00 | 敲 Actions | root | 同上 |
@@ -82,3 +82,18 @@ journalctl -u deepseek-invoice-inbox.service -n 50
 | `/etc/ai-capability-store/github-token` | dispatch 敲 Actions 用 |
 | `dshjobs` 的 lark-cli 配置（`/srv/dsh-jobs`）| 投递写飞书表 |
 | `/srv/dsh-jobs/env/app.env`（可选）| 覆盖 `DSH_INBOX_*` 等环境变量 |
+
+
+## 投递时机（2026-10-24 调整）
+
+执行单元加了：
+
+```ini
+[Unit]
+OnSuccess=ops-audit-inbox.service
+OnFailure=ops-audit-inbox.service
+```
+
+任务一结束（成功或失败）立刻触发投递，不再靠固定 offset 猜时间。
+投递脚本有「同一天只投一次」的幂等保护（`/srv/dsh-jobs/state/<task>.delivered`），
+手动重跑任务不会重复写收件箱；`--force` 可强制再投。
