@@ -89,6 +89,21 @@ window.__ModuleLoader__.load({
     }
 
     /** The resident composer is the lowest visible editable element. */
+    const quoteStore = { current: null, listeners: new Set() };
+    function setQuote(value) {
+      quoteStore.current = value;
+      for (const listener of quoteStore.listeners) listener();
+    }
+    function useQuote() {
+      const [value, setValue] = useState(quoteStore.current);
+      useEffect(() => {
+        const listener = () => setValue(quoteStore.current);
+        quoteStore.listeners.add(listener);
+        return () => quoteStore.listeners.delete(listener);
+      }, []);
+      return value;
+    }
+
     function findComposer() {
       const candidates = Array.from(
         document.querySelectorAll('[contenteditable="true"],[role="textbox"]'),
@@ -252,7 +267,9 @@ window.__ModuleLoader__.load({
             if (composer !== null) {
               try {
                 composer.focus();
-                if (document.execCommand('insertText', false, text)) {
+                const block = '> ' + String(text).trim().replace(/\n/g, '\n> ') + '\n\n';
+                if (document.execCommand('insertText', false, block)) {
+                  setQuote({ text: String(text).trim(), at: Date.now() });
                   say(t('inserted'));
                   return;
                 }
@@ -733,6 +750,16 @@ window.__ModuleLoader__.load({
           id: 'selection-toolbar',
           order: 900,
         }, () => h(SelectionToolbar, { t: translate })));
+        ctx.slots.inject('conversation.input.dock', () => ctx.slots.register({
+          name: 'conversation.input.dock',
+          id: 'selection-quote',
+          order: 5,
+        }, () => h(React.Fragment, null,
+          h('style', null, `.dsh-selection-quote{display:flex;align-items:center;gap:8px;margin:0 12px 6px;padding:6px 10px;border-radius:8px;background:var(--dsw-alias-bg-layer-2,#26262b);border:1px solid var(--dsw-alias-border-l1,#3a3a40);font-size:12px;color:var(--dsw-alias-label-secondary,#b6b6bf)}
+            .dsh-selection-quote-bar{width:3px;height:16px;border-radius:2px;background:#7aa2ff;flex:none}
+            .dsh-selection-quote-text{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+            .dsh-selection-quote-close{background:none;border:none;color:inherit;font-size:14px;cursor:pointer;line-height:1;padding:0 2px}`),
+          h(QuoteBar))));
       },
     };
   },
