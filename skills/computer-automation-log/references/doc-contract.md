@@ -90,3 +90,24 @@
 
 `<工具或主题>.md`，kebab-case：`chrome-devtools-mcp.md`、`playwright-mcp.md`、
 `macos-permissions.md`、`ax-tree.md`。一篇文章只讲一件事。
+
+## 一个 App 多篇文档时：用文件夹
+
+一个 App 有多条操作路径（例如：怎么接管界面 / 怎么接 MCP / 图片渲染边界）时，
+不要把所有内容塞进一篇，也不要命名成 `app-a.md`、`app-b.md` 散在目录里。
+
+```text
+computer-automation/computer-use/
+├── README.md                 # 总索引：列出所有文档，含子目录入口
+├── <topic>.md                # 单篇主题（与此前一致）
+└── <app>/
+    ├── README.md             # 该 App 的主题索引 + 特征表 + 一句话选路
+    └── <topic>.md            # 每条操作路径一篇，照上面的必答小节写
+```
+
+规则：
+
+- 子目录里的**每一篇**仍然要满足本文档的抬头四条与必答小节（按所在域判定：`computer-use/` 或 `browser-use/`）。
+- 子目录的 `README.md` 必须列出内部每一篇；上级 `README.md` 必须登记 `./<app>/README.md`。
+- **`README.md` 不是文档**，不对它跑门禁；它负责导航，不承担必答小节。
+- 单篇能写完的就别建文件夹——文件夹是为了防止单文件无限增长，不是为了好看。

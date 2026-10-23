@@ -81,14 +81,23 @@ def main(argv: list[str]) -> int:
 
     if not rep.check(path.is_file(), "文档不存在", str(path)):
         return finish(rep)
-    parent = path.parent.name
     if not rep.check(path.suffix == ".md", "文档必须是 .md", path.suffix):
         return finish(rep)
+    parts = path.parts
+    if "computer-automation" not in parts:
+        rep.check(False, "文档必须位于 computer-automation/{browser-use,computer-use}/ 下", str(path.parent))
+        return finish(rep)
+    ca = len(parts) - 1 - parts[::-1].index("computer-automation")
+    kind = parts[ca + 1] if len(parts) > ca + 1 else ""
+    # 1 = 扁平：<kind>/<topic>.md；2 = 文件夹：<kind>/<app>/<topic>.md
+    depth = len(parts) - (ca + 2)
     if not rep.check(
-        parent in REQUIRED_SECTIONS and path.parent.parent.name == "computer-automation",
+        kind in REQUIRED_SECTIONS,
         "文档必须位于 computer-automation/{browser-use,computer-use}/ 下",
         str(path.parent),
     ):
+        return finish(rep)
+    if not rep.check(depth in (1, 2), "文档层级过深：最多一层 App 子目录", str(path.parent)):
         return finish(rep)
     if not rep.check(path.name != "README.md", "README.md 不是文档，不要对它跑门禁"):
         return finish(rep)
@@ -99,7 +108,7 @@ def main(argv: list[str]) -> int:
 
     text = path.read_text(encoding="utf-8")
     lines = text.splitlines()
-    section_names = REQUIRED_SECTIONS[parent]
+    section_names = REQUIRED_SECTIONS[kind]
 
     # ---- 抬头四条（第一个二级标题之前）----
     first_section = next((i for i, l in enumerate(lines) if l.startswith("## ")), len(lines))
@@ -142,7 +151,11 @@ def main(argv: list[str]) -> int:
 
     # ---- 索引表 ----
     readme = path.parent / "README.md"
-    if not rep.check(readme.is_file(), "子目录缺少 README.md，无法核对索引"):
+    if not rep.check(
+        readme.is_file(),
+        "缺少 README.md，无法核对索引",
+        "App 子目录和 browser-use / computer-use 都应有自己的 README.md",
+    ):
         return finish(rep)
     index = readme.read_text(encoding="utf-8")
     rep.check(
@@ -150,6 +163,15 @@ def main(argv: list[str]) -> int:
         "索引表里没有这篇文档",
         f"在 {readme.name} 的「## 文档索引」里补一行",
     )
+    if depth == 2:
+        # App 子目录本身也要登记在上级索引里，否则没有任何入口能找到它
+        kind_readme = (path.parent.parent / "README.md")
+        entry = f"./{path.parent.name}/README.md"
+        rep.check(
+            kind_readme.is_file() and entry in kind_readme.read_text(encoding="utf-8"),
+            "App 子目录没有登记在上级索引里",
+            f"在 {kind_readme.name} 的「## 文档索引」里补 {entry}",
+        )
     rep.check(
         not re.search(r"_待填充_", index),
         "索引表还有「_待填充_」占位行",

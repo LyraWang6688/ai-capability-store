@@ -217,14 +217,14 @@ skills:
     path: skills/computer-automation-log
     scope: shared
     status: testing
-    version: 0.1.0
+    version: 0.1.1
     updated: "2026-10-24"
     notes: >
       computer-automation/ 文档区的唯一写入口：agent 用操作者的真实浏览器或桌面做
       Computer Use / Browser Use 时触发 —— 先查已有文档复用，操作后按
       computer-automation/README.md 的约定生成或更新文档，再用 check_doc.py 过门禁
       （抬头四条 / 必答小节 / 凭据 / 本机绝对路径 / 索引行）。
-      new_doc.py 只做确定性动作（骨架 + 索引表），正文由模型写；test_scripts.py 是
+      0.1.1：文档区支持「一个 App 多篇」的文件夹形态 —— check_doc.py 接受 <kind>/<app>/<topic>.md 一层子目录（深度 >2 拒绝），并要求子目录 README 登记内部文档、上级 README 登记该子目录；README.md 本身不跑门禁。doc-contract.md 补上该形态的规则。扁平 <kind>/<topic>.md 不受影响（回归验证：填好内容的扁平文档 33 checks 全过）。 new_doc.py 只做确定性动作（骨架 + 索引表），正文由模型写；test_scripts.py 是
       离线自测（14 例，临时目录，不碰真实文档），当前 14/14 通过。
       `testing`：Gate 0 结构完整、脚本正反例有确定性证据；但触发率、真实端到端轨迹、
       效率指标均未评估，且 VERSIONING.md §4 要求 major >= 1 才能 active。
