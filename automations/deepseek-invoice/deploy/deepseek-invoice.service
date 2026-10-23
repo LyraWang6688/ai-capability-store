@@ -10,6 +10,9 @@ Group=ubuntu
 WorkingDirectory=/opt/deepseek-invoice
 Environment=HOME=/home/ubuntu
 Environment=NODE_ENV=production
+# 退出码 4 = 读不到金额，5 = 提交后未验证到成功提示 —— 两者都要人工核对。
+# 不配 Restart：这类失败不能自动重提，否则可能重复申请开票。
+Restart=no
 ExecStart=/usr/bin/node /opt/deepseek-invoice/run.mjs --live
 TimeoutStartSec=600
 Nice=10

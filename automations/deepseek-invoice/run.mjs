@@ -6,6 +6,8 @@
  *  - 默认 dry-run（只读金额，绝不提交）；提交必须显式 --live
  *  - 通过 CDP 复用你已登录的 Chrome（127.0.0.1:9222），不新建窗口
  *  - 金额为 0 → 跳过（幂等，避免重复开票）
+ *  - 读不到金额 → 退出码 4（不猜 0，页面改版必须让人知道）
+ *  - 提交后未验证到成功提示 → 退出码 5（人工核对，禁止自动重提）
  *  - 登录失效 → 退出码 2，上层可据此通知
  *  - 只用语义锚点（name/id/placeholder/文本），不用哈希类名
  *  - 每步截图 + 结构化日志
@@ -19,6 +21,7 @@ import { chromium } from 'playwright-core';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { EXIT_CODES, parseAvailableAmount } from './lib.mjs';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const cfg = JSON.parse(fs.readFileSync(path.join(ROOT, 'config.json'), 'utf8'));
@@ -142,7 +145,7 @@ async function main() {
     await snap(page, '01-auth-required');
     emit({ ok: false, code: 'AUTH_REQUIRED', message: 'DeepSeek 登录已失效，请重新登录后再执行' });
     await browser.close();
-    process.exit(2);
+    process.exit(EXIT_CODES.AUTH_REQUIRED);
   }
   log('✅ 登录态正常');
 
@@ -157,12 +160,31 @@ async function main() {
   const modal = page.locator('.ds-modal').first();
 
   // 3) 读可开票金额
+  // 「读不到」和「读到 0」是两件事：前者是页面改版/未加载，后者才是本月已开完。
+  // 以前两者都落到 0，于是页面一变就静默跳过一个月。
   const amountText = await readAvailable(modal);
-  const available = Number(String(amountText || '0').replace(/[^\d.]/g, '')) || 0;
-  log('可开票金额:', amountText, '→', available);
+  const amount = parseAvailableAmount(amountText);
+  log('可开票金额:', String(amountText), '→', amount.kind, amount.value);
+
+  if (amount.kind === 'unreadable') {
+    log('❌ 读不到可开票金额（页面结构变化 / 金额未加载 / 匹配规则失效），未做任何开票操作');
+    await snap(page, '03-amount-unreadable');
+    await page.keyboard.press('Escape').catch(() => {});
+    emit({
+      ok: false,
+      code: 'AMOUNT_UNREADABLE',
+      raw: amountText,
+      message: '读不到可开票金额，未提交。请查看截图并核对页面结构 / 金额匹配规则',
+    });
+    await browser.close();
+    process.exitCode = EXIT_CODES.AMOUNT_UNREADABLE;
+    return;
+  }
+
+  const available = amount.value;
 
   if (available <= 0) {
-    log('本月无可开额度，跳过');
+    log('本月无可开额度（明确读到 0），跳过');
     await page.keyboard.press('Escape').catch(() => {});
     emit({ ok: true, skipped: true, available: 0, message: 'DeepSeek 本月已开完或暂无额度' });
     await browser.close();
@@ -183,7 +205,7 @@ async function main() {
     await page.keyboard.press('Escape').catch(() => {});
     emit({ ok: false, code: 'AMOUNT_EXCEEDED', available, limit });
     await browser.close();
-    process.exit(3);
+    process.exit(EXIT_CODES.AMOUNT_EXCEEDED);
   }
 
   // 4) 开票方式：按充值金额开票
@@ -258,8 +280,15 @@ async function main() {
       message: `已提交开票申请：${available} 元，电子发票约 7 个工作日内发送至 ${cfg.email}`,
     });
   } else {
-    log('❌ 未检测到成功提示，需人工核对');
-    emit({ ok: false, code: 'SUBMIT_UNVERIFIED', available, message: '未检测到成功提示，请查看截图与页面状态' });
+    log('❌ 未检测到成功提示，需人工核对（不要自动重提，避免重复申请）');
+    emit({
+      ok: false,
+      code: 'SUBMIT_UNVERIFIED',
+      available,
+      message: '未检测到成功提示，请查看截图与页面状态。不要自动重提，先确认发票是否已提交',
+    });
+    // systemd 只看退出码：以前这里 return 掉、退出码 0，等于把"不知道"报成"成功"。
+    process.exitCode = EXIT_CODES.SUBMIT_UNVERIFIED;
   }
   await browser.close();
 }
@@ -267,5 +296,5 @@ async function main() {
 main().catch(async (err) => {
   log('❌ 异常:', err?.message || String(err));
   emit({ ok: false, code: 'EXCEPTION', message: String(err?.message || err) });
-  process.exit(1);
+  process.exit(EXIT_CODES.EXCEPTION);
 });
