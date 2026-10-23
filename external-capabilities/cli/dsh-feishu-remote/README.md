@@ -20,7 +20,7 @@
 - **凭据零入库**：复用 lark-cli 的凭据库与系统钥匙串，本项目不存任何 token；
 - **高风险动作先确认**：含「删除/转账/清空」等词的指令，先回确认卡片文案，回复「确认」才执行；
 - **审计留痕**：每个任务一行 JSONL（谁、何时、指令、耗时、结果长度）；
-- **回复都是卡片**：任务结果 / 失败 / 高风险确认 / 帮助 / 状态统一用飞书 **Card 2.0** 呈现（客户端需 ≥ 7.20），卡片发送失败时自动降级为文本。
+- **回复都是卡片**：任务结果 / 失败 / 高风险确认 / 帮助 / 状态统一用飞书 **Card 2.0** 呈现（客户端需 ≥ 7.20），卡片发送失败时自动降级为文本。高风险确认卡带「确认执行 / 取消」按钮（需开启 `cardActions`），文字回复「确认 / 取消」仍然有效。
 
 ## 前置条件
 
@@ -36,6 +36,7 @@
 3. **一个飞书自建应用**（在 [开放平台](https://open.feishu.cn/app) 里）：
    - 开启**机器人**能力；
    - 事件订阅添加 `im.message.receive_v1`（**长连接**模式）；
+   - （可选）要在卡片上**点按钮**确认高风险操作，再到「事件与回调 → 回调配置」订阅 `card.action.trigger`，并在配置里设 `cardActions: true`；没订阅时该消费者会被拒绝启动；
    - 权限：`im:message.p2p_msg:readonly`、`im:message:send_as_bot`、`im:message`；
    - 发布一个可用版本，并把机器人加进你的私聊。
 4. **执行后端**：默认用 DSH（`dsh headless`）；也可以换成你自己的命令（见配置 `dshCli` / `agentArgs`）。
@@ -90,6 +91,7 @@ npx @lyra_wang/dsh-feishu-remote init
 | `highRiskPatterns` | 触发确认的高风险词 |
 | `apiKeyEnv` / `keychainService` | 模型 Key 的环境变量名 / 钥匙串条目名（Linux 没有钥匙串，配 `keychainService: ""`） |
 | `allowedChatTypes` | 允许的会话类型（默认仅 `p2p`） |
+| `cardActions` | 是否消费 `card.action.trigger`（卡片按钮回调，默认 `false`；开启前需在开放平台订阅回调） |
 | `extraEnv` | 追加给执行后端的环境变量。**Linux 上通常要把 `PATH` 指到 DSH 用的 node 目录**（见下节） |
 
 ## 安全模型
