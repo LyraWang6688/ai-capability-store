@@ -76,6 +76,11 @@ jobs:
       - name: teaming-mcp tests
         working-directory: external-capabilities/mcp/teaming-mcp
         run: node --test tests/*.test.mjs
+      # dsh-feishu-remote 生成的服务脚本决定了「用哪个 node、从哪个 env 文件读 Key」。
+      # 这几处错了不会报错，只会静默不工作（见 README「Linux 常驻」），所以用单测钉住。
+      - name: dsh-feishu-remote tests
+        working-directory: external-capabilities/cli/dsh-feishu-remote
+        run: node --test tests/*.test.mjs
       # Separate from the validator on purpose: that script is pure-filesystem
       # (no git, no subprocess) so a tarball or shallow checkout still validates.
       # "Is this file tracked?" is a git question and belongs in its own tool.

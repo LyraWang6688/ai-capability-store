@@ -14,7 +14,7 @@ import {
 } from '../src/config.mjs';
 import { authStatus, currentOpenId } from '../src/feishu.mjs';
 import { startListener } from '../src/listener.mjs';
-import { installService, isMac, serviceStatus, uninstallService } from '../src/service.mjs';
+import { installService, isLinux, isMac, serviceStatus, uninstallService } from '../src/service.mjs';
 import { runDoctor } from '../src/doctor.mjs';
 
 const CLI_PATH = fileURLToPath(import.meta.url);
@@ -112,15 +112,15 @@ async function init(args) {
   console.log(`  执行后端: ${next.dshCli} ${next.agentArgs.join(' ')}`);
 
   if (!has(args, '--no-service')) {
-    if (!isMac()) {
-      console.log('ℹ 非 macOS / Linux：请用 PM2 等方式运行 `dsh-feishu-remote run`');
+    if (!isMac() && !isLinux()) {
+      console.log('ℹ 当前平台不支持自动安装服务（仅 macOS launchd / Linux systemd）：请用 PM2 等方式运行 `dsh-feishu-remote run`');
       return;
     }
     const install = yes ? 'y' : await prompt('安装开机自启（macOS launchd / Linux systemd）？[Y/n]: ', 'y');
     if (/^y/i.test(install) || install === '') {
       try {
         const result = installService(next, { nodePath: resolveNode(), cliPath: CLI_PATH });
-        console.log(`✓ 服务已安装: ${result.plist}`);
+        console.log(`✓ 服务已安装: ${result.detail}`);
         console.log('  状态: dsh-feishu-remote status');
       } catch (error) {
         console.error(`✗ 服务安装失败: ${error instanceof Error ? error.message : error}`);
@@ -190,15 +190,15 @@ async function doctor() {
   if (failures > 0) process.exitCode = 1;
 }
 
-function install(args) {
+function install() {
   const cfg = requireConfig();
   const result = installService(cfg, { nodePath: resolveNode(), cliPath: CLI_PATH });
-  console.log(`✓ 已安装: ${result.plist}`);
+  console.log(`✓ 已安装: ${result.detail}`);
 }
 
 function uninstall() {
   const result = uninstallService();
-  console.log(result.removed ? `✓ 已卸载: ${result.plist}` : '未发现已安装的服务');
+  console.log(`${result.removed ? '✓' : 'ℹ'} ${result.detail}`);
 }
 
 function showConfig() {
