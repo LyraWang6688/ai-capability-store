@@ -41,12 +41,17 @@ Checks:
         This closes Issue #2 item 4.
     7.  duplicate skill identity across projects/shared FAILS
     8.  capability record required fields (name/provider/type/status/
-        provider_path/implementation_path/version), type/status enums,
-        map key == name, provider kebab-case, provider_path location and exists
-    8b. Store-managed contract: implementation_path is REQUIRED (this Store
-        accepts Store-managed capabilities only), the path must exist, must be
-        relative with no ../, and must live under external-capabilities/;
-        version must be a valid semantic version
+        provider_path/hosting/version), type/status enums, map key == name,
+        provider kebab-case, provider_path location and exists
+    8b. hosting decides the shape: `store-managed` REQUIRES
+        implementation_path (relative, under external-capabilities/, exists);
+        `external` FORBIDS it and REQUIRES endpoint (https URL) +
+        contract_path (exists). Neither may be inferred from a missing field.
+    8c. service-call orchestrations: execution.requires (legal host abilities,
+        must include network), execution.egress (domains), at least one step
+        with `calls`, calls.service registered as an external capability,
+        calls.contract exists and equals that capability's contract_path, and
+        the service's endpoint host appears in egress.
     9.  provider identifiers and provider directory names are lowercase kebab-case
     10. dependency registry is parsed and its top-level contract validated
     11. dependency foreign keys: skill must exist in skills registry,
@@ -70,6 +75,7 @@ import os
 import posixpath
 import re
 import sys
+from urllib.parse import urlparse
 
 try:
     import yaml
@@ -127,6 +133,18 @@ ALLOWED_CAPABILITY_TYPES = {"plugin", "mcp", "connector", "cli", "external-api",
 # capability could be switched off but never retired, while a Skill or an
 # Automation had a full lifecycle. See external-capabilities/README.md.
 ALLOWED_CAPABILITY_STATUSES = {"available", "limited", "disabled", "unknown", "archived"}
+# 托管方式（hosting）。这是 2026-10 放开的一条 policy：以前只收 Store-managed
+# （代码必须在 external-capabilities/ 下），于是一个"后端在独立项目、店里只有 skill
+# 和接口契约"的资产只能把服务写成自由文本，店里没有任何机器可查的事实。
+#
+#   store-managed —— 代码在店里；implementation_path 必填且必须存在
+#   external      —— 代码在店外（自建后端）；店内只登记端点 + 契约，禁止写
+#                    implementation_path（否则就是"登记了但店里没有代码"的假象，
+#                    这正是旧 policy 想防的）
+#
+# 为什么不是"缺 implementation_path 就是 external"：缺字段是笔误，不是声明。
+# 必须显式写 hosting，缺了就是错误。
+ALLOWED_CAPABILITY_HOSTING = {"store-managed", "external"}
 # Automation Domain. An automation is EXECUTION (a clock triggers it); a Skill is
 # a CAPABILITY (an Agent decides to use it). The lifecycle vocabulary mirrors
 # skills on purpose so one mental model covers both domains.
@@ -188,12 +206,32 @@ ALLOWED_ORCHESTRATION_STATUSES = {"testing", "available", "deprecated"}
 
 # 布局是三层：<模式>/<目标>/<任务>/
 #
-# 模式回答"这一类任务是怎么被发起的"—— 不是具体任务，也不是运行环境。
-# 目标回答"最后落在谁的怀里"。
+# 模式回答"这一类任务靠什么跑完"—— 不是具体任务，也不是运行环境：
+#   人说的那一句（manual）· 一个钟（scheduled-task）· 一个自建的后端服务（service-call）
 #
-# 两个都是封闭集合，理由和货架、生态一样：加一个是一次分类决策，
+# 前两个模式同时回答了"谁发起"；service-call 不回答 —— 它可以是人问的，也可以是
+# 宿主定时任务叫醒的，所以 service-call 条目必须另写 trigger 字段（见下）。
+# 这条轴被服务调用打破过一次，记在这里，免得下一个人再问"为什么不加第四个"。
+#
+# 三个都是封闭集合，理由和货架、生态一样：加一个是一次分类决策，
 # 不该由某人随手建个目录来引入。
-ORCHESTRATION_MODES = {"manual", "scheduled-task"}
+ORCHESTRATION_MODES = {"manual", "scheduled-task", "service-call"}
+
+# 谁发起。只对 service-call 必填 —— 另外两个模式的名字已经说了。
+# host-schedule = 宿主自带的定时任务（豆包/Codex 的 schedule），不是 store 里的 automation。
+ALLOWED_ORCHESTRATION_TRIGGERS = {"human", "host-schedule", "daily", "weekly", "monthly", "event"}
+
+# 宿主要具备什么才能跑这条编排。这是一份【能力清单】，不是软件清单：
+#   bash / curl / network  —— 宿主的通用执行能力；服务调用的前提
+#   feishu-native          —— 宿主自带飞书能力
+#   lark-cli               —— 本机装了已登录的 lark-cli
+#   python3 / browser      —— 宿主能跑脚本 / 能读网页
+ALLOWED_HOST_REQUIREMENTS = {"bash", "curl", "network", "feishu-native", "lark-cli",
+                             "python3", "browser"}
+
+# 出网目的地：SOP 里显式指定的域名（契约端点 + 显式 curl）。
+# 不是"这件事碰到的所有系统"——宿主自带能力把数据送到飞书，那不是这里记的。
+EGRESS_RE = re.compile(r"^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$")
 
 # 第二级是【生态】—— 这个编排动用了哪个平台的资产。不是"谁执行"：
 # 谁执行已经在 automations/registry.yaml 的 executor 字段里记过一次了，
@@ -587,14 +625,17 @@ def validate_capability_entries(reg: dict):
             check(f"capability record is a mapping: {key}", False, type(entry).__name__)
             continue
         collected.append((key, entry))
-        # Required fields. `implementation_path` and `version` are required
-        # because this Store accepts Store-managed capabilities ONLY (see
-        # external-capabilities/README.md). They used to be optional, which made
-        # every implementation check below conditional -- an entry that omitted
-        # implementation_path skipped all of them and still reported a clean
-        # run, while pointing at no code. Absent is now an error.
+        # Required fields. `hosting` decides which of the two shapes applies:
+        #   store-managed -> implementation_path is REQUIRED and must exist
+        #   external      -> endpoint + contract_path are REQUIRED, and
+        #                    implementation_path is FORBIDDEN
+        # Before `hosting` existed, implementation_path was unconditionally
+        # required because the Store accepted Store-managed capabilities only.
+        # That made "backend in a separate project, only the skill and its
+        # contract in the Store" unrepresentable — the service lived as free
+        # text inside SKILL.md and no registry knew it existed.
         for field in ("name", "provider", "type", "status", "provider_path",
-                      "implementation_path", "version"):
+                      "hosting", "version"):
             val = entry.get(field)
             present = val is not None
             check(f"capability {key} has required field: {field}", present,
@@ -635,20 +676,49 @@ def validate_capability_entries(reg: dict):
             check(f"capability {key} version X.Y.Z",
                   isinstance(version, str) and bool(VERSION_RE.match(version)),
                   f"version={version!r} type={type(version).__name__}")
-        # Store-managed contract: implementation_path is REQUIRED (declared
-        # above), so here the path must be relative, live under
-        # external-capabilities/, and actually exist. Previously this whole
-        # block was guarded by `if impl is not None`, so omitting the field
-        # silently skipped every line of it.
-        impl = entry.get("implementation_path")
-        if isinstance(impl, str) and impl:
-            iparts = impl.split("/")
-            check(f"capability {key} implementation_path relative",
-                  not os.path.isabs(impl) and ".." not in iparts, impl)
-            check(f"capability {key} implementation_path under external-capabilities/",
-                  impl.startswith("external-capabilities/"), impl)
-            check(f"capability {key} implementation_path exists",
-                  os.path.isdir(os.path.join(ROOT, impl)), impl)
+        hosting = entry.get("hosting")
+        if isinstance(hosting, str) and hosting:
+            check(f"capability {key} hosting legal", hosting in ALLOWED_CAPABILITY_HOSTING,
+                  f"hosting={hosting!r} (expected one of {sorted(ALLOWED_CAPABILITY_HOSTING)})")
+            impl = entry.get("implementation_path")
+            if hosting == "store-managed":
+                check(f"capability {key} store-managed declares implementation_path",
+                      isinstance(impl, str) and bool(impl), f"implementation_path={impl!r}")
+                # The path must be relative, live under external-capabilities/,
+                # and actually exist. This whole block used to be guarded by
+                # `if impl is not None`, so omitting the field silently skipped
+                # every line of it.
+                if isinstance(impl, str) and impl:
+                    iparts = impl.split("/")
+                    check(f"capability {key} implementation_path relative",
+                          not os.path.isabs(impl) and ".." not in iparts, impl)
+                    check(f"capability {key} implementation_path under external-capabilities/",
+                          impl.startswith("external-capabilities/"), impl)
+                    check(f"capability {key} implementation_path exists",
+                          os.path.isdir(os.path.join(ROOT, impl)), impl)
+            elif hosting == "external":
+                # 店外服务：店里登记的是端点与契约，不是代码。写了
+                # implementation_path 就是在说"我店里有这份代码"，与 hosting
+                # 自相矛盾 —— 这正是旧 policy 想防的假象。
+                check(f"capability {key} external does not declare implementation_path",
+                      not (isinstance(impl, str) and impl), f"implementation_path={impl!r}")
+                endpoint = entry.get("endpoint")
+                check(f"capability {key} external declares endpoint",
+                      isinstance(endpoint, str) and bool(endpoint), f"endpoint={endpoint!r}")
+                if isinstance(endpoint, str) and endpoint:
+                    parsed = urlparse(endpoint)
+                    check(f"capability {key} endpoint is https URL",
+                          parsed.scheme == "https" and bool(parsed.netloc),
+                          f"endpoint={endpoint!r}")
+                contract = entry.get("contract_path")
+                check(f"capability {key} external declares contract_path",
+                      isinstance(contract, str) and bool(contract), f"contract_path={contract!r}")
+                if isinstance(contract, str) and contract:
+                    cparts = contract.split("/")
+                    check(f"capability {key} contract_path relative",
+                          not os.path.isabs(contract) and ".." not in cparts, contract)
+                    check(f"capability {key} contract_path exists",
+                          os.path.isfile(os.path.join(ROOT, contract)), contract)
     return collected
 
 
@@ -1443,10 +1513,19 @@ def validate_orchestrations(orc_reg: dict) -> None:
       · 没有环（Kahn 拓扑排序能跑完）
       · 没有孤儿（所有步骤都能从入口到达）
 
+    service-call 模式额外查【边界两侧的交接】，因为那一段最容易安静地坏掉：
+
+      · execution.requires 是合法能力项、必须含 network
+      · execution.egress 是域名列表
+      · 至少一步声明 calls，且 calls.service 是已登记的 external 能力
+      · calls.contract 存在，且与服务记录的 contract_path 是同一份
+      · 服务端点的域名必须出现在 egress 里（声明了才允许出网）
+
     后三条不是洁癖。软链断了 git 不会告诉你 —— 实测删掉目标之后 git status 是干净的，
     软链仍然指着不存在的地方。而环和孤儿会让"编排"退化成一张读不懂的图。
     """
     known = set()
+    capabilities = {}
     for rel, section in (("skills/registry.yaml", "skills"),
                          ("external-capabilities/registry.yaml", "capabilities"),
                          # 编排可以引用一个 automation：它的第一步就是"敲钟+执行"，
@@ -1455,9 +1534,11 @@ def validate_orchestrations(orc_reg: dict) -> None:
         data, ok = load_yaml(rel)
         if not ok or not isinstance(data, dict):
             continue
-        for entry in (data.get(section) or {}).values():
+        for key, entry in (data.get(section) or {}).items():
             if not isinstance(entry, dict):
                 continue
+            if section == "capabilities":
+                capabilities[key] = entry
             for field in ("path", "implementation_path"):
                 value = entry.get(field)
                 if isinstance(value, str) and value:
@@ -1494,12 +1575,50 @@ def validate_orchestrations(orc_reg: dict) -> None:
               and parts[3] == name,
               f"path={path!r} — 期望 {ORCHESTRATION_DIR}/<mode>/<target>/{name}")
 
+        mode = parts[1] if len(parts) == 4 else None
+        trigger = entry.get("trigger")
+        if trigger is not None:
+            check(f"orchestration {name} trigger legal",
+                  trigger in ALLOWED_ORCHESTRATION_TRIGGERS,
+                  f"trigger={trigger!r} (expected one of {sorted(ALLOWED_ORCHESTRATION_TRIGGERS)})")
+        requires, egress = None, None
+        if mode == "service-call":
+            # 这个模式不回答"谁发起"（人问的、宿主定时任务叫醒的都有），
+            # 所以 trigger 必须在这里写下来，否则"它也是定时的"这个事实就丢了。
+            check(f"orchestration {name} service-call declares trigger",
+                  isinstance(trigger, str) and bool(trigger), f"trigger={trigger!r}")
+            execution = entry.get("execution")
+            check(f"orchestration {name} service-call declares execution",
+                  isinstance(execution, dict), f"execution={execution!r}")
+            if isinstance(execution, dict):
+                requires = execution.get("requires")
+                check(f"orchestration {name} execution.requires is a non-empty list",
+                      isinstance(requires, list) and bool(requires), f"requires={requires!r}")
+                if isinstance(requires, list):
+                    for req in requires:
+                        check(f"orchestration {name} host requirement is declared: {req}",
+                              req in ALLOWED_HOST_REQUIREMENTS, f"requires={requires!r}")
+                    # 服务调用的前提就是能出网；不写 network 等于声明一条跑不了的链。
+                    check(f"orchestration {name} service-call requires network",
+                          "network" in requires, f"requires={requires!r}")
+                egress = execution.get("egress")
+                check(f"orchestration {name} execution.egress is a non-empty list",
+                      isinstance(egress, list) and bool(egress), f"egress={egress!r}")
+                if isinstance(egress, list):
+                    for domain in egress:
+                        check(f"orchestration {name} egress is a domain: {domain}",
+                              isinstance(domain, str) and bool(EGRESS_RE.match(domain)),
+                              f"egress={egress!r}")
+            else:
+                egress = None
+
         steps = entry.get("steps")
         if not isinstance(steps, list) or not steps:
             check(f"orchestration {name} declares steps", False, f"steps={steps!r}")
             continue
 
         ids, needs_by, links = [], {}, {}
+        called = {}
         for index, step in enumerate(steps):
             if not isinstance(step, dict):
                 check(f"orchestration {name} step {index} is a mapping", False, type(step).__name__)
@@ -1517,6 +1636,30 @@ def validate_orchestrations(orc_reg: dict) -> None:
             check(f"orchestration {name} step {sid} uses a registered asset",
                   isinstance(use, str) and use.rstrip("/") in known,
                   f"use={use!r} — 不指向任何已登记的 Skill path 或 Capability implementation_path")
+
+            # calls：这一步的 SOP 会调一个店外服务。它不能被写成 use —— 店外服务
+            # 没有 implementation_path，不是可引用的落地资产；它是这一步的运行时依赖。
+            calls = step.get("calls")
+            if calls is not None:
+                called[sid] = calls
+                check(f"orchestration {name} step {sid} calls only in service-call mode",
+                      mode == "service-call", f"mode={mode!r}")
+                check(f"orchestration {name} step {sid} calls is a mapping",
+                      isinstance(calls, dict), type(calls).__name__)
+                if isinstance(calls, dict):
+                    service = calls.get("service")
+                    check(f"orchestration {name} step {sid} calls a declared service",
+                          isinstance(service, str) and service in capabilities,
+                          f"service={service!r} — 不在 external-capabilities/registry.yaml 里")
+                    contract = calls.get("contract")
+                    check(f"orchestration {name} step {sid} calls declares contract",
+                          isinstance(contract, str) and bool(contract), f"contract={contract!r}")
+                    if isinstance(contract, str) and contract:
+                        check(f"orchestration {name} step {sid} contract exists",
+                              os.path.isfile(os.path.join(ROOT, contract)), contract)
+                    endpoints = calls.get("endpoints")
+                    check(f"orchestration {name} step {sid} calls declares endpoints",
+                          isinstance(endpoints, list) and bool(endpoints), f"endpoints={endpoints!r}")
 
             link = step.get("link")
             base = os.path.join(ROOT, *parts) if len(parts) == 4 else os.path.join(ROOT, ORCHESTRATION_DIR, name)
@@ -1538,6 +1681,36 @@ def validate_orchestrations(orc_reg: dict) -> None:
                 check(f"orchestration {name} step {sid} link matches use",
                       os.path.relpath(resolved, ROOT).replace(os.sep, "/") == use.rstrip("/"),
                       f"{link} → {target}，但 use 是 {use}")
+
+        # 服务调用必须落在编排上：一条 service-call 编排至少要有一段 calls。
+        if mode == "service-call":
+            check(f"orchestration {name} service-call has a service call",
+                  bool(called), "没有一步声明 calls —— 那它就不是 service-call")
+        for sid, calls in called.items():
+            if not isinstance(calls, dict):
+                continue
+            service = calls.get("service")
+            cap = capabilities.get(service) if isinstance(service, str) else None
+            if not isinstance(cap, dict):
+                continue
+            # 只有店外服务才配 calls：店里的能力有 implementation_path，
+            # 应该用 use 引用它，而不是在这里重复登记一次调用。
+            check(f"orchestration {name} step {sid} service is externally hosted",
+                  cap.get("hosting") == "external",
+                  f"service={service!r} hosting={cap.get('hosting')!r}")
+            endpoint = cap.get("endpoint")
+            host = urlparse(endpoint).netloc.split(":")[0].lower() if isinstance(endpoint, str) else ""
+            check(f"orchestration {name} step {sid} service host is declared in egress",
+                  isinstance(egress, list) and host in egress,
+                  f"service host={host!r} execution.egress={egress!r}")
+            # 契约只有一份：calls.contract 必须就是服务记录里那份，
+            # 否则同一个接口在店里有两个版本，迟早对不上。
+            cap_contract = cap.get("contract_path")
+            if isinstance(cap_contract, str) and cap_contract:
+                check(f"orchestration {name} step {sid} contract matches the service record",
+                      calls.get("contract") == cap_contract,
+                      f"calls.contract={calls.get('contract')!r} "
+                      f"capability.contract_path={cap_contract!r}")
 
         idset = set(ids)
         for sid, needs in needs_by.items():
