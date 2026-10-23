@@ -19,7 +19,8 @@
 - **执行后端可替换**：默认 `dsh headless`，也可以指向你自己的 agent / 脚本；
 - **凭据零入库**：复用 lark-cli 的凭据库与系统钥匙串，本项目不存任何 token；
 - **高风险动作先确认**：含「删除/转账/清空」等词的指令，先回确认卡片文案，回复「确认」才执行；
-- **审计留痕**：每个任务一行 JSONL（谁、何时、指令、耗时、结果长度）。
+- **审计留痕**：每个任务一行 JSONL（谁、何时、指令、耗时、结果长度）；
+- **回复都是卡片**：任务结果 / 失败 / 高风险确认 / 帮助 / 状态统一用飞书 **Card 2.0** 呈现（客户端需 ≥ 7.20），卡片发送失败时自动降级为文本。
 
 ## 前置条件
 
@@ -85,7 +86,7 @@ npx @lyra_wang/dsh-feishu-remote init
 | `larkCli` / `larkProfile` | lark-cli 可执行文件与 profile |
 | `dshCli` / `agentArgs` | 执行后端命令（默认 `dsh` + `headless`） |
 | `timeoutSeconds` | 单任务超时（默认 300） |
-| `maxReplyChars` | 回传消息截断长度（默认 3500） |
+| `maxReplyChars` | 回传卡片正文的截断长度（默认 3500） |
 | `highRiskPatterns` | 触发确认的高风险词 |
 | `apiKeyEnv` / `keychainService` | 模型 Key 的环境变量名 / 钥匙串条目名（Linux 没有钥匙串，配 `keychainService: ""`） |
 | `allowedChatTypes` | 允许的会话类型（默认仅 `p2p`） |

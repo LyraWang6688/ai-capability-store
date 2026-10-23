@@ -5,7 +5,8 @@ import { spawn, spawnSync } from 'node:child_process';
 import { appendFileSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { LOG_DIR, STATE_PATH, ensureDirs } from './config.mjs';
-import { sendText, spawnConsumer } from './feishu.mjs';
+import { sendCard, sendText, spawnConsumer } from './feishu.mjs';
+import { buildReplyCard } from './cards.mjs';
 
 function audit(level, stage, extra = {}) {
   const day = new Date().toISOString().slice(0, 10);
@@ -103,6 +104,14 @@ function isHighRisk(cfg, text) {
   return (cfg.highRiskPatterns || []).some((pattern) => String(pattern).toLowerCase() !== '' && lower.includes(String(pattern).toLowerCase()));
 }
 
+/** Send a reply card; fall back to plain text if the card fails to send. */
+async function reply(cfg, chatId, kind, text, meta, title) {
+  const card = buildReplyCard({ kind, title, text, meta, maxChars: cfg.maxReplyChars });
+  const result = await sendCard(cfg, chatId, card);
+  if (!result.ok) await sendText(cfg, chatId, text);
+  return result;
+}
+
 const HELP = (cfg) => [
   '远程任务用法：',
   '· 直接发一句话 = 在这台电脑上执行（例如：看看桌面有哪些文件）',
@@ -143,11 +152,21 @@ export function startListener(cfg) {
     }
     const ok = result.code === 0;
     const body = String(result.reply ?? result.stdout ?? '').trim();
-    let reply;
-    if (ok) reply = body || '（执行完成，没有输出）';
-    else if (result.code === 'timeout') reply = `⏱ 超时（${cfg.timeoutSeconds}s）已中止。\n${(result.stderr || result.stdout || '').trim().slice(0, 1200)}`;
-    else reply = `❌ 执行失败（exit ${result.code}）\n${(result.stderr || result.stdout || '').trim().slice(0, 1500)}`;
-    await sendText(cfg, chatId, reply);
+    const detail = (result.stderr || result.stdout || '').trim();
+    let cardKind;
+    let cardText;
+    if (ok) {
+      cardKind = 'done';
+      cardText = body || '（执行完成，没有输出）';
+    } else if (result.code === 'timeout') {
+      cardKind = 'error';
+      cardText = `超时（${cfg.timeoutSeconds}s）已中止。\n\n${detail.slice(0, 1200)}`;
+    } else {
+      cardKind = 'error';
+      cardText = `执行失败（exit ${result.code}）\n\n${detail.slice(0, 1500)}`;
+    }
+    const elapsed = ((Date.now() - started) / 1000).toFixed(1);
+    await reply(cfg, chatId, cardKind, cardText, `${taskId} · ${elapsed}s`);
     audit(ok ? 'info' : 'error', 'done', { taskId, code: result.code, ms: Date.now() - started, chars: body.length });
   }
 
@@ -173,12 +192,12 @@ export function startListener(cfg) {
 
     if (/^(\/help|帮助|help)$/i.test(text)) {
       audit('info', 'help', { chatId });
-      await sendText(cfg, chatId, HELP(cfg));
+      await reply(cfg, chatId, 'help', HELP(cfg));
       return;
     }
     if (/^(\/status|状态)$/i.test(text)) {
       audit('info', 'status-query', { chatId });
-      await sendText(cfg, chatId, [
+      await reply(cfg, chatId, 'status', [
         '服务状态：运行中',
         '工作目录：' + cfg.workdir,
         '执行后端：' + cfg.dshCli + ' ' + (cfg.agentArgs || []).join(' '),
@@ -193,7 +212,7 @@ export function startListener(cfg) {
         state.pending = null;
         saveState(state);
         audit('info', 'confirmed', { taskId: pending.taskId, text: pending.text });
-        await sendText(cfg, chatId, '已确认，开始执行…');
+        await reply(cfg, chatId, 'ack', '已确认，开始执行…');
         await execute(chatId, pending.text, pending.taskId);
         return;
       }
@@ -201,7 +220,7 @@ export function startListener(cfg) {
         state.pending = null;
         saveState(state);
         audit('info', 'cancelled', { chatId });
-        await sendText(cfg, chatId, '已取消。');
+        await reply(cfg, chatId, 'ack', '已取消。', undefined, '已取消');
         return;
       }
       state.pending = null;
@@ -213,11 +232,11 @@ export function startListener(cfg) {
       state.pending = { text, chatId, taskId, at: Date.now() };
       saveState(state);
       audit('warn', 'confirm-required', { taskId, text });
-      await sendText(cfg, chatId, `⚠️ 这条指令含高风险动作：\n${text}\n\n回复「确认」继续执行，回复「取消」放弃。`);
+      await reply(cfg, chatId, 'confirm', `这条指令含高风险动作：\n\n**${text}**\n\n回复「确认」继续执行，回复「取消」放弃。`);
       return;
     }
 
-    await sendText(cfg, chatId, '收到，开始执行…');
+    await reply(cfg, chatId, 'ack', '收到，开始执行…');
     await execute(chatId, text, newTaskId());
   }
 
