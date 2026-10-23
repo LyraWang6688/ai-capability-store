@@ -16,7 +16,7 @@
 | 轮询 | 打开 App 期间每 30 分钟刷新 |
 
 > 和「任务侧」的分工与投递契约属于编排层：见
-> [`orchestrations/scheduled-task/dsh/README.md`](../../../../orchestrations/scheduled-task/dsh/README.md)。
+> [`orchestrations/scheduled-task/dsh/COLLABORATION.md`](../../../../orchestrations/scheduled-task/dsh/COLLABORATION.md)。
 
 ## 架构
 

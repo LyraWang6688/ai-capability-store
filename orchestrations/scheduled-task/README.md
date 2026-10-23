@@ -1,7 +1,7 @@
 # scheduled-task —— 触发器是时间的任务
 
 > DSH 生态（`dsh/`）：结果统一投递到「任务收件箱」→ DSH 面板待读；
-> 投递契约与协作边界见 [`dsh/README.md`](./dsh/README.md)。
+> 投递契约与协作边界见 [`dsh/COLLABORATION.md`](./dsh/COLLABORATION.md)。
 
 ## 一句话
 
