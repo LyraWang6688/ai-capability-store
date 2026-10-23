@@ -52,7 +52,11 @@ npx @lyra_wang/dsh-feishu-remote init
 
 `init` 会：读取你当前 lark-cli 账号的 open_id 作为白名单 → 询问工作目录 → 写配置（`~/.dsh-feishu-remote/config.json`，600）→ 安装开机自启：
 - **macOS**：launchd（`com.lyrawang.dsh-feishu-remote`）
-- **Linux**：systemd user unit（`~/.config/systemd/user/com.lyrawang.dsh-feishu-remote.service`，并执行 `loginctl enable-linger`）
+- **Linux**：systemd user unit（`~/.config/systemd/user/com.lyrawang.dsh-feishu-remote.service`）
+
+> Linux 上 `init` 安装完会尝试 `loginctl enable-linger`；普通用户通常没有这个权限，
+> 需要 root 先替该用户执行一次 `sudo loginctl enable-linger <user>`，否则用户级 systemd
+> 在用户未登录时不会拉起服务。没有开启 linger 时 `init` 会在输出里提示，不会中断安装。
 
 然后 **在飞书私聊机器人**发一句「帮助」即可。
 
@@ -79,8 +83,9 @@ npx @lyra_wang/dsh-feishu-remote init
 | `timeoutSeconds` | 单任务超时（默认 300） |
 | `maxReplyChars` | 回传消息截断长度（默认 3500） |
 | `highRiskPatterns` | 触发确认的高风险词 |
-| `apiKeyEnv` / `keychainService` | 模型 Key 的环境变量名 / 钥匙串条目名 |
+| `apiKeyEnv` / `keychainService` | 模型 Key 的环境变量名 / 钥匙串条目名（Linux 没有钥匙串，配 `keychainService: ""`） |
 | `allowedChatTypes` | 允许的会话类型（默认仅 `p2p`） |
+| `extraEnv` | 追加给执行后端的环境变量。**Linux 上通常要把 `PATH` 指到 DSH 用的 node 目录**（见下节） |
 
 ## 安全模型
 
@@ -101,31 +106,51 @@ dsh-feishu-remote doctor
 
 **电脑睡眠后不响应？** macOS 安装服务时会用 `caffeinate` 包裹进程；把睡眠时间设为"永不"或接电源。
 
-## 在 Linux 服务器上常驻（推荐）
+## 在 Linux 服务器上常驻
 
 ```bash
-# 1. 依赖：node 20+、lark-cli、dsh
+# 1. 装 CLI（只依赖 node 20+ 跑 CLI 自身，DSH 用哪个 node 见下面「部署前必须对齐的三件事」）
 npm install -g --prefix ~/.local @lyra_wang/dsh-feishu-remote
 # 2. 先授权飞书机器人
 lark-cli auth login --as bot
-# 3. 初始化（会写配置并安装 systemd user unit）
+# 3. 让用户级 systemd 在用户未登录时也能常驻（需要 root 执行一次）
+sudo loginctl enable-linger "$USER"
+# 4. 初始化：写配置 + 安装并启动 systemd user unit
 ~/.local/bin/dsh-feishu-remote init --workdir ~/work
-# 4. 把模型 key 写进环境文件（systemd 启动时读取）
+# 5. 把模型 key 写进环境文件（服务启动时读取，替代 macOS 钥匙串）
 echo 'DEEPSEEK_API_KEY=sk-...' > ~/.dsh-feishu-remote/env && chmod 600 ~/.dsh-feishu-remote/env
-# 5. 重启服务并看状态
+# 6. 重启并查看状态
 systemctl --user restart com.lyrawang.dsh-feishu-remote
 systemctl --user status com.lyrawang.dsh-feishu-remote
 ```
 
-> 服务器上的 `dsh` 需要用 `--profile headless` 能跑通（先 `dsh headless "你好"` 验证 API Key）。
+### 部署前必须对齐的三件事
+
+**1. DSH 必须跑在它要求的 Node 版本上。** `dsh` 的入口是
+`if (import.meta.main) await runCli()`，而 `import.meta.main` 在 Node 24 之前是
+`undefined`。用更老的 node 调 `dsh`（包括它自己的 shebang `#!/usr/bin/env node`
+解析到老版本）会**退出码 0、零输出、零报错**——看起来一切正常，实际什么也没做。
+
+所以 Linux 上要把 DSH 用的 node 目录放进配置的 `extraEnv.PATH`，服务脚本会以它
+作为启动 PATH（不配则沿用一套不含该目录的默认 PATH）：
+
+```json
+{
+  "extraEnv": { "PATH": "/opt/dsh-runtime/node/bin:/usr/local/bin:/usr/bin:/bin" }
+}
+```
+
+先验证后端可用：`dsh headless "只回复两个字：在线"` 应输出「在线」，而不是空。
+
+**2. `keychainService` 置空。** Linux 没有 `security` 命令，模型 Key 走
+`~/.dsh-feishu-remote/env`（600）里的环境变量；配了 `keychainService` 只会多一条
+无效的 keychain 读取。
+
+**3. 同一个飞书应用的长连接只能有一处在消费。** 如果本机一直在跑，
+把服务迁到服务器前先执行 `dsh-feishu-remote uninstall-service` 停掉本机那份，
+否则两边会分走消息。
 
 **想换执行后端？** 改 `dshCli` 与 `agentArgs`，例如 `{"dshCli": "claude", "agentArgs": ["-p"]}`。
-
-## License
-
-MIT
-
-[![](https://img.shields.io/badge/powered_by-dsh-4D6BFE?style=flat-square&logo=deepseek&logoColor=white)](https://github.com/deepseek-ai/deepseek-harness)
 
 ## 会话复用（0.2.0）
 
@@ -135,3 +160,10 @@ MIT
 - 再次发消息时用 `dsh --profile headless --session-id <id> --json` 继续同一会话；
 - 如果该会话已被删除，自动改用新会话并更新记录；
 - 配置项 `reuseSession`（默认 `true`）可关闭。
+
+## License
+
+MIT
+
+[![](https://img.shields.io/badge/powered_by-dsh-4D6BFE?style=flat-square&logo=deepseek&logoColor=white)](https://github.com/deepseek-ai/deepseek-harness)
+
