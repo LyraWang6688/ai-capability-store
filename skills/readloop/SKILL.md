@@ -55,6 +55,7 @@ compatibility: "需要 bash 与 curl；需要能访问 ReadLoop 服务；需要�
 {
   "base_url": "https://readinsight.bamamei.online",
   "host_token": "...",
+  "license_expires_at": "2027-10-23T00:00:00+08:00",
   "app_token": "bascn...",
   "model": {
     "provider": "deepseek",
@@ -86,7 +87,9 @@ curl -s -X POST "$BASE/api/license/activate" \
   -d "{\"license\":\"$LICENSE_CODE\"}"
 ```
 
-成功返回 `hostToken`，立刻写入配置的 `host_token`。
+成功返回 `hostToken` 和 `expiresAt`，两个都写入配置（`host_token` / `license_expires_at`）。
+
+**授权按年计**：`expiresAt` 是硬期限，到期后所有接口返回 402，需要续费重新激活。数据不受影响。
 
 | 失败 | 怎么回应 |
 |---|---|
@@ -94,7 +97,7 @@ curl -s -X POST "$BASE/api/license/activate" \
 | 409 / 已激活 | 「这个授权码已经激活过了；如果是换了电脑，说明一下可以吗」 |
 | 5xx | 如实说服务不可用，**不要自己编一个 token 继续** |
 
-激活成功后告诉用户一句：「授权已生效，以后不用再输授权码。」
+激活成功后告诉用户：「授权已生效，有效期到 <expiresAt>，到期前会提醒你续费。」
 
 ### 0.3 第 2 步 · 选模型
 
@@ -224,7 +227,7 @@ curl -s -X POST "$BASE/api/review/today" \
 
 `model` 就是配置里的那段（`provider` / `base_url` / `model` / `api_key`），**每次请求都要带**——服务端不保存用户模型配置。
 
-若配置了可选的 `host_token`，再加一行 `-H "Authorization: Bearer $HOST_TOKEN"`。
+每次请求都要带 `-H "Authorization: Bearer $HOST_TOKEN"`。
 
 返回：
 
