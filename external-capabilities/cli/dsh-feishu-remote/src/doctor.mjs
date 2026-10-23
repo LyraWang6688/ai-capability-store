@@ -14,7 +14,49 @@ function which(command) {
   return result.status === 0 && path !== '' ? path : null;
 }
 
-export async function runDoctor() {
+/**
+ * Judge the execution backend by what it actually produced, not by whether the
+ * binary exists. A `dsh` running on Node <24 exits 0 with empty output because
+ * `import.meta.main` is undefined — `which`-only checks call that healthy.
+ */
+export function evaluateBackendProbe({ code, stdout, stderr } = {}) {
+  const out = String(stdout || '').trim();
+  const err = String(stderr || '').trim();
+  if (code === 0 && out !== '') {
+    return { status: 'ok', detail: `有输出：${out.split('\n')[0].slice(0, 80)}`, hint: '' };
+  }
+  if (code === 0) {
+    return {
+      status: 'fail',
+      detail: '退出码 0，但没有任何输出',
+      hint: '最可能：dsh 跑在 Node <24 上（import.meta.main 不存在 → 静默退出 0）。把 config 的 extraEnv.PATH 指向运行 DSH 的 node 目录；再手工验证 `dsh --version` 有输出。',
+    };
+  }
+  return {
+    status: 'fail',
+    detail: `执行失败（exit ${code === null || code === undefined ? 'spawn-error' : code}）${err.slice(0, 120)}`,
+    hint: '检查 dshCli 路径、模型 Key 与 extraEnv',
+  };
+}
+
+function probeBackend(cfg, { full }) {
+  const args = full ? [...(cfg.agentArgs || ['headless']), '只回复两个字：在线'] : ['--version'];
+  const env = { ...process.env, ...(cfg.extraEnv || {}) };
+  const result = spawnSync(cfg.dshCli, args, {
+    encoding: 'utf8',
+    timeout: full ? 60000 : 10000,
+    env,
+    cwd: cfg.workdir,
+  });
+  const code = result.error ? null : result.status;
+  return evaluateBackendProbe({
+    code,
+    stdout: result.stdout,
+    stderr: result.stderr || (result.error ? String(result.error) : ''),
+  });
+}
+
+export async function runDoctor({ full = false } = {}) {
   const checks = [];
   const add = (name, status, detail, hint) => checks.push({ name, status, detail, hint });
 
@@ -60,8 +102,14 @@ export async function runDoctor() {
       '开放平台 → 事件订阅 → 添加 im.message.receive_v1（长连接），并开启 im:message.p2p_msg:readonly 权限');
 
     const dshPath = which(cfg.dshCli);
-    add('执行后端', dshPath ? 'ok' : 'fail', dshPath || `未找到 ${cfg.dshCli}`,
-      '安装 DSH（或在 config.json 把 dshCli/agentArgs 指向你自己的命令）');
+    if (!dshPath) {
+      add('执行后端', 'fail', `未找到 ${cfg.dshCli}`,
+        '安装 DSH（或在 config.json 把 dshCli/agentArgs 指向你自己的命令）');
+    } else {
+      const probe = probeBackend(cfg, { full });
+      add(full ? '执行后端（端到端）' : '执行后端可运行', probe.status,
+        `${dshPath}；${probe.detail}`, probe.hint);
+    }
 
     add('工作目录', existsSync(cfg.workdir) ? 'ok' : 'fail', cfg.workdir, '在 config.json 里把 workdir 改成存在的目录');
 
