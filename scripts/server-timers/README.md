@@ -97,3 +97,21 @@ OnFailure=ops-audit-inbox.service
 任务一结束（成功或失败）立刻触发投递，不再靠固定 offset 猜时间。
 投递脚本有「同一天只投一次」的幂等保护（`/srv/dsh-jobs/state/<task>.delivered`），
 手动重跑任务不会重复写收件箱；`--force` 可强制再投。
+
+## 服务器如何更新（从 GitHub 拉，不从 Mac 推）
+
+```bash
+# 服务器上（root）
+sudo bash /srv/dsh-jobs/scripts/pull-store.sh
+```
+
+脚本会：
+
+1. 用 GitHub API 查 `main` 最新 commit；
+2. 与 `/srv/dsh-jobs/work/store-src/.last-commit` 比对，相同则退出；
+3. 不同则从 `codeload.github.com` 下载 tarball（失败回退 `api.github.com`）；
+4. 解包后执行 `scripts/server-timers/install.sh`；
+5. 记录新 commit。
+
+> 为什么不是 `git clone`：这台服务器访问 `github.com` 不通（实测 curl 000），
+> `api.github.com` 与 `codeload.github.com` 可通。tarball 拉取效果等同拉仓库，且不需要 git 凭据。
