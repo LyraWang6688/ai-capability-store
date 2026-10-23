@@ -132,7 +132,7 @@ window.__ModuleLoader__.load({
 | `shell.overlay` | 全屏浮层 | 弹窗面板、引用条、提示 | ✅ 稳定（必须自己 `position:fixed`）|
 | `conversation.input.dock` | 输入框上方全宽条 | 想放"引用条" | ⚠️ 注册后长期 `active:false`（不渲染），我们最终**放弃**，改用 `shell.overlay` |
 | `sidebar.panellist` / `sidebar.footer.action` | 侧栏图标/底部操作 | 未使用 | 文档存在，未验证 |
-| `conversation.chat.*` | 消息流渲染 | 未使用 | 未验证 |
+| **`conversation.chat.node`** | 消息节点 | 想"在消息里渲染自定义内容" | ⚠️ **已验证，结论是"此路不通"**：它是 **keyed slot**，按节点类型整体替换，**没有"消息内插槽"**。见 [3.4](#34-conversationchatnode-是-keyed-slot消息内没有插槽2026-10-24-源码确认) |
 
 ### 3.2 Slot 传入的 props（`conversation.input.left` 实测）
 
@@ -160,7 +160,65 @@ border: 1px solid var(--dsw-alias-border-l1, #3a3a40);
 
 > 不要替换 `document.body`、不要读别的插件的 DOM/样式。样式以 `<style>` 元素随组件渲染，卸载即移除。
 
----
+### 3.4 `conversation.chat.node` 是 keyed slot，消息内没有插槽（2026-10-24 源码确认）
+
+> 来源：解包 `app.asar` → `dsh/node_modules/@deepseek-ai/dsh-client-ui-chat/lib/client.js`，
+> DSH Desktop `0.2.1-rc.2`。走的是 §7 自查顺序里"读实现（行为问题最快）"那条路，
+> 比重建探针快，而且不碰运行环境。
+
+**注册形状**（官方自己的写法）：
+
+```js
+ctx.slots.inject("conversation.chat.node", () => ctx.slots.register({
+  name: "conversation.chat.node",
+  key: "assistant-step",        // ← 节点类型，不是消息实例
+  locale: NS,
+  children: {
+    "conversation.chat.reasoning.body": { kind: "single", scope: "session" },
+    "conversation.chat.message.images": { kind: "single", scope: "session" },
+  },
+  inject: () => ({ hooks: { presentation } }),
+}, AssistantNodeView));
+```
+
+**`key` 的全部取值（15 个，即它能替换的节点种类）**：
+
+`user` · `steering` · `assistant-step` · `turn-process` · `turn-tail` · `turn-trigger` ·
+`turn-error` · `turn-max-tokens` · `model-retry` · `command` · `compaction` ·
+`manual-compaction` · `system-prompt` · `context` · `unknown`
+
+**为什么它不能用来"在回复里插一张卡片"**：
+
+| 想做的事 | 能不能 |
+|---|---|
+| 按节点类型整体换掉渲染器 | ✅ 可以（`key` 选类型，传自己的组件） |
+| 在**某一条**消息里插入自定义内容 | ❌ 不行——`key` 是类型不是实例，没有 per-message 钩子 |
+| 在 assistant 正文的 Markdown 里插入自定义块 | ❌ 不行——`AssistantMarkdown({ blocks, ... })` 是固定组件，没有 components / renderer 注册表 |
+| 往 assistant 节点内部插东西 | ⚠️ **只有两个子槽**：`conversation.chat.reasoning.body`（思考正文）与 `conversation.chat.message.images`（图片） |
+
+**结论**：想在 assistant 文本中间插一个自定义渲染块，当前版本**没有正门**。
+唯一的"正门级"做法是把 `assistant-step` 整个换掉——那意味着重新实现整套 Markdown 渲染，
+不现实。**所以"在旁边渲染、观察 DOM"不是等一个更好槽位的临时通道，而是当前版本唯一可行的实现方式。**
+
+**顺带确认的**：`conversation.chat.flow` 只添加一个 `display:contents` 的 DOM 锚点，
+供行选择器使用，不承载内容，也不能当插槽用。
+
+### 3.5 这次调查的方法（下次可以直接复用）
+
+`app.asar` 的 `node_modules` 里是**完整包**（含 `lib/client.js`），可以直接读实现，
+比"写探针 + 装 profile + 重启"快得多，而且不动运行环境。
+
+```text
+asar 头部：u32@4 = headerSize，u32@12 = JSON 长度，数据区起点 = 8 + headerSize
+找 slot 契约：grep -A 4 'slots.register({' <pkg>/lib/client.js
+找 slot 名全量：grep -o 'data-slot="conversation\.[a-zA-Z.]*"' <pkg>/lib/client.js
+```
+
+⚠️ 一个假线索：整包搜索 `markdownRenderer` 会命中
+`dsh-experimental-inspector/lib/devtools/chunks/*.js`——那是 inspector 里打包的第三方
+Markdown 库，**不是** DSH 的扩展点。
+
+-----
 
 ## 四、明确不可用 / 会出事的写法
 
@@ -249,5 +307,99 @@ dsh plugin --profile desktop add "https://registry.npmjs.org/@scope/<plugin>/-/<
 ## 八、给下一任的三条硬规则
 
 1. **不确定的 API 先在测试 profile 里写探针验证**，绝不在主插件上试——`dsh.client.inject` 写错会直接让 App 起不来。
+   （这台机器上 `dsh` 命令不在 PATH，怎么起测试 profile 见 §九）
 2. **一次只改一个变量**：先证明"能拿到服务"，再证明"能渲染"，再谈样式与交互。
 3. **失败要能在界面上看见**：`console.warn` 只是兜底，最好在面板里显示错误文本；我们靠这一点定位了三次"静默不工作"。
+
+---
+
+## 九、怎么测试一个 Client 插件（不碰日常 profile · 2026-10-24 实测跑通）
+
+> 起因：`diagram-card` 开发完，要在**装进日常 profile 之前**证明它能挂载、能渲染。
+> 本机没有安装 `dsh` 命令，但可以用 Electron 的 node 模式跑 `app.asar` 里的 CLI，
+> 因此能起一个**完全隔离的测试 profile**——不动桌面端，也不重启正在用的 App。
+
+### 9.1 为什么不能用 headless
+
+`dsh-headless` 的定位是"跑一个任务、打印答案、退出"。官方文档写明它
+**没有 GUI、没有服务器、没有浏览器**，profile 里也只有 `dsh-base` + `dsh-headless`。
+
+Client 插件（`dsh.client.platform = "web"`）在那种环境**根本不会被加载**——测了也没有意义。
+要测 Client 插件，必须起一个**带渲染器的 web 实例**。
+
+### 9.2 先把 `dsh` 命令跑起来
+
+`dsh` 不在 PATH。它唯一的副本在 `app.asar` 里；普通 `node` 打不开 asar，
+但 Electron 自带解包能力，再加 `ELECTRON_RUN_AS_NODE=1` 让它不进 GUI：
+
+```bash
+APP="/Applications/DeepSeek Harness.app"
+BIN="$APP/Contents/Resources/app.asar/dsh/node_modules/@deepseek-ai/dsh/lib/bin.js"
+
+dsh() { ELECTRON_RUN_AS_NODE=1 "$APP/Contents/MacOS/DeepSeek Harness" "$BIN" "$@"; }
+```
+
+### 9.3 四步起一个隔离测试环境
+
+```bash
+# ① 从 web 模板复制一份独立 profile（--dump-config 只打印配置，不启动服务）
+dsh --profile probe --from-default-profile web --dump-config
+
+# ② 从 npm 装待测插件
+#    会同时写入 dependencies 与 dsh.profile.bundles，不需要手工改两处
+dsh plugin --profile probe add "https://registry.npmjs.org/@scope/pkg/-/pkg-0.1.0.tgz"
+
+# ③ 起独立实例（换一个端口，别抢日常端的）
+dsh --profile probe --port 19555 --no-open
+#    启动日志会打印带 token 的地址：
+#    dsh web: http://127.0.0.1:19555/?token=...
+#    ⚠️ --profile probe 后面不要再写 web —— 会被当成 app 的参数，报 too many arguments
+#    ⚠️ 浏览器必须带 token，否则 401（browser-trust fence）
+
+# ④ 验证完删掉
+rm -rf ~/.dsh/profiles/probe
+```
+
+### 9.4 三条判据（按顺序断言，失败位置直接指向原因）
+
+| # | 断言什么 | 在页面里怎么验 | 失败说明 |
+|---|---|---|---|
+| 1 | **模块加载** | `typeof window.__<你的探针>` | 包名 / `exports` / `dsh.client` 声明有问题 |
+| 2 | **apply 生效** | slot 注册的**副作用**（例如注入的 `<style>` 是否存在） | slot 名写错，或 `inject` 声明了不存在的服务 |
+| 3 | **行为正确** | 注入真实形态的输入 → 等一个扫描周期 → 检查输出 | 选择器或契约不匹配 |
+
+判据 2 的最小验证：插件在 slot 里渲染 `<style>`，检查 `document.querySelectorAll('style')` 里
+有没有你的 CSS 前缀。判据 3 要**给观察器留时间**——`MutationObserver` + 轮询的实现通常需要 1~3 秒。
+
+### 9.5 三件事别做
+
+1. **不要拿 desktop profile 做实验**——那是每天在用的那份。测试用 `probe`，用完删。
+2. **不要只看"渲染出来了吗"**——同时要确认**原来的内容还在**。替换式渲染必须验证原代码块只是被隐藏、
+   而不是被删除（卸载插件后要能退回原样）。
+3. **不要跳过清理**——杀进程、释放端口、删 profile；留着会占端口，也会让下一次测试看到脏状态。
+
+### 9.6 这套流程适合什么、不适合什么
+
+| 适合 | 不适合 |
+|---|---|
+| Client 插件（slot / 渲染 / 样式 / 交互） | Host 半的真实业务链路（要真凭据、真数据） |
+| 升级前后的回归对比 | 长会话压力与性能（要真实会话量） |
+| 首次挂载验证 | 多用户并发 |
+
+Host 半的路由、子进程、凭据，仍只能按 §二 的方式在真实环境里验。
+
+### 9.7 一次实测记录（照抄即可复现）
+
+```text
+① 建 probe（web 模板）                     → ✅
+② dsh plugin --profile probe add <tarball>  → ✅ 1.8s，自动写入 bundles
+③ dsh --profile probe --port 19555 --no-open
+   → dsh web: http://127.0.0.1:19555/?token=…
+④ 浏览器里三条判据：
+   typeof window.__dshdg                    → 'object'   （模块加载）
+   <style> 含 .dshdg-root                   → true       （apply 生效）
+   注入 pre>code.language-dsh-diagram，等 3s
+     → .dshdg-root 出现                     → true       （行为正确）
+     → 原 <pre> display:none                → true       （原内容仅隐藏，未删除）
+⑤ 清理：杀进程 / 端口释放 / 删 profile      → ✅
+```
