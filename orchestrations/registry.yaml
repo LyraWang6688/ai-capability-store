@@ -2,9 +2,14 @@
 #
 # 布局三层：<模式>/<生态>/<任务>/
 #
-#   模式  这一类任务靠什么跑完：人说的那一句（manual）/ 一个钟（scheduled-task）/
-#         一个自建的后端服务（service-call）。不是某个具体任务，也不是运行环境。
-#         service-call 不回答「谁发起」，所以它必须另写 trigger。
+#   模式  这一类任务【谁发起】：人说的那一句（manual）/ 系统发起的自动化
+#         （automated：钟或事件，不需要人触发）。不是某个具体任务，也不是运行环境。
+#
+#         是否调用自建后端 API 不在模式里 —— 它标在任务目录名上：
+#         调了自建 API 的任务目录名带 `-self-api`，并在 step 里写 `calls:`
+#         （服务名 + 契约 + 端点）。两处必须同时存在，验证器会查。
+#         `trigger` 可选：human / host-schedule / daily / weekly / monthly / event；
+#         automated 的条目建议写清是钟还是事件。
 #   生态  这个编排动用了哪个平台的资产（wechat / dsh / doubao-work）。
 #   任务  具体那一条。
 #
@@ -51,10 +56,10 @@ orchestrations:
 
   investdesk-daily-report:
     name: investdesk-daily-report
-    path: orchestrations/scheduled-task/doubao-work/investdesk-daily-report
+    path: orchestrations/automated/doubao-work/investdesk-daily-report
     status: testing
     version: 0.1.0
-    updated: "2026-10-22"
+    updated: "2026-10-24"
     goal: 价格同步完成后，把「持仓日报该生成了」作为事件推给豆包
     steps:
       - id: trigger-and-execute
@@ -67,21 +72,23 @@ orchestrations:
         needs: [trigger-and-execute]
         produces: 持仓日报
 
-  # ---- service-call：自建服务在后端，接口写在 SOP 里 ----------------------
-  # 这两条和前两条的区别不是"定时与否"，而是：有一段执行没有资产承载 ——
-  # 不是 MCP、不是 CLI、不是插件，而是 skill 正文里的一次 HTTP 调用，打到一个
-  # 我们自己维护的后端服务上。能不能跑，取决于宿主的执行与出网能力。
+  # ---- 调自建 API：任务目录名带 -self-api --------------------------------
+  # 这类编排有一段执行没有资产承载 —— 不是 MCP、不是 CLI、不是插件，而是 skill
+  # 正文里的一次 HTTP 调用，打到一个我们自己维护的后端服务上。能不能跑，取决于
+  # 宿主的执行与出网能力。
   #
+  # 标记有两处，必须同时存在（验证器查）：
+  #   ① 任务目录名以 `-self-api` 结尾；
+  #   ② step 里有 `calls:`（服务名 + 契约 + 端点）。
   # `calls` 是这一步的运行时依赖，不是 `use`：店外服务没有 implementation_path，
-  # 不是可引用的落地资产。它记的是"接口对应哪个后端服务"，契约必须与服务记录
-  # 里那份是同一个文件。
+  # 不是可引用的落地资产。契约必须与服务记录里那份是同一个文件。
 
-  teaming-meeting-review:
-    name: teaming-meeting-review
-    path: orchestrations/service-call/doubao-work/teaming-meeting-review
+  teaming-meeting-review-self-api:
+    name: teaming-meeting-review-self-api
+    path: orchestrations/manual/doubao-work/teaming-meeting-review-self-api
     status: testing
     version: 0.1.0
-    updated: "2026-10-23"
+    updated: "2026-10-24"
     trigger: human
     goal: 人问一场会，宿主取妙记逐字稿、调分析服务、把报告链接交回
     execution:
@@ -103,12 +110,12 @@ orchestrations:
   # 和上一条共用同一个 skill 与同一个服务，但输入（时间窗口 vs 指定的一场）、
   # 产出（一批结果 + 跳过清单 vs 一份报告）和失败方式（没人可问 vs 人就在旁边）
   # 都不同，所以是两条编排。
-  teaming-minute-scan:
-    name: teaming-minute-scan
-    path: orchestrations/service-call/doubao-work/teaming-minute-scan
+  teaming-minute-scan-self-api:
+    name: teaming-minute-scan-self-api
+    path: orchestrations/automated/doubao-work/teaming-minute-scan-self-api
     status: testing
     version: 0.1.0
-    updated: "2026-10-23"
+    updated: "2026-10-24"
     trigger: host-schedule
     goal: 定时扫最近 N 小时的新妙记，只分析相关的，汇报时列出跳过了哪几场
     execution:
@@ -126,12 +133,12 @@ orchestrations:
             - POST /api/host/v1/analyze
         produces: 一批报告结论 + reportUrl，以及「哪几场没分析、为什么」的清单
 
-  readloop-daily:
-    name: readloop-daily
-    path: orchestrations/service-call/doubao-work/readloop-daily
+  readloop-daily-self-api:
+    name: readloop-daily-self-api
+    path: orchestrations/automated/doubao-work/readloop-daily-self-api
     status: testing
     version: 0.1.1
-    updated: "2026-10-23"
+    updated: "2026-10-24"
     trigger: host-schedule
     goal: 宿主定时叫醒，按记忆曲线每天出题、判分、把状态写回用户自己的表
     execution:

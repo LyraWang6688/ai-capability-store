@@ -144,9 +144,14 @@ MUTATIONS = {
         "    implementation_path: external-capabilities/mcp/teaming-mcp\n", 1),
     "external-capability-no-endpoint": lambda t: t.replace(
         "    endpoint: https://meeting.bamamei.online\n", "", 1),
-    # service-call：边界两侧的交接必须可校验
-    "service-call-no-trigger": lambda t: t.replace(
-        "    trigger: human\n", "", 1),
+    # self-api：目录名标记与 calls 必须一致；边界两侧的交接必须可校验
+    "self-api-name-without-calls": lambda t: t.replace(
+        "        calls:\n"
+        "          service: meeting-analysis-service\n"
+        "          contract: skills/teaming-meeting-analysis/SKILL.md\n"
+        "          endpoints:\n"
+        "            - POST /api/host/v1/enroll\n"
+        "            - POST /api/host/v1/analyze\n", "", 1),
     "calls-unregistered-service": lambda t: t.replace(
         "service: meeting-analysis-service", "service: nope-service", 1),
     "egress-misses-service": lambda t: t.replace(
@@ -209,9 +214,9 @@ CASES = [
      CAPABILITY_REGISTRY, "external-capability-with-implementation"),
     ("external capability without endpoint is rejected", 1,
      CAPABILITY_REGISTRY, "external-capability-no-endpoint"),
-    # service-call: the boundary has to be declared, and every claim is checked.
-    ("service-call without trigger is rejected", 1,
-     ORCHESTRATION_REGISTRY, "service-call-no-trigger"),
+    # self-api: 目录名带 -self-api 就必须有 calls，两处标记不能各说各的。
+    ("self-api name without calls is rejected", 1,
+     ORCHESTRATION_REGISTRY, "self-api-name-without-calls"),
     ("calls pointing at an unregistered service is rejected", 1,
      ORCHESTRATION_REGISTRY, "calls-unregistered-service"),
     ("service endpoint absent from egress is rejected", 1,

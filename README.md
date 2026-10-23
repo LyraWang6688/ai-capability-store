@@ -128,7 +128,7 @@ ai-capability-store/
 ├── orchestrations/                 # Domain D: Orchestrations (in what order, for one task)
 │   ├── README.md
 │   ├── registry.yaml               # steps are the machine truth; directory symlinks mirror them
-│   └── <mode>/<ecosystem>/<task>/  # mode: manual / scheduled-task / service-call
+│   └── <mode>/<ecosystem>/<task>/  # mode: manual / automated
 ├── dependencies/
 │   └── capability-map.yaml
 ├── tests/                          # Development / Evaluation Layer
@@ -145,8 +145,9 @@ ai-capability-store/
 - Store-managed MCP implementation: `external-capabilities/mcp/<capability-name>/`
 - Provider doc: `external-capabilities/providers/<provider-name>/README.md`
 - Orchestration: `orchestrations/<mode>/<ecosystem>/<task>/` — mode is
-  `manual` / `scheduled-task` / `service-call`; the task name must not collide
-  with an asset it references (tags are namespaced by the same name)
+  `manual` / `automated`; a task that calls a self-built API ends with
+  `-self-api`. The task name must not collide with an asset it references
+  (tags are namespaced by the same name).
 
 ## Versioning
 

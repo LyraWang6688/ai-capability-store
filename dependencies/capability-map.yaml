@@ -18,7 +18,7 @@ dependencies:
         required: false
         notes: 上传时使用；不用上传时只需排版，无需此能力
 
-  # SOP 里写死了自建后端的接口调用（service-call 编排的 calls）。
+  # SOP 里写死了自建后端的接口调用（带 `-self-api` 的编排的 calls）。
   # 没有这个服务，skill 只剩「取数」和「交付」两段 —— 中间那一段没有替代品。
   # 服务的代码不在店里，所以 capability 是 hosting: external，只有端点与契约。
   - skill: teaming-meeting-analysis

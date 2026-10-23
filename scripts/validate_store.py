@@ -47,11 +47,12 @@ Checks:
         implementation_path (relative, under external-capabilities/, exists);
         `external` FORBIDS it and REQUIRES endpoint (https URL) +
         contract_path (exists). Neither may be inferred from a missing field.
-    8c. service-call orchestrations: execution.requires (legal host abilities,
-        must include network), execution.egress (domains), at least one step
-        with `calls`, calls.service registered as an external capability,
-        calls.contract exists and equals that capability's contract_path, and
-        the service's endpoint host appears in egress.
+    8c. self-api orchestrations (task dir ends with `-self-api`, steps carry
+        `calls`): the two markers must agree; execution.requires (legal host
+        abilities, must include network), execution.egress (domains),
+        calls.service registered as an external capability, calls.contract
+        exists and equals that capability's contract_path, and the service's
+        endpoint host appears in egress.
     9.  provider identifiers and provider directory names are lowercase kebab-case
     10. dependency registry is parsed and its top-level contract validated
     11. dependency foreign keys: skill must exist in skills registry,
@@ -206,20 +207,21 @@ ALLOWED_ORCHESTRATION_STATUSES = {"testing", "available", "deprecated"}
 
 # 布局是三层：<模式>/<目标>/<任务>/
 #
-# 模式回答"这一类任务靠什么跑完"—— 不是具体任务，也不是运行环境：
-#   人说的那一句（manual）· 一个钟（scheduled-task）· 一个自建的后端服务（service-call）
+# 模式回答"这一类任务【谁发起】"—— 不是具体任务，也不是运行环境：
+#   人说的那一句（manual）· 系统发起的自动化（automated：钟或事件，不需要人触发）
 #
-# 前两个模式同时回答了"谁发起"；service-call 不回答 —— 它可以是人问的，也可以是
-# 宿主定时任务叫醒的，所以 service-call 条目必须另写 trigger 字段（见下）。
-# 这条轴被服务调用打破过一次，记在这里，免得下一个人再问"为什么不加第四个"。
+# 是否调用自建后端 API 不在模式里：它标在【任务目录名】上（`-self-api` 后缀），
+# 并在 step 里写 `calls:`。两处必须同时存在 —— 见 validate_orchestrations。
 #
-# 三个都是封闭集合，理由和货架、生态一样：加一个是一次分类决策，
-# 不该由某人随手建个目录来引入。
-ORCHESTRATION_MODES = {"manual", "scheduled-task", "service-call"}
+# 封闭集合，理由和货架、生态一样：加一个是一次分类决策，不该由某人随手建个目录来引入。
+ORCHESTRATION_MODES = {"manual", "automated"}
 
-# 谁发起。只对 service-call 必填 —— 另外两个模式的名字已经说了。
+# 谁发起/什么叫醒。可选字段；存在的值必须合法。
 # host-schedule = 宿主自带的定时任务（豆包/Codex 的 schedule），不是 store 里的 automation。
 ALLOWED_ORCHESTRATION_TRIGGERS = {"human", "host-schedule", "daily", "weekly", "monthly", "event"}
+
+# 调自建 API 的编排：任务目录名必须带这个后缀，且 step 里必须有 calls。
+SELF_API_SUFFIX = "-self-api"
 
 # 宿主要具备什么才能跑这条编排。这是一份【能力清单】，不是软件清单：
 #   bash / curl / network  —— 宿主的通用执行能力；服务调用的前提
@@ -1518,11 +1520,12 @@ def validate_orchestrations(orc_reg: dict) -> None:
       · 没有环（Kahn 拓扑排序能跑完）
       · 没有孤儿（所有步骤都能从入口到达）
 
-    service-call 模式额外查【边界两侧的交接】，因为那一段最容易安静地坏掉：
+    带 `calls` 的编排（任务目录名带 -self-api）额外查【边界两侧的交接】：
 
+      · 目录名带 -self-api ⇔ step 里有 calls（两处标记必须一致）
       · execution.requires 是合法能力项、必须含 network
       · execution.egress 是域名列表
-      · 至少一步声明 calls，且 calls.service 是已登记的 external 能力
+      · calls.service 是已登记的 external 能力
       · calls.contract 存在，且与服务记录的 contract_path 是同一份
       · 服务端点的域名必须出现在 egress 里（声明了才允许出网）
 
@@ -1586,36 +1589,6 @@ def validate_orchestrations(orc_reg: dict) -> None:
             check(f"orchestration {name} trigger legal",
                   trigger in ALLOWED_ORCHESTRATION_TRIGGERS,
                   f"trigger={trigger!r} (expected one of {sorted(ALLOWED_ORCHESTRATION_TRIGGERS)})")
-        requires, egress = None, None
-        if mode == "service-call":
-            # 这个模式不回答"谁发起"（人问的、宿主定时任务叫醒的都有），
-            # 所以 trigger 必须在这里写下来，否则"它也是定时的"这个事实就丢了。
-            check(f"orchestration {name} service-call declares trigger",
-                  isinstance(trigger, str) and bool(trigger), f"trigger={trigger!r}")
-            execution = entry.get("execution")
-            check(f"orchestration {name} service-call declares execution",
-                  isinstance(execution, dict), f"execution={execution!r}")
-            if isinstance(execution, dict):
-                requires = execution.get("requires")
-                check(f"orchestration {name} execution.requires is a non-empty list",
-                      isinstance(requires, list) and bool(requires), f"requires={requires!r}")
-                if isinstance(requires, list):
-                    for req in requires:
-                        check(f"orchestration {name} host requirement is declared: {req}",
-                              req in ALLOWED_HOST_REQUIREMENTS, f"requires={requires!r}")
-                    # 服务调用的前提就是能出网；不写 network 等于声明一条跑不了的链。
-                    check(f"orchestration {name} service-call requires network",
-                          "network" in requires, f"requires={requires!r}")
-                egress = execution.get("egress")
-                check(f"orchestration {name} execution.egress is a non-empty list",
-                      isinstance(egress, list) and bool(egress), f"egress={egress!r}")
-                if isinstance(egress, list):
-                    for domain in egress:
-                        check(f"orchestration {name} egress is a domain: {domain}",
-                              isinstance(domain, str) and bool(EGRESS_RE.match(domain)),
-                              f"egress={egress!r}")
-            else:
-                egress = None
 
         steps = entry.get("steps")
         if not isinstance(steps, list) or not steps:
@@ -1647,8 +1620,6 @@ def validate_orchestrations(orc_reg: dict) -> None:
             calls = step.get("calls")
             if calls is not None:
                 called[sid] = calls
-                check(f"orchestration {name} step {sid} calls only in service-call mode",
-                      mode == "service-call", f"mode={mode!r}")
                 check(f"orchestration {name} step {sid} calls is a mapping",
                       isinstance(calls, dict), type(calls).__name__)
                 if isinstance(calls, dict):
@@ -1687,10 +1658,41 @@ def validate_orchestrations(orc_reg: dict) -> None:
                       os.path.relpath(resolved, ROOT).replace(os.sep, "/") == use.rstrip("/"),
                       f"{link} → {target}，但 use 是 {use}")
 
-        # 服务调用必须落在编排上：一条 service-call 编排至少要有一段 calls。
-        if mode == "service-call":
-            check(f"orchestration {name} service-call has a service call",
-                  bool(called), "没有一步声明 calls —— 那它就不是 service-call")
+        # 调自建 API 的标记必须两处一致：目录名以 -self-api 结尾 ⇔ step 里有 calls。
+        # 放在这里查，是因为"名字说是"和"步骤真是"任何一个缺失都该红。
+        has_calls = bool(called)
+        name_marks_self_api = isinstance(name, str) and name.endswith(SELF_API_SUFFIX)
+        check(f"orchestration {name} self-api marker matches calls",
+              has_calls == name_marks_self_api,
+              f"calls={has_calls} name_suffix={name_marks_self_api} —— "
+              f"调自建 API 的任务目录名必须以 {SELF_API_SUFFIX} 结尾且 step 里必须有 calls；"
+              f"不调的两者都不该出现")
+
+        requires, egress = None, None
+        if has_calls:
+            execution = entry.get("execution")
+            check(f"orchestration {name} declares execution for self-api calls",
+                  isinstance(execution, dict), f"execution={execution!r}")
+            if isinstance(execution, dict):
+                requires = execution.get("requires")
+                check(f"orchestration {name} execution.requires is a non-empty list",
+                      isinstance(requires, list) and bool(requires), f"requires={requires!r}")
+                if isinstance(requires, list):
+                    for req in requires:
+                        check(f"orchestration {name} host requirement is declared: {req}",
+                              req in ALLOWED_HOST_REQUIREMENTS, f"requires={requires!r}")
+                    # 调自建 API 的前提就是能出网；不写 network 等于声明一条跑不了的链。
+                    check(f"orchestration {name} self-api requires network",
+                          "network" in requires, f"requires={requires!r}")
+                egress = execution.get("egress")
+                check(f"orchestration {name} execution.egress is a non-empty list",
+                      isinstance(egress, list) and bool(egress), f"egress={egress!r}")
+                if isinstance(egress, list):
+                    for domain in egress:
+                        check(f"orchestration {name} egress is a domain: {domain}",
+                              isinstance(domain, str) and bool(EGRESS_RE.match(domain)),
+                              f"egress={egress!r}")
+
         for sid, calls in called.items():
             if not isinstance(calls, dict):
                 continue

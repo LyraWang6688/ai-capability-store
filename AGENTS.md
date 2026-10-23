@@ -26,7 +26,7 @@ addresses, Feishu base/table tokens, deployment paths, session ids. None of that
 credential, but listing "which machine runs what" in a public repo hands out a map.
 
 A handoff lives **next to the work it describes**, gitignored, and stays on the machine:
-`orchestrations/scheduled-task/HANDOFF.md` is the shape, not a tracked file.
+`orchestrations/automated/HANDOFF.md` is the shape, not a tracked file.
 
 AGENTS.md is the Control Plane / Router. It does NOT duplicate policy.
 Domain-specific policy lives in the Domain directories.

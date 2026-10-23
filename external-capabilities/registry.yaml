@@ -23,7 +23,7 @@ allowed_statuses:
 capabilities:
   # ---- 店外服务（hosting: external）------------------------------------
   # 「自建后端 + 店里只有 skill 和契约」的形态：代码在独立项目里，店里登记
-  # 端点、契约与授权模型，不登记实现。它们由 service-call 编排的 step.calls
+  # 端点、契约与授权模型，不登记实现。它们由带 `-self-api` 的编排的 step.calls
   # 引用，不参与 use —— use 只指向有落地路径的资产。
   # 老规矩不变：店里不存任何凭据值，只写「需要什么」。
 

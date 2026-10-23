@@ -1,8 +1,8 @@
-# teaming-minute-scan（service-call）
+# teaming-minute-scan-self-api（-self-api：调自建 API）
 
 **宿主的定时任务醒来 → 查最近 N 小时的新妙记 → 逐场判断 → 只分析相关的 → 汇报（含跳过清单）。**
 
-这是 teaming 的**主要用法**（`trigger: host-schedule`）；`teaming-meeting-review` 是同一
+这是 teaming 的**主要用法**（`trigger: host-schedule`）；`teaming-meeting-review-self-api` 是同一
 skill 的单场变体（人问一场会）。两者共用一个后端服务，但输入、产出和失败方式不同，
 所以是两条编排。
 

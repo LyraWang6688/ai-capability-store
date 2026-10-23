@@ -26,6 +26,7 @@ orchestrations/         —— 按什么顺序连（这一次任务）
 ```text
 orchestrations/
   registry.yaml                     ← 唯一机器真相（验证器查这个）
+  SELF-API.md                       ← 调自建 API 的编排怎么标
   <模式>/<生态>/<任务>/
     README.md                       ← 人读：流程 + 衔接规则
     <link>  →  ../../../里的资产      ← 软链，给人看的那一份
@@ -33,9 +34,9 @@ orchestrations/
 
 | 层 | 回答什么 | 现在有哪些 |
 |---|---|---|
-| **模式** | 这一类任务**靠什么跑完** | `manual`（人说一句就做）· `scheduled-task`（钟来叫）· `service-call`（宿主调一个自建的后端服务）|
+| **模式** | 这一类任务**谁发起** | `manual`（人说一句就做）· `automated`（系统发起：钟或事件，不需要人触发）|
 | **生态** | 它动用了**哪个平台**的资产 | `wechat` · `dsh` · `doubao-work` |
-| **任务** | 具体那一条 | `wechat-article` · `investdesk-daily-report` · `teaming-meeting-review` · `teaming-minute-scan` · `readloop-daily` |
+| **任务** | 具体那一条 | `wechat-article` · `investdesk-daily-report` · `teaming-meeting-review-self-api` · `teaming-minute-scan-self-api` · `readloop-daily-self-api` |
 
 ### 为什么第二级是「生态」而不是「谁执行」
 
@@ -50,23 +51,32 @@ orchestrations/
 `wechat-article` 放在 `manual/wechat/` 而不是某个 agent 下面，因为它的四步
 （写 / 排版 / 动图 / 上传）没有一步是「只能在某个 agent 上跑」的。
 
-**三个都是封闭集合**（`ORCHESTRATION_MODES` / `ORCHESTRATION_ECOSYSTEMS`），和货架、生态同一套纪律。
+**两个都是封闭集合**（`ORCHESTRATION_MODES` / `ORCHESTRATION_ECOSYSTEMS`），和货架、生态同一套纪律。
 
-> 模式不描述"跑什么"，只描述"这一趟靠什么跑完"。对前两个模式，这等价于
-> "怎么被发起"，所以第二层再分生态不会自相矛盾；`service-call` 打破了这层等价：
-> 它可以是人问的，也可以是宿主定时任务叫醒的 —— 所以它必须另写 `trigger`。
+> 模式不描述"跑什么"，只描述"**谁发起**"。自动不等于定时：`automated` 的输入可以是
+> 钟，也可以是事件（比如「本周第一次开机/登录」）。所以它不叫 `scheduled-task`。
 
-### service-call：接口写在 SOP 里，服务在店外
+### 调自建 API 的编排：任务名带 `-self-api`
 
-这一类任务的共同点不是"跨机器"，而是：**有一段执行没有资产承载。**
-不是 MCP、不是 CLI、不是插件，而是 skill 正文里的一次 HTTP 调用，打到一个我们
-自己维护的后端服务上。能不能跑，取决于宿主的执行与出网能力。
+这一类编排有**一段执行没有资产承载**：不是 MCP、不是 CLI、不是插件，而是 skill
+正文里的一次 HTTP 调用，打到一个我们自己维护的后端服务上。能不能跑，取决于宿主的
+执行与出网能力。
+
+标记写在**两处，必须同时存在**：
 
 ```text
-✓ 算这一类：endpoint 写在 skill 里 + 后面是自建后端 + 契约在 skill 的 references/ 里
-✗ 不算：repo-collector 调 GitHub 公开 API（脚本承载、平台 API）
-✗ 不算：beijing-theater-calendar / investdesk-research（skill 里零 endpoint，数据来自宿主搜索/插件）
+① 任务目录名以 -self-api 结尾      （文件命名上就能看出来）
+② step 里写 calls:                 （服务名 + 契约 + 端点）
 ```
+
+```text
+✓ teaming-meeting-review-self-api  —— 目录名 + calls 都在
+✗ teaming-meeting-review           —— 名字没标，验证器不准
+✗ xxx-self-api 但没有 calls        —— 名字说调了，步骤里没写
+```
+
+判据三条，缺一不算：**endpoint 写在 skill 里** + **后面是自建后端** + **契约在 skill 的 `references/` 里**。
+细节和"不算"的例子见 [`SELF-API.md`](./SELF-API.md)。
 
 ### 三级路径的代价
 
@@ -93,10 +103,10 @@ steps:
     produces: body HTML
 ```
 
-`service-call` 的步骤多一个 `calls`（这一步的 SOP 会调一个店外服务），整条编排多两段：
+调自建 API 的步骤多一个 `calls`，整条编排多两段：
 
 ```yaml
-trigger: host-schedule                 # service-call 必填：human / host-schedule / daily / …
+trigger: host-schedule                 # 可选：human / host-schedule / daily / weekly / monthly / event
 execution:
   requires: [bash, curl, network, feishu-native]   # 宿主得会什么
   egress: [readinsight.bamamei.online]             # SOP 里显式指定的出网目的地
@@ -114,7 +124,7 @@ steps:
 
 | 字段 | 不写会怎样 |
 |---|---|
-| `trigger` | 模式不回答这条链是不是定时的，「它每天 9 点跑」这个事实就没了 |
+| `trigger` | 看不出它靠什么被叫醒——是钟，还是事件 |
 | `execution.requires` | 换一个没有 bash / curl 的宿主，链第一步就断，而编排层看不出来 |
 | `execution.egress` | 数据出到哪里没有声明；服务换域名也没人会发现 |
 | `calls` | 接口调用只活在 skill 正文里，店里不知道它对应哪个后端服务 |
@@ -132,12 +142,12 @@ steps:
 5. 没有环
 6. 没有孤儿步骤（每个步骤都能从第一步走到）
 
-**`service-call` 再查五件事：**
+**带 `calls` 的再查五件事：**
 
-1. `trigger` 已写且合法
+1. 目录名 `-self-api` 与 `calls` **必须一致**（有 calls 就必须带后缀，反之亦然）
 2. `execution.requires` 是合法能力项，且**必须含 `network`**
 3. `execution.egress` 是非空的域名列表
-4. 至少一步有 `calls`；`calls.service` 已登记且 `hosting: external`
+4. `calls.service` 已登记且 `hosting: external`
 5. `calls.contract` 存在，且与该能力记录的 `contract_path` 相同；服务端点域名必须出现在 `egress` 里
 
 ## 加一个编排
@@ -146,8 +156,8 @@ steps:
 2. 写 `README.md`（流程 + 衔接规则）
 3. 建软链，每个指向一个已登记资产（Skill 的 path / Capability 的 implementation_path /
    Automation 的 path）
-4. `service-call` 的另两步：先在该域登记店外服务（`hosting: external` + endpoint + 契约），
-   再在编排里写 `trigger` / `execution` / `calls`
+4. 调自建 API 的另两步：任务目录名加 `-self-api`；先在外部能力域登记店外服务
+   （`hosting: external` + endpoint + 契约），再在编排里写 `execution` / `calls`
 5. 在 `orchestrations/registry.yaml` 登记，`steps` 和软链一一对应
 6. 跑 `python3 scripts/validate_store.py`
 
@@ -156,14 +166,16 @@ steps:
 
 ---
 
-## 三个模式各自的通用流程
+## 两个模式各自的通用流程
 
 | 模式 | 抽象 |
 |---|---|
-| `scheduled-task/` | **三段**：输入（钟）→ 处理 → 输出（必须是 GUI）<br>段间：**能直连就直连，不能直连才插桥** |
+| `automated/` | **三段**：输入（钟或事件）→ 处理 → 输出（必须是 GUI）<br>段间：**能直连就直连，不能直连才插桥** |
 | `manual/` | 没有钟：人触发 → 调几个资产 → 交付 |
-| `service-call/` | **取数（宿主能力）→ 契约调用（宿主 shell + 店外服务）→ 落回（宿主能力 + GUI）**<br>前提：`execution.requires` 声明的宿主能力 |
 
 见各自的 `README.md`。
+
+**调自建 API 不是第三个模式** —— manual 和 automated 里都可能有；标志是
+**任务名带 `-self-api` + step 里有 `calls`**，不是它被谁发起。
 
 **「几步」不是设计出来的** —— 是环境的产物：能直连的地方不占步数，不能直连的地方才多一个桥。

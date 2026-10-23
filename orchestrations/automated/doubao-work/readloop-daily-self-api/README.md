@@ -1,8 +1,8 @@
-# readloop-daily（service-call）
+# readloop-daily-self-api（-self-api：调自建 API）
 
 **宿主定时叫醒 → 读表 → 服务算今日题 → 一次一题 → 服务判分 → 写回表。**
 
-和 `teaming-meeting-review` 同为 service-call，但拓扑不同：这条是**闭环**。
+和 `teaming-meeting-review-self-api` 同为调自建 API 的编排，但拓扑不同：这条是**闭环**。
 状态不在店里、也不在服务里 —— 在**用户自己的多维表格**里；服务只做计算，不存数据。
 
 ```text

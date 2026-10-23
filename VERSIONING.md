@@ -117,7 +117,7 @@ Examples:
 repo-hygiene-v0.1.0
 feishu-cli-mcp-server-v0.1.0
 github-trending-daily-v0.1.0
-readloop-daily-v0.1.0
+readloop-daily-self-api-v0.1.1
 ```
 
 Do NOT use a monorepo-wide tag such as `v0.1.0` — multiple assets would collide.

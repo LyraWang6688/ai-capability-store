@@ -1,4 +1,4 @@
-# scheduled-task / dsh —— DSH 生态的定时任务
+# automated / dsh —— DSH 生态的自动化任务
 
 > 模式说明见 [`../README.md`](../README.md)：定时任务 = 输入 + 处理 + 输出，输出必须是用户在界面上能看见的位置。
 > 这个目录放 **DSH 生态**（`dsh/`）下的定时任务编排。
@@ -18,7 +18,7 @@
 ## 目录约定
 
 ```
-scheduled-task/dsh/
+automated/dsh/
 ├── README.md            ← 本文件：这个生态的定时任务说明
 ├── COLLABORATION.md     ← 两侧协作方案与投递契约
 └── <task>/              ← 具体任务的编排（README + 软链 + registry.steps 登记）
@@ -29,5 +29,5 @@ scheduled-task/dsh/
 
 ## 相关
 
-- 收件箱插件：[`external-capabilities/plugin/dsh/inbox/`](../../../../external-capabilities/plugin/dsh/inbox/README.md)
+- 收件箱插件：[`external-capabilities/plugin/dsh/inbox/`](../../../external-capabilities/plugin/dsh/inbox/README.md)
 - 跟踪 issue：#295
