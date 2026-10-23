@@ -44,4 +44,4 @@ SOP 正文里的 `curl` 打到一个**自建的后端服务**（`meeting.bamamei
 - 不做会议摘要 / 待办 —— 那是宿主自己的纪要能力
 - 不评价个人
 - 不复制分析逻辑 —— 服务在独立仓库 `teaming-bot`，这里只有契约与引用
-- 不负责触发（`trigger: human`）。同一 skill 还有「发现新妙记就自动分析」的定时用法，那是另一条编排，尚未登记
+- 不负责触发（`trigger: human`）。**主要用法其实是另一条编排**：[../teaming-minute-scan](../teaming-minute-scan/README.md) —— 钟叫醒、扫一批、逐场判断；这条是人问一场会时的单场变体

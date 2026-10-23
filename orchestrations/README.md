@@ -35,7 +35,7 @@ orchestrations/
 |---|---|---|
 | **模式** | 这一类任务**靠什么跑完** | `manual`（人说一句就做）· `scheduled-task`（钟来叫）· `service-call`（宿主调一个自建的后端服务）|
 | **生态** | 它动用了**哪个平台**的资产 | `wechat` · `dsh` · `doubao-work` |
-| **任务** | 具体那一条 | `wechat-article` · `investdesk-daily-report` · `teaming-meeting-review` · `readloop-daily` |
+| **任务** | 具体那一条 | `wechat-article` · `investdesk-daily-report` · `teaming-meeting-review` · `teaming-minute-scan` · `readloop-daily` |
 
 ### 为什么第二级是「生态」而不是「谁执行」
 

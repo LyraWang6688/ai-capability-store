@@ -1,13 +1,16 @@
 # Versioning — X.Y.Z (Store Contract)
 
 This is the **Store-wide** versioning contract for every asset (Skills, External
-Capabilities and Automations). There is exactly one such file — the former
-`skills/VERSIONING.md` supplement is merged here, so no duplicate rules exist.
+Capabilities, Automations and Orchestrations). There is exactly one such file —
+the former `skills/VERSIONING.md` supplement is merged here, so no duplicate
+rules exist.
 
 If a new peer Domain is ever added, **add it to this sentence and to §6 in the
-same change**. A contract that says "every asset" and then enumerates two of the
-three domains is wrong in the direction that hides: the automations follow the
-registry-and-tag discipline below, and nothing told them to.
+same change**. A contract that says "every asset" and then enumerates only some
+of the domains is wrong in the direction that hides: the missing ones follow the
+registry-and-tag discipline below, and nothing told them to. That is exactly what
+happened when Orchestrations arrived — the tooling adopted them and this sentence
+did not.
 
 ## 0. This does not conflict with the external standards
 
@@ -23,7 +26,7 @@ The two layers only collide in one place: writing `version` into a `SKILL.md`.
 
 | Location | Allowed? | Why |
 |---|---|---|
-| Domain registry (`skills/registry.yaml`, `external-capabilities/registry.yaml`, `automations/registry.yaml`) | ✅ **the only source of truth** | Store governance state |
+| Domain registry (`skills/registry.yaml`, `external-capabilities/registry.yaml`, `automations/registry.yaml`, `orchestrations/registry.yaml`) | ✅ **the only source of truth** | Store governance state |
 | `SKILL.md` frontmatter, top level | ❌ **forbidden** | not in the external whitelist — the reference validator rejects the whole skill |
 | `SKILL.md` `metadata.version` | 🟡 legal, but do not use | would duplicate the registry → two sources of truth |
 
@@ -97,9 +100,12 @@ current maintained state; its registries describe the recommended versions.
 
 ## 6. Immutable Historical Versions = Namespaced Git Tags
 
-**Every registered asset — Skill, External Capability, or Automation — gets a
-namespaced tag for every version it publishes.** Being a peer Domain means taking
-on the same version discipline; the domain does not exempt an asset.
+**Every registered asset — Skill, External Capability, Automation, or
+Orchestration — gets a namespaced tag for every version it publishes.** Being a
+peer Domain means taking on the same version discipline; the domain does not
+exempt an asset. (Orchestrations were added after this sentence was first written
+and are already covered by the checker and the weekly `--missing` audit; the
+list is now the same in §1, §6 and the tool.)
 
 ```text
 <asset-name>-vX.Y.Z
@@ -111,6 +117,7 @@ Examples:
 repo-hygiene-v0.1.0
 feishu-cli-mcp-server-v0.1.0
 github-trending-daily-v0.1.0
+readloop-daily-v0.1.0
 ```
 
 Do NOT use a monorepo-wide tag such as `v0.1.0` — multiple assets would collide.
