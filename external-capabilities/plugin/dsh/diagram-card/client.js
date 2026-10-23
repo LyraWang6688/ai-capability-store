@@ -45,11 +45,11 @@ window.__ModuleLoader__.load({
   --ddg-info:#2C67C5; --ddg-info-bg:rgba(30,115,190,.07); --ddg-info-line:rgba(30,115,190,.25);
   --ddg-info-line-strong:rgba(30,115,190,.45);
   --ddg-success:#40C977; --ddg-success-bg:rgba(22,163,74,.07); --ddg-success-line:rgba(22,163,74,.3);
-  width:100%; max-width:792px; margin:10px auto; box-sizing:border-box;
-  border:1px solid var(--ddg-line); border-radius:16px; padding:12px;
-  display:flex; flex-direction:column; gap:12px;
+  width:100%; max-width:720px; margin:8px auto; box-sizing:border-box;
+  border:1px solid var(--ddg-line); border-radius:14px; padding:10px;
+  display:flex; flex-direction:column; gap:8px;
   color:var(--ddg-text); background:transparent;
-  font:400 16px/26px -apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  font:400 15px/22px -apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
   text-align:left; user-select:text;
 }
 .dshdg-root.dshdg-light{
@@ -61,42 +61,42 @@ window.__ModuleLoader__.load({
   --ddg-success:#1B8F4E; --ddg-success-bg:rgba(22,163,74,.06); --ddg-success-line:rgba(22,163,74,.28);
 }
 .dshdg-root *{box-sizing:border-box}
-.dshdg-title{margin:0;font-size:14px;font-weight:500;line-height:20px;color:var(--ddg-text)}
-.dshdg-arrow{display:flex;justify-content:center;align-items:center;height:16px;color:var(--ddg-text3)}
-.dshdg-node{width:100%;background:var(--ddg-panel);border-radius:12px;padding:12px;
-  display:flex;flex-direction:column;align-items:center;gap:4px}
-.dshdg-node-title{margin:0;font-size:16px;font-weight:600;line-height:26px;color:var(--ddg-text)}
-.dshdg-node-sub{font-size:14px;line-height:18px;color:var(--ddg-text2)}
+.dshdg-title{margin:0;font-size:14px;font-weight:500;line-height:18px;color:var(--ddg-text)}
+.dshdg-arrow{display:flex;justify-content:center;align-items:center;height:12px;color:var(--ddg-text3)}
+.dshdg-node{width:100%;background:var(--ddg-panel);border-radius:10px;padding:9px;
+  display:flex;flex-direction:column;align-items:center;gap:2px}
+.dshdg-node-title{margin:0;font-size:15px;font-weight:600;line-height:22px;color:var(--ddg-text)}
+.dshdg-node-sub{font-size:13px;line-height:16px;color:var(--ddg-text2)}
 .dshdg-ico{display:flex;align-items:center;justify-content:center;color:var(--ddg-text2)}
 .dshdg-node .dshdg-ico{color:var(--ddg-text2)}
 .dshdg-node.dshdg-result .dshdg-ico{color:var(--ddg-success)}
 .dshdg-group{width:100%;background:var(--ddg-info-bg);border:1px solid var(--ddg-info-line);
-  border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:12px}
-.dshdg-group-head{display:flex;align-items:center;justify-content:center;gap:8px;
-  font-size:16px;font-weight:600;line-height:26px;color:var(--ddg-text)}
+  border-radius:10px;padding:9px;display:flex;flex-direction:column;gap:8px}
+.dshdg-group-head{display:flex;align-items:center;justify-content:center;gap:6px;
+  font-size:15px;font-weight:600;line-height:22px;color:var(--ddg-text)}
 .dshdg-group-head .dshdg-ico{color:var(--ddg-info)}
 .dshdg-divider{height:1px;border:0;margin:0;background:var(--ddg-divider)}
-.dshdg-label{margin:0;font-size:12px;font-weight:500;line-height:16px;text-align:center;color:var(--ddg-text)}
-.dshdg-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.dshdg-card{background:var(--ddg-card);border-radius:8px;padding:8px;
-  display:flex;flex-direction:column;align-items:center;gap:4px;text-align:center}
-.dshdg-card-en{margin:0;font-size:12px;font-weight:500;line-height:16px;color:var(--ddg-text)}
-.dshdg-card-cn{font-size:14px;line-height:18px;color:var(--ddg-text2)}
-.dshdg-pill{align-self:center;background:var(--ddg-panel);border-radius:12px;
-  padding:8px 16px;font-size:16px;font-weight:600;line-height:26px}
-.dshdg-loop{width:100%;border:2px solid var(--ddg-info-line-strong);border-radius:16px;
-  padding:12px;display:flex;flex-direction:column;gap:8px}
-.dshdg-step{display:flex;flex-direction:column;gap:4px}
-.dshdg-step-head{display:flex;align-items:center;gap:8px}
-.dshdg-num{width:28px;height:28px;flex:none;border-radius:9999px;background:var(--ddg-num);
+.dshdg-label{margin:0;font-size:12px;font-weight:500;line-height:14px;text-align:center;color:var(--ddg-text)}
+.dshdg-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.dshdg-card{background:var(--ddg-card);border-radius:7px;padding:6px;
+  display:flex;flex-direction:column;align-items:center;gap:2px;text-align:center}
+.dshdg-card-en{margin:0;font-size:12px;font-weight:500;line-height:14px;color:var(--ddg-text)}
+.dshdg-card-cn{font-size:13px;line-height:16px;color:var(--ddg-text2)}
+.dshdg-pill{align-self:center;background:var(--ddg-panel);border-radius:10px;
+  padding:6px 14px;font-size:15px;font-weight:600;line-height:22px}
+.dshdg-loop{width:100%;border:2px solid var(--ddg-info-line-strong);border-radius:14px;
+  padding:10px;display:flex;flex-direction:column;gap:6px}
+.dshdg-step{display:flex;flex-direction:column;gap:2px}
+.dshdg-step-head{display:flex;align-items:center;gap:6px}
+.dshdg-num{width:26px;height:26px;flex:none;border-radius:9999px;background:var(--ddg-num);
   display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:500;color:var(--ddg-text)}
-.dshdg-step-title{margin:0;font-size:14px;font-weight:500;line-height:20px;color:var(--ddg-text)}
-.dshdg-step-desc{margin:0;font-size:12px;line-height:16px;color:var(--ddg-text2)}
-.dshdg-loopback{display:flex;align-items:center;justify-content:center;gap:8px;
-  font-size:14px;font-weight:500;line-height:20px;color:var(--ddg-text)}
+.dshdg-step-title{margin:0;font-size:13px;font-weight:500;line-height:18px;color:var(--ddg-text)}
+.dshdg-step-desc{margin:0;font-size:12px;line-height:14px;color:var(--ddg-text2)}
+.dshdg-loopback{display:flex;align-items:center;justify-content:center;gap:6px;
+  font-size:13px;font-weight:500;line-height:18px;color:var(--ddg-text)}
 .dshdg-loopback .dshdg-ico{color:var(--ddg-info)}
 .dshdg-done{align-self:center;background:var(--ddg-success-bg);border:1px solid var(--ddg-success-line);
-  border-radius:12px;padding:8px 16px;font-size:16px;font-weight:500;line-height:26px;color:var(--ddg-success)}
+  border-radius:10px;padding:6px 14px;font-size:15px;font-weight:500;line-height:22px;color:var(--ddg-success)}
 @media (max-width:560px){.dshdg-grid{grid-template-columns:1fr}}
 `;
 
@@ -123,16 +123,34 @@ window.__ModuleLoader__.load({
       return box;
     }
 
-    function isLightTheme() {
+    function isDarkTheme() {
       try {
-        const bg = getComputedStyle(document.body).backgroundColor || '';
-        const m = bg.match(/\d+(\.\d+)?/g);
-        if (m && m.length >= 3) {
+        // DSH marks dark mode with `data-ds-dark-theme`; it is NOT `data-theme`.
+        const root = document.documentElement;
+        if (root.hasAttribute('data-ds-dark-theme')) return true;
+        if (document.body && document.body.hasAttribute('data-ds-dark-theme')) return true;
+        if (root.getAttribute('data-theme') === 'light') return false;
+        const luma = (value) => {
+          const m = String(value || '').match(/\d+(\.\d+)?/g);
+          if (!m || m.length < 3) return null;
           const [r, g, b] = m.map(Number);
-          return (0.2126 * r + 0.7152 * g + 0.0722 * b) > 140;
+          return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+        };
+        // Fallback 1: first opaque background on the page.
+        for (const el of [document.body, root]) {
+          if (!el) continue;
+          const value = luma(getComputedStyle(el).backgroundColor);
+          if (value !== null) return value < 140;
+        }
+        // Fallback 2: text colour is the other half of the same signal.
+        // Light text on an unreadable background means a dark theme.
+        for (const el of [document.body, root]) {
+          if (!el) continue;
+          const value = luma(getComputedStyle(el).color);
+          if (value !== null) return value > 140;
         }
       } catch (_) { /* fall through */ }
-      return document.documentElement.getAttribute('data-theme') === 'light';
+      return true; // DSH ships dark by default
     }
 
     function hashText(text) {
@@ -221,7 +239,7 @@ window.__ModuleLoader__.load({
 
     function render(spec) {
       if (!spec || typeof spec !== 'object') return null;
-      const root = el('div', ROOT + (isLightTheme() ? ' dshdg-light' : ''));
+      const root = el('div', ROOT + (isDarkTheme() ? '' : ' dshdg-light'));
       if (spec.title) root.appendChild(el('p', 'dshdg-title', spec.title));
       const config = Object.assign({}, spec, { __root: root });
       if (spec.type === 'flow') renderFlow(config);
@@ -307,7 +325,7 @@ window.__ModuleLoader__.load({
     // case debuggable from the console: __dshdg.scan() forces a pass and
     // __dshdg.render(spec) renders one spec without touching the transcript.
     try {
-      window.__dshdg = { render: render, scan: scan, hash: hashText, css: CSS, version: '0.1.0' };
+      window.__dshdg = { render: render, scan: scan, hash: hashText, css: CSS, version: '0.1.1' };
     } catch (_) { /* non-browser context */ }
 
     return {

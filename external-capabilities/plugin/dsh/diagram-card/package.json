@@ -1,7 +1,7 @@
 {
   "name": "@lyra_wang/dsh-diagram-card",
-  "version": "0.1.0",
-  "description": "Render ```dsh-diagram code blocks in the DSH conversation as structured, high-fidelity card diagrams instead of raw JSON.",
+  "version": "0.1.1",
+  "description": "Render ```dsh-diagram code blocks in the DSH conversation as structured card diagrams. Compact layout and correct light/dark theme detection.",
   "license": "MIT",
   "type": "module",
   "keywords": [
