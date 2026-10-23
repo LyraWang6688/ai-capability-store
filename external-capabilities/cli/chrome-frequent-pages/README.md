@@ -160,11 +160,12 @@ python3 main.py --bookmarks-from-table ~/Desktop/常用网页书签.html
 ### 安装
 
 ```bash
-mkdir -p ~/.local/share/chrome-frequent-pages
-cp run-if-due.sh inbox-deliver-mac.py ~/.local/share/chrome-frequent-pages/
-chmod +x ~/.local/share/chrome-frequent-pages/*.sh ~/.local/share/chrome-frequent-pages/*.py
-# LaunchAgent: RunAtLoad=true，无定时时刻
+npm i -g @lyra_wang/chrome-frequent-pages@0.5.2   # 或 npm i -g file:$PWD
+bash "$(dirname "$(readlink -f "$(command -v chrome-frequent-pages)")")/../install.sh"
 ```
+
+`install.sh` 会把 `main.py` / `run-if-due.sh` / `inbox-deliver-mac.py` / `table_snapshot.py`
+复制到 `~/.local/share/chrome-frequent-pages/`，并注册 `RunAtLoad` 的 LaunchAgent（无定时时刻）。
 
 ### 必需的 macOS 权限（否则读不到 Chrome 历史）
 
