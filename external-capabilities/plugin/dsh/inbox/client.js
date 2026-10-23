@@ -15,7 +15,7 @@ window.__ModuleLoader__.load({
 
     const NS = '@lyra_wang/dsh-inbox';
     const ROOT = 'dsh-inbox';
-    const POLL_MS = 2 * 60 * 1000;
+    const POLL_MS = 60 * 60 * 1000;
 
     const store = { items: [], unread: 0, open: false, loading: false, error: '', fetchedAt: 0, autoOpened: false };
     const listeners = new Set();
