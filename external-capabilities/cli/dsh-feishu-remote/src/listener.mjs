@@ -6,7 +6,7 @@ import { appendFileSync, existsSync, readFileSync, writeFileSync } from 'node:fs
 import { join } from 'node:path';
 import { LOG_DIR, STATE_PATH, ensureDirs } from './config.mjs';
 import { sendCard, sendText, spawnConsumer } from './feishu.mjs';
-import { buildReplyCard } from './cards.mjs';
+import { buildConfirmCard, buildReplyCard } from './cards.mjs';
 
 function audit(level, stage, extra = {}) {
   const day = new Date().toISOString().slice(0, 10);
@@ -109,6 +109,16 @@ async function reply(cfg, chatId, kind, text, meta, title) {
   const card = buildReplyCard({ kind, title, text, meta, maxChars: cfg.maxReplyChars });
   const result = await sendCard(cfg, chatId, card);
   if (!result.ok) await sendText(cfg, chatId, text);
+  return result;
+}
+
+/** High-risk confirmation card with 确认 / 取消 buttons (plus a text fallback). */
+async function sendConfirm(cfg, chatId, text, taskId) {
+  const card = buildConfirmCard({ text, taskId, maxChars: cfg.maxReplyChars });
+  const result = await sendCard(cfg, chatId, card);
+  if (!result.ok) {
+    await sendText(cfg, chatId, `这条指令含高风险动作：\n${text}\n\n回复「确认」继续执行，回复「取消」放弃。`);
+  }
   return result;
 }
 
@@ -232,7 +242,7 @@ export function startListener(cfg) {
       state.pending = { text, chatId, taskId, at: Date.now() };
       saveState(state);
       audit('warn', 'confirm-required', { taskId, text });
-      await reply(cfg, chatId, 'confirm', `这条指令含高风险动作：\n\n**${text}**\n\n回复「确认」继续执行，回复「取消」放弃。`);
+      await sendConfirm(cfg, chatId, text, taskId);
       return;
     }
 
@@ -240,12 +250,50 @@ export function startListener(cfg) {
     await execute(chatId, text, newTaskId());
   }
 
-  let consumer = null;
+  /** Handle `card.action.trigger` from the confirmation card. */
+  async function onCardAction(event) {
+    if (!event || event.type !== 'card.action.trigger') return;
+    if (event.action_tag && event.action_tag !== 'button') return;
+    if (!(cfg.allowedOpenIds || []).includes(event.operator_id)) {
+      audit('warn', 'reject-card-operator', { sender: event.operator_id });
+      return;
+    }
+    let value = {};
+    try { value = JSON.parse(event.action_value || '{}'); } catch { value = {}; }
+    const pending = state.pending;
+    if (!pending || (value.taskId && value.taskId !== pending.taskId)) {
+      audit('warn', 'card-action-stale', { action: value.action, taskId: value.taskId });
+      return;
+    }
+    const chatId = event.chat_id || pending.chatId;
+    if (value.action === 'confirm') {
+      state.pending = null;
+      saveState(state);
+      audit('info', 'card-confirmed', { taskId: pending.taskId });
+      await reply(cfg, chatId, 'ack', '已确认，开始执行…');
+      await execute(chatId, pending.text, pending.taskId);
+      return;
+    }
+    if (value.action === 'cancel') {
+      state.pending = null;
+      saveState(state);
+      audit('info', 'card-cancelled', { chatId });
+      await reply(cfg, chatId, 'ack', '已取消。', undefined, '已取消');
+    }
+  }
+
+  const consumers = new Map();
   let stopping = false;
 
-  function startConsumer() {
-    consumer = spawnConsumer(cfg);
-    audit('info', 'consumer-start', { pid: consumer.pid });
+  function dispatch(event) {
+    if (event && event.type === 'card.action.trigger') enqueue(() => onCardAction(event));
+    else enqueue(() => onMessage(event));
+  }
+
+  function startConsumer(eventKey) {
+    const consumer = spawnConsumer(cfg, eventKey);
+    consumers.set(eventKey, consumer);
+    audit('info', 'consumer-start', { eventKey, pid: consumer.pid });
     let buffer = '';
     consumer.stdout.setEncoding('utf8');
     consumer.stdout.on('data', (chunk) => {
@@ -257,7 +305,7 @@ export function startListener(cfg) {
         if (line === '') continue;
         let event;
         try { event = JSON.parse(line); } catch { continue; }
-        enqueue(() => onMessage(event));
+        dispatch(event);
       }
     });
     consumer.stderr.setEncoding('utf8');
@@ -265,20 +313,25 @@ export function startListener(cfg) {
       try { appendFileSync(join(LOG_DIR, 'consumer.log'), chunk); } catch { /* ignore */ }
     });
     consumer.on('error', (error) => {
-      audit('error', 'consumer-error', { err: String(error) });
-      if (!stopping) setTimeout(startConsumer, 5000);
+      audit('error', 'consumer-error', { eventKey, err: String(error) });
+      if (!stopping) setTimeout(() => startConsumer(eventKey), 5000);
     });
     consumer.on('close', (code) => {
-      audit('warn', 'consumer-exit', { code });
-      if (!stopping) setTimeout(startConsumer, 5000);
+      audit('warn', 'consumer-exit', { eventKey, code });
+      if (!stopping) setTimeout(() => startConsumer(eventKey), 5000);
     });
   }
 
-  startConsumer();
+  // Message events always; card callbacks only when enabled (they also need the
+  // console callback subscription, otherwise the consumer is rejected on startup).
+  startConsumer('im.message.receive_v1');
+  if (cfg.cardActions) startConsumer('card.action.trigger');
 
   return function shutdown() {
     stopping = true;
-    try { consumer && consumer.kill(); } catch { /* ignore */ }
+    for (const consumer of consumers.values()) {
+      try { consumer.kill(); } catch { /* ignore */ }
+    }
     audit('info', 'listener-stop', { pid: process.pid });
   };
 }

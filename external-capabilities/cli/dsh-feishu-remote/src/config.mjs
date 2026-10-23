@@ -29,6 +29,7 @@ export const DEFAULTS = {
   workdir: HOME,
   timeoutSeconds: 300,
   reuseSession: true,
+  cardActions: false,
   maxReplyChars: 3500,
   allowedOpenIds: [],
   allowedChatTypes: ['p2p'],
