@@ -99,7 +99,7 @@ skills:
     path: skills/readloop
     scope: shared
     status: testing
-    version: 0.2.2
+    version: 0.2.3
     updated: "2026-10-23"
     notes: >
       Daily English review loop built on real reading. The host reads and writes
@@ -110,6 +110,15 @@ skills:
       is four steps: pick model, create the Bitable from template, install the
       Chrome extension, create a host scheduled task (daily/weekly + time).
       `testing`: not yet validated end-to-end on Doubao Work.
+      0.2.3 (patch): docs audit against the shipped service + extension. Plugin install
+      points at the real GitHub Release (unpacked zip) instead of a placeholder;
+      README no longer claims the model generates questions (the current service
+      uses deterministic templates; the model config is reserved for future
+      polish); `status` documents its 400/404 error codes; activation errors add
+      400 (bad format); the daily `today` curl example includes the Authorization
+      header; README config sample gains `license_expires_at`; daily point-field
+      list marks required vs optional; Doubao checklist drops stale "接入码"
+      wording and an internal dev note.
       0.2.2 (patch): pairing now delivers the host token to the Chrome extension.
       `POST /api/setup/app/pair` records the host's `host_token` from the
       `Authorization` header, and `GET /api/setup/app/pair?code=` returns it with
