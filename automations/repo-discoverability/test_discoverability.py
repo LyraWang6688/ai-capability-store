@@ -257,5 +257,35 @@ class TestAuditChecks(unittest.TestCase):
         self.assertIn("archived", source)
 
 
+class TestExitCodes(unittest.TestCase):
+    """「发现问题」和「没审成」必须是两种退出码。
+
+    workflow 以前用 `|| true` 把两者一起吞掉：仓库有待改进项是每周的常态（不该红），
+    但权限不足 / API 失败也走同一个非零码 —— 结果是假绿。现在 1 是预期输出，2 才是故障。
+    """
+
+    @staticmethod
+    def _result(status):
+        return {"repo": "owner/demo", "archived": False,
+                "items": [{"status": status}]}
+
+    def test_clean_audit_is_zero(self):
+        result = self._result("PASS")
+        self.assertEqual(au.exit_code_for([result], 0, [result]), 0)
+
+    def test_findings_are_not_an_error(self):
+        result = self._result("FAIL")
+        self.assertEqual(au.exit_code_for([result], 0, [result]), 1)
+
+    def test_repo_errors_make_the_run_incomplete(self):
+        result = self._result("FAIL")
+        self.assertEqual(au.exit_code_for([result], 1, [result]), 2,
+                         "有仓库没审到 → 这次数据不完整，不能被当成「都合规」")
+
+    def test_errors_win_over_clean_results(self):
+        result = self._result("PASS")
+        self.assertEqual(au.exit_code_for([result], 2, [result]), 2)
+
+
 if __name__ == "__main__":
     sys.exit(0 if unittest.main(exit=False, verbosity=2).result.wasSuccessful() else 1)
