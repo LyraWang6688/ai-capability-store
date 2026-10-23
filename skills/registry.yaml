@@ -99,7 +99,7 @@ skills:
     path: skills/readloop
     scope: shared
     status: testing
-    version: 0.2.0
+    version: 0.2.1
     updated: "2026-10-23"
     notes: >
       Daily English review loop built on real reading. The host reads and writes
@@ -110,6 +110,13 @@ skills:
       is four steps: pick model, create the Bitable from template, install the
       Chrome extension, create a host scheduled task (daily/weekly + time).
       `testing`: not yet validated end-to-end on Doubao Work.
+      0.2.1 (patch): `compatibility` now attributes each outbound destination to
+      the right side. The host reaches only `readinsight.bamamei.online` (the
+      service runs the Feishu write checks itself); `open.feishu.cn` is reached by
+      the Chrome extension in the browser, not by the host. The previous wording
+      listed both as host requirements and then said the host never calls Feishu —
+      the same line contradicted itself, and disagreed with the orchestration's
+      `execution.egress` (which already lists only the service).
       0.2.0 (minor): API contract synced with the service implemented 2026-10-23 —
       `today` returns 4 options and `context: null` (no pre-answer leak) and
       `answered` is always 0; `submit` accepts either option text or A/B/C/D and
