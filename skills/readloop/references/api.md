@@ -2,25 +2,31 @@
 
 服务只做计算，**不存储用户数据**。表格读写全部由宿主用自己的飞书能力完成。
 
-服务地址记为 `BASE`。除 `enroll` 外，所有请求带 `Authorization: Bearer <host_token>`。
+服务地址记为 `BASE`。除 `activate` 外，所有请求带 `Authorization: Bearer <host_token>`。
 
 ---
 
-## POST /api/host/enroll
+## POST /api/license/activate
 
-用接入码换 `host_token`（每个用户一次）。
+用购买时拿到的 8 位授权码换 `host_token`（每个授权码一次）。**这是所有其他接口的前提。**
 
 请求：
 
 ```json
-{ "code": "ABCD2345" }
+{ "license": "ABCD2345" }
 ```
 
 返回：
 
 ```json
-{ "hostToken": "..." }
+{ "hostToken": "...", "expiresAt": null }
 ```
+
+| 状态码 | 含义 |
+|---|---|
+| 401 | 授权码无效或已被撤销 |
+| 409 | 该授权码已激活（换机需另行处理） |
+| 5xx | 服务不可用 |
 
 ---
 

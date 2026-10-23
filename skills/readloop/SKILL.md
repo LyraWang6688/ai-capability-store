@@ -37,9 +37,15 @@ compatibility: "需要 bash 与 curl；需要能访问 ReadLoop 服务；需要�
 
 ---
 
-## 第 0 步：初始化（首次必做）
+## 首次配置（首次必做）
 
-初始化只有四件事：**① 选模型 → ② 建多维表格 → ③ 装 Chrome 插件 → ④ 建定时任务**。
+顺序固定，前一步没过不要进下一步。
+
+> **前提**：用户已经购买了 ReadLoop 技能包，手上有一个 8 位授权码。
+
+**① 首次激活 → ② 选模型 → ③ 建多维表格 → ④ 装 Chrome 插件 → ⑤ 建定时任务**
+
+激活是初始化配置的前提：没有 `host_token`，后面的接口一个都调不通。
 
 ### 0.1 读本地配置
 
@@ -48,6 +54,7 @@ compatibility: "需要 bash 与 curl；需要能访问 ReadLoop 服务；需要�
 ```json
 {
   "base_url": "https://readinsight.bamamei.online",
+  "host_token": "...",
   "app_token": "bascn...",
   "model": {
     "provider": "deepseek",
@@ -63,11 +70,33 @@ compatibility: "需要 bash 与 curl；需要能访问 ReadLoop 服务；需要�
 }
 ```
 
-四部分（`app_token` / `model` / 插件 / `schedule`）齐了就进入日常流程；缺哪部分补哪部分。
+五部分（`host_token` / `model` / `app_token` / 插件 / `schedule`）齐了就进入日常流程；缺哪部分补哪部分。
 
 `app_token` 就是多维表格 Base 的 token（`/base/` 后面那段），四张表按名称在里面查找。
 
-### 0.2 第 1 步 · 选模型
+### 0.2 第 1 步 · 首次激活（前提）
+
+没有 `host_token` 就什么都做不了，**这一步必须在最前面**。
+
+问用户：「请把你购买 ReadLoop 时拿到的 8 位授权码发我」。
+
+```bash
+curl -s -X POST "$BASE/api/license/activate" \
+  -H 'Content-Type: application/json' \
+  -d "{\"license\":\"$LICENSE_CODE\"}"
+```
+
+成功返回 `hostToken`，立刻写入配置的 `host_token`。
+
+| 失败 | 怎么回应 |
+|---|---|
+| 401 / 无效 | 「授权码不对或已被撤销，确认一下购买时收到的那串」 |
+| 409 / 已激活 | 「这个授权码已经激活过了；如果是换了电脑，说明一下可以吗」 |
+| 5xx | 如实说服务不可用，**不要自己编一个 token 继续** |
+
+激活成功后告诉用户一句：「授权已生效，以后不用再输授权码。」
+
+### 0.3 第 2 步 · 选模型
 
 出题要用大模型，**用用户自己的 API**。
 
@@ -90,7 +119,7 @@ curl -s -X POST "$MODEL_BASE_URL/chat/completions" \
 
 失败 → 让用户重给，**不要跳过**。
 
-### 0.3 第 2 步 · 建多维表格
+### 0.4 第 3 步 · 建多维表格
 
 问用户：「你的 ReadLoop 多维表格链接发我一下（`/base/` 开头那个）」。
 
@@ -112,7 +141,7 @@ curl -s -X POST "$MODEL_BASE_URL/chat/completions" \
 
 用户想换飞书账号也可以——表建在哪个账号下由他决定，你只认链接。
 
-### 0.4 第 3 步 · 安装 Chrome 插件
+### 0.5 第 4 步 · 安装 Chrome 插件
 
 **没有插件就没有新的知识点**，这一步不能跳。
 
@@ -125,7 +154,7 @@ curl -s -X POST "$MODEL_BASE_URL/chat/completions" \
 > 如果用户是在宿主自带的侧边栏浏览器里读网页，可以跳过插件，直接读取当前页面内容采集——
 > 但只在宿主确实提供页面内容能力时这样做，拿不到就要求装插件。
 
-### 0.5 第 4 步 · 建定时任务
+### 0.6 第 5 步 · 建定时任务
 
 **这一步决定用户会不会每天被想起来。** 不能跳过。
 
@@ -165,29 +194,27 @@ curl -s -X POST "$MODEL_BASE_URL/chat/completions" \
 
 创建失败时明确说清楚，**不要假装已创建**。
 
-### 0.6 写入配置并自检
+### 0.7 写入配置并自检
 
 ```bash
 mkdir -p "$HOME/.readloop"
 chmod 600 "$HOME/.readloop/config.json"
 ```
 
-四部分都齐了才算初始化完成：**模型 / 表格 / 插件 / 定时任务**。
+五部分都齐了才算配置完成：**授权 `host_token` / 模型 / 表格 / 插件 / 定时任务**。
 **任何一步没成功，明确告诉用户卡在哪，不要假装完成。**
-
-> 可选：如果部署方发了 8 位接入码，用 `POST /api/host/enroll` 换成 `host_token` 一并写入；没有就不带。
 
 ---
 
 ## 日常流程
 
-### 第 1 步：读候选知识点
+### 日常 1 · 读候选知识点
 
 用**宿主自己的飞书能力**读 `knowledge_points`，只取 `状态` 不是 `mastered` 的行。
 
 需要带给服务的字段：`归一化内容`、`类型`、`释义`、`状态`、`间隔天数`、`难度因子`、`连对次数`、`答错次数`、`待练次数`、`下次复习`、`来源原句`。
 
-### 第 2 步：让服务算今日题
+### 日常 2 · 让服务算今日题
 
 ```bash
 curl -s -X POST "$BASE/api/review/today" \
@@ -210,7 +237,7 @@ curl -s -X POST "$BASE/api/review/today" \
 
 题目对象：`question_id`、`type`、`stem`、`options[]`、`context`、`hint`。
 
-### 第 3 步：呈现并收答案
+### 日常 3 · 呈现并收答案
 
 一次一题，**不给答案**。用户答完：
 
@@ -223,7 +250,7 @@ curl -s -X POST "$BASE/api/review/submit" \
 
 返回：`result`（correct/wrong）、`explanation`、`updates`（见下）。进度由你自己记录（已完成 / 总数）。
 
-### 第 4 步：把状态写回表格
+### 日常 4 · 把状态写回表格
 
 `updates` 是服务算好的新值：
 
