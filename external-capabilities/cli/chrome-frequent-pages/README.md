@@ -144,3 +144,43 @@ python3 main.py --bookmarks-from-table ~/Desktop/常用网页书签.html
 ```
 
 读取飞书表每个唯一「域名」，生成 `https://<域名>/` 书签 HTML（Chrome 书签管理器导入）。
+
+---
+
+## 开机触发（每周一次）+ 投递到收件箱
+
+数据在本机 Chrome 里，所以执行必须在 Mac 上。定时不用时钟，用**开机作为触发点**：
+
+- `run-if-due.sh`：launchd 的 `RunAtLoad` 调用；读状态文件判断本周是否已跑，
+  没跑则执行 `chrome-frequent-pages --write`，跑完写状态（失败不写，下次开机重试）。
+- `inbox-deliver-mac.py`：把结果写进飞书「任务收件箱」，DSH 收件箱面板会显示为「待读」。
+
+### 安装
+
+```bash
+mkdir -p ~/.local/share/chrome-frequent-pages
+cp run-if-due.sh inbox-deliver-mac.py ~/.local/share/chrome-frequent-pages/
+chmod +x ~/.local/share/chrome-frequent-pages/*.sh ~/.local/share/chrome-frequent-pages/*.py
+# LaunchAgent: RunAtLoad=true，无定时时刻
+```
+
+### 必需的 macOS 权限（否则读不到 Chrome 历史）
+
+「完全磁盘访问权限」里需要加入三项（后台进程按二进制逐个鉴权）：
+
+| 加入项 | 作用 |
+|---|---|
+| `/bin/bash` | 启动脚本 |
+| `/usr/local/bin/node` | npm CLI 需要 |
+| `/usr/bin/python3` | 实际读 History 的进程 |
+
+### 行为
+
+| 场景 | 结果 |
+|---|---|
+| 本周第一次开机/登录 | 执行一次 |
+| 同周再次开机 | 状态文件命中，跳过 |
+| 执行失败 | 不写状态，下次开机重试；失败结果也会写收件箱 |
+
+状态文件：`~/.config/chrome-frequent-pages/last-run.json`（`{"week":"2026-43","at":"..."}`）
+日志：`~/.config/chrome-frequent-pages/run-if-due.log`

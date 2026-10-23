@@ -1,17 +1,37 @@
 {
   "name": "@lyra_wang/chrome-frequent-pages",
-  "version": "0.4.3",
+  "version": "0.5.0",
   "description": "Chrome 高频网页 → 飞书「常用网页」表 + 按分类导出 Chrome 书签（根域名 / 10 天 / >5 次）",
   "license": "MIT",
   "type": "module",
-  "keywords": ["chrome", "history", "bookmarks", "feishu", "lark", "cli"],
+  "keywords": [
+    "chrome",
+    "history",
+    "bookmarks",
+    "feishu",
+    "lark",
+    "cli"
+  ],
   "repository": {
     "type": "git",
     "url": "git+https://github.com/LyraWang6688/ai-capability-store.git",
     "directory": "external-capabilities/cli/chrome-frequent-pages"
   },
-  "bin": { "chrome-frequent-pages": "bin/cli.js" },
-  "files": ["main.py", "bin/", "config.example.json", "README.md", "LICENSE", "install.sh"],
-  "publishConfig": { "access": "public" },
-  "engines": { "node": ">=20" }
+  "bin": {
+    "chrome-frequent-pages": "bin/cli.js"
+  },
+  "files": [
+    "main.py",
+    "bin/",
+    "config.example.json",
+    "README.md",
+    "LICENSE",
+    "install.sh"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=20"
+  }
 }
