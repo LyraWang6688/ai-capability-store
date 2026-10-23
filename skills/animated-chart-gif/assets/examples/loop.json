@@ -1,0 +1,87 @@
+{
+  "title": "Agent Loop：一次任务中的持续执行",
+  "source": "示意路径：首次检查失败后重试，非真实运行记录",
+  "nodes": [
+    {
+      "id": "observe",
+      "label": "Observe · 观察",
+      "note": "读取文件、页面与工具反馈"
+    },
+    {
+      "id": "decide",
+      "label": "Think / Decide · 决策",
+      "note": "判断下一步应该做什么"
+    },
+    {
+      "id": "act",
+      "label": "Act · 行动",
+      "note": "调用工具或修改环境"
+    },
+    {
+      "id": "check",
+      "label": "Evaluate · 检查",
+      "note": "验证是否达到目标"
+    },
+    {
+      "id": "done",
+      "label": "完成并通过验收",
+      "note": "达到结束条件，停止执行"
+    }
+  ],
+  "events": [
+    {
+      "node": "observe",
+      "caption": "接收任务，先观察当前环境。",
+      "status": "active",
+      "duration": 1.8
+    },
+    {
+      "node": "decide",
+      "caption": "根据已有信息，决定下一步行动。",
+      "status": "active",
+      "duration": 1.8
+    },
+    {
+      "node": "act",
+      "caption": "执行操作，获得新的工具反馈。",
+      "status": "active",
+      "duration": 1.8
+    },
+    {
+      "node": "check",
+      "caption": "检查未通过：将反馈带回观察阶段。",
+      "status": "failed",
+      "duration": 1.8
+    },
+    {
+      "node": "observe",
+      "caption": "带着失败反馈重新观察，更新判断依据。",
+      "status": "active",
+      "duration": 1.8
+    },
+    {
+      "node": "decide",
+      "caption": "调整方案，决定新的行动。",
+      "status": "active",
+      "duration": 1.8
+    },
+    {
+      "node": "act",
+      "caption": "执行调整后的操作。",
+      "status": "active",
+      "duration": 1.8
+    },
+    {
+      "node": "check",
+      "caption": "再次检查：本次结果符合验收条件。",
+      "status": "complete",
+      "duration": 1.8
+    },
+    {
+      "node": "done",
+      "caption": "完成并通过验收，结束本次任务。",
+      "status": "complete",
+      "duration": 1.8
+    }
+  ]
+}
