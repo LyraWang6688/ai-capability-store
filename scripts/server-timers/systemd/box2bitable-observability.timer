@@ -1,0 +1,11 @@
+[Unit]
+Description=box2bitable observability daily (09:00)
+
+[Timer]
+OnCalendar=*-*-* 09:00:00
+Persistent=true
+RandomizedDelaySec=60
+Unit=box2bitable-observability.service
+
+[Install]
+WantedBy=timers.target

@@ -1,7 +1,0 @@
-# GitHub 周报 —— 敲 GitHub Actions
-#
-# 时间：每周日 21:00（服务器时区 CST = 北京）
-# 来源：飞书「项目管理」→「定时任务」表（2026-10-22 王颖调整）
-SHELL=/bin/bash
-PATH=/usr/local/bin:/usr/bin:/bin
-0 21 * * 0 root /usr/local/bin/ai-capability-store-dispatch automation-github-trending-weekly.yml

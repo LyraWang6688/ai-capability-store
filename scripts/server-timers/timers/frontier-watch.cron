@@ -1,6 +1,0 @@
-# 前沿功能观察 —— 敲 GitHub Actions
-#
-# 时间：每周一 10:00（北京时间）。原来 `0 2 * * 1` UTC = 10:00 北京，本来就对。
-SHELL=/bin/bash
-PATH=/usr/local/bin:/usr/bin:/bin
-0 10 * * 1 root /usr/local/bin/ai-capability-store-dispatch automation-frontier-watch.yml

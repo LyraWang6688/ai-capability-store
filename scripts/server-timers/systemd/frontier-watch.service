@@ -1,0 +1,10 @@
+[Unit]
+Description=frontier watch (weekly)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=root
+ExecStart=/usr/local/bin/ai-capability-store-dispatch automation-frontier-watch.yml
+Nice=10

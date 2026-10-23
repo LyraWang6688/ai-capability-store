@@ -1,0 +1,11 @@
+[Unit]
+Description=GitHub trending weekly (Sun *-*-* 21:00:00)
+
+[Timer]
+OnCalendar=Sun *-*-* 21:00:00
+Persistent=true
+RandomizedDelaySec=30
+Unit=github-trending-weekly.service
+
+[Install]
+WantedBy=timers.target
