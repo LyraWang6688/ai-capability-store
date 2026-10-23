@@ -146,31 +146,82 @@ curl -s -X POST "$MODEL_BASE_URL/chat/completions" \
 
 用户想换飞书账号也可以——表建在哪个账号下由他决定，你只认链接。
 
-#### 3.3 配置插件的写入通道（用户自建飞书应用）
+#### 3.3 配置写入通道（一键创建用户自己的飞书应用）
 
 **为什么需要**：Chrome 插件在用户浏览器里，**拿不到你的飞书能力**。它必须有自己的一条通道，才能把划词结果实时写进这张表。
 
-**告诉用户这是唯一需要建应用的地方，约 10 分钟，一次性，之后不用再动。**
+**主路径：一键创建，用户不用进开发者后台**
 
-一步步引导（不要一次抛完，做完一条再下一条）：
+1. 启动创建（后端用发起方身份帮用户建应用，应用归属用户自己）：
 
-1. 打开 <https://open.feishu.cn> → 开发者后台 → **创建企业自建应用**（名字随意，如「ReadLoop」）
-2. 在「凭证与基础信息」页复制 **App ID** 和 **App Secret**
-3. 「权限管理」里开通 `bitable:app`（若希望自动补选项，再加 `base:field:update`）
-4. 「版本管理与发布」→ **创建版本并发布**（自己是管理员就自己审批）— ⚠️ 不发布权限不生效，这步最容易漏
-5. 回到多维表格 → 右上角 `⋯` → **添加文档应用** → 搜索刚才的应用 → 添加并设为 **可编辑**
-6. 让用户把 **App ID / App Secret / 表格链接** 填进 Chrome 插件的设置页（不是填给你，也不写进 config.json）
+```bash
+curl -s -X POST "$BASE_URL/api/setup/app/start" \
+  -H "Authorization: Bearer $HOST_TOKEN" \
+  -H 'Content-Type: application/json' \
+  -d '{"app_token":"'$APP_TOKEN'"}'
+```
+
+返回 `{ "session": "...", "verification_url": "..." }`。
+
+2. **把 verification_url 原样贴给用户**，说明：「点开这个链接，在飞书里点『同意』。会在你自己的组织里创建一个你名下的应用。」
+
+3. 轮询（每 3 秒，最多 5 分钟）：
+
+```bash
+curl -s "$BASE_URL/api/setup/app/status?session=$SESSION" \
+  -H "Authorization: Bearer $HOST_TOKEN"
+```
+
+| 状态 | 下一步 |
+|---|---|
+| `pending` | 继续等，并告诉用户在等什么 |
+| `completed` | 拿到 `app_id` / `app_secret`，**只返回一次** |
+| `expired` | 让用户重新点一次链接 |
+
+4. **三项校验**（缺一不可，失败要指出具体哪一步）：
+
+```bash
+# ① 换 token：验证凭证本身
+curl -s -X POST https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal \
+  -H 'Content-Type: application/json' \
+  -d '{"app_id":"'$APP_ID'","app_secret":"'$APP_SECRET'"}'
+
+# ② 读表：验证是否已加成协作者、模板是否存在
+curl -s -H "Authorization: Bearer $TENANT_TOKEN" \
+  "https://open.feishu.cn/open-apis/bitable/v1/apps/$APP_TOKEN/tables"
+
+# ③ 写一条再删：验证是不是「可编辑」而不只是「可阅读」
+#    写失败 = 用户漏了「添加文档应用」这一步
+```
+
+5. 校验全过后，把凭证交给插件（插件点「一键配置」会给出 6 位配对码）：
+
+```bash
+curl -s -X POST "$BASE_URL/api/setup/app/pair" \
+  -H "Authorization: Bearer $HOST_TOKEN" \
+  -H 'Content-Type: application/json' \
+  -d '{"session":"'$SESSION'","code":"'$PAIR_CODE'"}'
+```
+
+服务端交付后立即丢弃凭证，**不要写进 `~/.readloop/config.json`**。
+
+**兜底：手动创建**（`/api/setup/app/start` 返回不可用、或用户明确要求手动时）
+
+1. 开放平台 → 创建企业自建应用 → App ID / Secret
+2. 开通 `bitable:app`（自动补选项再加 `base:field:update`）
+3. **创建版本并发布** — 不发布权限不生效，最容易漏
+4. 表格右上角 `⋯` → 添加文档应用 → 设为**可编辑**
+5. 让用户把 App ID / Secret / 表格链接填进插件设置
 
 **常见失败**：
 
 | 现象 | 原因 |
 |---|---|
-| 插件写表报权限错误 | 第 4 步没发布版本，或第 5 步没加成「可编辑」 |
+| 读表返回 403 | 没加成协作者，或没开 `bitable:app` |
+| 能读不能写 | 只给了「可阅读」，要改成「可编辑」 |
 | 字段选项不存在 | 缺 `base:field:update` 权限 |
 
-**绝对不要**把 App Secret 写进 `~/.readloop/config.json` 或任何发往服务端的请求——它只属于用户的浏览器。
-
-配置完成后，请用户回一句「配好了」，再进入第 4 步。
+**绝对不要**把 App Secret 写进 config.json，也不要留在对话里——交付插件后即作废。
 
 ### 0.5 第 4 步 · 安装 Chrome 插件
 
