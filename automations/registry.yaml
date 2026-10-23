@@ -135,8 +135,8 @@ automations:
     path: automations/repo-discoverability
     entrypoint: report_issues.py
     status: testing
-    version: 0.2.0
-    updated: "2026-10-20"
+    version: 0.2.1
+    updated: "2026-10-23"
     trigger_kind: weekly
     executor: github-actions
     workflow: .github/workflows/automation-repo-discoverability.yml
@@ -158,6 +158,11 @@ automations:
       跨仓库开 issue 需要 PAT（repo scope）—— GITHUB_TOKEN 只能写当前仓库。
       与 repo-baseline-audit 分工：那个修内功（安全/CI/合并纪律），这个修外功（能不能被找到）。
       归档仓库直接跳过（只读）。写入边界是硬的：本自动化不改任何仓库文件。
+      0.2.1（patch）：workflow 不再用 `|| true` 吞掉失败。以前审计和 issue 两处都
+      吞，权限不足 / API 失败 / issue 写入失败都能留下一个绿色运行。现在单仓库失败
+      仍不影响其余仓库（脚本内部继续），但 workflow 会以非零结束；并且把
+      audit_discoverability.py 的退出码拆开：1 = 发现不合规项（每周常态，不算故障），
+      2 = 有仓库没审到（数据不完整，必须红）。配套的单测固定住这两个码。
   repo-baseline-audit:
     name: repo-baseline-audit
     path: automations/repo-baseline-audit
