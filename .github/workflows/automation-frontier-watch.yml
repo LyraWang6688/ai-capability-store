@@ -88,3 +88,24 @@ jobs:
           if [ "${{ inputs.dry-run }}" = "true" ]; then args="--dry-run"; fi
           echo "running: watch.py $args"
           python3 automations/frontier-watch/watch.py $args
+
+      # 投递到 DSH 收件箱（契约：orchestrations/scheduled-task/dsh/COLLABORATION.md）。
+      - name: Deliver to DSH inbox
+        if: always()
+        env:
+          INBOX_DELIVER_URL: ${{ secrets.INBOX_DELIVER_URL }}
+          INBOX_DELIVER_TOKEN: ${{ secrets.INBOX_DELIVER_TOKEN }}
+        run: |
+          set -euo pipefail
+          case "${{ job.status }}" in
+            success) result=成功 ;;
+            cancelled) result=超时 ;;
+            *) result=失败 ;;
+          esac
+          summary="前沿功能观察：${result}"
+          if [ "${{ inputs.dry-run }}" = "true" ]; then summary="前沿功能观察：dry-run 预演（未写 Base / 未通知）"; fi
+          bash scripts/inbox-deliver.sh \
+            --task frontier-watch \
+            --result "$result" \
+            --summary "$summary" \
+            --detail "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"

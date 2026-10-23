@@ -35,6 +35,7 @@ SKILL_REGISTRY = os.path.join("skills", "registry.yaml")
 AUTOMATION_REGISTRY = os.path.join("automations", "registry.yaml")
 CAPABILITY_REGISTRY = os.path.join("external-capabilities", "registry.yaml")
 ORCHESTRATION_REGISTRY = os.path.join("orchestrations", "registry.yaml")
+CRON_FRONTIER = os.path.join("scripts", "server-timers", "timers", "frontier-watch.cron")
 
 VERBOSE = "-v" in sys.argv or "--verbose" in sys.argv
 
@@ -154,6 +155,9 @@ MUTATIONS = {
     "calls-contract-mismatch": lambda t: t.replace(
         "contract: skills/teaming-meeting-analysis/SKILL.md",
         "contract: README.md", 1),
+    # 定时触发省略 inputs → dry-run 默认 true → 每周只演练、不写
+    "cron-missing-dry-run-false": lambda t: t.replace(
+        " main '{\"dry-run\":false}'", "", 1),
     # whitelist
     "unknown-field": _append_frontmatter("version: 9.9.9"),
     "duplicate-key": _duplicate_key,
@@ -202,6 +206,9 @@ CASES = [
      AUTOMATION_REGISTRY, "trigger-kind-quarterly"),
     ("yearly trigger_kind is rejected", 1,
      AUTOMATION_REGISTRY, "trigger-kind-yearly"),
+    # 定时器必须在 cron 行里显式关掉 dry-run，否则 204 成功但什么也不写。
+    ("cron dispatch without dry-run=false is rejected", 1,
+     CRON_FRONTIER, "cron-missing-dry-run-false"),
     # hosting: the two shapes are declared, not inferred from a missing field.
     ("capability without hosting is rejected", 1,
      CAPABILITY_REGISTRY, "capability-missing-hosting"),

@@ -1474,19 +1474,24 @@ def main() -> int:
 
 
 def validate_server_timers() -> None:
-    """服务器定时器：每个 .cron 里引用的 workflow 必须真的存在。
+    """服务器定时器：两件"看起来正常、实际没产出"的事。
 
-    为什么需要这条：`.cron` 只是给 cron 读的文本，没有任何东西会把它的
-    workflow 名和 .github/workflows/ 下的实际文件对上。名字写错不会报错 ——
-    cron 照常到点执行，脚本照常 POST，GitHub 返回 404，而那行日志没人看。
+    ① 每个 .cron 里引用的 workflow 必须真的存在。
+       `.cron` 只是给 cron 读的文本，没有任何东西会把它的 workflow 名和
+       .github/workflows/ 下的实际文件对上。名字写错不会报错 —— cron 照常到点
+       执行，脚本照常 POST，GitHub 返回 404，而那行日志没人看。
 
-    这正是这条检查要防的：一个永远不会成功的定时器，看起来和正常的一模一样。
+    ② workflow 的 dry-run 默认 true 时，cron 必须显式传 `{"dry-run":false}`。
+       GitHub 对 workflow_dispatch 里没传的输入使用 workflow 声明的默认值：
+       省略 inputs → 204 → 正常结束 → 什么都不写。这条检查防的是
+       "定时任务每周都在跑、每次都成功、就是没有产出"。
     """
     timers_dir = os.path.join(ROOT, "scripts", "server-timers", "timers")
     workflows_dir = os.path.join(ROOT, ".github", "workflows")
     if not os.path.isdir(timers_dir):
         return
-    pattern = re.compile(r"(automation-[a-z0-9-]+\.yml)")
+    dispatch_re = re.compile(r"ai-capability-store-dispatch\s+([a-z0-9-]+\.yml)([^\n]*)")
+    dry_false_re = re.compile(r"[\"']?dry-run[\"']?\s*:\s*false")
     for name in sorted(os.listdir(timers_dir)):
         if not name.endswith(".cron"):
             continue
@@ -1496,10 +1501,27 @@ def validate_server_timers() -> None:
         except OSError:
             check(f"server timer readable: {rel}", False, "unreadable")
             continue
-        for workflow in pattern.findall(body):
+        for match in dispatch_re.finditer(body):
+            workflow, rest = match.group(1), match.group(2)
             check(f"server timer {name} dispatches an existing workflow",
                   os.path.isfile(os.path.join(workflows_dir, workflow)),
                   f"{workflow} 不存在于 .github/workflows/ —— 这个定时器到点会 404")
+            if not os.path.isfile(os.path.join(workflows_dir, workflow)):
+                continue
+            wf_data, wf_ok = load_yaml(f".github/workflows/{workflow}")
+            if not wf_ok or not isinstance(wf_data, dict):
+                continue
+            # PyYAML 把 YAML 1.1 的 `on:` 解析成布尔 True；引号写法才是字符串。
+            on = wf_data.get(True) if True in wf_data else wf_data.get("on")
+            wd = on.get("workflow_dispatch") if isinstance(on, dict) else None
+            inputs = wd.get("inputs") if isinstance(wd, dict) else None
+            dry = inputs.get("dry-run") if isinstance(inputs, dict) else None
+            dry_defaults_true = isinstance(dry, dict) and dry.get("default") is True
+            if dry_defaults_true:
+                check(f"server timer {name} passes dry-run=false for {workflow}",
+                      bool(dry_false_re.search(rest)),
+                      f"{workflow} 的 dry-run 默认 true；定时触发省略 inputs 时只会演练、"
+                      f"不会写 —— 在 cron 行里显式传 main '{{\"dry-run\":false}}'")
 
 
 def validate_orchestrations(orc_reg: dict) -> None:

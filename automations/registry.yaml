@@ -90,8 +90,8 @@ automations:
     path: automations/github-portfolio-snapshot
     entrypoint: snapshot.py
     status: testing
-    version: 0.3.0
-    updated: "2026-10-18"
+    version: 0.3.1
+    updated: "2026-10-23"
     trigger_kind: monthly
     executor: github-actions
     workflow: .github/workflows/automation-github-portfolio-snapshot.yml
@@ -129,13 +129,17 @@ automations:
 
       output.target 为 external-system：目标不在本仓库控制范围内，校验器只能记录
       这个声明，无法验证外部写入。通过校验不等于写入成功。
+      0.3.1（patch）：按 orchestrations/scheduled-task/dsh/COLLABORATION.md 在 workflow
+      末尾加投递步骤（scripts/inbox-deliver.sh --task github-portfolio-snapshot），
+      成功 / 失败 / 超时都写 DSH 收件箱；通道未配置时只告警。同时 cron 触发改为显式传
+      dry-run=false —— 此前省略 inputs 时 dry-run 默认 true，每月只演练、不写 Base。
 
   repo-discoverability:
     name: repo-discoverability
     path: automations/repo-discoverability
     entrypoint: report_issues.py
     status: testing
-    version: 0.2.1
+    version: 0.2.2
     updated: "2026-10-23"
     trigger_kind: weekly
     executor: github-actions
@@ -163,13 +167,15 @@ automations:
       仍不影响其余仓库（脚本内部继续），但 workflow 会以非零结束；并且把
       audit_discoverability.py 的退出码拆开：1 = 发现不合规项（每周常态，不算故障），
       2 = 有仓库没审到（数据不完整，必须红）。配套的单测固定住这两个码。
+      0.2.2（patch）：按 DSH 协作契约加收件箱投递；cron 显式传 dry-run=false
+      （否则每周只演练、不开 issue）。
   repo-baseline-audit:
     name: repo-baseline-audit
     path: automations/repo-baseline-audit
     entrypoint: run_audit.py
     status: testing
-    version: 0.2.4
-    updated: "2026-10-20"
+    version: 0.2.5
+    updated: "2026-10-23"
     trigger_kind: weekly
     executor: github-actions
     workflow: .github/workflows/automation-repo-baseline.yml
@@ -188,13 +194,15 @@ automations:
       0.2.4：只为「不合格且还没有 [baseline] issue」的仓库开一次 issue，不做周度评论；
       周报只通过本机 DSH 定时任务在会话里给出。
       原为 skill repo-baseline（0.1.1），按用户要求整体迁入 Action 并删除 skill。
+      0.2.5（patch）：按 DSH 协作契约加收件箱投递；cron 显式传 dry-run=false
+      （否则每周只演练、不写飞书）。
   frontier-watch:
     name: frontier-watch
     path: automations/frontier-watch
     entrypoint: watch.py
     status: testing
-    version: 0.6.0
-    updated: "2026-10-19"
+    version: 0.6.1
+    updated: "2026-10-23"
     trigger_kind: weekly
     executor: github-actions
     workflow: .github/workflows/automation-frontier-watch.yml
@@ -230,6 +238,8 @@ automations:
       output.target=external-system：目标是外部 Base，校验器只能记录声明，通过校验不等于写入成功。
       凭据边界：FEISHU_APP_ID 可公开；FEISHU_APP_SECRET 与 DEEPSEEK_API_KEY 只放 GitHub Secrets；
       Base token/表 id 放 FRONTIER_CONFIG_JSON secret（非密钥但标识操作者的 Base）。
+      0.6.1（patch）：按 DSH 协作契约加收件箱投递；cron 显式传 dry-run=false
+      （否则每周只演练、不写 Base）。
 
   investdesk-quote-sync:
     name: investdesk-quote-sync

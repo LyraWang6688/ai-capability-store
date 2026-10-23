@@ -108,3 +108,24 @@ jobs:
             echo "::error::发现性任务没有完整跑完（audit=$audit issues=$issues）"
             exit 1
           fi
+
+      # 投递到 DSH 收件箱（契约：orchestrations/scheduled-task/dsh/COLLABORATION.md）。
+      - name: Deliver to DSH inbox
+        if: always()
+        env:
+          INBOX_DELIVER_URL: ${{ secrets.INBOX_DELIVER_URL }}
+          INBOX_DELIVER_TOKEN: ${{ secrets.INBOX_DELIVER_TOKEN }}
+        run: |
+          set -euo pipefail
+          case "${{ job.status }}" in
+            success) result=成功 ;;
+            cancelled) result=超时 ;;
+            *) result=失败 ;;
+          esac
+          summary="仓库发现性体检：${result}"
+          if [ "${{ inputs.dry-run }}" = "true" ]; then summary="仓库发现性体检：dry-run 预演（未开 issue）"; fi
+          bash scripts/inbox-deliver.sh \
+            --task repo-discoverability \
+            --result "$result" \
+            --summary "$summary" \
+            --detail "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"

@@ -57,6 +57,10 @@ jobs:
       # 这组测试不需要浏览器 / 配置 / 登录态，可以在 PR 门禁里跑。
       - name: deepseek-invoice failure-branch logic
         run: node --test automations/deepseek-invoice/test_lib.mjs
+      # 投递是 DSH 收件箱链路的最后一公里（契约见编排层 dsh/COLLABORATION.md）。
+      # 这组测试不连飞书/服务器：用 stub 断言字段齐全、摘要截断、未配置只告警。
+      - name: inbox-deliver script test
+        run: bash scripts/test_inbox_deliver.sh
       # 自动化自己的离线测试以前只在各自定时执行时才跑：PR 改坏了，要等下一次
       # 定时任务（可能是几天后，甚至永远不会跑）才发现。这里把它们一起接进 PR 门禁。
       - name: Automation offline tests

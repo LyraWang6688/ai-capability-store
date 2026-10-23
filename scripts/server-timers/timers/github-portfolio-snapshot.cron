@@ -4,4 +4,4 @@
 # 来源：飞书「项目管理」→「定时任务」表（2026-10-22 王颖调整）
 SHELL=/bin/bash
 PATH=/usr/local/bin:/usr/bin:/bin
-0 18 1 * * root /usr/local/bin/ai-capability-store-dispatch automation-github-portfolio-snapshot.yml
+0 18 1 * * root /usr/local/bin/ai-capability-store-dispatch automation-github-portfolio-snapshot.yml main '{"dry-run":false}'

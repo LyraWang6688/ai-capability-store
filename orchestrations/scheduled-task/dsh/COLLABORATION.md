@@ -84,15 +84,24 @@ curl -X POST "http://<服务器>:<端口>/plugins/inbox/deliver" \
 |---|---|---|---|
 | `ops-audit` | 服务器 | DSH 侧（服务器脚本）| P1 待做 |
 | `deepseek-invoice` | 服务器 | DSH 侧 | P1 待做 |
-| `github-portfolio-snapshot` | GitHub Actions | 任务侧 | P2 |
-| `repo-baseline-audit` | GitHub Actions | 任务侧 | P2 |
-| `frontier-watch` | GitHub Actions | 任务侧 | P2 |
+| `github-portfolio-snapshot` | GitHub Actions | 任务侧 | ✅ 已接投递（等通道）|
+| `repo-baseline-audit` | GitHub Actions | 任务侧 | ✅ 已接投递（等通道）|
+| `frontier-watch` | GitHub Actions | 任务侧 | ✅ 已接投递（等通道）|
 | `chrome-frequent-pages` | 本机 CLI | DSH 侧 | P2 |
-| `repo-discoverability` | GitHub Actions | 任务侧 | P2 |
+| `repo-discoverability` | GitHub Actions | 任务侧 | ✅ 已接投递（等通道）|
 | `github-trending-daily` | GitHub Actions | 任务侧 | P3（事件消费）|
 | `github-trending-weekly` | GitHub Actions | 任务侧 | P3 |
 
 不在 DSH 的两个（维持现状）：`investdesk-quote-sync`（豆包工作）、`box2bitable-observability`（飞书机器人私聊）。
+
+> **2026-10-23 任务侧已接入 4 条**（`github-portfolio-snapshot` / `repo-baseline-audit` /
+> `frontier-watch` / `repo-discoverability`）：workflow 末尾调用
+> [`scripts/inbox-deliver.sh`](../../../../scripts/inbox-deliver.sh)，成功 / 失败 / 超时都投递；
+> 通道未配置时只告警（见 §6 阻塞），不会让任务本身失败。
+>
+> 同一天还修了一个会让「投递成功但任务没产出」的问题：定时触发改用
+> `dispatch.sh <workflow> main '{"dry-run":false}'`，因为这几条 workflow 的 `dry-run`
+> 默认 true，省略 inputs 时它们会正常 204、正常结束、什么都不写。
 
 ---
 

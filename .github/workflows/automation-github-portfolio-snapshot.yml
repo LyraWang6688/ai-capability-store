@@ -117,3 +117,26 @@ jobs:
           fi
           echo "running: snapshot.py $args"
           python3 automations/github-portfolio-snapshot/snapshot.py $args
+
+      # 投递到 DSH 收件箱（契约：orchestrations/scheduled-task/dsh/COLLABORATION.md）。
+      - name: Deliver to DSH inbox
+        if: always()
+        env:
+          INBOX_DELIVER_URL: ${{ secrets.INBOX_DELIVER_URL }}
+          INBOX_DELIVER_TOKEN: ${{ secrets.INBOX_DELIVER_TOKEN }}
+        run: |
+          set -euo pipefail
+          case "${{ job.status }}" in
+            success) result=成功 ;;
+            cancelled) result=超时 ;;
+            *) result=失败 ;;
+          esac
+          summary="GitHub 作品集快照：${result}"
+          if [ "${{ inputs.no-base }}" = "true" ] || [ "${{ inputs.dry-run }}" = "true" ]; then
+            summary="GitHub 作品集快照：dry-run / no-base 预演（未写 Base）"
+          fi
+          bash scripts/inbox-deliver.sh \
+            --task github-portfolio-snapshot \
+            --result "$result" \
+            --summary "$summary" \
+            --detail "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"

@@ -4,4 +4,4 @@
 #       这里换成本地时间只是让意图写在眼前，不依赖换算。
 SHELL=/bin/bash
 PATH=/usr/local/bin:/usr/bin:/bin
-0 20 * * 1 root /usr/local/bin/ai-capability-store-dispatch automation-repo-discoverability.yml
+0 20 * * 1 root /usr/local/bin/ai-capability-store-dispatch automation-repo-discoverability.yml main '{"dry-run":false}'

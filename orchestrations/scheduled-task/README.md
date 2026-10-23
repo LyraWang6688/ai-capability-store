@@ -147,3 +147,9 @@ A 和 B 在不同机器上，但只要 A 能调 B 的接口，就是直连。
 | 🔴 没有输出 | 3 | `box2bitable-observability` · `ops-audit` · `deepseek-invoice` |
 
 **逐个任务收口，以这张表为准。**
+
+> **2026-10-23**：表里 ✅ 的 4 条 Actions 任务（`github-portfolio-snapshot` ·
+> `repo-baseline-audit` · `frontier-watch` · `repo-discoverability`）此前定时触发**没有传
+> `inputs`**，而 workflow 的 `dry-run` 默认 `true` —— 每周 204、每周成功、什么都不写。
+> 现在 cron 行显式传 `main '{"dry-run":false}'`，验证器也会拦住"省略 dry-run=false"的
+> 定时器。**服务器要重跑 `scripts/server-timers/install.sh` 才会生效。**

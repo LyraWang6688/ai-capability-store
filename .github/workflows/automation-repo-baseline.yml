@@ -42,3 +42,25 @@ jobs:
           BASELINE_CONFIG_JSON: ${{ secrets.BASELINE_CONFIG_JSON }}
           DRY_RUN: ${{ inputs.dry-run }}
         run: python3 run_audit.py --owner LyraWang6688 --sync-issues
+
+      # 投递到 DSH 收件箱（契约：orchestrations/scheduled-task/dsh/COLLABORATION.md）。
+      # 成功 / 失败 / 超时都要投递；通道由 DSH 侧提供，未配置时只告警、不影响任务本身。
+      - name: Deliver to DSH inbox
+        if: always()
+        env:
+          INBOX_DELIVER_URL: ${{ secrets.INBOX_DELIVER_URL }}
+          INBOX_DELIVER_TOKEN: ${{ secrets.INBOX_DELIVER_TOKEN }}
+        run: |
+          set -euo pipefail
+          case "${{ job.status }}" in
+            success) result=成功 ;;
+            cancelled) result=超时 ;;
+            *) result=失败 ;;
+          esac
+          summary="仓库基线体检：${result}"
+          if [ "${{ inputs.dry-run }}" = "true" ]; then summary="仓库基线体检：dry-run 预演（未写飞书）"; fi
+          bash scripts/inbox-deliver.sh \
+            --task repo-baseline-audit \
+            --result "$result" \
+            --summary "$summary" \
+            --detail "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
