@@ -1,4 +1,4 @@
 interface:
-  display_name: "WeChat GIF Chart"
-  short_description: "Generate 720x540 animated GIF charts for WeChat articles"
-  default_prompt: "Use $animated-chart-gif to turn this data into a 720x540 animated GIF for a WeChat article."
+  display_name: "动态过程图解"
+  short_description: "按业务、时间和状态变化制作清晰的动态图解，支持反馈回路、GIF 与可回放 HTML"
+  default_prompt: "Use $animated-chart-gif to explain this process as an animation with explicit steps, feedback paths, and a clear ending."

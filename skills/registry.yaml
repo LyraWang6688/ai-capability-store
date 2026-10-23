@@ -231,16 +231,14 @@ skills:
     path: skills/animated-chart-gif
     scope: shared
     status: testing
-    version: 0.1.0
-    updated: "2026-10-20"
+    version: 0.2.0
+    updated: "2026-10-24"
     notes: >
-      Store-native new asset (no prior Git history; authored 2026-10-20).
-      Renders 720x540 / 12.5fps animated GIFs for WeChat article bodies from a
-      JSON spec: bar comparison, line trend with moving readout, and stepwise
-      flow highlight. Spec derived by measuring six GIFs from a live public
-      WeChat article (see references/spec.md). Deterministic Pillow renderer,
-      local only, no network. Requires Python 3 + Pillow and a macOS CJK font.
-      Not a WeChat layout tool; complements wechat-html-css-layout.
+      Animated process explanations beyond WeChat: explicit business/time/state
+      event sequences, retries and feedback paths. White/light-blue visual style;
+      deterministic standalone HTML/SVG with playback controls or looping GIF.
+      New renderer uses Python stdlib for HTML; GIF adds Pillow and a CJK font.
+      Legacy bar/line/flow GIF inputs remain compatible. No static-image output.
   beijing-theater-calendar:
     name: beijing-theater-calendar
     path: skills/beijing-theater-calendar

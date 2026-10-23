@@ -1,0 +1,39 @@
+{
+  "title": "一个订单如何完成",
+  "source": "示意业务路径：仅展示支付成功分支；各阶段非真实时长",
+  "nodes": [
+    {
+      "id": "submit",
+      "label": "提交订单",
+      "note": "生成订单，等待支付"
+    },
+    {
+      "id": "pay",
+      "label": "支付成功",
+      "note": "收到支付结果，进入履约阶段"
+    },
+    {
+      "id": "finish",
+      "label": "交付完成",
+      "note": "确认交付结果，结束本次流程"
+    }
+  ],
+  "events": [
+    {
+      "node": "submit",
+      "caption": "T0：提交订单，记录本次购买内容。",
+      "duration": 2
+    },
+    {
+      "node": "pay",
+      "caption": "T1：确认支付成功，再推进履约。",
+      "duration": 2
+    },
+    {
+      "node": "finish",
+      "caption": "T2：确认交付完成；本图未展示取消、超时或退款分支。",
+      "status": "complete",
+      "duration": 2
+    }
+  ]
+}
