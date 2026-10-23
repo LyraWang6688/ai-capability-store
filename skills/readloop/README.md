@@ -64,6 +64,7 @@ lark-cli auth login
 {
   "base_url": "https://readinsight.bamamei.online",
   "host_token": "...",
+  "license_expires_at": "2027-10-23T00:00:00+08:00",
   "app_token": "KEjLbvKg7aT8RpsyDzBcIJbinhf",
   "model": {
     "provider": "deepseek",
@@ -94,4 +95,4 @@ lark-cli auth login
 
 **问：会把我的表格数据传到你们服务器吗？**
 不会传整张表。只传「当天候选知识点」用于选题出题，以及你当天的作答；服务不保存这些数据，也不保存表格内容。
-出题要用你配置的模型，所以每次请求会带上你的模型配置（含 `api_key`）——服务只用于当次生成题面，不保存。首次配置时，写入通道的三项校验由 ReadLoop 服务端自动完成（宿主不直接调飞书 OpenAPI）。
+当前版本的题面由服务端**确定性生成**，不调用模型；你的模型配置（含 `api_key`）随请求带上只是为将来的题面润色预留，服务不保存、不写日志。首次配置时，写入通道的三项校验由 ReadLoop 服务端自动完成（宿主不直接调飞书 OpenAPI）。
