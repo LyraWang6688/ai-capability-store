@@ -242,6 +242,47 @@ window.__ModuleLoader__.load({
       }, [noteOpen]);
 
       const quote = useQuote();
+      // 发送前一刻把引用内容写入草稿：DSH 没有 submit 钩子，只能在回车/点发送时抢先插入。
+      React.useEffect(() => {
+        if (quote === null) return undefined;
+        const flush = () => {
+          const composer = findComposer();
+          if (composer === null) return;
+          const flat = quote.text.replace(/\s+/g, ' ').trim();
+          if (flat === '') return;
+          try {
+            composer.focus();
+            document.execCommand('insertText', false, '> ' + flat + '\n\n');
+          } catch (error) { /* ignored */ }
+          setQuote(null);
+        };
+        const isSubmitButton = (node) => {
+          if (node === null || typeof node.closest !== 'function') return false;
+          const button = node.closest('button');
+          if (button === null) return false;
+          const composer = findComposer();
+          const form = composer === null ? null : composer.closest('form');
+          if (form !== null && form.contains(button) && button.type === 'submit') return true;
+          const label = String(button.getAttribute('aria-label') || '');
+          return /发送|send/i.test(label);
+        };
+        const onKeyDown = (event) => {
+          if (event.key !== 'Enter' || event.shiftKey || event.altKey || event.metaKey || event.ctrlKey) return;
+          const composer = findComposer();
+          if (composer === null) return;
+          if (!composer.contains(event.target) && event.target !== composer) return;
+          flush();
+        };
+        const onPointerDown = (event) => {
+          if (isSubmitButton(event.target)) flush();
+        };
+        document.addEventListener('keydown', onKeyDown, true);
+        document.addEventListener('mousedown', onPointerDown, true);
+        return () => {
+          document.removeEventListener('keydown', onKeyDown, true);
+          document.removeEventListener('mousedown', onPointerDown, true);
+        };
+      }, [quote]);
       if (selection === null && toast === '' && quote === null) return null;
       const center = selection === null
         ? 0
@@ -263,22 +304,10 @@ window.__ModuleLoader__.load({
           icon: '↳',
           label: t('ask'),
           run: (text) => {
-            const composer = findComposer();
-            if (composer !== null) {
-              try {
-                composer.focus();
-                const flat = String(text).replace(/\s+/g, ' ').trim();
-                const block = '> ' + flat + '\n\n';
-                if (document.execCommand('insertText', false, block)) {
-                  setQuote({ text: String(text).trim(), at: Date.now() });
-                  say(t('inserted'));
-                  return;
-                }
-              } catch (error) {
-                // fall through to copy
-              }
-            }
-            void copyText(text).then((ok) => say(ok ? t('pasteHint') : t('copyFailed')));
+            const flat = String(text).replace(/\s+/g, ' ').trim();
+            if (flat === '') return;
+            setQuote({ text: flat, at: Date.now() });
+            say(t('inserted'));
           },
         },
         {
