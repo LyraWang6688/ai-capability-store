@@ -267,7 +267,8 @@ window.__ModuleLoader__.load({
             if (composer !== null) {
               try {
                 composer.focus();
-                const block = '> ' + String(text).trim().replace(/\n/g, '\n> ') + '\n\n';
+                const flat = String(text).replace(/\s+/g, ' ').trim();
+                const block = '> ' + flat + '\n\n';
                 if (document.execCommand('insertText', false, block)) {
                   setQuote({ text: String(text).trim(), at: Date.now() });
                   say(t('inserted'));
@@ -623,6 +624,35 @@ window.__ModuleLoader__.load({
       );
     }
 
+    function QuoteBar() {
+      const quote = useQuote();
+      if (!quote) return null;
+      const preview = quote.text.length > 90 ? quote.text.slice(0, 90) + '…' : quote.text;
+      const node = findComposer();
+      const rect = node === null ? null : node.getBoundingClientRect();
+      const style = {
+        position: 'fixed',
+        left: (rect ? Math.max(12, rect.left + 10) : 12) + 'px',
+        width: (rect ? Math.max(200, rect.width - 20) : 360) + 'px',
+        bottom: (rect ? Math.max(12, window.innerHeight - rect.top + 8) : 120) + 'px',
+        zIndex: 9000,
+      };
+      return h('div', { className: 'dsh-selection-quote', style }, [
+        h('span', { key: 'bar', className: 'dsh-selection-quote-bar' }),
+        h('span', { key: 'text', className: 'dsh-selection-quote-text', title: quote.text }, preview),
+        h('button', {
+          key: 'close',
+          type: 'button',
+          className: 'dsh-selection-quote-close',
+          onClick: () => {
+            setQuote(null);
+            const composer = findComposer();
+            if (composer !== null) { composer.focus(); try { document.execCommand('undo'); } catch (error) { /* ignored */ } }
+          },
+        }, '×'),
+      ]);
+    }
+
     return {
       inject: ['slots', 'locale'],
       apply(ctx) {
@@ -750,12 +780,12 @@ window.__ModuleLoader__.load({
           id: 'selection-toolbar',
           order: 900,
         }, () => h(SelectionToolbar, { t: translate })));
-        ctx.slots.inject('conversation.input.dock', () => ctx.slots.register({
-          name: 'conversation.input.dock',
+        ctx.slots.inject('shell.overlay', () => ctx.slots.register({
+          name: 'shell.overlay',
           id: 'selection-quote',
-          order: 5,
+          order: 920,
         }, () => h(React.Fragment, null,
-          h('style', null, `.dsh-selection-quote{display:flex;align-items:center;gap:8px;margin:0 12px 6px;padding:6px 10px;border-radius:8px;background:var(--dsw-alias-bg-layer-2,#26262b);border:1px solid var(--dsw-alias-border-l1,#3a3a40);font-size:12px;color:var(--dsw-alias-label-secondary,#b6b6bf)}
+          h('style', null, `.dsh-selection-quote{display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:8px;background:var(--dsw-alias-bg-layer-2,#26262b);border:1px solid var(--dsw-alias-border-l1,#3a3a40);box-shadow:0 4px 14px rgba(0,0,0,.2);font-size:12px;color:var(--dsw-alias-label-secondary,#b6b6bf)}
             .dsh-selection-quote-bar{width:3px;height:16px;border-radius:2px;background:#7aa2ff;flex:none}
             .dsh-selection-quote-text{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
             .dsh-selection-quote-close{background:none;border:none;color:inherit;font-size:14px;cursor:pointer;line-height:1;padding:0 2px}`),
