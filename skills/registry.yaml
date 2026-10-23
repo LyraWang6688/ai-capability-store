@@ -99,7 +99,7 @@ skills:
     path: skills/readloop
     scope: shared
     status: testing
-    version: 0.2.1
+    version: 0.2.2
     updated: "2026-10-23"
     notes: >
       Daily English review loop built on real reading. The host reads and writes
@@ -110,6 +110,12 @@ skills:
       is four steps: pick model, create the Bitable from template, install the
       Chrome extension, create a host scheduled task (daily/weekly + time).
       `testing`: not yet validated end-to-end on Doubao Work.
+      0.2.2 (patch): pairing now delivers the host token to the Chrome extension.
+      `POST /api/setup/app/pair` records the host's `host_token` from the
+      `Authorization` header, and `GET /api/setup/app/pair?code=` returns it with
+      the app credentials (one-shot, then deleted server-side). The extension
+      fills it into its settings automatically, so users no longer copy it from
+      `~/.readloop/config.json`. Docs updated; no host-facing flow change.
       0.2.1 (patch): `compatibility` now attributes each outbound destination to
       the right side. The host reaches only `readinsight.bamamei.online` (the
       service runs the Feishu write checks itself); `open.feishu.cn` is reached by

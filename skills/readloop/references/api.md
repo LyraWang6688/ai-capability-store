@@ -250,13 +250,17 @@
 
 `POST /api/setup/app/pair`（需 `host_token`）：`{ "session": "...", "code": "123456" }` → `{ "paired": true }`
 
+服务端会从这次请求的 `Authorization` 里记下宿主的 `host_token`（只存内存），供插件取凭证时一并下发。
+
 - 400：缺 `session` / 配对码不是 6 位数字 / 会话未完成 / 配对码已被占用
 - 404：会话不存在；410：会话已过期
 
 `GET /api/setup/app/pair?code=123456`（**无需鉴权**）→
-`{ "app_id": "...", "app_secret": "...", "app_token": "..." }`
+`{ "app_id": "...", "app_secret": "...", "app_token": "...", "host_token": "..." }`
 
-- **一次性**：返回后凭证立刻从服务端删除
+- **一次性**：返回后凭证与 `host_token` 立刻从服务端删除
+- `host_token` 是宿主 POST 绑定时带上的那个；插件会把它自动写进设置，
+  用户不需要再从 `~/.readloop/config.json` 手抄一遍（没有绑定时该字段为 `null`）
 - 未绑定 / 码错 / 已过期 / 已取走 → 404（不区分具体原因）
 - 同一配对码尝试超过 20 次 → 429
 
