@@ -42,14 +42,8 @@ for f in "$DELIVER_SRC"/*; do
 done
 
 # 2b) 远程接收入口（GitHub Actions → 服务器 DSH）
-#     脚本装到 $SCRIPTS_DIR，SSH 的 forced command 指向 /usr/local/bin/automation-accept。
-REMOTE_SRC="$HERE/remote"
-if [[ -d "$REMOTE_SRC" ]]; then
-  for f in "$REMOTE_SRC"/*.py; do
-    [ -f "$f" ] || continue
-    install -m 0700 -o dshjobs -g dshjobs "$f" "$SCRIPTS_DIR/$(basename "$f")"
-    echo "✓ 接收脚本 $SCRIPTS_DIR/$(basename "$f")"
-  done
+#     remote/*.py 已在第 2 步装到 $SCRIPTS_DIR；这里只装 SSH forced command。
+if [[ -d "$HERE/remote" ]]; then
   cat > /usr/local/bin/automation-accept <<'WRAP'
 #!/bin/sh
 exec sudo -n runuser -u dshjobs -- env HOME=/srv/dsh-jobs /srv/dsh-jobs/scripts/dispatch.py
