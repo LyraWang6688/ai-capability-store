@@ -125,8 +125,8 @@ dsh plugin --profile desktop add "https://registry.npmjs.org/@lyra_wang/dsh-diag
 
 | 项 | 状态 | 说明 |
 |---|---|---|
-| 槽位 | ✅ `shell.overlay` | 只用了 `plugin/dsh/README.md` 里**已验证稳定**的槽位；未使用未验证的 `conversation.chat.*` |
-| 渲染方式 | ⚠️ DOM 观察 | 不是官方 slot 级渲染：插件监听 `pre > code` 代码块并就地替换。宿主若改消息 DOM 结构，需要同步调整 |
+| 槽位 | ✅ `shell.overlay` | 只用了已验证稳定的槽位。**为什么不挂消息插槽**：已读源码确认 `conversation.chat.node` 是 keyed slot（按节点类型整体替换），assistant 正文是固定组件、只有 reasoning / images 两个子槽——"消息内插内容"这条路当前版本不通。见 [`../README.md` §3.4](../README.md) |
+| 渲染方式 | ⚠️ DOM 观察 | **不是临时方案**：源码确认没有更合适的插槽，这是当前版本唯一可行路径。插件监听 `pre > code` 代码块并就地替换，宿主若改消息 DOM 结构需要同步调整 |
 | 流式输出 | ✅ 渐进 | JSON 不完整时 `JSON.parse` 失败 → 保持代码块原样；解析成功后才替换 |
 | 重复渲染 | ✅ 幂等 | 按内容 hash 去重；宿主重绘后自动补渲染 |
 | 宿主重绘 | ✅ 自愈 | `MutationObserver` + 2s 轮询兜底，卡片被移除会重新插入 |
