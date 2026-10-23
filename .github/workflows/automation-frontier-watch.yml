@@ -1,24 +1,16 @@
 # Weekly execution of automations/frontier-watch.
 #
-# Contract (see automations/README.md):
-#   * the cron lives HERE and only here — registry.yaml records trigger_kind only
-#   * output is an EXTERNAL system (Feishu Base), so this job writes nothing back
-#     to the repository and needs no data branch
-#   * the automation talks to the Feishu OpenAPI directly (tenant_access_token),
-#     so no lark-cli and no operator keychain is involved
+# 2026-10-24 起分工变化：
+#   * GitHub Actions 只负责「抓原文 + 拉版本号」（海外网络好），不调模型、不写飞书
+#   * 抓到的 payload 通过 SSH 推给服务器上的无头 DSH
+#   * 服务器 dsh headless 调模型抽取新功能 → 写「AI 工具」Base + 「任务收件箱」+ HTML 报告
 #
 # Secrets required:
-#   FEISHU_APP_ID          — the dedicated Feishu app (shared with
-#                            automations/github-portfolio-snapshot)
-#   FEISHU_APP_SECRET      — that app's secret; never stored in config or repo
-#   DEEPSEEK_API_KEY       — model key used to extract features from release notes
-#   FRONTIER_CONFIG_JSON   — config.json contents: {"base_token","table_id","model",...}.
-#                            Not secrets, but they identify the operator's Base, so
-#                            they stay out of a public repository.
+#   FRONTIER_CONFIG_JSON — config.json（含 sources 地址；不含凭据）
+#   SSH_HOST / SSH_USER / SSH_KEY — 服务器 SSH 通道（key 是 ed25519 私钥）
 #
-# The Feishu app also needs two things done in the console, neither of which this
-# workflow can do: the base:* scopes must be granted and the app version published,
-# AND the app must be added as an editor of the target Base.
+# 不再需要 FEISHU_APP_ID / FEISHU_APP_SECRET / DEEPSEEK_API_KEY（已移到服务器）。
+
 name: automation-frontier-watch
 
 on:
@@ -74,17 +66,41 @@ jobs:
       - name: Offline test suite (no network, no credentials)
         run: python3 automations/frontier-watch/test_watch.py
 
-      - name: Run frontier-watch
+      - name: Collect sources and versions (no model, no Feishu)
         env:
-          FEISHU_APP_ID: ${{ secrets.FEISHU_APP_ID }}
-          FEISHU_APP_SECRET: ${{ secrets.FEISHU_APP_SECRET }}
-          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
-          FEISHU_NOTIFY_WEBHOOK: ${{ secrets.FEISHU_NOTIFY_WEBHOOK }}
-          NOTIFY_TEST: ${{ inputs.notify-test }}
           FRONTIER_CONFIG_JSON: ${{ secrets.FRONTIER_CONFIG_JSON }}
         run: |
           set -euo pipefail
-          args=""
-          if [ "${{ inputs.dry-run }}" = "true" ]; then args="--dry-run"; fi
-          echo "running: watch.py $args"
-          python3 automations/frontier-watch/watch.py $args
+          python3 automations/frontier-watch/watch.py --emit-all > payload.json
+          python3 - <<'PY'
+          import json
+          d = json.load(open("payload.json"))
+          print("sources:", {k: len(v) for k, v in d.get("sources", {}).items()})
+          print("versions:", [v.get("feature") for v in d.get("versions", [])])
+          if not d.get("sources") and not d.get("versions"):
+              raise SystemExit("payload 为空，停止")
+          PY
+
+      - name: Push payload to server headless DSH
+        if: ${{ inputs.dry-run != true }}
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_KEY: ${{ secrets.SSH_KEY }}
+        run: |
+          set -euo pipefail
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/frontier
+          chmod 600 ~/.ssh/frontier
+          ssh -i ~/.ssh/frontier -o StrictHostKeyChecking=accept-new -o ConnectTimeout=20 \
+            "$SSH_USER@$SSH_HOST" < payload.json | tee result.json
+          python3 -c "import json; d=json.load(open('result.json')); print('ok=', d.get('ok'), 'features=', d.get('features'))"
+
+      - name: Dry run summary
+        if: ${{ inputs.dry-run == true }}
+        run: |
+          python3 - <<'PY'
+          import json
+          d = json.load(open("payload.json"))
+          print("dry-run，不推送；版本", len(d.get("versions", [])), "条，源", len(d.get("sources", {})))
+          PY
