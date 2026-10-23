@@ -42,8 +42,10 @@ handoff-*.md
 # 本地开发打包产物（插件临时安装用，不入库）
 *.tgz
 
-# store-publish：源码在 ~/.agents/skills/store-publish（Store 之外，唯一一份）。
-# 这里只放一个本机软链，让 skills/ 目录像是齐的。软链不提交 —— 克隆到别的机器
-# 就是一个指向本机家目录的断链。校验器只认【真实目录】（discover_skill_packages
-# 跳过软链），所以它既不要求 registry 条目，也不会被当成资产。
+# 本地 skill 软链：源码在 ~/.agents/skills/<name>，软链不提交
+# 由 scripts/link_local_skill.py 维护；校验器要求每个软链都有对应的一行。
+# 软链不是资产：没有内容可克隆，提交后在任何别的机器上都是断链。
 skills/store-publish
+
+# 本地 skill 软链：源码在 ~/.agents/skills/<name>，软链不提交
+# 由 scripts/link_local_skill.py 维护；校验器要求每个软链都有对应的一行。

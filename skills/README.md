@@ -88,14 +88,25 @@ the skill is visible in `skills/` without being an asset:
 skills/store-publish -> ../../../../.agents/skills/store-publish   # local, never committed
 ```
 
-Two rules keep this honest:
+Create it with the script — one command, both halves maintained together:
 
-- the symlink is **never committed** — a clone elsewhere would receive a dangling
-  path into some other machine's home directory (`.gitignore` covers it);
-- `scripts/validate_store.py` skips **symlinked** directories when discovering
-  packages, so such a skill neither needs a registry entry nor counts as an asset.
-  A *real* directory without a registry entry still fails — that is the signal to
-  move it out of the checkout.
+```bash
+python3 scripts/link_local_skill.py <skill-name>      # 建软链 + 补 .gitignore 行
+python3 scripts/link_local_skill.py <skill-name> --remove
+python3 scripts/link_local_skill.py --list
+```
+
+Two rules keep this honest, and `scripts/validate_store.py` enforces both:
+
+- the symlink must **resolve to a skill package** (broken link = you think the
+  skill is there but the source is gone);
+- the symlink must be **gitignored** — a clone elsewhere would receive a dangling
+  path into some other machine's home directory.
+
+The validator also *skips symlinked directories* when discovering packages, so
+such a skill neither needs a registry entry nor counts as an asset. A *real*
+directory without a registry entry still fails — that is the signal to move it
+out of the checkout.
 
 
 ## Registry
