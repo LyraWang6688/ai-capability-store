@@ -1,0 +1,4 @@
+interface:
+  display_name: "Computer Automation Log"
+  short_description: "把一次浏览器 / 桌面操作沉淀成 computer-automation 文档"
+  default_prompt: "Use $computer-automation-log to check existing computer-automation docs, perform the browser or desktop task on the operator's machine, then write or update the matching doc and run the gate script."

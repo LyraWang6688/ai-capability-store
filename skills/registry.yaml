@@ -152,6 +152,93 @@ skills:
       what leaves the machine (candidate points, answers, the user's model config
       including the API key) per SECURITY.md § Outbound — before this it said
       only "needs to reach the ReadLoop service", which is not a destination.
+  context-submit:
+    name: context-submit
+    path: skills/context-submit
+    scope: shared
+    status: testing
+    version: 0.1.0
+    updated: "2026-10-19"
+    notes: >
+      Agent Context Architecture 的唯一输入口。实干 agent 把观察到的、值得长期沉淀的
+      东西（踩坑 / 经验 / 集成知识 / 用户偏好 / 需要记住的事实 / 规则候选）按统一模板
+      结构化后投入飞书「投递箱」表。核心纪律：投递者只报告观察、不负责归类——
+      归类与抽象由维护者做。含门禁 validate_entry.py（结构不合格不许写）与
+      check_similar.py（报告相似条目，但不阻断——重复本身是共性的证据）。
+  repo-wrapup:
+    name: repo-wrapup
+    path: skills/repo-wrapup
+    scope: shared
+    status: testing
+    version: 0.1.1
+    updated: "2026-10-20"
+    notes: >
+      多 agent 协作的收尾工具。审计分支 / worktree / PR 的残留状态，按安全边界
+      清理已合并且无风险的分支，并在交付时生成「收尾报告」——让
+      「本地和远端工作区干净了吗」不再需要靠人追问。与 repo-hygiene 分工：
+      那个管代码/依赖/死文件，这个只管分支/worktree/PR。worktree 一律不自动
+      删除（可能被其他 agent 占用），只报告。默认 plan 模式只出计划，
+      加 --clean 才真删。
+  repo-collector:
+    name: repo-collector
+    path: skills/repo-collector
+    status: testing
+    version: 0.1.5
+    updated: "2026-10-23"
+  wechat-html-css-layout:
+    name: wechat-html-css-layout
+    path: skills/wechat-html-css-layout
+    status: testing
+    version: 0.1.0
+    updated: "2026-10-20"
+  animated-chart-gif:
+    name: animated-chart-gif
+    path: skills/animated-chart-gif
+    scope: shared
+    status: testing
+    version: 0.2.0
+    updated: "2026-10-24"
+    notes: >
+      Animated process explanations beyond WeChat: explicit business/time/state
+      event sequences, retries and feedback paths. White/light-blue visual style;
+      deterministic standalone HTML/SVG with playback controls or looping GIF.
+      New renderer uses Python stdlib for HTML; GIF adds Pillow and a CJK font.
+      Legacy bar/line/flow GIF inputs remain compatible. No static-image output.
+  beijing-theater-calendar:
+    name: beijing-theater-calendar
+    path: skills/beijing-theater-calendar
+    scope: shared
+    status: testing
+    version: 0.1.0
+    updated: "2026-10-21"
+    notes: >
+      「京城好戏」项目的日历 Skill：查询北京地区戏曲（京剧/昆曲/评剧/河北梆子/秦腔等）
+      与话剧的演出日程与购票信息。双轨工作流——用户提问走决策层（先查 Base 判新鲜度，
+      有缺口才补采），每周一/四 10:30 定时任务走更新层（抓未来 30 天新增、按「剧目+日期」
+      去重写入、过期改已结束）。Base「北京剧场演出日历」是唯一事实源；只收戏曲+话剧两品类，
+      术语统一用「戏曲」；禁止编造、每条必填信息来源；动态公式字段勿手写。
+      本目录为 Store 规范登记版，本地豆包 Work .user_skills 中另有运行副本。
+  computer-automation-log:
+    name: computer-automation-log
+    path: skills/computer-automation-log
+    scope: shared
+    status: testing
+    version: 0.1.0
+    updated: "2026-10-24"
+    notes: >
+      computer-automation/ 文档区的唯一写入口：agent 用操作者的真实浏览器或桌面做
+      Computer Use / Browser Use 时触发 —— 先查已有文档复用，操作后按
+      computer-automation/README.md 的约定生成或更新文档，再用 check_doc.py 过门禁
+      （抬头四条 / 必答小节 / 凭据 / 本机绝对路径 / 索引行）。
+      new_doc.py 只做确定性动作（骨架 + 索引表），正文由模型写；test_scripts.py 是
+      离线自测（14 例，临时目录，不碰真实文档），当前 14/14 通过。
+      `testing`：Gate 0 结构完整、脚本正反例有确定性证据；但触发率、真实端到端轨迹、
+      效率指标均未评估，且 VERSIONING.md §4 要求 major >= 1 才能 active。
+      依赖：Chrome DevTools MCP / Playwright MCP / screencapture / AX / CGEvent
+      都未登记为 External Capability，故 dependencies/capability-map.yaml 未声明依赖
+      （与 repo-collector 一致：不制造虚假依赖记录）。
+      文档规则本身不在本 skill 里：收什么、怎么命名、何时升级成 Skill 由
+      computer-automation/README.md 定义，改规则改那里。
   store-publish:
     name: store-publish
     path: skills/store-publish
