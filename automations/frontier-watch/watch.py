@@ -38,7 +38,7 @@ DEFAULTS = {
     "version_sources": {
         "dsh_feed": "https://download.deepseek.com/dsh-desk/feeds/mac-arm64/nightly-mac.yml",
         "dsh_releases": "https://api.github.com/repos/deepseek-ai/deepseek-harness/releases?per_page=1",
-        "deepseek_api": "https://api-docs.deepseek.com/updates",
+        "deepseek_api": "https://api-docs.deepseek.com/updates/",
         "lark_cli": "https://registry.npmjs.org/@larksuite/cli/latest",
         "codex_cli": "https://api.github.com/repos/openai/codex/releases?per_page=1",
     },
@@ -131,10 +131,10 @@ def fetch(url):
         return response.read().decode("utf-8", "replace")
 
 
-def strip_html(html):  # noqa: A002
-    text = re.sub(r"(?is)<(script|style)[^>]*>.*?</\1>", " ", html)
+def strip_html(markup):
+    text = re.sub(r"(?is)<(script|style)[^>]*>.*?</\1>", " ", markup)
     text = re.sub(r"(?is)<[^>]+>", " ", text)
-    return re.sub(r"\s+", " ", text).strip()
+    return html.unescape(re.sub(r"\s+", " ", text)).strip()
 
 
 def parse_rss(xml):
