@@ -96,6 +96,7 @@ curl -s -X POST "$BASE/api/license/activate" \
 
 | 失败 | 怎么回应 |
 |---|---|
+| 400 / 格式不对 | 「确认一下是不是 8 位字母数字；中间有空格或连字符也可以」 |
 | 401 / 无效 | 「授权码不对或已被撤销，确认一下购买时收到的那串」 |
 | 5xx | 如实说服务不可用，**不要自己编一个 token 继续** |
 
@@ -239,7 +240,10 @@ curl -s -X POST "$BASE_URL/api/setup/app/pair" \
 
 **没有插件就没有新的知识点**，这一步不能跳。
 
-1. 把商店链接发给用户：`<EXTENSION_STORE_URL>`（未上架时给离线包路径）
+1. 把**离线包下载链接**发给用户：
+   `https://github.com/LyraWang6688/readloop/releases/latest`
+   说明：目前未上架 Chrome 商店，下载 `readloop-extension-<版本>.zip` → 解压 →
+   `chrome://extensions` 打开 Developer mode → Load unpacked 选解压目录。
 2. 告诉他装好后点一次浏览器右上角的 ReadLoop 图标，确认侧边栏能打开
 3. 让他回一句「装好了」，再往下走
 
@@ -312,12 +316,15 @@ chmod 600 "$HOME/.readloop/config.json"
 
 用**宿主自己的飞书能力**读 `knowledge_points`，只取 `状态` 不是 `mastered` 的行。
 
-需要带给服务的字段：`归一化内容`、`类型`、`释义`、`状态`、`间隔天数`、`难度因子`、`连对次数`、`答错次数`、`待练次数`、`下次复习`、`来源原句`。
+必填字段：`归一化内容`、`状态`（英文枚举）；其余字段缺失时服务端按初始值处理。
+建议一并带上：`知识点`（缺失时退回归一化内容）、`类型`、`释义`、`解释`、`来源原句`（缺失时退到 `例句`）、
+`间隔天数`、`难度因子`、`连对次数`、`答错次数`、`待练次数`、`下次复习`、`最近暴露`、`来源链接`。
 
 ### 日常 2 · 让服务算今日题
 
 ```bash
 curl -s -X POST "$BASE/api/review/today" \
+  -H "Authorization: Bearer $HOST_TOKEN" \
   -H 'Content-Type: application/json' \
   -d '{"date":"2026-10-23","model":'"$MODEL_JSON"',"points":[...第 1 步读到的行...]}'
 ```
