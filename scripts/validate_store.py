@@ -1043,14 +1043,24 @@ def discover_skill_packages():
     Plugins v1 §7.1 forbids clients from searching deeper descendants, so a
     nested package is not a discoverable skill and must not be treated as one
     here either (otherwise the validator would certify an asset that conformant
-    clients cannot see)."""
+    clients cannot see).
+
+    Symlinked directories are skipped on purpose: a symlink carries no content,
+    so it cannot be an asset. In this Store it is a local convenience — a skill
+    whose only source lives outside the repo (`~/.agents/skills/store-publish`)
+    can be surfaced in `skills/` through a gitignored link without the validator
+    demanding a registry entry, and without a clone on another machine receiving
+    a dangling path."""
     found = []
     base = os.path.join(ROOT, "skills")
     if os.path.isdir(base):
         for name in sorted(os.listdir(base)):
             if name.startswith("."):
                 continue
-            if os.path.isfile(os.path.join(base, name, "SKILL.md")):
+            full = os.path.join(base, name)
+            if os.path.islink(full):
+                continue
+            if os.path.isfile(os.path.join(full, "SKILL.md")):
                 found.append(f"skills/{name}")
     return found
 

@@ -76,13 +76,26 @@ uses to publish its own assets — has its **only source outside this repository
 | | Store skill | Local-only skill |
 |---|---|---|
 | Source | `skills/<name>/` in this repo | `~/.agents/skills/<name>` (outside) |
+| Appears in `skills/` as | a real directory | a **gitignored symlink** to the real directory |
 | Registry entry | required | none |
 | Lifecycle / version / tag | required | none |
 | Referenced in docs as | `skills/<name>` | `~/.agents/skills/<name>` |
 
-The Store must not contain a local-only skill: the registry ↔ filesystem symmetry
-check in `scripts/validate_store.py` fails on a skill directory that has no
-registry entry, which is exactly the signal to move it out of the checkout.
+The only content that may point outside the Store is a **gitignored symlink**, so
+the skill is visible in `skills/` without being an asset:
+
+```text
+skills/store-publish -> ../../../../.agents/skills/store-publish   # local, never committed
+```
+
+Two rules keep this honest:
+
+- the symlink is **never committed** — a clone elsewhere would receive a dangling
+  path into some other machine's home directory (`.gitignore` covers it);
+- `scripts/validate_store.py` skips **symlinked** directories when discovering
+  packages, so such a skill neither needs a registry entry nor counts as an asset.
+  A *real* directory without a registry entry still fails — that is the signal to
+  move it out of the checkout.
 
 
 ## Registry

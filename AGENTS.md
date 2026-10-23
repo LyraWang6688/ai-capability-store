@@ -86,7 +86,7 @@ in this repository. Local machines consume published artifacts, never a second c
 | DSH plugins via npm only | `dsh plugin --profile <p> add <npm-tarball-or-name>`. Installing by local path is a development shortcut only and must be removed before the work is done. |
 | Runtime directories hold data, not code | `~/.command-sync`, `~/.mac-cleanup`, `~/.dsh-feishu-remote`, `~/.ai-quote-clip`, `~/.config/chrome-frequent-pages` may hold config, logs and snapshots. Any script in them must be a **symlink** to the installed npm package, never a copied file. |
 | Skills are the one documented exception | `~/.agents/skills/<name>` is a symlink into `skills/<name>`. Skills are declarative files an agent reads, not executable packages. Publish a Skill to npm only when a non-local consumer needs it (`npx skills add`). |
-| Local-only skills live outside | A skill that is internal tooling, not a distributable asset, has its **only source** at `~/.agents/skills/<name>` (a real directory). It has no registry entry, version or tag, and must not be copied into this checkout — see `skills/README.md` § local-only. |
+| Local-only skills live outside | A skill that is internal tooling, not a distributable asset, has its **only source** at `~/.agents/skills/<name>` (a real directory). It has no registry entry, version or tag. `skills/<name>` may be a **gitignored symlink** to it for local visibility — never committed, and skipped by the validator's package discovery. See `skills/README.md` § local-only. |
 
 ### Upgrade procedure
 
