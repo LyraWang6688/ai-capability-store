@@ -376,7 +376,36 @@ def version_items(cfg):
     return items
 
 
+def collect_sources(cfg):
+    """只抓原文，不调模型、不写表：给服务器无头 DSH 用。"""
+    sources = {}
+    try:
+        releases = json.loads(fetch(cfg["sources"]["codex"]))
+        if releases:
+            newest = releases[0]
+            sources["codex"] = "版本 " + str(newest.get("tag_name")) + "\n" + (newest.get("body") or "")[:12000]
+    except Exception as error:  # noqa: BLE001
+        print("codex 抓取失败:", error, file=sys.stderr)
+    try:
+        sources["claude"] = strip_html(fetch(cfg["sources"]["claude"]))[:12000]
+    except Exception as error:  # noqa: BLE001
+        print("claude 抓取失败:", error, file=sys.stderr)
+    try:
+        news = doubao_news(cfg)
+        if news:
+            sources["doubao"] = news[:8000]
+    except Exception as error:  # noqa: BLE001
+        print("豆包工作抓取失败:", error, file=sys.stderr)
+    return sources
+
+
 def main():
+    if "--emit-all" in sys.argv:
+        cfg = load_config()
+        payload = {"sources": collect_sources(cfg), "versions": version_items(cfg)}
+        print(json.dumps(payload, ensure_ascii=False))
+        return
+
     dry_run = "--dry-run" in sys.argv
     cfg = load_config()
     if not cfg.get("base_token") or not cfg.get("table_id"):
