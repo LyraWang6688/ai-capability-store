@@ -185,12 +185,12 @@ capabilities:
     type: cli
     status: limited
     provider_path: external-capabilities/providers/lyrawang/README.md
-    version: 0.4.0
+    version: 0.5.0
     implementation_path: external-capabilities/cli/dsh-feishu-remote
     auth: "无凭据入仓。飞书侧复用操作者本机 lark-cli 的凭据库：自建应用的 App ID/Secret 由 `lark-cli profile add` 管理，用户授权走 `lark-cli auth login`（设备码），二者都不经过本包；模型 Key 由环境变量或系统钥匙串提供（默认 DEEPSEEK_API_KEY），配置与审计文件在 `~/.dsh-feishu-remote/`（600），仓库内零 token"
-    capabilities: "把飞书私聊任务转发到执行后端运行：白名单 open_id 校验、仅 p2p、高风险词先确认（回复「确认」才执行）、串行队列、超时中止（SIGTERM→SIGKILL）、结果以飞书 Card 2.0 卡片回传（发送失败自动降级为文本）、逐任务审计 JSONL；另提供 doctor 环境体检与开机自启（macOS launchd + caffeinate 防休眠 / Linux systemd user unit）。执行后端可配置：默认 `dsh headless <任务>`，可替换为任意命令"
+    capabilities: "把飞书私聊任务转发到执行后端运行：白名单 open_id 校验、仅 p2p、高风险词先确认（回复「确认」才执行）、串行队列、超时中止（SIGTERM→SIGKILL）、结果以飞书 Card 2.0 卡片回传（发送失败自动降级为文本；高风险确认支持卡片按钮回调）、逐任务审计 JSONL；另提供 doctor 环境体检与开机自启（macOS launchd + caffeinate 防休眠 / Linux systemd user unit）。执行后端可配置：默认 `dsh headless <任务>`，可替换为任意命令"
     permissions: "需要：本机 lark-cli 已授权（im 域：读私聊消息、以机器人发消息）；一个已开启 `im.message.receive_v1` 长连接事件订阅的自建应用机器人；执行后端命令可运行（默认需要 DSH CLI 与模型 Key）。服务以操作者本人身份运行，可读写配置的 workdir"
-    notes: "自研、Store-managed。全新资产，从未进过版本控制，首次提交即其第一份历史（按 first-publish §0 ② 直接复制）。status 取 limited：需先建飞书自建应用、配事件订阅与权限、绑 lark-cli 并授权，不是装上即用。0.1.0 分发形态为 npm CLI：`npx @lyra_wang/dsh-feishu-remote init`（npm 上的 `dsh-feishu-remote` 无 scope 名已被第三方 shixiangyu2 占用，且那是 DSH 插件形态的同类项目；本项目是独立常驻 CLI、执行后端可替换、内置高风险确认与审计，两者无关）。macOS 用 launchd 常驻；其他平台用 systemd/PM2 运行 `dsh-feishu-remote run`。2026-10-19 本机实测：doctor 全绿（lark-cli 1.0.97、事件订阅就绪、DSH 内置 CLI、DEEPSEEK_API_KEY 钥匙串就绪）；同一套逻辑先用 launchd 版验证了「列出桌面文件（9.3s 完成）」与「删除类指令先确认、取消零执行」。 0.3.1（patch）：修 0.3.0 的 Linux 落地缺陷——`init` 的安装门槛写死 `isMac()`，Linux 上会打印「非 macOS / Linux」然后跳过 systemd 安装，与 README 声明矛盾；Linux 启动脚本里的 PATH 被硬编码，导致 DSH 的 `#!/usr/bin/env node` 解析到系统老版本 node 时**静默退出码 0、零输出**（`import.meta.main` 需 Node 24+），现改为优先使用配置 `extraEnv.PATH`；`loginctl enable-linger` 改为尽力而为（普通用户无权限时提示而不是中断安装）；`install-service` / `uninstall-service` 在 Linux 下不再打印 `undefined`。补 6 个单测钉住渲染出的服务脚本与 systemd unit，并接入 PR 门禁。README 增加「部署前必须对齐的三件事」（node 版本 / keychainService 置空 / 同一飞书应用只能有一处长连接）。 0.3.2（patch）：只有 bot 身份的机器（典型是 Linux 服务器，用户登录是设备码流程）此前无法完成初始化——`init` 依赖 user 身份读白名单、`doctor` 把 user 身份缺失判成失败。实际收发消息全程 `--as bot`，user 身份不是必需：`init` 新增 `--open-id ou_xxx`，`doctor` 增加「飞书机器人身份」检查（bot ready 即通过），读不到用户身份时白名单降级为提示核对。补 5 个 feishu 单测。 0.3.3（patch）：README「常见问题」补一条「飞书授权到期了怎么办？」——token 正常每 6 小时自动滚动续期，真失效时在飞书回复「重新授权」会收到卡片，点按钮即可续期。 0.4.0（minor）：回传给用户的**所有消息改为飞书 Card 2.0 卡片**（任务完成/失败/执行中/高风险确认/帮助/状态），不再发裸文本；卡片正文截断仍受 `maxReplyChars` 控制，发送失败自动降级为文本。新增 `src/cards.mjs` 纯函数构建器与 6 个卡片单测。"
+    notes: "自研、Store-managed。全新资产，从未进过版本控制，首次提交即其第一份历史（按 first-publish §0 ② 直接复制）。status 取 limited：需先建飞书自建应用、配事件订阅与权限、绑 lark-cli 并授权，不是装上即用。0.1.0 分发形态为 npm CLI：`npx @lyra_wang/dsh-feishu-remote init`（npm 上的 `dsh-feishu-remote` 无 scope 名已被第三方 shixiangyu2 占用，且那是 DSH 插件形态的同类项目；本项目是独立常驻 CLI、执行后端可替换、内置高风险确认与审计，两者无关）。macOS 用 launchd 常驻；其他平台用 systemd/PM2 运行 `dsh-feishu-remote run`。2026-10-19 本机实测：doctor 全绿（lark-cli 1.0.97、事件订阅就绪、DSH 内置 CLI、DEEPSEEK_API_KEY 钥匙串就绪）；同一套逻辑先用 launchd 版验证了「列出桌面文件（9.3s 完成）」与「删除类指令先确认、取消零执行」。 0.3.1（patch）：修 0.3.0 的 Linux 落地缺陷——`init` 的安装门槛写死 `isMac()`，Linux 上会打印「非 macOS / Linux」然后跳过 systemd 安装，与 README 声明矛盾；Linux 启动脚本里的 PATH 被硬编码，导致 DSH 的 `#!/usr/bin/env node` 解析到系统老版本 node 时**静默退出码 0、零输出**（`import.meta.main` 需 Node 24+），现改为优先使用配置 `extraEnv.PATH`；`loginctl enable-linger` 改为尽力而为（普通用户无权限时提示而不是中断安装）；`install-service` / `uninstall-service` 在 Linux 下不再打印 `undefined`。补 6 个单测钉住渲染出的服务脚本与 systemd unit，并接入 PR 门禁。README 增加「部署前必须对齐的三件事」（node 版本 / keychainService 置空 / 同一飞书应用只能有一处长连接）。 0.3.2（patch）：只有 bot 身份的机器（典型是 Linux 服务器，用户登录是设备码流程）此前无法完成初始化——`init` 依赖 user 身份读白名单、`doctor` 把 user 身份缺失判成失败。实际收发消息全程 `--as bot`，user 身份不是必需：`init` 新增 `--open-id ou_xxx`，`doctor` 增加「飞书机器人身份」检查（bot ready 即通过），读不到用户身份时白名单降级为提示核对。补 5 个 feishu 单测。 0.3.3（patch）：README「常见问题」补一条「飞书授权到期了怎么办？」——token 正常每 6 小时自动滚动续期，真失效时在飞书回复「重新授权」会收到卡片，点按钮即可续期。 0.4.0（minor）：回传给用户的**所有消息改为飞书 Card 2.0 卡片**（任务完成/失败/执行中/高风险确认/帮助/状态），不再发裸文本；卡片正文截断仍受 `maxReplyChars` 控制，发送失败自动降级为文本。新增 `src/cards.mjs` 纯函数构建器与 6 个卡片单测。 0.5.0（minor）：高风险确认改为**卡片按钮**——确认卡带「确认执行 / 取消」两个 callback 按钮（`action_value` 携带 `{action, taskId}`），桥新增 `card.action.trigger` 事件消费者（配置 `cardActions`，默认关；需在开放平台订阅回调），按钮与文字「确认/取消」两条路都保留；消费者改为按事件键分别启动并各自重连。"
   mac-cleanup:
     name: mac-cleanup
     hosting: store-managed
@@ -218,3 +218,17 @@ capabilities:
     capabilities: DSH 收件箱面板：输入框左侧「📥 收件箱」按钮（未读红点）+ 启动自动弹出的未读面板；展示任务名（关联「定时任务」表解析）、执行时间、结果徽标与摘要；点击一条即把飞书表该行标记为「已读」并移出面板；支持「全部已读」与 30 分钟轮询。Host 侧提供 /plugins/inbox/list、/read、/deliver 三个鉴权路由
     permissions: 需要本机 lark-cli 已授权（base 域读记录 / 改记录）；只读写「任务收件箱」与「定时任务」两张表，不触碰其它 Base。Host 路由需要 DSH 连接鉴权
     notes: 自研、Store-managed。定位：把服务器上执行完的定时任务结果，以「待读」形式送达 DSH GUI（解决「执行了但没有可见终点」）。0.1.0 首版：Host 三个路由 + Client 按钮与弹窗。0.1.1：投递改用 +record-batch-create（lark-cli 无 +record-create）。0.1.2：patch 去掉 config（插件未声明 Config schema，传 config 有挂载风险），坐标改为 env 覆盖。0.1.3：修正 Base token（收件箱已挪到「项目管理」Base NeujbbOfcaPEvMsPIxscaJImn9d，旧值导致 not_found）。本机实测通过：红点 1、面板弹出、点击标已读
+
+  diagram-card:
+    name: diagram-card
+    hosting: store-managed
+    provider: lyrawang
+    type: plugin
+    status: limited
+    provider_path: external-capabilities/providers/lyrawang/README.md
+    version: 0.1.0
+    implementation_path: external-capabilities/plugin/dsh/diagram-card
+    auth: "无凭据。无 Host 路由、无网络请求、无子进程、无文件系统访问；全部逻辑在客户端只读渲染"
+    capabilities: "把对话里 ```dsh-diagram 代码块渲染成结构化卡片图：layered（分层架构：任务 → 分组容器 → 等宽能力卡片网格 → 结果）与 flow（流程：起止胶囊 + 编号步骤 + 回环）。JSON 是唯一事实源，代码块保留在消息里（隐藏），删插件即退回原样。文字用 textContent 写入、可选中可搜索；深/浅色按宿主 body 背景亮度自动适配"
+    permissions: "无需任何外部权限或凭据。仅使用 DSH 客户端 `shell.overlay` 槽位注入一个自绘样式与观察器；不读取其它插件 DOM、不改 document.body、不写入任何存储"
+    notes: "自研、Store-managed。定位：让「好看的架构图」成为回复的默认表达能力，而不是每次让模型生成图片或让用户手动打开 HTML。设计参数取自 ChatGPT 对话内渲染的实测 token（配色 #0E0E0E/#303030/#2C67C5/#40C977、圆角 16/12/8、字号 14/12/16）。实现取舍：按 plugin/dsh/README.md「未验证 slot 不许上主插件」，只用已稳定的 shell.overlay，通过 MutationObserver + 2s 轮询观察 pre>code 并就地替换，而非依赖未验证的 conversation.chat.*。已用隔离页 dev/preview.html 自测：2 张图渲染、6 个卡片格、slot 注册为 shell.overlay/dshdg-boot 全部通过。status 取 limited：已在隔离的 probe profile 里完成宿主内集成实测（2026-10-24，DSH Desktop 0.2.1-rc.2）——从 npm 安装后 web 实例正常加载（window.__dshdg 存在）、shell.overlay 挂载生效（自绘 CSS 已注入）、注入 pre>code.language-dsh-diagram 后 2 秒内完成替换且原代码块仅隐藏不删除。未覆盖：真实消息链路（未经 agent 生成，仅注入模拟块）与长会话压力，故取 limited 而非 available。测试方法见 plugin/dsh/README.md §九"

@@ -87,8 +87,8 @@ export async function sendCard(cfg, chatId, card) {
  * Spawn the long-connection event consumer.
  * stdin MUST stay open: lark-cli treats stdin EOF as an exit signal.
  */
-export function spawnConsumer(cfg) {
-  return spawn(cfg.larkCli, withProfile(cfg, ['event', 'consume', 'im.message.receive_v1', '--as', 'bot']), {
+export function spawnConsumer(cfg, eventKey = 'im.message.receive_v1') {
+  return spawn(cfg.larkCli, withProfile(cfg, ['event', 'consume', eventKey, '--as', 'bot']), {
     cwd: cfg.workdir,
     env: process.env,
     stdio: ['pipe', 'pipe', 'pipe'],
