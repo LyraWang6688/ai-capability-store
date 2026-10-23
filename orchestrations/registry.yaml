@@ -99,6 +99,33 @@ orchestrations:
             - POST /api/host/v1/analyze
         produces: 四部分报告结论 + reportUrl
 
+  # teaming 的主要用法其实是这条：钟叫醒、扫一批、逐场判断。
+  # 和上一条共用同一个 skill 与同一个服务，但输入（时间窗口 vs 指定的一场）、
+  # 产出（一批结果 + 跳过清单 vs 一份报告）和失败方式（没人可问 vs 人就在旁边）
+  # 都不同，所以是两条编排。
+  teaming-minute-scan:
+    name: teaming-minute-scan
+    path: orchestrations/service-call/doubao-work/teaming-minute-scan
+    status: testing
+    version: 0.1.0
+    updated: "2026-10-23"
+    trigger: host-schedule
+    goal: 定时扫最近 N 小时的新妙记，只分析相关的，汇报时列出跳过了哪几场
+    execution:
+      requires: [bash, curl, network, feishu-native]
+      egress: [meeting.bamamei.online]
+    steps:
+      - id: scan
+        link: 1-scan
+        use: skills/teaming-meeting-analysis
+        calls:
+          service: meeting-analysis-service
+          contract: skills/teaming-meeting-analysis/SKILL.md
+          endpoints:
+            - POST /api/host/v1/enroll
+            - POST /api/host/v1/analyze
+        produces: 一批报告结论 + reportUrl，以及「哪几场没分析、为什么」的清单
+
   readloop-daily:
     name: readloop-daily
     path: orchestrations/service-call/doubao-work/readloop-daily
