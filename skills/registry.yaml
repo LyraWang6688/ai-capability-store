@@ -99,7 +99,7 @@ skills:
     path: skills/readloop
     scope: shared
     status: testing
-    version: 0.1.1
+    version: 0.2.0
     updated: "2026-10-23"
     notes: >
       Daily English review loop built on real reading. The host reads and writes
@@ -110,6 +110,15 @@ skills:
       is four steps: pick model, create the Bitable from template, install the
       Chrome extension, create a host scheduled task (daily/weekly + time).
       `testing`: not yet validated end-to-end on Doubao Work.
+      0.2.0 (minor): API contract synced with the service implemented 2026-10-23 —
+      `today` returns 4 options and `context: null` (no pre-answer leak) and
+      `answered` is always 0; `submit` accepts either option text or A/B/C/D and
+      returns 10 `updates` fields (now including `难度因子` / `最近暴露`, both must
+      be written back); `question_id` is valid 48h. Setup docs now match the
+      one-click flow: the service runs the three checks itself (`checks` including
+      `publish`), `status` hides `app_secret` by default (`reveal_secret=1` only for
+      the manual fallback), and pairing uses POST (bind) + GET (plugin fetches the
+      secret once). Error table adds 400/404/410/429. Production base URL is live.
       0.1.1 (patch): `compatibility` now names the outbound destinations and
       what leaves the machine (candidate points, answers, the user's model config
       including the API key) per SECURITY.md § Outbound — before this it said
