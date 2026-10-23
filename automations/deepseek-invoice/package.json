@@ -1,6 +1,6 @@
 {
   "name": "deepseek-invoice",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "private": true,
   "type": "module",
   "description": "DeepSeek 开放平台月度自动开票（headless Chromium + 持久化登录态）",

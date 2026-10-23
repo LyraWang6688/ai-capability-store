@@ -315,8 +315,8 @@ automations:
     path: automations/deepseek-invoice
     entrypoint: run.mjs
     status: testing
-    version: 0.1.1
-    updated: "2026-10-22"
+    version: 0.1.2
+    updated: "2026-10-23"
     trigger_kind: monthly
     executor: systemd
     systemd:
@@ -341,3 +341,11 @@ automations:
       安全性：默认 dry-run，systemd unit 显式 --live；maxAmount 上限保护；金额为 0 直接跳过，
       天然幂等。output 用 local-file：日志与截图含账号相关信息，不应进入 git-branch，
       也不进任何外部系统。
+
+      0.1.2（patch）：修两个"静默报成功"的失败分支。以前金额读不到时 `readAvailable`
+      返回 null，被 `Number(... || '0')` 转成 0，于是页面改版 / 金额未加载都落进
+      「本月无可开额度，跳过」并返回 ok:true —— 一个月不开票，日志看起来完全正常；
+      现在 null / 解析失败单独判成 AMOUNT_UNREADABLE，截图并退出码 4。另一个：提交后
+      没找到成功提示时只 emit 了 SUBMIT_UNVERIFIED，随后正常结束、退出码 0，systemd
+      记为成功；现在退出码 5，unit 显式 Restart=no（这类结果不能自动重提，否则可能
+      重复申请）。金额判定拆到 lib.mjs，配 node:test 单测并接进 PR 门禁。

@@ -52,6 +52,11 @@ jobs:
           done
           echo "ran $ran skill test suites"
           [ "$ran" -gt 0 ] || { echo "no skill test suites found"; exit 1; }
+      # deepseek-invoice 的两个失败分支以前会静默变绿：金额读不到被当成 0 跳过
+      # （ok:true），提交后未验证只 emit 一句然后退出码 0。纯逻辑拆到 lib.mjs 后
+      # 这组测试不需要浏览器 / 配置 / 登录态，可以在 PR 门禁里跑。
+      - name: deepseek-invoice failure-branch logic
+        run: node --test automations/deepseek-invoice/test_lib.mjs
       # Separate from the validator on purpose: that script is pure-filesystem
       # (no git, no subprocess) so a tarball or shallow checkout still validates.
       # "Is this file tracked?" is a git question and belongs in its own tool.

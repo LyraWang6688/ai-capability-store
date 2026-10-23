@@ -13,7 +13,7 @@ sudo chown -R "$OWNER":"$(id -gn)" "$TARGET"
 chmod 700 "$TARGET/auth"
 
 echo "== 2. 代码与配置 =="
-cp "$SRC/run.mjs" "$SRC/package.json" "$TARGET/"
+cp "$SRC/run.mjs" "$SRC/lib.mjs" "$SRC/package.json" "$TARGET/"
 if [ ! -f "$TARGET/config.json" ]; then
   cp "$SRC/config.example.json" "$TARGET/config.json"
   echo "⚠️  已生成 config.json 模板，请填入真实抬头/税号/邮箱后 chmod 600"
