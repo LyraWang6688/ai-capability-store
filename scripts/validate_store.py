@@ -516,6 +516,15 @@ def validate_skill_path(key: str, entry: dict) -> None:
     check(f"skill {key} path has no '..'", ".." not in parts, path)
     abs_path = os.path.join(ROOT, path)
     check(f"skill {key} path is a directory", os.path.isdir(abs_path), path)
+    # A registered Store skill must be real content in the repo. A symlink is a
+    # pointer to a source kept outside it -- that is a local-only skill, which
+    # has no registry entry, version or tag (skills/README.md § local-only).
+    # Without this check a symlink satisfies isdir() and the entry looks valid
+    # while the asset is not actually in the repository.
+    check(f"skill {key} path is a real directory (not a symlink)",
+          not os.path.islink(abs_path),
+          "registered skills must live in the repo as files; a local-only skill "
+          "lives in ~/.agents/skills and must not be registered")
     leaf = path.rstrip("/").split("/")[-1]
     check(f"skill {key} path leaf == skill name", leaf == key, f"leaf={leaf!r} key={key!r}")
     # Exact flat layout: skills/<skill-name>/ — no category level, no nesting.
