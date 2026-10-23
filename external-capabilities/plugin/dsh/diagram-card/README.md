@@ -20,8 +20,20 @@
 
 ## 安装
 
+**方式一（推荐）：DSH 插件页按包名安装**
+
+设置 → 插件 → 安装 bundle，输入包名：
+
+```text
+@lyra_wang/dsh-diagram-card
+```
+
+装完**重启 DSH** 生效。
+
+**方式二：命令行**
+
 ```bash
-# 1) 从 npm 安装（发布后）
+# 1) 从 npm 安装
 dsh plugin --profile desktop add "https://registry.npmjs.org/@lyra_wang/dsh-diagram-card/-/dsh-diagram-card-0.1.0.tgz"
 
 # 2) 把包名加入 profile 的 dsh.profile.bundles（否则装了不挂载）
@@ -31,6 +43,8 @@ dsh plugin --profile desktop add "https://registry.npmjs.org/@lyra_wang/dsh-diag
 
 **3) 重启 DSH 生效。**
 
+> ⚠️ 刚 `npm publish` 后 registry 有几分钟 staging 窗口，此时安装会 404，等一下再试。
+>
 > 开发期可用本地路径安装，但按 `AGENTS.md`「Local Consumption」规则，
 > 交付前必须改为 npm 安装，不允许长期运行仓库内路径。
 
