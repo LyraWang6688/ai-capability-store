@@ -241,8 +241,6 @@ window.__ModuleLoader__.load({
         if (noteOpen && noteInput.current) noteInput.current.focus();
       }, [noteOpen]);
 
-      if (selection === null && toast === '' && quoteStore.current === null) return null;
-
       const quote = useQuote();
       if (selection === null && toast === '' && quote === null) return null;
       const center = selection === null
@@ -509,6 +507,11 @@ window.__ModuleLoader__.load({
 
       return h(React.Fragment, null,
         h('style', { key: 'style' }, CSS),
+        h('style', { key: 'quote-style' }, `.dsh-selection-quote{position:fixed;display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:8px;background:var(--dsw-alias-bg-layer-2,#26262b);border:1px solid var(--dsw-alias-border-l1,#3a3a40);box-shadow:0 4px 14px rgba(0,0,0,.2);font-size:12px;color:var(--dsw-alias-label-secondary,#b6b6bf);z-index:9000}
+          .dsh-selection-quote-bar{width:3px;height:16px;border-radius:2px;background:#7aa2ff;flex:none}
+          .dsh-selection-quote-text{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+          .dsh-selection-quote-close{background:none;border:none;color:inherit;font-size:14px;cursor:pointer;line-height:1;padding:0 2px}`),
+        h(QuoteBar, { key: 'quote-bar' }),
         selection !== null && !noteOpen && !rewriteOpen
           ? h('div', {
             key: 'bar',
