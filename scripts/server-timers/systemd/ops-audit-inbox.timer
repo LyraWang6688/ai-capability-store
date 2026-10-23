@@ -1,0 +1,11 @@
+[Unit]
+Description=Deliver ops-audit result to the Feishu task inbox (1st, 21:15)
+
+[Timer]
+OnCalendar=*-*-01 21:15:00
+Persistent=true
+RandomizedDelaySec=300
+Unit=ops-audit-inbox.service
+
+[Install]
+WantedBy=timers.target
