@@ -285,7 +285,9 @@ was intended rather than recording an intention shaped like a placeholder.
 GitHub Actions（海外网络）          服务器 DSH（梧桐）
   抓数据 / 聚合 / 归一化   ──SSH──▶  判断有没有变化
   不调模型、不写飞书                  需要时调 DeepSeek
-                                    渲染 HTML / 写飞书 Base / 写任务收件箱
+                                    渲染 HTML（日报/周报）
+                                    写飞书 Base（仓库快照）
+                                    写任务收件箱（摘要 + HTML 链接）
                                     最后检查有没有可复用的 Skill
 ```
 

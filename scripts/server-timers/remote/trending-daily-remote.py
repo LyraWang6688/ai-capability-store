@@ -16,13 +16,12 @@ import json
 import os
 import sys
 
-from common import (TZ, deliver, emit, fail, fingerprint, load_env, lark, load_state,
-                    mode_forced, publish_html, read_payload, report_url, render_page,
-                    run_dsh, parse_json, save_state)
+from common import (TZ, deliver, emit, fingerprint, load_state, mode_forced,
+                    publish_html, read_payload, report_url, render_page, run_dsh,
+                    parse_json, save_state)
 from datetime import datetime
 
 TASK = "github-trending-daily"
-TABLE_ENV = "GITHUB_TRENDING_TABLE_ID"
 
 PROMPT = """你是 GitHub 趋势分析员。下面是今天云端采集到的中性候选清单（JSON）。
 按固定结构产出报告内容，只输出 JSON，不要解释、不要 markdown 代码块：
@@ -36,16 +35,13 @@ PROMPT = """你是 GitHub 趋势分析员。下面是今天云端采集到的中
     {"heading": "四、dsh-plugin 生态", "paragraphs": ["…"]},
     {"heading": "五、可以做什么", "paragraphs": ["…"]}
   ],
-  "records": [
-    {"topic": "话题", "repo": "owner/name", "desc": "一句话", "url": "https://github.com/owner/name"}
-  ],
   "skills": ["如果发现可用 Skill，写名字；没有就空数组"]
 }
 
 规则：
 - 只写数据里出现过的仓库，不要编造；数据缺失就在对应段落说明。
 - 「已有项目」指候选里和用户已收录项目重合的部分；无法判断就说不知道。
-- 不要写飞书收录表（收录必须人工确认），records 只是候选，供后续人工判断。
+- 只产出报告内容；不要写任何飞书表（收录与落库都必须人工确认）。
 - 汇报语气克制，给事实和判断，不要营销腔。
 """
 
@@ -90,31 +86,10 @@ def main():
     publish_html(TASK, date, html)
     url = report_url(TASK, date)
 
-    written = 0
-    table = load_env().get(TABLE_ENV, "")
-    records = content.get("records") or []
-    if table and records:
-        try:
-            rows = [{
-                "日期": date,
-                "话题": str(r.get("topic") or "")[:60],
-                "仓库": str(r.get("repo") or "")[:120],
-                "说明": str(r.get("desc") or "")[:200],
-                "链接": str(r.get("url") or "")[:300],
-                "报告": url,
-            } for r in records if r.get("repo")]
-            if rows:
-                lark(["base", "+record-batch-create", "--base-token",
-                      load_env().get("PM_BASE_TOKEN", ""), "--table-id", table,
-                      "--json", json.dumps({"create_records": rows}, ensure_ascii=False)])
-                written = len(rows)
-        except Exception as exc:  # Base write must not kill the report
-            summary = (summary + "（Base 写入失败：" + str(exc)[:40] + "）")[:80]
-
-    save_state(TASK, {"date": date, "hash": digest, "candidates": len(candidates), "written": written})
+    save_state(TASK, {"date": date, "hash": digest, "candidates": len(candidates)})
     deliver(TASK, "%s github-trending-daily：%s" % (date, summary), "成功", url)
     emit({"ok": True, "changed": True, "report": url, "summary": summary,
-          "candidates": len(candidates), "records": written, "skills": content.get("skills") or []})
+          "candidates": len(candidates), "skills": content.get("skills") or []})
     return 0
 
 
