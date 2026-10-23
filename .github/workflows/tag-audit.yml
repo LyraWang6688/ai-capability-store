@@ -39,4 +39,4 @@ jobs:
       - name: Install dev dependencies
         run: pip install -r requirements-dev.txt
       - name: Every registered version has its tag
-        run: python3 skills/store-publish/scripts/check_tag_version.py --missing main
+        run: python3 scripts/tag-audit/check_tag_version.py --missing main

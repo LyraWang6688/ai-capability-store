@@ -104,7 +104,7 @@ output another automation consumes **must not** be archived while the consumer i
 ### 3.2 Is it tagged?
 
 ```bash
-python3 skills/store-publish/scripts/check_tag_version.py --missing
+python3 scripts/tag-audit/check_tag_version.py --missing
 ```
 
 Retire only what has a tag. If the registered version has no tag, create it first —

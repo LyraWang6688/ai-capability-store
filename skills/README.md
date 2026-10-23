@@ -63,6 +63,28 @@ Add these only when needed:
 
 Keep `SKILL.md` focused. Do not use it as a project knowledge dump.
 
+## Skills kept local-only (source outside the Store)
+
+Not every skill this operator uses belongs in the Store. A skill that is **internal
+tooling rather than a distributable asset** — for example the procedure the Store
+uses to publish its own assets — has its **only source outside this repository**:
+
+```text
+~/.agents/skills/store-publish/     # real directory, not a symlink into the Store
+```
+
+| | Store skill | Local-only skill |
+|---|---|---|
+| Source | `skills/<name>/` in this repo | `~/.agents/skills/<name>` (outside) |
+| Registry entry | required | none |
+| Lifecycle / version / tag | required | none |
+| Referenced in docs as | `skills/<name>` | `~/.agents/skills/<name>` |
+
+The Store must not contain a local-only skill: the registry ↔ filesystem symmetry
+check in `scripts/validate_store.py` fails on a skill directory that has no
+registry entry, which is exactly the signal to move it out of the checkout.
+
+
 ## Registry
 
 `skills/registry.yaml` is the machine-readable source of truth for:

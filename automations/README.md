@@ -125,7 +125,7 @@ Skill or an External Capability: every published version gets an annotated
 `<automation-name>-vX.Y.Z` tag (`VERSIONING.md` §6), and the version bump ships in
 the same PR as the change. Being scheduled does not exempt it — a job that runs
 unattended is exactly the thing you may need to roll back. Run
-`skills/store-publish/scripts/check_tag_version.py` before tagging.
+`scripts/tag-audit/check_tag_version.py` before tagging.
 
 ## Executor: who runs it
 

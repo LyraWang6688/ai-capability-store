@@ -135,10 +135,13 @@ Three rules that only work together:
    no commit satisfies both "the content is vX.Y.Z" and "the registry says
    vX.Y.Z" — the tag then cannot be self-consistent wherever it is placed.
 2. **Check before tagging, not after.**
-   `python3 skills/store-publish/scripts/check_tag_version.py <asset> <version>`
+   `python3 scripts/tag-audit/check_tag_version.py <asset> <version>`
    verifies the tag name is free, the asset is registered (in *any* domain), the
    registry at the target commit already carries this version, and the target is
    on `main`. `--audit` sweeps every existing tag.
+   The checker is public (`scripts/tag-audit/`). The `store-publish` **skill** is
+   local-only internal tooling (gitignored, not a Store asset) and merely calls
+   these same scripts — which is why the checks below keep running in CI.
 3. **A repair PR cannot fix a wrong tag.** It repairs `main`; the commit the tag
    points at is immutable. This cost three drifted tags in October 2026 and is
    exactly why (1) and (2) exist.

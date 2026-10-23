@@ -1,4 +1,0 @@
-interface:
-  display_name: "Store Publish"
-  short_description: "Upload, iterate, or cite AI Capability Store assets"
-  default_prompt: "Use $store-publish to upload this asset into the AI Capability Store, following the repository contract and stopping for human approval before committing."

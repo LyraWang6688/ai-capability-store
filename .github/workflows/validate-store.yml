@@ -103,5 +103,9 @@ jobs:
           npm ci --no-audit --no-fund
           npm run build
           npm test
+      # 「消费方装到的 artifact 版本是否与 registry 一致」。
+      # 检查器在公开的 scripts/tag-audit/ 下；store-publish 这个本地专用 skill
+      # 只是它的一个调用方，所以脚本一行都不用改位置就能继续在 CI 跑。
       - name: Artifact versions agree with the registry
-        run: python3 skills/store-publish/scripts/check_tag_version.py --package HEAD
+        run: python3 scripts/tag-audit/check_tag_version.py --package HEAD
+

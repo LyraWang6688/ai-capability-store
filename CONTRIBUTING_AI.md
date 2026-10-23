@@ -118,7 +118,9 @@ docs(store): <store-level documentation>
 
 Tool-generated commits are exempt from this list. `git subtree add` writes its own
 message (`Add '<prefix>/' from commit '<sha>'`) and it must not be reworded — the
-trailers it carries are the sync anchor (see `skills/store-publish/references/iterate.md` §0c).
+trailers it carries are the sync anchor (see `references/iterate.md` §0c in the
+local-only `store-publish` skill: `~/.agents/skills/store-publish`; that skill is
+internal tooling, gitignored and not part of the public Store).
 
 ## Human Approval
 
