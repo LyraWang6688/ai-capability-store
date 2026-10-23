@@ -1,7 +1,0 @@
-# 仓库发现性体检 —— 敲 GitHub Actions
-#
-# 时间：每周一 20:00（北京时间）。原来 workflow 里写的是 `0 12 * * 1` UTC = 20:00 北京，本来就对，
-#       这里换成本地时间只是让意图写在眼前，不依赖换算。
-SHELL=/bin/bash
-PATH=/usr/local/bin:/usr/bin:/bin
-0 20 * * 1 root /usr/local/bin/ai-capability-store-dispatch automation-repo-discoverability.yml

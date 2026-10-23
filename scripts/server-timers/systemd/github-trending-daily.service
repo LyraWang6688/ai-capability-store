@@ -1,0 +1,10 @@
+[Unit]
+Description=GitHub trending daily
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=root
+ExecStart=/usr/local/bin/ai-capability-store-dispatch automation-github-trending-daily.yml
+Nice=10

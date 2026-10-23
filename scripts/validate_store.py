@@ -907,10 +907,11 @@ def validate_automation_entries(reg: dict):
                     # ② 是为了让人在一个地方看到"这台机器上到底有哪些钟"。
                     # 只允许这两个位置：别处出现的 external_trigger 大多是指错了。
                     in_own_dir = ext.startswith(path.rstrip("/") + "/")
-                    in_timer_dir = ext.startswith("scripts/server-timers/timers/")
+                    in_timer_dir = (ext.startswith("scripts/server-timers/timers/")
+                                    or ext.startswith("scripts/server-timers/systemd/"))
                     check(f"automation {key} external_trigger under its directory or the timer root",
                           in_own_dir or in_timer_dir,
-                          f"{ext} is neither under {path} nor under scripts/server-timers/timers/")
+                          f"{ext} is neither under {path} nor under scripts/server-timers/")
                 check(f"automation {key} external_trigger exists",
                       os.path.isfile(os.path.join(ROOT, ext)), ext)
 
@@ -1482,24 +1483,28 @@ def validate_server_timers() -> None:
 
     这正是这条检查要防的：一个永远不会成功的定时器，看起来和正常的一模一样。
     """
-    timers_dir = os.path.join(ROOT, "scripts", "server-timers", "timers")
     workflows_dir = os.path.join(ROOT, ".github", "workflows")
-    if not os.path.isdir(timers_dir):
-        return
     pattern = re.compile(r"(automation-[a-z0-9-]+\.yml)")
-    for name in sorted(os.listdir(timers_dir)):
-        if not name.endswith(".cron"):
-            continue
-        rel = f"scripts/server-timers/timers/{name}"
-        try:
-            body = open(os.path.join(timers_dir, name), encoding="utf-8").read()
-        except OSError:
-            check(f"server timer readable: {rel}", False, "unreadable")
-            continue
-        for workflow in pattern.findall(body):
-            check(f"server timer {name} dispatches an existing workflow",
-                  os.path.isfile(os.path.join(workflows_dir, workflow)),
-                  f"{workflow} 不存在于 .github/workflows/ —— 这个定时器到点会 404")
+    # 2026-10-24 起触发器统一为 systemd；timers/*.cron 只作历史兼容
+    sources = []
+    for sub, suffix in (("timers", ".cron"), ("systemd", ".service")):
+        d = os.path.join(ROOT, "scripts", "server-timers", sub)
+        if os.path.isdir(d):
+            sources.append((d, suffix))
+    for d, suffix in sources:
+        for name in sorted(os.listdir(d)):
+            if not name.endswith(suffix):
+                continue
+            rel = f"scripts/server-timers/{os.path.basename(d)}/{name}"
+            try:
+                body = open(os.path.join(d, name), encoding="utf-8").read()
+            except OSError:
+                check(f"server timer readable: {rel}", False, "unreadable")
+                continue
+            for workflow in pattern.findall(body):
+                check(f"server timer {name} dispatches an existing workflow",
+                      os.path.isfile(os.path.join(workflows_dir, workflow)),
+                      f"{workflow} 不存在于 .github/workflows/ —— 这个定时器到点会 404")
 
 
 def validate_orchestrations(orc_reg: dict) -> None:

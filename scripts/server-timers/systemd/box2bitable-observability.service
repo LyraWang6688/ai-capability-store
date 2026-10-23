@@ -1,0 +1,13 @@
+[Unit]
+Description=box2bitable observability daily report
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=ubuntu
+Group=ubuntu
+Environment=HOME=/home/ubuntu
+WorkingDirectory=/opt/box2bitable/server
+ExecStart=/usr/bin/node scripts/observability-daily.mjs
+Nice=10

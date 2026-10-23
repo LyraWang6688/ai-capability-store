@@ -1,86 +1,67 @@
 #!/usr/bin/env bash
-# 把总目录里的定时器装到服务器。
+# 把「所有触发器」装到服务器。
 #
-#   1. dispatch.sh          → /usr/local/bin/ai-capability-store-dispatch
-#   2. timers/*.cron        → /etc/ai-capability-store/timers/  （源）
-#   3. timers/*.cron        → /etc/cron.d/<name>                （cron 只读这里）
-#   4. 移除历史遗留的重复定时器（迁进总目录之前的旧位置）
+# 目录约定：
+#   systemd/*.service|*.timer   → /etc/systemd/system/（唯一触发器形式）
+#   dispatch.sh                 → /usr/local/bin/ai-capability-store-dispatch
+#   deliver/*                   → /srv/dsh-jobs/scripts/（dshjobs 身份）
+#
+# 历史：2026-10-24 之前 cron 类触发器在 timers/*.cron，已全部迁成 systemd timer；
+# 本脚本会把 /etc/cron.d 里对应的旧文件删掉，避免同一件事有两个钟。
 #
 # 幂等：可以反复跑。
 set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-TIMERS_SRC="$HERE/timers"
-TIMERS_DIR="/etc/ai-capability-store/timers"
+UNITS="$HERE/systemd"
+DELIVER_SRC="$HERE/deliver"
 BIN="/usr/local/bin/ai-capability-store-dispatch"
 CRON_D="/etc/cron.d"
-
-[[ $EUID -eq 0 ]] || { echo "需要 root：sudo bash $0" >&2; exit 1; }
-[[ -d "$TIMERS_SRC" ]] || { echo "找不到 $TIMERS_SRC" >&2; exit 66; }
-
-install -d -m 0755 "$TIMERS_DIR"
-install -m 0755 "$HERE/dispatch.sh" "$BIN"
-echo "✓ 脚本  $BIN"
-
-for f in "$TIMERS_SRC"/*.cron; do
-  [ -f "$f" ] || continue
-  name="$(basename "$f" .cron)"
-  install -m 0644 "$f" "$TIMERS_DIR/$name.cron"
-  install -m 0644 "$f" "$CRON_D/$name"
-  echo "✓ 定时器 $name"
-done
-
-# 迁进总目录之前的旧位置，逐个清掉（避免同一件事有两个钟）
-LEGACY_BIN="/usr/local/bin/investdesk-quote-sync-trigger"
-if [[ -f "$LEGACY_BIN" ]] && ! grep -q "ai-capability-store-dispatch" /etc/cron.d/investdesk-quote-sync 2>/dev/null; then
-  : # 已经被新文件覆盖，下面只报告
-fi
-if [[ -f "$LEGACY_BIN" ]]; then
-  rm -f "$LEGACY_BIN" && echo "✓ 移除旧脚本 $LEGACY_BIN"
-fi
-if crontab -u ubuntu -l 2>/dev/null | grep -q "box2bitable-observability-daily"; then
-  crontab -u ubuntu -l 2>/dev/null | grep -v "box2bitable-observability-daily" | crontab -u ubuntu -
-  echo "✓ 从 ubuntu 的 crontab 里移除了 box2bitable 那一行（现在由 /etc/cron.d 管）"
-fi
-
-if command -v systemctl >/dev/null 2>&1; then
-  systemctl reload cron 2>/dev/null || service cron reload 2>/dev/null || true
-fi
-echo
-echo "装好了。验证："
-echo "  ls -l $TIMERS_DIR"
-echo "  ls -l $CRON_D"
-echo "  crontab -u ubuntu -l   # 应该已经没有 box2bitable 那一行了"
-
-# ---------------------------------------------------------------
-# systemd 类（需要补跑/依赖/独立用户的）：systemd/*.service|*.timer
-# 投递脚本：deliver/* → /srv/dsh-jobs/scripts（dshjobs 身份）
-# ---------------------------------------------------------------
-SYSD_UNITS="$HERE/systemd"
-DELIVER_SRC="$HERE/deliver"
 SCRIPTS_DIR="/srv/dsh-jobs/scripts"
 LOG_DIR="/srv/dsh-jobs/logs"
 
-if [[ -d "$SYSD_UNITS" ]]; then
-  install -d -m 0755 "$SCRIPTS_DIR" "$LOG_DIR"
+[[ $EUID -eq 0 ]] || { echo "需要 root：sudo bash $0" >&2; exit 1; }
+[[ -d "$UNITS" ]] || { echo "找不到 $UNITS" >&2; exit 66; }
 
-  for f in "$DELIVER_SRC"/*; do
-    [ -f "$f" ] || continue
-    install -m 0700 -o dshjobs -g dshjobs "$f" "$SCRIPTS_DIR/$(basename "$f")"
-    echo "✓ 投递脚本 $SCRIPTS_DIR/$(basename "$f")"
-  done
+# 1) dispatch 脚本
+install -m 0755 "$HERE/dispatch.sh" "$BIN"
+echo "✓ 脚本  $BIN"
 
-  for f in "$SYSD_UNITS"/*; do
-    [ -f "$f" ] || continue
-    install -m 0644 "$f" "/etc/systemd/system/$(basename "$f")"
-    echo "✓ systemd 单元 $(basename "$f")"
-  done
-  systemctl daemon-reload
+# 2) 投递脚本（dshjobs 身份，只它持有飞书凭据）
+install -d -m 0755 "$SCRIPTS_DIR" "$LOG_DIR"
+for f in "$DELIVER_SRC"/*; do
+  [ -f "$f" ] || continue
+  install -m 0700 -o dshjobs -g dshjobs "$f" "$SCRIPTS_DIR/$(basename "$f")"
+  echo "✓ 投递脚本 $SCRIPTS_DIR/$(basename "$f")"
+done
 
-  for t in "$SYSD_UNITS"/*.timer; do
-    [ -f "$t" ] || continue
-    name="$(basename "$t")"
-    systemctl enable --now "$name" >/dev/null
-    echo "✓ 已启用 $name"
-  done
-fi
+# 3) systemd 单元
+for f in "$UNITS"/*; do
+  [ -f "$f" ] || continue
+  install -m 0644 "$f" "/etc/systemd/system/$(basename "$f")"
+  echo "✓ 单元 $(basename "$f")"
+done
+systemctl daemon-reload
+
+# 4) 启用 timer
+for t in "$UNITS"/*.timer; do
+  [ -f "$t" ] || continue
+  name="$(basename "$t")"
+  systemctl enable --now "$name" >/dev/null
+  echo "✓ 已启用 $name"
+done
+
+# 5) 清理迁走的历史 cron（同名文件）
+LEGACY_CRONS=(
+  box2bitable-observability frontier-watch github-portfolio-snapshot
+  github-trending-daily github-trending-weekly investdesk-quote-sync
+  repo-baseline-audit repo-discoverability
+)
+for name in "${LEGACY_CRONS[@]}"; do
+  if [[ -f "$CRON_D/$name" ]]; then
+    rm -f "$CRON_D/$name" && echo "✓ 移除旧 cron $CRON_D/$name"
+  fi
+done
+
+echo
+echo "查看触发器：systemctl list-timers --all | grep -E '($(IFS='|'; echo "${LEGACY_CRONS[*]}")|ops-audit|deepseek-invoice)'"

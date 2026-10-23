@@ -90,10 +90,10 @@ MUTATIONS = {
     # 用同一个字符串替换两处，是为了让"合法位置"和"错误位置"只差一个词 ——
     # 如果哪天迁移路径，这两个 fixture 会一起失败，不会悄悄放行。
     "external-trigger-missing": lambda t: t.replace(
-        "scripts/server-timers/timers/investdesk-quote-sync.cron",
-        "scripts/server-timers/timers/nope.cron", 1),
+        "scripts/server-timers/systemd/investdesk-quote-sync.timer",
+        "scripts/server-timers/systemd/nope.timer", 1),
     "external-trigger-outside": lambda t: t.replace(
-        "scripts/server-timers/timers/investdesk-quote-sync.cron",
+        "scripts/server-timers/systemd/investdesk-quote-sync.timer",
         "README.md", 1),
     # systemd executor — added in this change
     "systemd-no-timer": lambda t: t.replace(

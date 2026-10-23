@@ -1,0 +1,11 @@
+[Unit]
+Description=GitHub portfolio snapshot (monthly) (*-*-01 18:00:00)
+
+[Timer]
+OnCalendar=*-*-01 18:00:00
+Persistent=true
+RandomizedDelaySec=300
+Unit=github-portfolio-snapshot.service
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,11 @@
+[Unit]
+Description=frontier watch (weekly) (Mon *-*-* 10:00:00)
+
+[Timer]
+OnCalendar=Mon *-*-* 10:00:00
+Persistent=true
+RandomizedDelaySec=30
+Unit=frontier-watch.service
+
+[Install]
+WantedBy=timers.target
