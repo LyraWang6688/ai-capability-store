@@ -1112,6 +1112,8 @@ def main() -> int:
     ap = argparse.ArgumentParser(description="GitHub 资产月度快照")
     ap.add_argument("--dry-run", action="store_true", help="只计算并打印，不写飞书")
     ap.add_argument("--no-base", action="store_true", help="不读也不写飞书，纯本地自检")
+    ap.add_argument("--emit", action="store_true",
+                    help="只抓取并输出归一化仓库 JSON（给服务器 DSH 用），不读不写飞书")
     ap.add_argument("--period", help="快照期间，默认当月（YYYY-MM）")
     ap.add_argument("--force", action="store_true", help="覆盖当月已有快照")
     ap.add_argument("--trigger", default="manual",
@@ -1135,6 +1137,17 @@ def main() -> int:
     print("  [1b/5] 检查各仓库 README 首屏…")
     attach_readme_flags(repos)
     print(f"        {meta['login']}：{len(repos)} 个仓库")
+
+    # 只采集不落地：GitHub Actions 走这条路，把数据推给服务器 DSH，
+    # 飞书写入在服务器侧完成（凭据不再跨到 Actions）。
+    if args.emit:
+        json.dump({"generated_at": now.isoformat(timespec="seconds"),
+                   "automation": "github-portfolio-snapshot",
+                   "login": meta.get("login"),
+                   "total_count": meta.get("total_count"),
+                   "repos": repos}, sys.stdout, ensure_ascii=False)
+        sys.stdout.write("\n")
+        return 0
 
     # 2) 读策展层 + 基线
     curated: dict[str, dict] = {}

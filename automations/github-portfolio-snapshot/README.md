@@ -160,3 +160,9 @@ python3 test_snapshot.py
 Offline only: config resolution, required-key validation, pure helpers, and the
 report/diff logic. Nothing here touches GitHub or Feishu — those need credentials
 a test run must not have.
+
+## Delivery (2026-10-24)
+
+Actions 只抓仓库元数据（`snapshot.py --emit`），通过 SSH 把 payload 推给服务器 DSH。
+服务器写三张 Base 表（Repo Snapshot History / Snapshot Runs / Deleted Repos）并写任务收件箱；
+Actions 不再持有 `FEISHU_APP_ID` / `FEISHU_APP_SECRET`。

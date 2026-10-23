@@ -1,13 +1,25 @@
-# Scheduled execution of automations/github-trending/daily.
+# Two-stage execution of automations/github-trending/daily.
 #
-# Contract (see automations/README.md):
-#   * the cron lives HERE and only here — registry.yaml records trigger_kind only
-#   * output is committed to the `data` branch, never to `main`
-#   * this job needs no secrets beyond the job-scoped GITHUB_TOKEN
+# 2026-10-24 起分工变化：
+#   * GitHub Actions 只负责「抓 Trending 页面 + 归一化」（海外网络好），不调模型、不写飞书
+#   * 抓到的 payload 通过 SSH 推给服务器上的无头 DSH
+#   * 服务器 DSH 判断有无变化 → 需要时调 DeepSeek 产出报告 → 渲染 HTML 到
+#     https://automation.bamamei.online/reports/github-trending-daily/<date>.html
+#     → 写 Base → 写任务收件箱
+#   * `data` 分支仍保留原始快照，供 weekly 聚合（不是用户可见输出）
+#
+# Secrets required:
+#   AUTOMATION_SSH_HOST / AUTOMATION_SSH_USER / AUTOMATION_SSH_KEY — 服务器入口
+#   （GitHub token 仅用于 gh CLI，抓取用）
 name: automation-github-trending-daily
 
 on:
   workflow_dispatch:
+    inputs:
+      dry-run:
+        description: "只采集，不推送到服务器 DSH"
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -63,6 +75,33 @@ jobs:
             "out/trending/${STAMP}.json" \
             --summary "$GITHUB_STEP_SUMMARY"
 
+
+      - name: Build payload (add kind)
+        run: |
+          set -euo pipefail
+          STAMP="$(TZ=Asia/Shanghai date +%F)"
+          python3 - <<PY
+          import json
+          d = json.load(open("out/trending/${STAMP}.json"))
+          d["kind"] = "github-trending-daily"
+          json.dump(d, open("payload.json", "w"), ensure_ascii=False)
+          print("payload:", len(d.get("candidates", [])), "candidates")
+          PY
+
+      - name: Push payload to server DSH
+        if: ${{ inputs.dry-run != true }}
+        env:
+          AUTOMATION_SSH_HOST: ${{ secrets.AUTOMATION_SSH_HOST }}
+          AUTOMATION_SSH_USER: ${{ secrets.AUTOMATION_SSH_USER }}
+          AUTOMATION_SSH_KEY: ${{ secrets.AUTOMATION_SSH_KEY }}
+        run: |
+          set -euo pipefail
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$AUTOMATION_SSH_KEY" > ~/.ssh/automation
+          chmod 600 ~/.ssh/automation
+          ssh -i ~/.ssh/automation -o StrictHostKeyChecking=accept-new -o ConnectTimeout=20 \
+            "$AUTOMATION_SSH_USER@$AUTOMATION_SSH_HOST" < payload.json | tee result.json
+          python3 -c "import json; d=json.load(open('result.json')); print('ok=', d.get('ok'), 'changed=', d.get('changed'), 'report=', d.get('report'))"
 
       - name: Commit snapshot to data branch
         working-directory: out
