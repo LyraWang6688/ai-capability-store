@@ -64,3 +64,19 @@ python3 automations/frontier-watch/report.py --since 2026-10-01
 - `python3`（系统自带即可，零第三方包）
 - `lark-cli` 已授权（user 身份可读写在 Base 上）
 - 模型 Key：`DEEPSEEK_API_KEY`（环境变量）或钥匙串同名条目
+
+
+## 版本类监控（2026-10-24 起）
+
+除了让模型从发布说明里抽「新功能」，还会直接记录这些工具的最新版本：
+
+| 源 | 抓什么 |
+|---|---|
+| DSH 桌面 feed | `version` + `releaseDate` |
+| DSH 上游仓库 | 最新 release tag + 日期 |
+| DeepSeek API 变更日志 | 最新一条 `Date:` + 标题 |
+| lark-cli（@larksuite/cli）| npm 最新版本 |
+| Codex CLI（openai/codex）| 最新 release tag + 日期 |
+
+这些条目不经过模型，直接写「类型=版本更新」，说明里带来源与日期。
+配置可覆盖：`FRONTIER_CONFIG_JSON.version_sources`。
