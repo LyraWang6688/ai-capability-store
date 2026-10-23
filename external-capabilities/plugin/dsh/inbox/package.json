@@ -1,6 +1,6 @@
 {
   "name": "@lyra_wang/dsh-inbox",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "DSH 收件箱面板：读取飞书「任务收件箱」的未读，启动时弹出待读列表，点开即标记已读。",
   "license": "MIT",
   "type": "module",
