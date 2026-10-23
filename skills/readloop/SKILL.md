@@ -1,7 +1,7 @@
 ---
 name: readloop
 description: ReadLoop 每日复习。用宿主自己的飞书能力读写用户的多维表格，由 ReadLoop 服务计算今日题目与记忆状态。首次使用必须先完成初始化。当用户说「开始练习」「今天练什么」「复习」「初始化 ReadLoop」时使用。
-compatibility: "需要 bash 与 curl；需要能访问 https://readinsight.bamamei.online 与 open.feishu.cn。出机内容：当天候选知识点、你的作答、你的模型配置（含 API Key，仅当次使用，服务不保存）；首次配置会访问 open.feishu.cn 校验你自己建的飞书应用。需要宿主具备飞书能力（豆包原生，或安装 lark-cli）。宿主侧不需要 MCP；Chrome 插件写表需要用户自己的飞书应用（初始化第 3 步一键创建）。表格与数据始终在你自己的飞书里。"
+compatibility: "需要 bash 与 curl；需要能访问 https://readinsight.bamamei.online 与 open.feishu.cn。出机内容：当天候选知识点、你的作答、你的模型配置（含 API Key，仅当次使用，服务不保存）；首次配置的写入校验由 ReadLoop 服务端代跑（宿主不直接调飞书 OpenAPI）。需要宿主具备飞书能力（豆包原生，或安装 lark-cli）。宿主侧不需要 MCP；Chrome 插件写表需要用户自己的飞书应用（初始化第 3 步一键创建）。表格与数据始终在你自己的飞书里。"
 ---
 
 # ReadLoop
@@ -172,29 +172,32 @@ curl -s "$BASE_URL/api/setup/app/status?session=$SESSION" \
   -H "Authorization: Bearer $HOST_TOKEN"
 ```
 
-| 状态 | 下一步 |
-|---|---|
-| `pending` | 继续等，并告诉用户在等什么 |
-| `completed` | 拿到 `app_id` / `app_secret`，**只返回一次** |
-| `expired` | 让用户重新点一次链接 |
+| 状态 | HTTP | 下一步 |
+|---|---|---|
+| `pending` | 200 | 继续等，并告诉用户在等什么 |
+| `completed` | 200 | 创建成功，服务端已自动跑完校验：看 `checks` |
+| `expired` | 410 | 让用户重新点一次链接（重新 `start`） |
+| `failed` | 200 | 把 `error` 里的原因原样转述给用户 |
 
-4. **三项校验**（缺一不可，失败要指出具体哪一步）：
+**`app_secret` 默认是 `null`，主路径不要读它**——Secret 由插件用配对码自取（第 5 步）。
+只有兜底手动路径需要时，才在 URL 后加 `&reveal_secret=1` 取一次。
 
-```bash
-# ① 换 token：验证凭证本身
-curl -s -X POST https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal \
-  -H 'Content-Type: application/json' \
-  -d '{"app_id":"'$APP_ID'","app_secret":"'$APP_SECRET'"}'
+4. **读三项校验结果**（服务端用新建应用自己的身份自动跑，你不需要、也不应该自己调飞书 OpenAPI）：
 
-# ② 读表：验证是否已加成协作者、模板是否存在
-curl -s -H "Authorization: Bearer $TENANT_TOKEN" \
-  "https://open.feishu.cn/open-apis/bitable/v1/apps/$APP_TOKEN/tables"
-
-# ③ 写一条再删：验证是不是「可编辑」而不只是「可阅读」
-#    写失败 = 用户漏了「添加文档应用」这一步
+```json
+{ "token": "ok", "read": "ok", "write": "ok", "publish": "ok", "details": "", "publish_details": "" }
 ```
 
-5. 校验全过后，把凭证交给插件（插件点「一键配置」会给出 6 位配对码）：
+| `checks` 项 | 失败说明 | 告诉用户做什么 |
+|---|---|---|
+| `token` | App ID / Secret 不对或应用未创建成功 | 重新发起创建 |
+| `read` | 应用没被加成表格协作者，或没开 `bitable:app` | 表格右上角 `⋯` → 添加文档应用 → 选中刚创建的应用 |
+| `write` | 只给了「可阅读」，没给「可编辑」 | 同上，把权限改成**可编辑** |
+| `publish` | 自动发布应用版本失败 | 用户手动到开放平台创建并发布版本（不发布权限不生效） |
+
+任何一项失败都要**指出具体是哪一项**，不要笼统说「失败了」。
+
+5. 用户把插件侧边栏里的「一键配置」打开，会显示一个 6 位配对码；**让用户把码发给你**，你只做绑定：
 
 ```bash
 curl -s -X POST "$BASE_URL/api/setup/app/pair" \
@@ -203,7 +206,13 @@ curl -s -X POST "$BASE_URL/api/setup/app/pair" \
   -d '{"session":"'$SESSION'","code":"'$PAIR_CODE'"}'
 ```
 
-服务端交付后立即丢弃凭证，**不要写进 `~/.readloop/config.json`**。
+返回 `{ "paired": true }` 即绑定成功。**这一步不会把 Secret 给你**：插件会在下一次轮询时自己用
+`GET /api/setup/app/pair?code=<配对码>` 一次性取走凭证，服务端随即删除。
+
+- 400：配对码不是 6 位数字 / 会话还没 `completed` / 码已被占用
+- 404：会话不存在；410：会话过期；429：尝试次数过多（让用户重新点「一键配置」）
+
+**绝对不要**把 App ID / Secret 写进 `~/.readloop/config.json`，也不要打印到对话里——它属于插件，不属于你。
 
 **兜底：手动创建**（`/api/setup/app/start` 返回不可用、或用户明确要求手动时）
 
@@ -311,6 +320,7 @@ curl -s -X POST "$BASE/api/review/today" \
 ```
 
 `model` 就是配置里的那段（`provider` / `base_url` / `model` / `api_key`），**每次请求都要带**——服务端不保存用户模型配置。
+当前版本的题面由服务端确定性生成，**不会真的调用模型**（`model` 必填是为了将来润色，传了不产生调用）。
 
 每次请求都要带 `-H "Authorization: Bearer $HOST_TOKEN"`。
 
@@ -319,11 +329,15 @@ curl -s -X POST "$BASE/api/review/today" \
 | 字段 | 说明 |
 |---|---|
 | `variant` | 0–4，界面变体编号，按它换排版 |
-| `total` / `answered` | 今日题量 / 已答数量 |
+| `total` | 今日题量 |
+| `answered` | **恒为 0**：服务端不记进度，进度由你自己数（每成功 submit 一次 +1） |
 | `questions[]` | 题目数组，**不含正确答案** |
 | `session_context` | 今日统计，写总结时只能用这里的数据 |
 
-题目对象：`question_id`、`type`、`stem`、`options[]`、`context`、`hint`。
+题目对象：`question_id`、`type`、`stem`、`options[]`（仅选择题，4 个）、`context`、`hint`。
+
+- `context` **当前恒为 `null`**：作答前不下发原句（会泄露答案），语境已经在掩码后的 `stem` 里。不要把它当原句渲染。
+- `question_id` 有效期 48 小时；过期或被改过会返回 400，此时**重新取一次今日题**，不要自己编题。
 
 ### 日常 3 · 呈现并收答案
 
@@ -333,23 +347,28 @@ curl -s -X POST "$BASE/api/review/today" \
 curl -s -X POST "$BASE/api/review/submit" \
   -H "Authorization: Bearer $HOST_TOKEN" \
   -H 'Content-Type: application/json' \
-  -d '{"date":"2026-10-23","question_id":"q_003","answer":"B","used_hint":false,"elapsed_ms":9000}'
+  -d '{"date":"2026-10-23","question_id":"eyJ2IjoxLCJkIjoi...","answer":"B","used_hint":false,"elapsed_ms":9000}'
 ```
 
-返回：`result`（correct/wrong）、`explanation`、`updates`（见下）。进度由你自己记录（已完成 / 总数）。
+`answer` 的写法：**选择题可以传选项原文，也可以传 `A`/`B`/`C`/`D`**（服务端按题目里的选项映射，两种都判对）；
+**填空题必须传用户输入的原文**。不要自己做判分或预处理。
+
+返回：`result`（correct/wrong）、`grade`（again/hard/easy/good）、`explanation`、`updates`（见下）。进度由你自己记录（已完成 / 总数）。
 
 ### 日常 4 · 把状态写回表格
 
-`updates` 是服务算好的新值：
+`updates` 是服务算好的新值（**10 个字段**）：
 
 ```json
-{ "知识点": "subsequent", "状态": "review", "间隔天数": 6, "连对次数": 2,
-  "答错次数": 0, "待练次数": 1, "下次复习": "2026-10-29" }
+{ "知识点": "subsequent", "归一化内容": "subsequent", "状态": "review", "间隔天数": 6,
+  "难度因子": 2.5, "连对次数": 2, "答错次数": 0, "待练次数": 1,
+  "下次复习": "2026-10-29", "最近暴露": "2026-10-23" }
 ```
 
-用**宿主自己的飞书能力**按 `归一化内容` 找到 `knowledge_points` 对应行，写入这些字段。同时向 `practice_events` 追加一条记录。
+用**宿主自己的飞书能力**按 `归一化内容` 找到 `knowledge_points` 对应行，把上面这些字段全部写回
+（**`难度因子` 不写回会丢**；`最近暴露` 是出题日期）。同时向 `practice_events` 追加一条记录。
 
-**不要自己计算新值，只照抄 `updates`。**
+**不要自己计算新值，只照抄 `updates`。** 同一题重复提交返回同一组 `updates`，重写同样值无副作用。
 
 ---
 
@@ -382,14 +401,19 @@ curl -s -X POST "$BASE/api/review/submit" \
 |---|---|
 | 配置缺失 | 回到第 0 步 |
 | 表格字段不符 | 按 `schema.md` 说明缺哪张表/哪个字段，不要自己改表 |
-| 服务 401 | host token 失效：重新用接入码兑换 |
+| 服务 401 | host token 失效：重新用授权码激活 |
+| 服务 402 | 年度授权到期：提示续费，**数据不动、不要重装** |
 | `questions` 为空 | 今天没有题：建议去读一篇文章，**不要自己出题** |
+| submit 返回 400（题目无效/过期） | 重新调一次 today 取新题，不要把旧 `question_id` 重试 |
+| setup 返回 404 / 410 | 创建会话不存在或已过期：重新调 `start`，再让用户点一次验证链接 |
+| setup 返回 429 | 配对尝试过多：让用户重新点插件里的「一键配置」生成新配对码 |
 | 服务 5xx | 最多重试 2 次，如实告诉用户，不要编题 |
 
 ## 不要做
 
-- 用 curl 直接调飞书 OpenAPI（没有应用凭证，也不该有）
-- 自己判分、自己算间隔
+- 用 curl 直接调飞书 OpenAPI（没有应用凭证，也不该有；写入通道的校验由服务端做）
+- 自己判分、自己算间隔、自己数 `updates` 之外的字段
 - 自己建表或改表结构
-- 提前透露答案
+- 提前透露答案（`context` 为 `null` 时也不要去猜原句）
+- 把 `app_secret` / `app_id` 写进配置文件或打印到对话里
 - 用户没答完就总结
