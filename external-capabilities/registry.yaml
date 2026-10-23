@@ -49,13 +49,13 @@ capabilities:
     type: external-api
     status: available
     provider_path: external-capabilities/providers/lyrawang/README.md
-    version: 0.2.1
+    version: 0.2.2
     endpoint: https://readinsight.bamamei.online
     contract_path: skills/readloop/references/api.md
     auth: "8 位授权码经 POST /api/license/activate 换 host token（按年授权，过期一律 402）；token 存 `~/.readloop/config.json`（600）。服务 → 大模型用用户自带的 API Key（BYOK），随请求传入、服务不保存"
     capabilities: "确定性复习规则引擎：选题、组卷、判分、间隔调度；另有首次配置用的授权接口与飞书应用一键创建接口（/api/setup/app/*）。用户的表格数据不在服务端保存"
     permissions: "无需飞书授权 —— 读写多维表格由宿主自己的飞书能力完成，服务不直接访问用户的表。调用需有效 host token"
-    notes: "自研、自托管。**代码在独立仓库 `~/Documents/workplace/ReadLoop`，不在 Store 内** —— 按 hosting: external 登记，只登记契约与端点。与 meeting-analysis-service 的区别：这个服务无状态，记忆状态存在用户自己的多维表格里。0.2.0：契约随 readloop skill 0.2.0 同步 —— today 返回 4 个选项且 context 恒 null、answered 恒 0、question_id 48h 有效；submit 接受选项原文或 A/B/C/D，updates 扩到 10 个字段（含难度因子/最近暴露）；新增 setup start/status/pair 契约，status 默认不返回 app_secret；错误码补 400/404/410/429。0.2.1：配对接口 POST 记录宿主的 host_token，GET 时随凭证一次性下发（取后即删），插件据此自动完成配置。"
+    notes: "自研、自托管。**代码在独立仓库 `~/Documents/workplace/ReadLoop`，不在 Store 内** —— 按 hosting: external 登记，只登记契约与端点。与 meeting-analysis-service 的区别：这个服务无状态，记忆状态存在用户自己的多维表格里。0.2.0：契约随 readloop skill 0.2.0 同步 —— today 返回 4 个选项且 context 恒 null、answered 恒 0、question_id 48h 有效；submit 接受选项原文或 A/B/C/D，updates 扩到 10 个字段（含难度因子/最近暴露）；新增 setup start/status/pair 契约，status 默认不返回 app_secret；错误码补 400/404/410/429。0.2.1：配对接口 POST 记录宿主的 host_token，GET 时随凭证一次性下发（取后即删），插件据此自动完成配置。0.2.2：新增 POST /api/review/metrics（答题记录 → 间隔分档保持率/目标区间/leech/完成率/用时 + 确定性建议）；today 接受可选 performance 并返回 difficulty（20 题门槛 + 贝叶斯平滑）。"
 
   wechat-draft-mcp:
     name: wechat-draft-mcp

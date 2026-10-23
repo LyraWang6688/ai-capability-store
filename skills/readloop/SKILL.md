@@ -326,10 +326,12 @@ chmod 600 "$HOME/.readloop/config.json"
 curl -s -X POST "$BASE/api/review/today" \
   -H "Authorization: Bearer $HOST_TOKEN" \
   -H 'Content-Type: application/json' \
-  -d '{"date":"2026-10-23","model":'"$MODEL_JSON"',"points":[...第 1 步读到的行...]}'
+  -d '{"date":"2026-10-23","model":'"$MODEL_JSON"',"performance":'"$PERFORMANCE_JSON"',"points":[...第 1 步读到的行...]}'
 ```
 
-`model` 就是配置里的那段（`provider` / `base_url` / `model` / `api_key`），**每次请求都要带**——服务端不保存用户模型配置。
+请求前先算一个可选的 `performance`：用**宿主自己的飞书能力**读 `practice_events` 最近 20 条，
+数出 `attempts`（总题数）和 `correct`（答对数），随请求带上——服务端据此调今日难度
+（少于 20 题会自动忽略；不传就用默认配额）。
 当前版本的题面由服务端确定性生成，**不会真的调用模型**（`model` 必填是为了将来润色，传了不产生调用）。
 
 每次请求都要带 `-H "Authorization: Bearer $HOST_TOKEN"`。
@@ -343,6 +345,7 @@ curl -s -X POST "$BASE/api/review/today" \
 | `answered` | **恒为 0**：服务端不记进度，进度由你自己数（每成功 submit 一次 +1） |
 | `questions[]` | 题目数组，**不含正确答案** |
 | `session_context` | 今日统计，写总结时只能用这里的数据 |
+| `difficulty` | 今日难度（`level` / 新点配额 / 正确率 / `reason`）；可以用 `reason` 向用户解释，不要自己改配额 |
 
 题目对象：`question_id`、`type`、`stem`、`options[]`（仅选择题，4 个）、`context`、`hint`。
 
@@ -376,7 +379,11 @@ curl -s -X POST "$BASE/api/review/submit" \
 ```
 
 用**宿主自己的飞书能力**按 `归一化内容` 找到 `knowledge_points` 对应行，把上面这些字段全部写回
-（**`难度因子` 不写回会丢**；`最近暴露` 是出题日期）。同时向 `practice_events` 追加一条记录。
+（**`难度因子` 不写回会丢**；`最近暴露` 是出题日期）。
+
+同时向 `practice_events` 追加一条记录，**记得写 `复习间隔`**：取第 1 步读到的「间隔天数」
+（= 作答前的间隔），不是 `updates` 里的新间隔。这是以后算「间隔后保持率」的唯一依据；
+不写也能用，但周度指标里分档保持率会算不出来。
 
 **不要自己计算新值，只照抄 `updates`。** 同一题重复提交返回同一组 `updates`，重写同样值无副作用。
 
@@ -404,6 +411,27 @@ curl -s -X POST "$BASE/api/review/submit" \
 今日新暴露 {new_count} 个，待复习 {due_count} 个。
 最需要留意：{weak_points}
 ```
+
+## 每周复盘（可选，但建议做）
+
+用户问「最近效果怎么样」、或你想主动复盘时，用宿主自己的飞书能力读 `practice_events`
+（最近 28 天）和 `knowledge_points`，调：
+
+```bash
+curl -s -X POST "$BASE/api/review/metrics" \
+  -H "Authorization: Bearer $HOST_TOKEN" \
+  -H 'Content-Type: application/json' \
+  -d '{"date":"2026-10-23","windowDays":28,"practice":[...],"points":[...]}'
+```
+
+读回来的都是**服务算好的**，不要自己重算：
+
+- `byInterval`：各间隔档的保持率——哪一档开始掉，就说明间隔排得太长
+- `target.inBand`：整体正确率是否在 70–85%；`sample.enough` 为 false 时别下结论
+- `leech.leechRatio`：难词占比；`adherence.rate`：坚持率；`overall.avgElapsedMs`：每题用时
+- `recommendations`：确定性建议，可以原样转述给用户，最多 3 条
+
+解释原则：**只陈述指标 + 按建议调整，不要自己发明学习计划**；用户问「为什么」时引用 `reason` / `recommendations.message`。
 
 ## 出错时
 
