@@ -65,7 +65,10 @@ def main():
     else:
         result = "失败"
     if issues:
-        summary = "%s ops-audit：%d 项问题、%d 个项目；%s" % (date, len(issues), len(projects), str(issues[0])[:60])
+        first = issues[0]
+        if isinstance(first, list):
+            first = "、".join(str(x) for x in first)
+        summary = "%s ops-audit：%d 项问题、%d 个项目；%s" % (date, len(issues), len(projects), str(first)[:80])
     else:
         summary = "%s ops-audit：无问题；%d 个项目全部检查完成" % (date, len(projects))
     if not force and already_delivered('ops-audit'):
