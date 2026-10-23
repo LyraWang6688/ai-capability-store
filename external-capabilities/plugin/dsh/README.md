@@ -34,6 +34,7 @@
 | 第三方获取 `ctx.sidebarRight` | 4 种方式全失败（`ctx.get` / `inject` / `reflect.get` / `dsh.client.inject`），最后一种会让 App 启动失败 | 第四节表格 |
 | 往 `conversation.input.dock` 塞引用条 | 注册成功但长期 `active:false`，界面不渲染 | 第三节 3.1 |
 | 富文本多行插入 | 换行被吞，`> a\n> b` 会变成一行 | 第三节 3.2 |
+| **没有"发送前"钩子** | 引用/改写只能在发送前 hack 写入草稿：捕获阶段监听 Enter 与发送按钮（依赖 DOM 结构，覆盖不全）| 上游 [feature request #10791](https://github.com/deepseek-ai/deepseek-harness/discussions/10791) |
 
 > 跟踪 issue：[feishu-ref：自动在右侧浏览器打开引用文档（阻塞中）](https://github.com/LyraWang6688/ai-capability-store/issues/268)
 > 上游：[feature request #10592](https://github.com/deepseek-ai/deepseek-harness/discussions/10592)
