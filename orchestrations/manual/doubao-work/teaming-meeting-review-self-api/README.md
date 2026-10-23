@@ -1,4 +1,4 @@
-# teaming-meeting-review（service-call）
+# teaming-meeting-review-self-api（-self-api：调自建 API）
 
 **人问一场会 → 宿主取逐字稿 → 调分析服务 → 把报告链接交回。**
 
@@ -44,4 +44,4 @@ SOP 正文里的 `curl` 打到一个**自建的后端服务**（`meeting.bamamei
 - 不做会议摘要 / 待办 —— 那是宿主自己的纪要能力
 - 不评价个人
 - 不复制分析逻辑 —— 服务在独立仓库 `teaming-bot`，这里只有契约与引用
-- 不负责触发（`trigger: human`）。**主要用法其实是另一条编排**：[../teaming-minute-scan](../teaming-minute-scan/README.md) —— 钟叫醒、扫一批、逐场判断；这条是人问一场会时的单场变体
+- 不负责触发（`trigger: human`）。**主要用法其实是另一条编排**：[../../../automated/doubao-work/teaming-minute-scan-self-api/](../../../automated/doubao-work/teaming-minute-scan-self-api/README.md) —— 钟叫醒、扫一批、逐场判断；这条是人问一场会时的单场变体
