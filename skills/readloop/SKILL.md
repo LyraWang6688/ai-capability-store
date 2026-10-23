@@ -1,7 +1,7 @@
 ---
 name: readloop
 description: ReadLoop 每日复习。用宿主自己的飞书能力读写用户的多维表格，由 ReadLoop 服务计算今日题目与记忆状态。首次使用必须先完成初始化。当用户说「开始练习」「今天练什么」「复习」「初始化 ReadLoop」时使用。
-compatibility: "需要 bash 与 curl；需要能访问 ReadLoop 服务；需要宿主具备飞书能力（豆包原生，或安装 lark-cli）。宿主侧不需要 MCP、不需要飞书应用；只有 Chrome 插件写表需要用户自建一个飞书应用（初始化第 3 步会引导）。"
+compatibility: "需要 bash 与 curl；需要能访问 https://readinsight.bamamei.online 与 open.feishu.cn。出机内容：当天候选知识点、你的作答、你的模型配置（含 API Key，仅当次使用，服务不保存）；首次配置会访问 open.feishu.cn 校验你自己建的飞书应用。需要宿主具备飞书能力（豆包原生，或安装 lark-cli）。宿主侧不需要 MCP；Chrome 插件写表需要用户自己的飞书应用（初始化第 3 步一键创建）。表格与数据始终在你自己的飞书里。"
 ---
 
 # ReadLoop
