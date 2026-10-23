@@ -1,0 +1,5 @@
+# 对话内架构图卡片：不需要 Host 路由、不需要凭据。
+# 全部逻辑在 client.js（只读渲染），Host 半为空实现。
+- insert:
+    - id: diagram-card
+      name: '@lyra_wang/dsh-diagram-card'
