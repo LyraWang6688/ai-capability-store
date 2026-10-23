@@ -63,6 +63,52 @@ Add these only when needed:
 
 Keep `SKILL.md` focused. Do not use it as a project knowledge dump.
 
+## Skills kept local-only (source outside the Store)
+
+Not every skill this operator uses belongs in the Store. A skill that is **internal
+tooling rather than a distributable asset** — for example the procedure the Store
+uses to publish its own assets — has its **only source outside this repository**:
+
+```text
+~/.agents/skills/store-publish/     # real directory, not a symlink into the Store
+```
+
+| | Store skill | Local-only skill |
+|---|---|---|
+| Source | `skills/<name>/` in this repo | `~/.agents/skills/<name>` (outside) |
+| Appears in `skills/` as | a real directory | a **gitignored symlink** to the real directory |
+| Registry entry | required | none |
+| Lifecycle / version / tag | required | none |
+| Referenced in docs as | `skills/<name>` | `~/.agents/skills/<name>` |
+
+The only content that may point outside the Store is a **gitignored symlink**, so
+the skill is visible in `skills/` without being an asset:
+
+```text
+skills/store-publish -> ../../../../.agents/skills/store-publish   # local, never committed
+```
+
+Create it with the script — one command, both halves maintained together:
+
+```bash
+python3 scripts/link_local_skill.py <skill-name>      # 建软链 + 补 .gitignore 行
+python3 scripts/link_local_skill.py <skill-name> --remove
+python3 scripts/link_local_skill.py --list
+```
+
+Two rules keep this honest, and `scripts/validate_store.py` enforces both:
+
+- the symlink must **resolve to a skill package** (broken link = you think the
+  skill is there but the source is gone);
+- the symlink must be **gitignored** — a clone elsewhere would receive a dangling
+  path into some other machine's home directory.
+
+The validator also *skips symlinked directories* when discovering packages, so
+such a skill neither needs a registry entry nor counts as an asset. A *real*
+directory without a registry entry still fails — that is the signal to move it
+out of the checkout.
+
+
 ## Registry
 
 `skills/registry.yaml` is the machine-readable source of truth for:

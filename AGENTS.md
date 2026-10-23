@@ -40,9 +40,11 @@ Domain-specific policy lives in the Domain directories.
 | Add / change an External Capability (plugin / MCP / connector / CLI / API / integration) | `external-capabilities/` |
 | Add / change an Automation (scheduled or event-driven job) | `automations/` |
 | Record a Skill ↔ External Capability dependency | `dependencies/capability-map.yaml` |
+| Add / change a computer-automation doc (browser use / computer use — docs only) | `computer-automation/` |
 | Change store-wide policy | top-level policy files |
 
 Skills, External Capabilities, Automations and Orchestrations are **peer Domains**.
+`computer-automation/` is a documentation shelf, not a fifth Domain: no assets, no registry.
 
 What separates them is the question each one answers:
 
@@ -84,6 +86,7 @@ in this repository. Local machines consume published artifacts, never a second c
 | DSH plugins via npm only | `dsh plugin --profile <p> add <npm-tarball-or-name>`. Installing by local path is a development shortcut only and must be removed before the work is done. |
 | Runtime directories hold data, not code | `~/.command-sync`, `~/.mac-cleanup`, `~/.dsh-feishu-remote`, `~/.ai-quote-clip`, `~/.config/chrome-frequent-pages` may hold config, logs and snapshots. Any script in them must be a **symlink** to the installed npm package, never a copied file. |
 | Skills are the one documented exception | `~/.agents/skills/<name>` is a symlink into `skills/<name>`. Skills are declarative files an agent reads, not executable packages. Publish a Skill to npm only when a non-local consumer needs it (`npx skills add`). |
+| Local-only skills live outside | A skill that is internal tooling, not a distributable asset, has its **only source** at `~/.agents/skills/<name>` (a real directory). It has no registry entry, version or tag. `skills/<name>` may be a **gitignored symlink** to it for local visibility — never committed, and skipped by the validator's package discovery. Create it with `python3 scripts/link_local_skill.py <name>`; see `skills/README.md` § local-only. |
 
 ### Upgrade procedure
 

@@ -34,6 +34,9 @@ Checks:
         the ecosystem gate, so a skill that cannot be installed cannot pass
     6.  registry <-> filesystem symmetry: a skill package directory on disk
         without a registry entry FAILS (and vice versa)
+    6a. local skill links: a symlinked `skills/<name>` must resolve to a skill
+        package AND be gitignored — it is a pointer to a source outside the repo,
+        never a committable asset
     6a-bis. no MISPLACED (nested) skill packages: a SKILL.md anywhere below
         skills/<name>/ FAILS. Discovery is non-recursive (correct, per Agent
         Plugins v1 §7.1), which used to mean such a package was silently
@@ -1043,16 +1046,59 @@ def discover_skill_packages():
     Plugins v1 §7.1 forbids clients from searching deeper descendants, so a
     nested package is not a discoverable skill and must not be treated as one
     here either (otherwise the validator would certify an asset that conformant
-    clients cannot see)."""
+    clients cannot see).
+
+    Symlinked directories are skipped on purpose: a symlink carries no content,
+    so it cannot be an asset. In this Store it is a local convenience — a skill
+    whose only source lives outside the repo (`~/.agents/skills/store-publish`)
+    can be surfaced in `skills/` through a gitignored link without the validator
+    demanding a registry entry, and without a clone on another machine receiving
+    a dangling path."""
     found = []
     base = os.path.join(ROOT, "skills")
     if os.path.isdir(base):
         for name in sorted(os.listdir(base)):
             if name.startswith("."):
                 continue
-            if os.path.isfile(os.path.join(base, name, "SKILL.md")):
+            full = os.path.join(base, name)
+            if os.path.islink(full):
+                continue
+            if os.path.isfile(os.path.join(full, "SKILL.md")):
                 found.append(f"skills/{name}")
     return found
+
+
+def validate_local_skill_links():
+    """`skills/` 里的软链：本地 skill 的入口，既要是活的，也不能被提交。
+
+    软链让「源码在 ~/.agents/skills 的 skill」出现在 skills/ 里，但它不是资产 ——
+    没有内容可以被克隆。两条要一起查，因为两种失效都很安静：
+      1. 断链 = 你以为 skill 还在，其实源码已经没了（软链本身不报错）；
+      2. 没被 ignore = `git add -A` 会把一个指向本机家目录的断链提交进公开仓库，
+         别人 clone 下来只拿到一个坏路径。
+    """
+    base = os.path.join(ROOT, "skills")
+    if not os.path.isdir(base):
+        return
+    ignored = set()
+    try:
+        with open(os.path.join(ROOT, ".gitignore"), encoding="utf-8") as fh:
+            ignored = {line.strip() for line in fh}
+    except OSError:
+        pass
+    for name in sorted(os.listdir(base)):
+        if name.startswith("."):
+            continue
+        full = os.path.join(base, name)
+        if not os.path.islink(full):
+            continue
+        rel = f"skills/{name}"
+        check(f"local skill link {rel} resolves to a skill package",
+              os.path.isfile(os.path.join(full, "SKILL.md")),
+              "broken link, or the target has no SKILL.md — the source is gone")
+        check(f"local skill link {rel} is gitignored", rel in ignored,
+              "a link into a path outside the repo must never be committed; "
+              "run scripts/link_local_skill.py <name> (adds the ignore line too)")
 
 
 def find_misplaced_skill_packages():
@@ -1217,6 +1263,9 @@ def main() -> int:
     for rel in discover_skill_packages():
         check(f"filesystem skill is registered: {rel}", rel in registered_paths,
               "package directory exists but has no registry entry")
+
+    # ---- 6a. Local skill links (source outside the Store) ----
+    validate_local_skill_links()
 
     # ---- 6a-bis. No nested (misplaced) skill packages ----
     # A SKILL.md below skills/<name>/ is invisible to conformant clients, so it
