@@ -1,4 +1,6 @@
 [Unit]
+OnSuccess=ops-audit-inbox.service
+OnFailure=ops-audit-inbox.service
 Description=ops-audit monthly server audit (read-only)
 After=network-online.target
 Wants=network-online.target
