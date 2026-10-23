@@ -39,17 +39,29 @@ window.__ModuleLoader__.load({
     /* ------------------------------------------------------------------ css */
     const CSS = `
 .dshdg-root{
+  /* ---- theme tokens ---- */
   --ddg-panel:#0E0E0E; --ddg-card:#303030; --ddg-num:#212121;
   --ddg-line:rgba(255,255,255,.15); --ddg-divider:rgba(255,255,255,.08);
   --ddg-text:#EDEDED; --ddg-text2:#CDCDCD; --ddg-text3:#AFAFAF;
   --ddg-info:#2C67C5; --ddg-info-bg:rgba(30,115,190,.07); --ddg-info-line:rgba(30,115,190,.25);
   --ddg-info-line-strong:rgba(30,115,190,.45);
   --ddg-success:#40C977; --ddg-success-bg:rgba(22,163,74,.07); --ddg-success-line:rgba(22,163,74,.3);
-  width:100%; max-width:720px; margin:8px auto; box-sizing:border-box;
-  border:1px solid var(--ddg-line); border-radius:14px; padding:10px;
-  display:flex; flex-direction:column; gap:8px;
+  /* ---- fluid metrics: follow the viewport width, 13-16px body ---- */
+  --ddg-pad-canvas:clamp(8px, .45vw + 5.6px, 12px);
+  --ddg-pad-node:clamp(7px, .45vw + 4.6px, 11px);
+  --ddg-pad-card:clamp(5px, .35vw + 3.2px, 8px);
+  --ddg-gap:clamp(6px, .5vw + 4px, 10px);
+  --ddg-grid-gap:clamp(5px, .4vw + 3px, 8px);
+  --ddg-gap-tight:clamp(2px, .2vw + 1.2px, 4px);
+  --ddg-fs-title:clamp(13px, .3vw + 11.6px, 16px);
+  --ddg-fs-body:clamp(13px, .28vw + 11.5px, 16px);
+  --ddg-fs-small:clamp(11px, .24vw + 10.2px, 13px);
+  --ddg-num-size:26px;
+  width:100%; max-width:min(900px,100%); margin:8px auto; box-sizing:border-box;
+  border:1px solid var(--ddg-line); border-radius:14px; padding:var(--ddg-pad-canvas);
+  display:flex; flex-direction:column; gap:var(--ddg-gap);
   color:var(--ddg-text); background:transparent;
-  font:400 15px/22px -apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  font:400 var(--ddg-fs-body)/1.45 -apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
   text-align:left; user-select:text;
 }
 .dshdg-root.dshdg-light{
@@ -61,43 +73,50 @@ window.__ModuleLoader__.load({
   --ddg-success:#1B8F4E; --ddg-success-bg:rgba(22,163,74,.06); --ddg-success-line:rgba(22,163,74,.28);
 }
 .dshdg-root *{box-sizing:border-box}
-.dshdg-title{margin:0;font-size:14px;font-weight:500;line-height:18px;color:var(--ddg-text)}
-.dshdg-arrow{display:flex;justify-content:center;align-items:center;height:12px;color:var(--ddg-text3)}
-.dshdg-node{width:100%;background:var(--ddg-panel);border-radius:10px;padding:9px;
-  display:flex;flex-direction:column;align-items:center;gap:2px}
-.dshdg-node-title{margin:0;font-size:15px;font-weight:600;line-height:22px;color:var(--ddg-text)}
-.dshdg-node-sub{font-size:13px;line-height:16px;color:var(--ddg-text2)}
+.dshdg-title{margin:0;font-size:var(--ddg-fs-small);font-weight:500;line-height:1.4;color:var(--ddg-text)}
+.dshdg-arrow{display:flex;justify-content:center;align-items:center;height:clamp(10px,.5vw + 8px,16px);color:var(--ddg-text3)}
+.dshdg-node{width:100%;background:var(--ddg-panel);border-radius:10px;padding:var(--ddg-pad-node);
+  display:flex;flex-direction:column;align-items:center;gap:var(--ddg-gap-tight)}
+.dshdg-node-title{margin:0;font-size:var(--ddg-fs-body);font-weight:600;line-height:1.45;color:var(--ddg-text)}
+.dshdg-node-sub{font-size:var(--ddg-fs-small);line-height:1.35;color:var(--ddg-text2)}
 .dshdg-ico{display:flex;align-items:center;justify-content:center;color:var(--ddg-text2)}
 .dshdg-node .dshdg-ico{color:var(--ddg-text2)}
 .dshdg-node.dshdg-result .dshdg-ico{color:var(--ddg-success)}
 .dshdg-group{width:100%;background:var(--ddg-info-bg);border:1px solid var(--ddg-info-line);
-  border-radius:10px;padding:9px;display:flex;flex-direction:column;gap:8px}
+  border-radius:10px;padding:var(--ddg-pad-canvas);display:flex;flex-direction:column;gap:var(--ddg-gap)}
 .dshdg-group-head{display:flex;align-items:center;justify-content:center;gap:6px;
-  font-size:15px;font-weight:600;line-height:22px;color:var(--ddg-text)}
+  font-size:var(--ddg-fs-body);font-weight:600;line-height:1.45;color:var(--ddg-text)}
 .dshdg-group-head .dshdg-ico{color:var(--ddg-info)}
 .dshdg-divider{height:1px;border:0;margin:0;background:var(--ddg-divider)}
-.dshdg-label{margin:0;font-size:12px;font-weight:500;line-height:14px;text-align:center;color:var(--ddg-text)}
-.dshdg-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
-.dshdg-card{background:var(--ddg-card);border-radius:7px;padding:6px;
-  display:flex;flex-direction:column;align-items:center;gap:2px;text-align:center}
-.dshdg-card-en{margin:0;font-size:12px;font-weight:500;line-height:14px;color:var(--ddg-text)}
-.dshdg-card-cn{font-size:13px;line-height:16px;color:var(--ddg-text2)}
+.dshdg-label{margin:0;font-size:var(--ddg-fs-small);font-weight:500;line-height:1.3;text-align:center;color:var(--ddg-text)}
+.dshdg-grid{display:grid;grid-template-columns:1fr 1fr;gap:var(--ddg-grid-gap)}
+.dshdg-card{background:var(--ddg-card);border-radius:7px;padding:var(--ddg-pad-card);
+  display:flex;flex-direction:column;align-items:center;gap:var(--ddg-gap-tight);text-align:center}
+.dshdg-card-en{margin:0;font-size:var(--ddg-fs-small);font-weight:500;line-height:1.3;color:var(--ddg-text)}
+.dshdg-card-cn{font-size:var(--ddg-fs-small);line-height:1.35;color:var(--ddg-text2)}
 .dshdg-pill{align-self:center;background:var(--ddg-panel);border-radius:10px;
-  padding:6px 14px;font-size:15px;font-weight:600;line-height:22px}
+  padding:calc(var(--ddg-pad-card) + 1px) 14px;font-size:var(--ddg-fs-body);font-weight:600;line-height:1.45}
 .dshdg-loop{width:100%;border:2px solid var(--ddg-info-line-strong);border-radius:14px;
-  padding:10px;display:flex;flex-direction:column;gap:6px}
-.dshdg-step{display:flex;flex-direction:column;gap:2px}
+  padding:var(--ddg-pad-canvas);display:flex;flex-direction:column;gap:var(--ddg-gap-tight)}
+.dshdg-step{display:flex;flex-direction:column;gap:var(--ddg-gap-tight)}
 .dshdg-step-head{display:flex;align-items:center;gap:6px}
-.dshdg-num{width:26px;height:26px;flex:none;border-radius:9999px;background:var(--ddg-num);
-  display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:500;color:var(--ddg-text)}
-.dshdg-step-title{margin:0;font-size:13px;font-weight:500;line-height:18px;color:var(--ddg-text)}
-.dshdg-step-desc{margin:0;font-size:12px;line-height:14px;color:var(--ddg-text2)}
+.dshdg-num{width:var(--ddg-num-size);height:var(--ddg-num-size);flex:none;border-radius:9999px;background:var(--ddg-num);
+  display:flex;align-items:center;justify-content:center;font-size:var(--ddg-fs-small);font-weight:500;color:var(--ddg-text)}
+.dshdg-step-title{margin:0;font-size:var(--ddg-fs-small);font-weight:500;line-height:1.35;color:var(--ddg-text)}
+.dshdg-step-desc{margin:0;font-size:var(--ddg-fs-small);line-height:1.3;color:var(--ddg-text2)}
 .dshdg-loopback{display:flex;align-items:center;justify-content:center;gap:6px;
-  font-size:13px;font-weight:500;line-height:18px;color:var(--ddg-text)}
+  font-size:var(--ddg-fs-small);font-weight:500;line-height:1.35;color:var(--ddg-text)}
 .dshdg-loopback .dshdg-ico{color:var(--ddg-info)}
 .dshdg-done{align-self:center;background:var(--ddg-success-bg);border:1px solid var(--ddg-success-line);
-  border-radius:10px;padding:6px 14px;font-size:15px;font-weight:500;line-height:22px;color:var(--ddg-success)}
-@media (max-width:560px){.dshdg-grid{grid-template-columns:1fr}}
+  border-radius:10px;padding:calc(var(--ddg-pad-card) + 1px) 14px;font-size:var(--ddg-fs-body);font-weight:500;line-height:1.45;color:var(--ddg-success)}
+/* (2) width tiers: phone 1 col / laptop 2 col / wide 2 col with room to breathe */
+@media (max-width:480px){.dshdg-grid{grid-template-columns:1fr}.dshdg-root{--ddg-num-size:24px}}
+@media (min-width:1100px){.dshdg-root{max-width:min(980px,100%)}.dshdg-grid{gap:10px}}
+/* (3) short windows give up a little density instead of forcing a scroll */
+@media (max-height:760px){
+  .dshdg-root{--ddg-pad-canvas:8px;--ddg-pad-node:7px;--ddg-pad-card:5px;--ddg-gap:6px;--ddg-grid-gap:5px}
+  .dshdg-node-sub,.dshdg-step-desc,.dshdg-card-cn{line-height:1.25}
+}
 `;
 
     /* --------------------------------------------------------------- helpers */
@@ -325,7 +344,7 @@ window.__ModuleLoader__.load({
     // case debuggable from the console: __dshdg.scan() forces a pass and
     // __dshdg.render(spec) renders one spec without touching the transcript.
     try {
-      window.__dshdg = { render: render, scan: scan, hash: hashText, css: CSS, version: '0.1.1' };
+      window.__dshdg = { render: render, scan: scan, hash: hashText, css: CSS, version: '0.1.2' };
     } catch (_) { /* non-browser context */ }
 
     return {
