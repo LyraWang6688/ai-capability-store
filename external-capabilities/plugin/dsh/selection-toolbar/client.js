@@ -313,6 +313,21 @@ window.__ModuleLoader__.load({
             const flat = String(text).replace(/\s+/g, ' ').trim();
             if (flat === '') return;
             setQuote({ text: flat, at: Date.now() });
+            // 追问后把光标移到输入框末尾，用户可以直接开始打字
+            const composer = findComposer();
+            if (composer !== null) {
+              try {
+                composer.focus();
+                const range = document.createRange();
+                range.selectNodeContents(composer);
+                range.collapse(false);
+                const selection = window.getSelection();
+                if (selection !== null) {
+                  selection.removeAllRanges();
+                  selection.addRange(range);
+                }
+              } catch (error) { /* 聚焦失败不影响引用 */ }
+            }
             say(t('inserted'));
           },
         },
