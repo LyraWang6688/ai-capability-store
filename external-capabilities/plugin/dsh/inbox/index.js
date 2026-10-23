@@ -5,6 +5,8 @@
  * accepts deliveries from server-side jobs. All access goes through the
  * operator's already-authenticated `lark-cli`; this plugin stores nothing.
  */
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
 import { homedir } from 'node:os';
 
 export const inject = ['webServer', 'subprocess'];
@@ -57,10 +59,28 @@ function connectionRejection(ctx, req) {
   }
 }
 
+function resolveLarkCli() {
+  // DSH 从 Finder 启动时 PATH 只有 /usr/bin:/bin:/usr/sbin:/sbin，
+  // lark-cli 常装在 /usr/local/bin 或 ~/.local/bin —— 显式找一遍。
+  const candidates = [
+    process.env.DSH_LARK_CLI,
+    '/usr/local/bin/lark-cli',
+    '/opt/homebrew/bin/lark-cli',
+    join(homedir(), '.local', 'bin', 'lark-cli'),
+    'lark-cli',
+  ].filter(Boolean);
+  for (const candidate of candidates) {
+    try {
+      if (candidate === 'lark-cli' || existsSync(candidate)) return candidate;
+    } catch { /* ignore */ }
+  }
+  return 'lark-cli';
+}
+
 function runLarkCli(ctx, args) {
   return new Promise((resolve, reject) => {
     const handle = ctx.subprocess.spawn({
-      argv: ['lark-cli', ...args],
+      argv: [resolveLarkCli(), ...args],
       cwd: homedir(),
       stdio: { stdout: { maxBytes: 1024 * 1024 }, stderr: { maxBytes: 64 * 1024 } },
       graceMs: 30_000,

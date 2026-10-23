@@ -212,7 +212,7 @@ capabilities:
     type: plugin
     status: limited
     provider_path: external-capabilities/providers/lyrawang/README.md
-    version: 0.1.5
+    version: 0.1.6
     implementation_path: external-capabilities/plugin/dsh/inbox
     auth: 无凭据入仓。所有飞书访问都走操作者本机已授权的 lark-cli；表坐标是「项目管理」Base 的「任务收件箱」（tbl9LghPBTjFLH4N），可用环境变量覆盖。插件自身不存任何 token
     capabilities: DSH 收件箱面板：输入框左侧「📥 收件箱」按钮（未读红点）+ 启动自动弹出的未读面板；展示任务名（关联「定时任务」表解析）、执行时间、结果徽标与摘要；点击一条即把飞书表该行标记为「已读」并移出面板；支持「全部已读」与 30 分钟轮询。Host 侧提供 /plugins/inbox/list、/read、/deliver 三个鉴权路由
