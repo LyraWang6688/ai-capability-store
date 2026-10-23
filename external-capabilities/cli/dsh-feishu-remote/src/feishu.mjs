@@ -9,12 +9,12 @@ function withProfile(cfg, args) {
 }
 
 /** Run a short-lived lark-cli command and collect its output. */
-export function run(cfg, args, { timeoutMs = 60000, cwd } = {}) {
+export function run(cfg, args, { timeoutMs = 60000, cwd, input } = {}) {
   return new Promise((resolve) => {
     const child = spawn(cfg.larkCli, withProfile(cfg, args), {
       cwd: cwd || cfg.workdir,
       env: process.env,
-      stdio: ['ignore', 'pipe', 'pipe'],
+      stdio: [input === undefined ? 'ignore' : 'pipe', 'pipe', 'pipe'],
     });
     let stdout = '';
     let stderr = '';
@@ -34,6 +34,7 @@ export function run(cfg, args, { timeoutMs = 60000, cwd } = {}) {
     child.stdout.on('data', (chunk) => { stdout += chunk; });
     child.stderr.on('data', (chunk) => { stderr += chunk; });
     child.on('error', (error) => { stderr += String(error); finish('spawn-error'); });
+    if (input !== undefined && child.stdin) child.stdin.end(input);
     child.on('close', (code) => finish(code));
   });
 }
@@ -68,11 +69,26 @@ export async function sendText(cfg, chatId, text) {
 }
 
 /**
+ * Send a Card 2.0 reply. The payload goes through stdin on purpose:
+ * `--content @file` is limited to a path whitelist, and stdin keeps the JSON
+ * out of the process argv (so no card content ends up in `ps`).
+ */
+export async function sendCard(cfg, chatId, card) {
+  const result = await run(cfg, [
+    'im', '+messages-send', '--chat-id', chatId,
+    '--msg-type', 'interactive', '--content', '-', '--as', 'bot',
+  ], { timeoutMs: 60000, input: JSON.stringify(card) });
+  let ok = false;
+  try { ok = JSON.parse(result.stdout || '{}').ok === true; } catch { ok = false; }
+  return { ...result, ok };
+}
+
+/**
  * Spawn the long-connection event consumer.
  * stdin MUST stay open: lark-cli treats stdin EOF as an exit signal.
  */
-export function spawnConsumer(cfg) {
-  return spawn(cfg.larkCli, withProfile(cfg, ['event', 'consume', 'im.message.receive_v1', '--as', 'bot']), {
+export function spawnConsumer(cfg, eventKey = 'im.message.receive_v1') {
+  return spawn(cfg.larkCli, withProfile(cfg, ['event', 'consume', eventKey, '--as', 'bot']), {
     cwd: cfg.workdir,
     env: process.env,
     stdio: ['pipe', 'pipe', 'pipe'],

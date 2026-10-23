@@ -1,6 +1,6 @@
 {
   "name": "@lyra_wang/dsh-feishu-remote",
-  "version": "0.3.2",
+  "version": "0.5.0",
   "description": "Run tasks on your own computer from Feishu: a Feishu bot to local agent bridge (default backend: dsh headless).",
   "license": "MIT",
   "type": "module",
