@@ -1,0 +1,4 @@
+interface:
+  display_name: "ReadLoop 每日复习"
+  short_description: "用你自己的飞书多维表格和模型 API，按记忆曲线每天出题陪你复习"
+  default_prompt: "Use $readloop to run today's review: read the user's own Feishu Bitable with your Feishu ability, send the candidate knowledge points plus the user's model config to the ReadLoop service, then coach the user through the questions one at a time."

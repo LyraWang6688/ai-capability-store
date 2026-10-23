@@ -94,6 +94,22 @@ skills:
       connector — the Doubao Work scheduled-task / cloud-computer environment
       cannot see MCP tools (verified 2026-10-15) but does have bash + curl.
       `testing`: end-to-end scheduled-task run not yet validated.
+  readloop:
+    name: readloop
+    path: skills/readloop
+    scope: shared
+    status: testing
+    version: 0.1.0
+    updated: "2026-10-23"
+    notes: >
+      Daily English review loop built on real reading. The host reads and writes
+      the user's own Feishu Bitable with its native Feishu ability (Doubao Work
+      native, or lark-cli on Codex / Work Buddy), sends candidate knowledge
+      points plus the user's BYOK model config to the ReadLoop service, and
+      coaches the user through the day's questions one at a time. Initialization
+      is four steps: pick model, create the Bitable from template, install the
+      Chrome extension, create a host scheduled task (daily/weekly + time).
+      `testing`: not yet validated end-to-end on Doubao Work.
   store-publish:
     name: store-publish
     path: skills/store-publish
