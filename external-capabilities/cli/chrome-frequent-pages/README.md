@@ -154,6 +154,8 @@ python3 main.py --bookmarks-from-table ~/Desktop/常用网页书签.html
 - `run-if-due.sh`：launchd 的 `RunAtLoad` 调用；读状态文件判断本周是否已跑，
   没跑则执行 `chrome-frequent-pages --write`，跑完写状态（失败不写，下次开机重试）。
 - `inbox-deliver-mac.py`：把结果写进飞书「任务收件箱」，DSH 收件箱面板会显示为「待读」。
+- `table_snapshot.py`：执行前后各取一次「常用网页」表快照，diff 出本周**新增了哪些页面**，
+  摘要里带上「标题（域名）→ 书签「分类」」；未分类的页面导出书签时归入「其他」。
 
 ### 安装
 
