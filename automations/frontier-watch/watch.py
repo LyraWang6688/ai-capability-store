@@ -5,6 +5,7 @@
 走飞书「应用身份」tenant_access_token，不读本机 keychain，也不需要 lark-cli。
 只采集事实与可行性判断，不开发插件、不改仓库、不删已有记录。
 """
+import html
 import json
 import os
 import re
@@ -32,6 +33,14 @@ DEFAULTS = {
             "https://news.google.com/rss/search?q=%22%E8%B1%86%E5%8C%85%E5%B7%A5%E4%BD%9C%22&hl=zh-CN&gl=CN&ceid=CN:zh-Hans",
             "https://www.bing.com/news/search?q=%E8%B1%86%E5%8C%85%E5%B7%A5%E4%BD%9C&format=rss",
         ],
+    },
+    # 版本类监控（不经过模型，直接记录"最新版本 + 日期"）
+    "version_sources": {
+        "dsh_feed": "https://download.deepseek.com/dsh-desk/feeds/mac-arm64/nightly-mac.yml",
+        "dsh_releases": "https://api.github.com/repos/deepseek-ai/deepseek-harness/releases?per_page=1",
+        "deepseek_api": "https://api-docs.deepseek.com/updates",
+        "lark_cli": "https://registry.npmjs.org/@larksuite/cli/latest",
+        "codex_cli": "https://api.github.com/repos/openai/codex/releases?per_page=1",
     },
 }
 
@@ -122,7 +131,7 @@ def fetch(url):
         return response.read().decode("utf-8", "replace")
 
 
-def strip_html(html):
+def strip_html(html):  # noqa: A002
     text = re.sub(r"(?is)<(script|style)[^>]*>.*?</\1>", " ", html)
     text = re.sub(r"(?is)<[^>]+>", " ", text)
     return re.sub(r"\s+", " ", text).strip()
@@ -223,13 +232,13 @@ def append_records(cfg, items, dry_run):
     records = [{
         "功能/灵感": item["feature"],
         "工具": [item.get("tool") or "Codex"],
-        "类型": ["新功能"],
+        "类型": [item.get("type") or "新功能"],
         "说明": item.get("desc", ""),
-        "可否做成DSH插件": [item.get("feasible") or "部分"],
-        "难度": [item.get("difficulty") or "中"],
+        "可否做成DSH插件": [item.get("feasible") or ("不适合" if item.get("type") == "版本更新" else "部分")],
+        "难度": [item.get("difficulty") or ("小" if item.get("type") == "版本更新" else "中")],
         "优先级": [item.get("priority") or "中"],
         "状态": ["候选"],
-        "来源": "frontier-watch",
+        "来源": (item.get("source") or "frontier-watch")[:200],
         "收录日": today,
     } for item in items]
     if not records:
@@ -257,6 +266,114 @@ def format_notification(items, base_url):
     if base_url:
         lines.append(base_url)
     return "\n".join(lines)
+
+
+def _first_line(text, limit=80):
+    for line in str(text or "").splitlines():
+        line = line.strip()
+        if line:
+            return line[:limit]
+    return ""
+
+
+def version_items(cfg):
+    """版本类监控：DSH 桌面版 / DSH 上游 / DeepSeek API 变更日志 / lark-cli / Codex CLI。
+
+    不求模型，直接产出「<工具> <版本或日期>」条目，说明里带来源与时间。
+    """
+    src = cfg.get("version_sources") or {}
+    items = []
+
+    # DSH 桌面版 feed（YAML 里的 version/releaseDate）
+    if src.get("dsh_feed"):
+        try:
+            text = fetch(src["dsh_feed"])
+            version = ""
+            release = ""
+            for line in text.splitlines():
+                if line.startswith("version:"):
+                    version = line.split(":", 1)[1].strip()
+                elif line.startswith("releaseDate:"):
+                    release = line.split(":", 1)[1].strip().strip("'\"").split("T")[0]
+            if version:
+                items.append({
+                    "feature": "DSH 桌面版 " + version,
+                    "desc": ("最新桌面版 " + version + ("（" + release + "）" if release else ""))[:60],
+                    "tool": "DSH", "type": "版本更新", "priority": "高",
+                    "source": src["dsh_feed"],
+                })
+        except Exception as error:  # noqa: BLE001
+            print("dsh feed 抓取失败:", error, file=sys.stderr)
+
+    # DSH 上游 release
+    if src.get("dsh_releases"):
+        try:
+            releases = json.loads(fetch(src["dsh_releases"]))
+            if releases:
+                item = releases[0]
+                tag = str(item.get("tag_name") or "")
+                published = str(item.get("published_at") or "")[:10]
+                if tag:
+                    items.append({
+                        "feature": "DSH 上游 " + tag,
+                        "desc": ("仓库最新 release " + tag + ("（" + published + "）" if published else ""))[:60],
+                        "tool": "DSH", "type": "版本更新", "priority": "中",
+                        "source": src["dsh_releases"],
+                    })
+        except Exception as error:  # noqa: BLE001
+            print("dsh releases 抓取失败:", error, file=sys.stderr)
+
+    # DeepSeek API 变更日志（取最新一条 Date: 与标题）
+    if src.get("deepseek_api"):
+        try:
+            text = strip_html(fetch(src["deepseek_api"]))[:8000]
+            import re as _re
+            m = _re.search(r"Date:\s*(\d{4}-\d{2}-\d{2})", text)
+            if m:
+                tail = html.unescape(_re.sub(r"\s+", " ", text[m.end():m.end() + 200])).strip()
+                items.append({
+                    "feature": "DeepSeek API " + m.group(1),
+                    "desc": ("变更日志最新：" + tail[:48]),
+                    "tool": "DeepSeek API", "type": "版本更新", "priority": "高",
+                    "source": src["deepseek_api"],
+                })
+        except Exception as error:  # noqa: BLE001
+            print("deepseek api 抓取失败:", error, file=sys.stderr)
+
+    # lark-cli（@larksuite/cli）最新版本
+    if src.get("lark_cli"):
+        try:
+            latest = json.loads(fetch(src["lark_cli"]))
+            version = str(latest.get("version") or "")
+            if version:
+                items.append({
+                    "feature": "lark-cli " + version,
+                    "desc": ("npm 最新版本 " + version)[:60],
+                    "tool": "lark-cli", "type": "版本更新", "priority": "中",
+                    "source": src["lark_cli"],
+                })
+        except Exception as error:  # noqa: BLE001
+            print("lark-cli 抓取失败:", error, file=sys.stderr)
+
+    # Codex CLI（openai/codex releases）
+    if src.get("codex_cli"):
+        try:
+            releases = json.loads(fetch(src["codex_cli"]))
+            if releases:
+                item = releases[0]
+                tag = str(item.get("tag_name") or "")
+                published = str(item.get("published_at") or "")[:10]
+                if tag:
+                    items.append({
+                        "feature": "Codex CLI " + tag,
+                        "desc": ("最新 release " + tag + ("（" + published + "）" if published else ""))[:60],
+                        "tool": "Codex CLI", "type": "版本更新", "priority": "中",
+                        "source": src["codex_cli"],
+                    })
+        except Exception as error:  # noqa: BLE001
+            print("codex cli 抓取失败:", error, file=sys.stderr)
+
+    return items
 
 
 def main():
@@ -298,6 +415,11 @@ def main():
         raise
     except Exception as error:  # noqa: BLE001
         print("豆包工作提取失败:", error, file=sys.stderr)
+
+    try:
+        candidates += version_items(cfg)
+    except Exception as error:  # noqa: BLE001
+        print("版本监控失败:", error, file=sys.stderr)
 
     unique = []
     for item in candidates:
