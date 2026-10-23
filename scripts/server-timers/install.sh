@@ -29,6 +29,12 @@ echo "✓ 脚本  $BIN"
 
 # 2) 投递脚本（dshjobs 身份，只它持有飞书凭据）
 install -d -m 0755 "$SCRIPTS_DIR" "$LOG_DIR"
+for f in "$HERE/remote"/*; do
+  [ -f "$f" ] || continue
+  install -m 0700 -o dshjobs -g dshjobs "$f" "$SCRIPTS_DIR/$(basename "$f")"
+  echo "✓ 远程脚本 $SCRIPTS_DIR/$(basename "$f")"
+done
+
 for f in "$DELIVER_SRC"/*; do
   [ -f "$f" ] || continue
   install -m 0700 -o dshjobs -g dshjobs "$f" "$SCRIPTS_DIR/$(basename "$f")"
