@@ -307,5 +307,99 @@ dsh plugin --profile desktop add "https://registry.npmjs.org/@scope/<plugin>/-/<
 ## 八、给下一任的三条硬规则
 
 1. **不确定的 API 先在测试 profile 里写探针验证**，绝不在主插件上试——`dsh.client.inject` 写错会直接让 App 起不来。
+   （这台机器上 `dsh` 命令不在 PATH，怎么起测试 profile 见 §九）
 2. **一次只改一个变量**：先证明"能拿到服务"，再证明"能渲染"，再谈样式与交互。
 3. **失败要能在界面上看见**：`console.warn` 只是兜底，最好在面板里显示错误文本；我们靠这一点定位了三次"静默不工作"。
+
+---
+
+## 九、怎么测试一个 Client 插件（不碰日常 profile · 2026-10-24 实测跑通）
+
+> 起因：`diagram-card` 开发完，要在**装进日常 profile 之前**证明它能挂载、能渲染。
+> 本机没有安装 `dsh` 命令，但可以用 Electron 的 node 模式跑 `app.asar` 里的 CLI，
+> 因此能起一个**完全隔离的测试 profile**——不动桌面端，也不重启正在用的 App。
+
+### 9.1 为什么不能用 headless
+
+`dsh-headless` 的定位是"跑一个任务、打印答案、退出"。官方文档写明它
+**没有 GUI、没有服务器、没有浏览器**，profile 里也只有 `dsh-base` + `dsh-headless`。
+
+Client 插件（`dsh.client.platform = "web"`）在那种环境**根本不会被加载**——测了也没有意义。
+要测 Client 插件，必须起一个**带渲染器的 web 实例**。
+
+### 9.2 先把 `dsh` 命令跑起来
+
+`dsh` 不在 PATH。它唯一的副本在 `app.asar` 里；普通 `node` 打不开 asar，
+但 Electron 自带解包能力，再加 `ELECTRON_RUN_AS_NODE=1` 让它不进 GUI：
+
+```bash
+APP="/Applications/DeepSeek Harness.app"
+BIN="$APP/Contents/Resources/app.asar/dsh/node_modules/@deepseek-ai/dsh/lib/bin.js"
+
+dsh() { ELECTRON_RUN_AS_NODE=1 "$APP/Contents/MacOS/DeepSeek Harness" "$BIN" "$@"; }
+```
+
+### 9.3 四步起一个隔离测试环境
+
+```bash
+# ① 从 web 模板复制一份独立 profile（--dump-config 只打印配置，不启动服务）
+dsh --profile probe --from-default-profile web --dump-config
+
+# ② 从 npm 装待测插件
+#    会同时写入 dependencies 与 dsh.profile.bundles，不需要手工改两处
+dsh plugin --profile probe add "https://registry.npmjs.org/@scope/pkg/-/pkg-0.1.0.tgz"
+
+# ③ 起独立实例（换一个端口，别抢日常端的）
+dsh --profile probe --port 19555 --no-open
+#    启动日志会打印带 token 的地址：
+#    dsh web: http://127.0.0.1:19555/?token=...
+#    ⚠️ --profile probe 后面不要再写 web —— 会被当成 app 的参数，报 too many arguments
+#    ⚠️ 浏览器必须带 token，否则 401（browser-trust fence）
+
+# ④ 验证完删掉
+rm -rf ~/.dsh/profiles/probe
+```
+
+### 9.4 三条判据（按顺序断言，失败位置直接指向原因）
+
+| # | 断言什么 | 在页面里怎么验 | 失败说明 |
+|---|---|---|---|
+| 1 | **模块加载** | `typeof window.__<你的探针>` | 包名 / `exports` / `dsh.client` 声明有问题 |
+| 2 | **apply 生效** | slot 注册的**副作用**（例如注入的 `<style>` 是否存在） | slot 名写错，或 `inject` 声明了不存在的服务 |
+| 3 | **行为正确** | 注入真实形态的输入 → 等一个扫描周期 → 检查输出 | 选择器或契约不匹配 |
+
+判据 2 的最小验证：插件在 slot 里渲染 `<style>`，检查 `document.querySelectorAll('style')` 里
+有没有你的 CSS 前缀。判据 3 要**给观察器留时间**——`MutationObserver` + 轮询的实现通常需要 1~3 秒。
+
+### 9.5 三件事别做
+
+1. **不要拿 desktop profile 做实验**——那是每天在用的那份。测试用 `probe`，用完删。
+2. **不要只看"渲染出来了吗"**——同时要确认**原来的内容还在**。替换式渲染必须验证原代码块只是被隐藏、
+   而不是被删除（卸载插件后要能退回原样）。
+3. **不要跳过清理**——杀进程、释放端口、删 profile；留着会占端口，也会让下一次测试看到脏状态。
+
+### 9.6 这套流程适合什么、不适合什么
+
+| 适合 | 不适合 |
+|---|---|
+| Client 插件（slot / 渲染 / 样式 / 交互） | Host 半的真实业务链路（要真凭据、真数据） |
+| 升级前后的回归对比 | 长会话压力与性能（要真实会话量） |
+| 首次挂载验证 | 多用户并发 |
+
+Host 半的路由、子进程、凭据，仍只能按 §二 的方式在真实环境里验。
+
+### 9.7 一次实测记录（照抄即可复现）
+
+```text
+① 建 probe（web 模板）                     → ✅
+② dsh plugin --profile probe add <tarball>  → ✅ 1.8s，自动写入 bundles
+③ dsh --profile probe --port 19555 --no-open
+   → dsh web: http://127.0.0.1:19555/?token=…
+④ 浏览器里三条判据：
+   typeof window.__dshdg                    → 'object'   （模块加载）
+   <style> 含 .dshdg-root                   → true       （apply 生效）
+   注入 pre>code.language-dsh-diagram，等 3s
+     → .dshdg-root 出现                     → true       （行为正确）
+     → 原 <pre> display:none                → true       （原内容仅隐藏，未删除）
+⑤ 清理：杀进程 / 端口释放 / 删 profile      → ✅
+```
