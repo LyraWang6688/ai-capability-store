@@ -58,13 +58,17 @@ npx @lyra_wang/dsh-feishu-remote init
 > 需要 root 先替该用户执行一次 `sudo loginctl enable-linger <user>`，否则用户级 systemd
 > 在用户未登录时不会拉起服务。没有开启 linger 时 `init` 会在输出里提示，不会中断安装。
 
+> 只有 bot 身份、走不了用户登录的设备（典型是 Linux 服务器）：`init` 要加
+> `--open-id ou_xxx`，否则它读不到你的 open_id 当白名单。收发消息本来就只用 bot，
+> 所以 `doctor` 只要求 bot 身份就绪；读不到用户身份时白名单改为提示核对。
+
 然后 **在飞书私聊机器人**发一句「帮助」即可。
 
 ## 命令
 
 | 命令 | 作用 |
 |---|---|
-| `init` | 交互式初始化（`--yes` 非交互，`--no-service` 不装服务） |
+| `init` | 交互式初始化（`--yes` 非交互，`--no-service` 不装服务，`--open-id` 用于只有 bot 身份的机器） |
 | `doctor` | 环境体检：lark-cli / 授权 / 事件订阅 / 执行后端 / Key / 服务 |
 | `status` | 配置摘要 + 服务状态 + 最近任务 |
 | `logs [--lines N]` | 看审计日志 |
@@ -115,8 +119,8 @@ npm install -g --prefix ~/.local @lyra_wang/dsh-feishu-remote
 lark-cli auth login --as bot
 # 3. 让用户级 systemd 在用户未登录时也能常驻（需要 root 执行一次）
 sudo loginctl enable-linger "$USER"
-# 4. 初始化：写配置 + 安装并启动 systemd user unit
-~/.local/bin/dsh-feishu-remote init --workdir ~/work
+# 4. 初始化：写配置 + 安装并启动 systemd user unit（只有 bot 身份时加 --open-id ou_xxx）
+~/.local/bin/dsh-feishu-remote init --workdir ~/work --open-id ou_xxx
 # 5. 把模型 key 写进环境文件（服务启动时读取，替代 macOS 钥匙串）
 echo 'DEEPSEEK_API_KEY=sk-...' > ~/.dsh-feishu-remote/env && chmod 600 ~/.dsh-feishu-remote/env
 # 6. 重启并查看状态

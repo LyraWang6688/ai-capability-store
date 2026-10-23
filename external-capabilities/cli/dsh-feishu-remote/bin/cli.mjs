@@ -24,7 +24,7 @@ const PKG = JSON.parse(readFileSync(join(dirname(CLI_DIR), 'package.json'), 'utf
 const HELP = `dsh-feishu-remote ${PKG.version} — 用飞书私聊远程操作这台电脑
 
 用法:
-  dsh-feishu-remote init [--workdir <dir>] [--lark-profile <name>] [--dsh <cmd>] [--yes] [--no-service]
+  dsh-feishu-remote init [--workdir <dir>] [--lark-profile <name>] [--dsh <cmd>] [--open-id <ou_xxx>] [--yes] [--no-service]
   dsh-feishu-remote doctor
   dsh-feishu-remote status
   dsh-feishu-remote logs [--lines 50]
@@ -83,9 +83,11 @@ async function init(args) {
   ensureDirs();
   const cfg = loadConfig() || { ...DEFAULTS };
   const status = await authStatus(cfg);
-  const openId = currentOpenId(status);
+  const explicitOpenId = flag(args, '--open-id');
+  const openId = explicitOpenId || currentOpenId(status);
   if (!openId) {
-    console.error('✗ 飞书尚未授权：请先运行 `lark-cli auth login --domain im`（或带 --profile），再执行 init。');
+    console.error('✗ 读不到发送人的 open_id：请先运行 `lark-cli auth login --domain im`（或带 --profile），');
+    console.error('  或显式传 `--open-id ou_xxx`。只有 bot 身份的服务器（无法走用户登录）用后者。');
     process.exitCode = 1;
     return;
   }
