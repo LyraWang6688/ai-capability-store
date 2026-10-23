@@ -130,14 +130,15 @@ orchestrations:
     name: readloop-daily
     path: orchestrations/service-call/doubao-work/readloop-daily
     status: testing
-    version: 0.1.0
+    version: 0.1.1
     updated: "2026-10-23"
     trigger: host-schedule
     goal: 宿主定时叫醒，按记忆曲线每天出题、判分、把状态写回用户自己的表
     execution:
       requires: [bash, curl, network, feishu-native]
-      # open.feishu.cn 只出现在首次配置的「一键创建用户自己的飞书应用」段（SKILL.md 3.3）。
-      egress: [readinsight.bamamei.online, open.feishu.cn]
+      # 0.2.0 起首次配置的写入校验由服务端代跑，SOP 不再 curl 飞书；插件直连
+      # open.feishu.cn 是浏览器的事，不属于宿主这条链的出网。
+      egress: [readinsight.bamamei.online]
     steps:
       - id: coach
         link: 1-coach
@@ -147,6 +148,10 @@ orchestrations:
           contract: skills/readloop/references/api.md
           endpoints:
             - POST /api/license/activate
+            # 首次配置：一键创建用户自己的飞书应用（契约见 api.md 第 4 节）
+            - POST /api/setup/app/start
+            - GET /api/setup/app/status
+            - POST /api/setup/app/pair
             - POST /api/review/today
             - POST /api/review/submit
         produces: 今日题目、判分与状态更新（写回用户的多维表格）

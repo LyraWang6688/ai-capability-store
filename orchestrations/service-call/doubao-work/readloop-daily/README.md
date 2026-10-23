@@ -35,7 +35,7 @@
 - 宿主具备飞书能力（豆包原生，或安装并登录 `lark-cli`）
 - 一个 host token：8 位授权码经 `POST /api/license/activate` 兑换，存 `~/.readloop/config.json`（600）
 - **首次配置自举**：这条编排的钟不是 `automations/` 里的 automation —— 是 skill 在首次配置时用宿主自己的定时任务能力创建的（读回校验后写进 config 的 `schedule` 段）。所以 `trigger: host-schedule` 是一个**运行时产生**的事实，不是登记时就固定的 cron。
-- 首次配置的一键创建飞书应用段会 `curl open.feishu.cn`（校验用户自己的应用凭证），这是 `execution.egress` 里第二个域名的来源
+- readloop skill 0.2.0 起，首次配置的写入校验由服务端代跑，**宿主不再 `curl open.feishu.cn`**；插件直连飞书是浏览器那侧的事，不算这条链的出网 —— 所以 `execution.egress` 只有 `readinsight.bamamei.online`。
 
 ## 不做的事
 
