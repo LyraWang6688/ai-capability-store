@@ -55,6 +55,8 @@ python3 ~/Documents/workplace/ai-capability-store/automations/github-trending/da
 
 读表方式：用 `repo-collector` skill 的 `scripts/target.json` 里的
 `base_token` / `table_id`，跑 `lark-cli base +record-list --as user`。
+该 skill 是**本地专用**（源码在 `~/.agents/skills/repo-collector`，不入库），
+不是本仓库的资产；本仓库 `skills/` 下只有一条指过去的软链。
 
 ---
 

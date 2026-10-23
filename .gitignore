@@ -46,4 +46,5 @@ handoff-*.md
 # 由 scripts/link_local_skill.py 维护；校验器要求每个软链都有对应的一行。
 # 软链不是资产：没有内容可克隆，提交后在任何别的机器上都是断链。
 skills/dsh-diagram
+skills/repo-collector
 skills/store-publish

@@ -179,12 +179,6 @@ skills:
       那个管代码/依赖/死文件，这个只管分支/worktree/PR。worktree 一律不自动
       删除（可能被其他 agent 占用），只报告。默认 plan 模式只出计划，
       加 --clean 才真删。
-  repo-collector:
-    name: repo-collector
-    path: skills/repo-collector
-    status: testing
-    version: 0.1.5
-    updated: "2026-10-23"
   wechat-html-css-layout:
     name: wechat-html-css-layout
     path: skills/wechat-html-css-layout

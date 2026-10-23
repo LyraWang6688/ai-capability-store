@@ -1,4 +1,0 @@
-interface:
-  display_name: "Repository Collector"
-  short_description: "Collect GitHub repos mentioned in a chat into the Feishu Bitable"
-  default_prompt: "Use $repo-collector to collect the GitHub repositories mentioned in this conversation into my Bitable."
