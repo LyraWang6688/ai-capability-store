@@ -277,6 +277,43 @@ All three are assertions this repository cannot verify. That is not a reason to 
 them — it is the reason to make them mandatory and specific, so the record says what
 was intended rather than recording an intention shaped like a placeholder.
 
+## Two-stage pipeline: Actions collects, the server DSH decides
+
+2026-10-24 起，部分自动化从「Actions 里一路做完」改成两段：
+
+```text
+GitHub Actions（海外网络）          服务器 DSH（梧桐）
+  抓数据 / 聚合 / 归一化   ──SSH──▶  判断有没有变化
+  不调模型、不写飞书                  需要时调 DeepSeek
+                                    渲染 HTML / 写飞书 Base / 写任务收件箱
+                                    最后检查有没有可复用的 Skill
+```
+
+- 判断是**确定性代码**做的（指纹 + 状态文件），不交给模型——否则判断本身就要花一次模型调用
+- 没变化 → 不叫模型、不投递；有变化 → 才走 `dsh headless`
+- 凭据只留在服务器（`FEISHU_*` 与 `DEEPSEEK_API_KEY` 不再进 Actions）
+- 入口：`/usr/local/bin/automation-accept`（SSH forced command）→ `scripts/server-timers/remote/dispatch.py`
+- Secrets：`AUTOMATION_SSH_HOST` / `AUTOMATION_SSH_USER` / `AUTOMATION_SSH_KEY`
+
+## Report URL convention
+
+HTML 交付物统一挂在 `https://automation.bamamei.online`：
+
+```text
+https://automation.bamamei.online/reports/<automation-name>/<YYYY-MM-DD>[-<variant>].html
+```
+
+| 规则 | 说明 |
+|---|---|
+| `automation-name` | 等于 `automations/registry.yaml` 里的名字 |
+| `YYYY-MM-DD` | 运行日（Asia/Shanghai），也是幂等键：同日重跑覆盖 |
+| `-<variant>` | 可选，一次运行产出多份 HTML 时用 |
+| `latest.html` | 同目录下最近一次成功报告的副本 |
+| 收件箱 | 摘要里附完整 URL（带 `?v=<时间戳>` 防缓存） |
+
+服务器路径 = URL 路径：`/srv/automation/www/reports/<automation-name>/<file>`。
+只托管 HTML；日志和原始 JSON 留在服务器本地。保留 90 天，超期由清理脚本删除。
+
 ## Adding an automation
 
 1. Create `automations/<kebab-name>/` with a `README.md` and an entrypoint — or,

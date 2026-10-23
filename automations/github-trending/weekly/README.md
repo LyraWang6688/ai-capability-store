@@ -85,3 +85,14 @@ It **never** manufactures a trend from two points. Downstream (DSH) must honour
 ```bash
 python3 automations/github-trending/weekly/aggregate.py --data-dir /path/to/trending
 ```
+
+## Delivery (2026-10-24)
+
+Actions 只做聚合，通过 SSH 把 payload 推给服务器 DSH。服务器判断/调模型，
+HTML 周报发布到：
+
+```text
+https://automation.bamamei.online/reports/github-trending-weekly/<YYYY-MM-DD>.html
+```
+
+`data` 分支仍保留每周聚合（归档），它不是用户可见输出。

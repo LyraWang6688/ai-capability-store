@@ -1,13 +1,21 @@
-# Scheduled execution of automations/github-trending/weekly.
+# Two-stage execution of automations/github-trending/weekly.
 #
-# Contract (see automations/README.md):
-#   * the cron lives HERE and only here — registry.yaml records trigger_kind only
-#   * reads the last 7 daily snapshots from the `data` branch
-#   * output is committed to the `data` branch, never to `main`
+# 2026-10-24 起分工变化：
+#   * GitHub Actions 读 `data` 分支近 7 天快照、聚合，不调模型、不写飞书
+#   * 聚合 payload 通过 SSH 推给服务器 DSH → 服务器出周报 HTML + 写 Base + 写收件箱
+#   * `data` 分支仍保留每周聚合（原始归档），不是用户可见输出
+#
+# Secrets required:
+#   AUTOMATION_SSH_HOST / AUTOMATION_SSH_USER / AUTOMATION_SSH_KEY
 name: automation-github-trending-weekly
 
 on:
   workflow_dispatch:
+    inputs:
+      dry-run:
+        description: "只聚合，不推送到服务器 DSH"
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -53,6 +61,33 @@ jobs:
           print('trustworthy    :', d['trustworthy'])
           print('note           :', d['note'])
           "
+
+      - name: Build payload (add kind)
+        run: |
+          set -euo pipefail
+          STAMP="$(TZ=Asia/Shanghai date +%F)"
+          python3 - <<PY
+          import json
+          d = json.load(open("out/trending/weekly-${STAMP}.json"))
+          d["kind"] = "github-trending-weekly"
+          json.dump(d, open("payload.json", "w"), ensure_ascii=False)
+          print("payload: topics", len(d.get("topic_frequency", [])))
+          PY
+
+      - name: Push payload to server DSH
+        if: ${{ inputs.dry-run != true }}
+        env:
+          AUTOMATION_SSH_HOST: ${{ secrets.AUTOMATION_SSH_HOST }}
+          AUTOMATION_SSH_USER: ${{ secrets.AUTOMATION_SSH_USER }}
+          AUTOMATION_SSH_KEY: ${{ secrets.AUTOMATION_SSH_KEY }}
+        run: |
+          set -euo pipefail
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$AUTOMATION_SSH_KEY" > ~/.ssh/automation
+          chmod 600 ~/.ssh/automation
+          ssh -i ~/.ssh/automation -o StrictHostKeyChecking=accept-new -o ConnectTimeout=20 \
+            "$AUTOMATION_SSH_USER@$AUTOMATION_SSH_HOST" < payload.json | tee result.json
+          python3 -c "import json; d=json.load(open('result.json')); print('ok=', d.get('ok'), 'changed=', d.get('changed'), 'report=', d.get('report'))"
 
       - name: Commit aggregate to data branch
         working-directory: out

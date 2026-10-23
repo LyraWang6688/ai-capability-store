@@ -46,63 +46,65 @@ automations:
     path: automations/github-trending/daily
     entrypoint: scan.py
     status: testing
-    version: 0.6.0
-    updated: "2026-10-19"
+    version: 0.6.1
+    updated: "2026-10-24"
     trigger_kind: daily
     executor: github-actions
     workflow: .github/workflows/automation-github-trending-daily.yml
     external_trigger: scripts/server-timers/systemd/github-trending-daily.timer
     output:
-      target: git-branch
-      branch: data
-      path_pattern: "trending/{date}.json"
+      target: external-system
+      destination: "DSH 收件箱 + https://automation.bamamei.online/reports/github-trending-daily/<date>.html"
     description: >
-      采集 GitHub Trending 日榜与周榜、以及近 7 天新建的高星仓库，附话题频次直方图，
-      以 JSON 快照写入 data 分支。
+      采集 GitHub Trending 日榜与周榜、以及近 7 天新建的高星仓库，附话题频次直方图。
     notes: >
-      云端采集端，解决「DSH 未运行或电脑关机时数据断档」。只采集事实，不产出结论：
-      话题判断、可复用分析、与项目的关联仍由 DSH 会话内完成。只读网络，不写 main。
+      0.6.1 起两段式：Actions 只抓数据（不调模型、不写飞书），SSH 推给服务器 DSH；
+      服务器判断有无变化、需要时调 DeepSeek 出报告、渲染 HTML 到 automation.bamamei.online、
+      写飞书 Base 与任务收件箱。`data` 分支仍保留原始快照（给 weekly 聚合，属归档）。
 
   github-trending-weekly:
     name: github-trending-weekly
     path: automations/github-trending/weekly
     entrypoint: aggregate.py
     status: testing
-    version: 0.2.0
-    updated: "2026-10-18"
+    version: 0.2.1
+    updated: "2026-10-24"
     trigger_kind: weekly
     executor: github-actions
     workflow: .github/workflows/automation-github-trending-weekly.yml
     external_trigger: scripts/server-timers/systemd/github-trending-weekly.timer
     output:
-      target: git-branch
-      branch: data
-      path_pattern: "trending/weekly-{date}.json"
+      target: external-system
+      destination: "DSH 收件箱 + https://automation.bamamei.online/reports/github-trending-weekly/<date>.html"
     description: >
       读取 data 分支最近 7 天的日快照，聚合出话题持续度、仓库一周净增星、
-      一日热度与常驻项目，写入 data 分支。
+      一日热度与常驻项目。
     notes: >
-      消费 github-trending-daily 的快照。不足 3 天数据时只报 note，不硬下趋势结论。
-      weekly 不得在 daily 仍为 active/testing 时被归档。
+      0.2.1 起两段式：Actions 只做聚合（不调模型、不写飞书），SSH 推给服务器 DSH；
+      服务器判断/调模型/出周报 HTML/写收件箱。`data` 分支仍保留每周聚合（归档）。
+      不足 3 天数据时只报 note，不硬下趋势结论。
 
   github-portfolio-snapshot:
     name: github-portfolio-snapshot
     path: automations/github-portfolio-snapshot
     entrypoint: snapshot.py
     status: testing
-    version: 0.3.0
-    updated: "2026-10-18"
+    version: 0.3.1
+    updated: "2026-10-24"
     trigger_kind: monthly
     executor: github-actions
     workflow: .github/workflows/automation-github-portfolio-snapshot.yml
     external_trigger: scripts/server-timers/systemd/github-portfolio-snapshot.timer
     output:
       target: external-system
-      destination: "Feishu Base「项目管理」的多维表格：Repo Snapshot History / Snapshot Runs / Deleted Repos"
+      destination: "DSH 收件箱 + Feishu Base「项目管理」：Repo Snapshot History / Snapshot Runs / Deleted Repos"
     description: >
       每月对 GitHub 账号下的仓库做一次状态快照：存在哪些仓库、相对上一期有什么变化、
       各自处于什么活性档位与可发现性得分，写入飞书 Base。
     notes: >
+      0.3.1 起两段式：Actions 只抓仓库元数据（SNAPSHOT_GH_TOKEN），SSH 推给服务器 DSH；
+      服务器写三张 Base 表并写任务收件箱，Actions 不再持有 FEISHU_APP_ID / FEISHU_APP_SECRET。
+
       0.2.0 起从 launchd 迁到 github-actions，同时把传输层从 lark-cli 子进程改成
       直连飞书 OpenAPI（tenant_access_token，凭据走 FEISHU_APP_ID / FEISHU_APP_SECRET）。
 

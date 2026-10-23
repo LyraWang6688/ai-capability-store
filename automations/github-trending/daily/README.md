@@ -131,3 +131,14 @@ real, readable state — never confuse it with "nothing is trending".
 
 A skill is a procedure an Agent follows when it decides to. This runs when a
 clock fires. See `automations/README.md`.
+
+## Delivery (2026-10-24)
+
+Actions 只抓数据，通过 SSH 把 payload 推给服务器 DSH。服务器判断有无变化，
+需要时调 DeepSeek 出报告，HTML 发布到：
+
+```text
+https://automation.bamamei.online/reports/github-trending-daily/<YYYY-MM-DD>.html
+```
+
+`data` 分支仍保留原始快照（给 weekly 聚合），它不是用户可见输出。

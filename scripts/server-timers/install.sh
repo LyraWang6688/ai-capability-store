@@ -35,6 +35,27 @@ for f in "$DELIVER_SRC"/*; do
   echo "✓ 投递脚本 $SCRIPTS_DIR/$(basename "$f")"
 done
 
+# 2b) 远程接收入口（GitHub Actions → 服务器 DSH）
+#     脚本装到 $SCRIPTS_DIR，SSH 的 forced command 指向 /usr/local/bin/automation-accept。
+REMOTE_SRC="$HERE/remote"
+if [[ -d "$REMOTE_SRC" ]]; then
+  for f in "$REMOTE_SRC"/*.py; do
+    [ -f "$f" ] || continue
+    install -m 0700 -o dshjobs -g dshjobs "$f" "$SCRIPTS_DIR/$(basename "$f")"
+    echo "✓ 接收脚本 $SCRIPTS_DIR/$(basename "$f")"
+  done
+  cat > /usr/local/bin/automation-accept <<'WRAP'
+#!/bin/sh
+exec sudo -n runuser -u dshjobs -- env HOME=/srv/dsh-jobs /srv/dsh-jobs/scripts/dispatch.py
+WRAP
+  chmod 0755 /usr/local/bin/automation-accept
+  echo "✓ 接收入口 /usr/local/bin/automation-accept"
+fi
+
+# 2c) 报告托管目录（nginx 静态站点根）
+install -d -m 0755 -o dshjobs -g dshjobs /srv/automation/www/reports
+echo "✓ 报告目录 /srv/automation/www/reports"
+
 # 3) systemd 单元
 for f in "$UNITS"/*; do
   [ -f "$f" ] || continue
