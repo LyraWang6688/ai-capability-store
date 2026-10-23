@@ -37,15 +37,18 @@ LyraWang6688/ai-capability-store
 ```text
 Skill               = How to do
 External Capability = What can be called
+Automation          = When it runs
+Orchestration       = In what order, for one task
 ```
 
-Three **peer Domains**:
+Four **peer Domains**:
 
 | Domain | Owns | Examples |
 |---|---|---|
 | Skills | How to do | Method / SOP / Workflow / Decision Rule / Know-how |
 | External Capabilities | What can be called | MCP / Plugin / CLI / Connector / API / Integration |
 | Automations | What runs by itself | Scheduled collection / recurring aggregation / event-driven maintenance |
+| Orchestrations | In what order, for one task | Multi-asset pipelines and the hand-off rules between them |
 
 A Plugin is NOT a sub-entity of a Skill. Formal Domain remains
 **External Capability**, which also covers plugin / mcp / connector / cli /
@@ -56,6 +59,13 @@ decided to, a Capability is called because something asked for it. An Automation
 runs because **a clock fired** — it is execution, not capability. Automation
 output is committed to the `data` branch and never to `main`, so machine data
 cannot bury the Store's asset history.
+
+An Orchestration only **references** the other Domains — it holds no
+implementation, no rules and no code. It records the order of the steps, their
+dependencies, and the hand-off rules between assets that belong to neither side
+("change this message and that listener stops matching"). It may be started by a
+human, by a clock, or by a call to a service we operate; the orchestration itself
+is never the clock.
 
 ## Dependency Layer
 
@@ -115,6 +125,10 @@ ai-capability-store/
 │   ├── registry.yaml
 │   ├── LIFECYCLE.md
 │   └── <automation-name>/          # implementation + test_*.py, one per automation
+├── orchestrations/                 # Domain D: Orchestrations (in what order, for one task)
+│   ├── README.md
+│   ├── registry.yaml               # steps are the machine truth; directory symlinks mirror them
+│   └── <mode>/<ecosystem>/<task>/  # mode: manual / scheduled-task / service-call
 ├── dependencies/
 │   └── capability-map.yaml
 ├── tests/                          # Development / Evaluation Layer
@@ -130,6 +144,9 @@ ai-capability-store/
   cross-project vs project-specific is a registry field, not a path)
 - Store-managed MCP implementation: `external-capabilities/mcp/<capability-name>/`
 - Provider doc: `external-capabilities/providers/<provider-name>/README.md`
+- Orchestration: `orchestrations/<mode>/<ecosystem>/<task>/` — mode is
+  `manual` / `scheduled-task` / `service-call`; the task name must not collide
+  with an asset it references (tags are namespaced by the same name)
 
 ## Versioning
 

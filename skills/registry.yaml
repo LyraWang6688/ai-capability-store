@@ -99,7 +99,7 @@ skills:
     path: skills/readloop
     scope: shared
     status: testing
-    version: 0.1.0
+    version: 0.1.1
     updated: "2026-10-23"
     notes: >
       Daily English review loop built on real reading. The host reads and writes
@@ -110,6 +110,10 @@ skills:
       is four steps: pick model, create the Bitable from template, install the
       Chrome extension, create a host scheduled task (daily/weekly + time).
       `testing`: not yet validated end-to-end on Doubao Work.
+      0.1.1 (patch): `compatibility` now names the outbound destinations and
+      what leaves the machine (candidate points, answers, the user's model config
+      including the API key) per SECURITY.md § Outbound — before this it said
+      only "needs to reach the ReadLoop service", which is not a destination.
   store-publish:
     name: store-publish
     path: skills/store-publish
