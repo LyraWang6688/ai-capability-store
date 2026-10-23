@@ -15,7 +15,8 @@
 | 全部已读 | 一键把当前未读全部标记 |
 | 轮询 | 打开 App 期间每 30 分钟刷新 |
 
-> 和「任务侧」的分工与投递契约见 [`INTEGRATION.md`](./INTEGRATION.md)。
+> 和「任务侧」的分工与投递契约属于编排层：见
+> [`orchestrations/scheduled-task/dsh/README.md`](../../../../orchestrations/scheduled-task/dsh/README.md)。
 
 ## 架构
 
