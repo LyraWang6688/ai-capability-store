@@ -142,7 +142,12 @@ python3 traffic_baseline.py --owner LyraWang6688 --record
 python3 traffic_baseline.py --owner LyraWang6688 --compare
 ```
 
-退出码：`audit` 0 = 全 PASS/SKIP，1 = 有 FAIL。`report_issues` 0 = 无错误，1 = 有仓库写入失败。
+退出码：`audit` 0 = 全 PASS/SKIP，1 = 有 FAIL，**2 = 有仓库没审到（数据不完整）**。
+`report_issues` 0 = 无错误，1 = 有仓库写入失败。
+
+workflow 把这几个码分开用：**1 是每周的预期输出（仓库本来就有待改进项），不该让任务变红；
+2 和 report_issues 的 1 才是故障**，会让这次运行以非零结束 —— 单仓库失败不阻断其余仓库
+（脚本内部继续），但"没跑全"不会留下一个绿勾。
 
 
 ## D8 · 命名检测

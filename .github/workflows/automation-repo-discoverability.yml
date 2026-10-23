@@ -41,15 +41,33 @@ jobs:
         run: python3 test_discoverability.py
 
       - name: Audit (read-only)
+        id: audit
+        # 继续跑后面的步骤，但把"没跑成"记下来交给最后的汇总步骤 —— 以前用
+        # `|| true` 直接吞掉，权限不足 / API 失败会留下一个绿色运行。
+        continue-on-error: true
         working-directory: automations/repo-discoverability
         env:
           # 跨仓库读公开信息：github.token 只覆盖当前仓库，必须用 PAT
           GH_TOKEN: ${{ secrets.GH_AUDIT_TOKEN || github.token }}
         run: |
           set -euo pipefail
-          python3 audit_discoverability.py --all --owner LyraWang6688 || true
+          set +e
+          python3 audit_discoverability.py --all --owner LyraWang6688
+          rc=$?
+          set -e
+          # 1 = 发现了不合规项，这是每周的预期输出，不是故障（红了会训练人忽略红色）。
+          # 2 = 有仓库没审到，数据不完整，必须让这次运行失败。
+          if [ "$rc" -gt 1 ]; then
+            echo "::error::审计没有完成（exit $rc）—— 有仓库没审到，本次数据不完整"
+            exit "$rc"
+          fi
+          if [ "$rc" -eq 1 ]; then
+            echo "::notice::审计完成，发现不合规项（预期输出，不改变任务状态）"
+          fi
 
       - name: Open / update issues on non-compliant repos
+        id: issues
+        continue-on-error: true
         working-directory: automations/repo-discoverability
         env:
           # 跨仓库开 issue 必须是 PAT（repo scope）；GITHUB_TOKEN 只能写当前仓库
@@ -58,10 +76,10 @@ jobs:
           set -euo pipefail
           if [ "${{ inputs.dry-run }}" = "true" ]; then
             echo "::notice::dry-run —— 只打印，不开 issue"
-            python3 report_issues.py --owner LyraWang6688 || true
+            python3 report_issues.py --owner LyraWang6688
           else
             # 每周都会跑：脚本是幂等的（有则改、好则关），不会重复开单
-            python3 report_issues.py --owner LyraWang6688 --create || true
+            python3 report_issues.py --owner LyraWang6688 --create
           fi
 
       - name: Summary
@@ -77,3 +95,16 @@ jobs:
             echo "- 归档仓库直接跳过（只读）。"
             echo "- issue 是幂等的：同一仓库只维护一条，修好会自动关闭。"
           } >> "$GITHUB_STEP_SUMMARY"
+
+      # 批量行为保留（单仓库失败不影响其余仓库），但"这次没跑全"必须让运行变红，
+      # 而不是留一个绿勾让人以为都干净了。
+      - name: Fail if the audit or issue step could not complete
+        if: always()
+        run: |
+          audit="${{ steps.audit.outcome }}"
+          issues="${{ steps.issues.outcome }}"
+          echo "audit=$audit issues=$issues"
+          if [ "$audit" != "success" ] || [ "$issues" != "success" ]; then
+            echo "::error::发现性任务没有完整跑完（audit=$audit issues=$issues）"
+            exit 1
+          fi

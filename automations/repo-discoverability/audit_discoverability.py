@@ -51,7 +51,10 @@ Usage:
     python3 scripts/audit_discoverability.py --all --owner LyraWang6688
     python3 scripts/audit_discoverability.py --all --owner X --json
 
-Exit codes: 0 all PASS/SKIP, 1 something FAILed, 2 could not run.
+Exit codes: 0 all PASS/SKIP, 1 something FAILed, 2 the audit could not be
+completed (listing failed, or one or more repos errored). "Found findings" is
+expected output, not an error — a weekly job that goes red because repositories
+still have gaps would train everyone to ignore red.
 """
 from __future__ import annotations
 
@@ -189,6 +192,19 @@ def print_report(result: dict) -> None:
     print(f"\n  得分: {result['score']}/{result['total']}")
 
 
+def exit_code_for(results: list, errors: int, scorable: list) -> int:
+    """把"审完了"和"没审成"分开。
+
+    返回 1（发现不合规项）是这次审计的**正常输出**，不是故障：仓库本来就有待改进项，
+    每周因此变红只会让人习惯性忽略红色。返回 2 才表示这次数据不完整（有仓库报错），
+    「没审全」不能被当成「都很干净」。
+    """
+    if errors:
+        return 2
+    failed = any(i["status"] == "FAIL" for r in scorable for i in r["items"])
+    return 1 if failed else 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -222,11 +238,13 @@ def main() -> int:
         return 2
 
     results = []
+    errors = 0
     for repo in repos:
         try:
             result = audit(repo, with_naming=not args.no_naming)
         except Exception as exc:  # noqa: BLE001 — one bad repo must not kill the run
             print(f"[warn] {repo}: {type(exc).__name__}: {exc}", file=sys.stderr)
+            errors += 1
             continue
         results.append(result)
 
@@ -261,8 +279,7 @@ def main() -> int:
             print(f"\n  平均 {avg * 100:.0f}%（按各自满分归一）")
             print(f"  公开 {len(scorable) - len(priv)} 个 · 私有 {len(priv)} 个 · 归档跳过 {len(results) - len(scorable)} 个")
 
-    failed = any(i["status"] == "FAIL" for r in scorable for i in r["items"])
-    return 1 if failed else 0
+    return exit_code_for(results, errors, scorable)
 
 
 if __name__ == "__main__":
