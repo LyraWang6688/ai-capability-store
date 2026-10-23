@@ -121,6 +121,7 @@ window.__ModuleLoader__.load({
     }
 
     function SelectionToolbar(props) {
+      const sessionId = props && props.sessionId;
       const { t } = props;
       const [selection, setSelection] = React.useState(null);
       const [toast, setToast] = React.useState('');
@@ -283,6 +284,11 @@ window.__ModuleLoader__.load({
           document.removeEventListener('mousedown', onPointerDown, true);
         };
       }, [quote]);
+
+      // 切换会话时清掉引用条（引用是会话内的临时状态）
+      React.useEffect(() => {
+        setQuote(null);
+      }, [sessionId]);
       if (selection === null && toast === '' && quote === null) return null;
       const center = selection === null
         ? 0
