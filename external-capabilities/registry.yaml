@@ -226,9 +226,9 @@ capabilities:
     type: plugin
     status: limited
     provider_path: external-capabilities/providers/lyrawang/README.md
-    version: 0.1.0
+    version: 0.1.1
     implementation_path: external-capabilities/plugin/dsh/diagram-card
     auth: "无凭据。无 Host 路由、无网络请求、无子进程、无文件系统访问；全部逻辑在客户端只读渲染"
     capabilities: "把对话里 ```dsh-diagram 代码块渲染成结构化卡片图：layered（分层架构：任务 → 分组容器 → 等宽能力卡片网格 → 结果）与 flow（流程：起止胶囊 + 编号步骤 + 回环）。JSON 是唯一事实源，代码块保留在消息里（隐藏），删插件即退回原样。文字用 textContent 写入、可选中可搜索；深/浅色按宿主 body 背景亮度自动适配"
     permissions: "无需任何外部权限或凭据。仅使用 DSH 客户端 `shell.overlay` 槽位注入一个自绘样式与观察器；不读取其它插件 DOM、不改 document.body、不写入任何存储"
-    notes: "自研、Store-managed。定位：让「好看的架构图」成为回复的默认表达能力，而不是每次让模型生成图片或让用户手动打开 HTML。设计参数取自 ChatGPT 对话内渲染的实测 token（配色 #0E0E0E/#303030/#2C67C5/#40C977、圆角 16/12/8、字号 14/12/16）。实现取舍：按 plugin/dsh/README.md「未验证 slot 不许上主插件」，只用已稳定的 shell.overlay，通过 MutationObserver + 2s 轮询观察 pre>code 并就地替换，而非依赖未验证的 conversation.chat.*。已用隔离页 dev/preview.html 自测：2 张图渲染、6 个卡片格、slot 注册为 shell.overlay/dshdg-boot 全部通过。status 取 limited：已在隔离的 probe profile 里完成宿主内集成实测（2026-10-24，DSH Desktop 0.2.1-rc.2）——从 npm 安装后 web 实例正常加载（window.__dshdg 存在）、shell.overlay 挂载生效（自绘 CSS 已注入）、注入 pre>code.language-dsh-diagram 后 2 秒内完成替换且原代码块仅隐藏不删除。未覆盖：真实消息链路（未经 agent 生成，仅注入模拟块）与长会话压力，故取 limited 而非 available。测试方法见 plugin/dsh/README.md §九"
+    notes: "自研、Store-managed。定位：让「好看的架构图」成为回复的默认表达能力，而不是每次让模型生成图片或让用户手动打开 HTML。设计参数取自 ChatGPT 对话内渲染的实测 token（配色 #0E0E0E/#303030/#2C67C5/#40C977、圆角 16/12/8、字号 14/12/16）。实现取舍：按 plugin/dsh/README.md「未验证 slot 不许上主插件」，只用已稳定的 shell.overlay，通过 MutationObserver + 2s 轮询观察 pre>code 并就地替换，而非依赖未验证的 conversation.chat.*。已用隔离页 dev/preview.html 自测：2 张图渲染、6 个卡片格、slot 注册为 shell.overlay/dshdg-boot 全部通过。0.1.1：修两处实测问题——(1) 主题检测按 DSH 的 `data-ds-dark-theme` 判定，此前读的是不存在的 `data-theme`，导致浅色界面里卡片仍是深色；补了「背景亮度 → 文字亮度」两级兜底。(2) 收紧排版（画布内距 12→10、卡片 8→6、行高 26→22、宽度 792→720），分层图高度 685→539px，在 802px 高的窗口里一屏可看完。status 取 limited：已在隔离的 probe profile 里完成宿主内集成实测（2026-10-24，DSH Desktop 0.2.1-rc.2）——从 npm 安装后 web 实例正常加载（window.__dshdg 存在）、shell.overlay 挂载生效（自绘 CSS 已注入）、注入 pre>code.language-dsh-diagram 后 2 秒内完成替换且原代码块仅隐藏不删除。未覆盖：真实消息链路（未经 agent 生成，仅注入模拟块）与长会话压力，故取 limited 而非 available。测试方法见 plugin/dsh/README.md §九"
