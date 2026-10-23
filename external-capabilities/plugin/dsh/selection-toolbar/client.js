@@ -95,8 +95,8 @@ window.__ModuleLoader__.load({
       for (const listener of quoteStore.listeners) listener();
     }
     function useQuote() {
-      const [value, setValue] = useState(quoteStore.current);
-      useEffect(() => {
+      const [value, setValue] = React.useState(quoteStore.current);
+      React.useEffect(() => {
         const listener = () => setValue(quoteStore.current);
         quoteStore.listeners.add(listener);
         return () => quoteStore.listeners.delete(listener);
