@@ -1,25 +1,29 @@
-# Codex 桌面版（ChatGPT.app 内的 Codex） — 主题索引
+# Codex 桌面版（ChatGPT.app 内的 Codex） — 文件夹索引
 
-## 状态
+## 这个文件夹是干什么的
 
-**未实测。** 这里目前只有骨架，抬头与必答小节仍是 `待填写`。
-门禁 `check_doc.py` 对这篇会失败 —— 这是预期的，没跑过就不该写成已验证。
+收录**这个软件**下的功能文档：今天给它做这个功能、明天做那个功能，
+每做一件事就按功能名建一篇。文件夹 = 这个软件，文件名 = 那个功能。
 
-## 主题
+## 现状
 
-| 文档 | 主题 | 状态 |
+**还没有文档。** 下面的功能都未实测，所以不建空文件——空文档只会让 Agent
+以为"这里有答案"。
+
+| 功能文档 | 用途 | 状态 |
 |---|---|---|
-| [basic-operation.md](./basic-operation.md) | 通用操作记录（权限前提 / 手段 / 验证 / 回退 / 何时别用） | 未验证 |
+| `cdp-takeover.md` | 用调试端口接管界面，读 DOM 判断状态 | 待建 |
+| `permissions.md` | 需要的系统权限，缺哪个会静默失败 | 待建 |
 
-## 待拆分的方向
+## 建新文档时
 
-待补：CDP / 辅助功能 / 窗口截取
+1. 文件名 = 功能（`window-capture` / `ax-tree`），不要 `basic-operation` / `misc` 这类说了等于没说的名字。
+2. 走 [`new_doc.py`](../../../skills/computer-automation-log/scripts/new_doc.py) 生成骨架，
+   写完过 [`check_doc.py`](../../../skills/computer-automation-log/scripts/check_doc.py) 门禁。
+3. 建好后回到这里，把上表那一行改成链接。
 
-内容长到一条路径写不完时，按 `doubao-work/` 的做法拆成 `<topic>.md`：
-一次操作一条路径一篇，每篇仍要满足抬头四条与必答小节。
+## 参考
 
-## 写之前先看
-
-- 全局规则：[`../../README.md`](../../README.md)
-- 必答问题与范例：[`../../../skills/computer-automation-log/references/doc-contract.md`](../../../skills/computer-automation-log/references/doc-contract.md)
-- 已有样例：[doubao-work/](../doubao-work/README.md)（已验证，可作为写法参考）
+- 已完成的样板：[doubao-work/](../doubao-work/README.md)
+- 文档规则：[`../../../README.md`](../../../README.md) 与
+  [`doc-contract.md`](../../../skills/computer-automation-log/references/doc-contract.md)
