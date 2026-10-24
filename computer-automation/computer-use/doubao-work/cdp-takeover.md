@@ -58,3 +58,50 @@
 - **启动失败先读日志**：profile 锁文件写不了时应用会静默退出，日志里是 `ProcessSingleton` / `SingletonLock` 字样，而不是明显的权限报错。
 - **权限模型要分开看**：辅助功能被拒 ≠ 不能自动化。先确认目标是不是 Chromium/Electron 内核，再决定路线。
 - **调试参数是一次性的**：它不写进任何配置，重启即失效，所以每次接管都要重新带参启动。
+
+## 可复现步骤
+
+前置：运行环境必须能写目标 App 自己的数据目录，否则第 3 步会失败。
+
+1. **确认内核是不是 Chromium**。看 App 的进程与框架目录里有没有带版本号的 Chromium 框架
+   （实测为 147）。观察：能找到一个 `*Browser Framework.framework/Versions/<版本>` 目录。
+   不是 Chromium 就别往下走，CDP 不适用。
+2. **正常退出 App**。用系统退出，不要硬杀——硬杀可能丢未保存状态。
+3. **带调试端口启动**，端口选一个没被占的：
+
+   ```bash
+   "/Applications/<App>.app/Contents/MacOS/<App>" --remote-debugging-port=9333 &
+   ```
+
+   观察：`curl -s http://127.0.0.1:9333/json/version` 返回浏览器版本字符串。
+4. **列出页面 target**，挑 `type == "page"` 且不是 devtools 的那个：
+
+   ```bash
+   curl -s http://127.0.0.1:9333/json | python3 -c "import json,sys;[print(t['type'],t['url']) for t in json.load(sys.stdin)]"
+   ```
+
+   观察：主界面 URL 形如 `doubaowork://doubaowork-chat/chat`。
+5. **接上 WebSocket 驱动**。Node 内置 `WebSocket` 就够，不需要装包。常用四个方法：
+   `Runtime.evaluate`（读 DOM / 执行脚本）、`Input.dispatchMouseEvent`（点击）、
+   `Input.insertText`（输入）、`Page.captureScreenshot`（截图）。
+6. **优先用 DOM 找元素点击，不要算坐标**：
+
+   ```js
+   [...document.querySelectorAll('*')]
+     .filter(e => (e.innerText || '').trim() === '<菜单项文本>')
+     .pop()
+     .click()
+   ```
+
+   观察：`location.href` 变化或页面文本出现新内容。
+7. **收尾**：结束带参进程，`open -a <App>` 正常启动。
+
+## 踩坑实录
+
+| 症状 | 原因 | 修法 |
+|---|---|---|
+| 进程起来立刻消失，日志有 `SingletonLock` / `ProcessSingleton` | 运行环境写不了 App 的数据目录 | 用有权限的方式启动；不要在文件受限的沙箱里拉起图形界面 |
+| 端口连不上，但 App 明明在运行 | 端口被占用（`9222` 常被本机 Chrome 的调试端口占着） | 换一个空闲端口，不是 App 不支持调试 |
+| 报 `System Events ... -10004` | 辅助功能未授权 | 不要走 AppleScript / CGEvent，改 CDP |
+| 重启后调试失效 | 调试参数只对那一次进程有效 | 每次接管都重新带参启动 |
+| 点击没反应 | 点到了坐标但对不上元素 | 改成 DOM 定位 + `.click()` |

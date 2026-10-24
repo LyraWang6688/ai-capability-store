@@ -61,3 +61,39 @@
 - **占位图会骗过肉眼看宽高**：本地地址那一组，元素有尺寸但 `naturalWidth` 是 0，说明渲染失败。
 - **本机地址被拦**：`http://127.0.0.1/...` 这种也不行，渲染层会拦，表现为占位图。
 - **结论要反过来看**：不是"这个 App 不能显示图片"，而是"它只认公网 HTTPS 的 Markdown 图片"。
+
+## 可复现步骤
+
+1. **MCP 工具返回两种内容块**：
+
+   ```
+   content: [
+     { type: 'text',  text: '下面是一张图片：' },
+     { type: 'image', data: '<base64>', mimeType: 'image/png' }
+   ]
+   ```
+
+2. **挂连接器 → 对话里触发调用**（见 [mcp-connector.md](./mcp-connector.md)）。
+3. **立刻做 DOM 断言，不要看模型怎么说**：
+
+   ```js
+   [...document.querySelectorAll('img')]
+     .map(i => ({ w: i.naturalWidth, h: i.naturalHeight, src: (i.currentSrc || i.src).slice(0, 60) }))
+     .filter(x => x.w > 40)
+   ```
+
+   观察：返回空数组 → 没渲染；`w === 0` 的条目 → 是占位图。
+
+4. **对照 A（公网 HTTPS）**：在对话里要求原样输出
+   `![t](https://<公网域名>/<路径>.png)`，再跑同一条断言。观察：出现 `w > 0` 的真实图片。
+5. **对照 B（本机地址）**：换成 `![t](http://127.0.0.1:<port>/x.png)`，再断言。
+   观察：`<img>` 元素存在但 `naturalWidth === 0`，即被拦。
+
+## 踩坑实录
+
+| 症状 | 原因 | 修法 |
+|---|---|---|
+| 图片列表里出现 `data:image/svg+xml` 的条目 | 加载失败后的占位图 | 换成公网 HTTPS 地址 |
+| 元素看起来有宽高，但没有图 | 占位图也占位，`naturalWidth` 才是判据 | 用 `naturalWidth` 判定，别看 CSS 尺寸 |
+| 模型回复"已正常显示" | 幻觉，它看不见渲染结果 | 只信 DOM 断言 |
+| 本机地址被拦 | 渲染层不允许本机资源 | 必须公网 HTTPS |
