@@ -59,6 +59,19 @@
 - **权限模型要分开看**：辅助功能被拒 ≠ 不能自动化。先确认目标是不是 Chromium/Electron 内核，再决定路线。
 - **调试参数是一次性的**：它不写进任何配置，重启即失效，所以每次接管都要重新带参启动。
 
+## 工具清单
+
+| 工具 | 类型 | 用来做什么 | 前置条件 |
+|---|---|---|---|
+| App 主二进制 + `--remote-debugging-port` | 系统命令 | 带调试端口启动，打开 CDP 通道 | 能写 App 自身数据目录 |
+| `curl` | CLI | 读 `/json/version`、`/json` 确认通道与页面 target | 端口可连 |
+| Node 内置 `WebSocket` | 运行时能力 | 直接说 CDP 协议，不装第三方包 | Node 18+ |
+| `Runtime.evaluate` | CDP 方法 | 读 DOM、执行脚本、点元素 | 已连上目标页 |
+| `Input.dispatchMouseEvent` / `Input.insertText` | CDP 方法 | 点击 / 输入 | 已连上目标页 |
+| `Page.captureScreenshot` | CDP 方法 | 截图留证 | 已连上目标页 |
+| `screencapture` | 系统命令 | 备用证据（连不上 CDP 时） | 屏幕录制权限 |
+| `open -a` | 系统命令 | 结束后恢复正常启动 | — |
+
 ## 可复现步骤
 
 前置：运行环境必须能写目标 App 自己的数据目录，否则第 3 步会失败。
