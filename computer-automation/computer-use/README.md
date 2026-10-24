@@ -23,7 +23,10 @@
 
 ## 命名
 
-**一个 App 一个文件夹**：`<app>/README.md` 做主题索引，每条操作路径一篇
-`kebab-case.md`，如 `doubao-work/cdp-takeover.md`。
+**文件夹 = 一个软件，里面的文件 = 这个软件的一个个功能。**
 
-只有**不属于任何 App 的通用主题**才单篇放在本层，如 `ax-tree.md`、`cgevent-input.md`。
+- 同一个软件今天加一个功能、明天加另一个，文档会一篇篇多起来，所以用文件夹收录。
+- 文件名就是检索键：`cdp-takeover`、`window-capture`、`ax-tree` —— 让 Agent 只看名字就能
+  判断要不要读。避免 `basic-operation`、`misc`、`notes` 这类说了等于没说的名字。
+- 还没实测的功能不要建空文档，写在文件夹 README 的「待建功能」表里。
+- 只有**不属于任何 App 的通用主题**才单篇放在本层，如 `ax-tree.md`、`cgevent-input.md`。

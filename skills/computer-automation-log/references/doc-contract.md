@@ -93,10 +93,18 @@
 
 ## 一个 App 多篇文档时：用文件夹
 
-**一个 App 一个文件夹。** 哪怕现在只有一条操作路径，也先建文件夹——后续那条路径
-迟早会长出来，事后再搬一次只会多一次链接修复。
+**文件夹 = 一个软件；里面的文件 = 这个软件的一个个功能。**
 
-不要把多条路径塞进一篇，也不要命名成 `app-a.md`、`app-b.md` 散在目录里。
+同一个软件，今天给它加一个功能、明天加另一个功能，功能文档会一篇篇多起来——
+所以要有一个文件夹来**收录**。文件夹按软件命名，里面的文档按功能命名。
+
+由此得出：
+
+- 文件夹的存在理由就是"以后还会有别的功能"，所以按软件建，不以"现在只有一篇"为理由省掉。
+- 一篇文档 = 一个功能，不是"这个 App 的综述"。文件名用能命中任务的词
+  （`cdp-takeover`、`window-capture`、`ax-tree`），**文件名就是 Agent 的检索键**。
+- 还没有实测的功能**不要建空文档**：在文件夹 README 的"待建功能"表里列出来即可，
+  等真做了再建。空文档会让 Agent 以为"这里有答案"。
 
 ```text
 computer-automation/computer-use/
@@ -113,3 +121,14 @@ computer-automation/computer-use/
 - 子目录的 `README.md` 必须列出内部每一篇；上级 `README.md` 必须登记 `./<app>/README.md`。
 - **`README.md` 不是文档**，不对它跑门禁；它负责导航，不承担必答小节。
 - 只有**不属于任何 App 的通用主题**（`ax-tree.md`、`cgevent-input.md`）才单篇放在域目录下。
+
+### 命名的硬要求
+
+| 要求 | 合格 | 不合格 |
+|---|---|---|
+| 说清**做什么**，而不是"分类" | `cdp-takeover`、`mcp-connector`、`image-rendering` | `basic-operation`、`misc`、`notes`、`part2` |
+| 用动词或动词+对象 | `window-capture`、`send-message` | `wechat-stuff` |
+| Agent 能用关键词命中 | `ax-tree`、`system-permissions` | `appendix` |
+
+判断标准：**一个没读过这些文档的 Agent，只看文件名，能不能决定"这篇是不是我要的"。**
+不能，就说明名字没取准。

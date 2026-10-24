@@ -28,18 +28,20 @@ computer-automation/
 └── computer-use/
     ├── README.md
     ├── <topic>.md            # 不属于任何 App 的通用主题
-    └── <app>/                # 一个 App 一个文件夹
-        ├── README.md         # 该 App 的主题索引
-        └── <topic>.md
+    └── <app>/                # 一个软件一个文件夹
+        ├── README.md         # 索引：已写的功能 + 待建的功能
+        └── <功能>.md         # 这个软件的一项功能
 ```
 
 ## 文档约定（填充者照此写）
 
 1. **一篇一件事**，文件名 kebab-case，例如 `chrome-devtools-mcp.md`。
-1.1 **一个 App 一个文件夹**：`<app>/README.md` 做主题索引（含这个 App 的特征与选路），
-   每条操作路径一篇 `<topic>.md`。即便现在只有一篇，也先建文件夹——后续那条路径
-   迟早会长出来，事后再搬一次只会多一次链接修复。
+1.1 **文件夹 = 一个软件，里面按功能各一篇**：`<app>/README.md` 做索引，
+   `<app>/<功能>.md` 是这个软件的一项功能。同一个软件的功能会持续增加，所以用文件夹收录。
+   还没实测的功能不要建空文档，在 README 的「待建功能」表里列出即可。
    只有不属于任何 App 的通用主题（`ax-tree.md`、`cgevent-input.md`）才单篇放本层。
+1.2 **文件名就是检索键**：Agent 靠文件名决定要不要读。用 `cdp-takeover` / `window-capture` /
+   `ax-tree` 这种能命中任务的词，不要 `basic-operation` / `misc` / `notes`。
 2. 每篇开头四行抬头：`环境` / `实测日期` / `验证方式` / `结论`。
 3. **区分「已验证」与「听说」**：没实测的标 `未验证`，不要写成事实。
 4. 不写凭据（token / cookie / 账号）；引用外部资料只给链接 + 结论，不整段复制。
