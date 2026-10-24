@@ -40,11 +40,13 @@ Domain-specific policy lives in the Domain directories.
 | Add / change an External Capability (plugin / MCP / connector / CLI / API / integration) | `external-capabilities/` |
 | Add / change an Automation (scheduled or event-driven job) | `automations/` |
 | Record a Skill ↔ External Capability dependency | `dependencies/capability-map.yaml` |
-| Add / change a computer-automation doc (browser use / computer use — docs only) | `computer-automation/` |
+| Add / change a computer-automation doc (browser use / computer use — docs only) | `automations/computer-automation/` |
 | Change store-wide policy | top-level policy files |
 
 Skills, External Capabilities, Automations and Orchestrations are **peer Domains**.
-`computer-automation/` is a documentation shelf, not a fifth Domain: no assets, no registry.
+`automations/computer-automation/` is a documentation shelf *inside* the Automation Domain,
+not a fifth Domain: no assets, no registry. It is exempted by name from the "every
+directory under `automations/` is a registered job or a family" rule (`AUTOMATION_DOC_DIRS`).
 
 What separates them is the question each one answers:
 

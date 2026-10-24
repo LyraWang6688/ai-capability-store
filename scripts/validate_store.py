@@ -190,6 +190,12 @@ AUTOMATION_DIR = "automations"
 # start failing because Python dropped a __pycache__ next to a shared module.
 NON_ASSET_DIR_NAMES = {"__pycache__", "node_modules", "dist", ".venv", ".git"}
 
+# automations/ 下的文档区：它不是作业，不登记 registry，由
+# skills/computer-automation-log 的 check_doc.py 管格式。它必须带 README 说明
+# 自己为什么在这里，内容不参与「automations 下每个目录必须是作业或 family」的判定。
+# 名字是封闭集合：加一个文档区是一次域结构决策，不该由随手建目录引入。
+AUTOMATION_DOC_DIRS = {"computer-automation"}
+
 # Capability implementations live under shelves. These two hold documents, not
 # capabilities, and are reserved on purpose. Every other shelf is CLOSED: each
 # of its child directories must be some entry's `implementation_path`.
@@ -1459,6 +1465,13 @@ def main() -> int:
             rel = f"{AUTOMATION_DIR}/{name}"
             check(f"filesystem automation directory kebab-case: {rel}",
                   bool(KEBAB_RE.match(name)), name)
+
+            if name in AUTOMATION_DOC_DIRS:
+                check(f"automation docs {rel} documents itself in README.md",
+                      os.path.isfile(os.path.join(full, "README.md")),
+                      "a documentation shelf inside automations/ must explain "
+                      "itself in README.md")
+                continue
 
             if rel in registered_auto_paths:
                 # Flat automation. Its own contents are its business: the Store

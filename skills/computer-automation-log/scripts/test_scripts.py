@@ -127,7 +127,7 @@ def build_store(root: pathlib.Path) -> pathlib.Path:
     (store / "skills" / "registry.yaml").write_text("skills: {}\n", encoding="utf-8")
     for sub, title in (("browser-use", "browser-use/ — 浏览器操作文档"),
                        ("computer-use", "computer-use/ — 电脑操作文档")):
-        d = store / "computer-automation" / sub
+        d = store / "automations" / "computer-automation" / sub
         d.mkdir(parents=True)
         (d / "README.md").write_text(INDEX_README.format(title=title), encoding="utf-8")
     return store
@@ -142,7 +142,7 @@ def main() -> int:
         res = r.run(str(NEW_DOC), "--store", str(store), "--kind", "browser",
                     "--slug", "demo-topic", "--title", "Demo Topic")
         r.expect("new_doc 正常路径", res.returncode, 0, res.stdout + res.stderr)
-        doc = store / "computer-automation" / "browser-use" / "demo-topic.md"
+        doc = store / "automations" / "computer-automation" / "browser-use" / "demo-topic.md"
         r.expect("骨架文件已创建", 0 if doc.is_file() else 1, 0)
         index = (doc.parent / "README.md").read_text(encoding="utf-8")
         r.expect("索引行已写入", 0 if "](./demo-topic.md)" in index else 1, 0)
@@ -188,7 +188,7 @@ def main() -> int:
         res = r.run(str(NEW_DOC), "--store", str(store), "--kind", "computer",
                     "--slug", "demo-desktop", "--title", "Demo Desktop Topic")
         r.expect("computer 类生成", res.returncode, 0, res.stdout + res.stderr)
-        desk = store / "computer-automation" / "computer-use" / "demo-desktop.md"
+        desk = store / "automations" / "computer-automation" / "computer-use" / "demo-desktop.md"
         desk.write_text(COMPUTER_BODY.format(today=TODAY), encoding="utf-8")
         res = r.run(str(CHECK_DOC), str(desk))
         r.expect("computer 类合格文档通过", res.returncode, 0, res.stdout)
