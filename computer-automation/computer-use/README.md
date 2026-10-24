@@ -6,7 +6,7 @@
 
 | 文档 | 说明 | 状态 | 实测日期 |
 |---|---|---|---|
-| [doubao-work/](./doubao-work/README.md) | 豆包工作（DoubaoWork.app）· 3 篇：CDP 接管 / MCP 连接器 / 图片渲染边界 | 已验证 | 2026-10-24 |
+| [doubao-work/](./doubao-work/README.md) | 豆包工作（DoubaoWork.app）· 自定义插件（连接器 / 技能 / 图片边界） | 已验证 | 2026-10-24 |
 | [codex-desktop/](./codex-desktop/README.md) | Codex 桌面版（ChatGPT.app 内的 Codex） | 未验证 | 2026-10-24 |
 | [wechat/](./wechat/README.md) | 微信（WeChat.app） | 未验证 | 2026-10-24 |
 | [macos/](./macos/README.md) | macOS 桌面操作（系统级：Finder / 系统设置 / 原生 App） | 未验证 | 2026-10-24 |
