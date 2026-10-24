@@ -45,6 +45,12 @@ BROWSER_BODY = """# Demo Topic
 
 复用操作者自己的 Chrome（--autoConnect），携带登录态；代价是 Chrome 必须运行。
 
+## 工具清单
+
+| 工具 | 类型 | 用来做什么 | 前置条件 |
+|---|---|---|---|
+| chrome-devtools-mcp | MCP | 列标签页、导航、取快照 | Chrome 已开远端调试 |
+
 ## 可复现步骤
 
 先 list_pages 确认连上，再 navigate_page 到目标地址，最后 take_snapshot 取结构；
@@ -77,6 +83,12 @@ COMPUTER_BODY = """# Demo Desktop Topic
 ## 操作手段
 
 用 screencapture -x 落盘，再用文件大小与像素内容确认不是空图。
+
+## 工具清单
+
+| 工具 | 类型 | 用来做什么 | 前置条件 |
+|---|---|---|---|
+| screencapture | 系统命令 | 截屏落盘 | 屏幕录制权限 |
 
 ## 可复现步骤
 

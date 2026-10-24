@@ -62,6 +62,16 @@ tools/call
 - **连接器是本机的**：表单原文「自定义连接器仅支持在本地电脑中使用」，所以别指望在另一台设备上看到它。
 - **模型会夸大**：调用成功了它可能顺带说"图片已经显示出来了"，但实际没有。判断结果以服务端日志 + 界面事实为准。
 
+## 工具清单
+
+| 工具 | 类型 | 用来做什么 | 前置条件 |
+|---|---|---|---|
+| Node 标准库 `http` | 运行时能力 | 起最小 MCP server（JSON-RPC over POST） | Node 18+ |
+| `curl` | CLI | 挂进 App 前先自测 `initialize` / `tools/list` / `tools/call` | 服务已启动 |
+| `Runtime.evaluate` | CDP 方法 | 打开插件页、点「+」、填表单 | 已接管 App |
+| 原生 value setter + `dispatchEvent('input')` | 浏览器 API | 让 React 受控组件接受写入 | — |
+| App 侧「服务端日志」 | 观测手段 | 判断握手与工具调用是否真的发生 | 服务端打日志 |
+
 ## 可复现步骤
 
 1. **写一个最小 MCP server**。Node 标准库就够：只处理 `POST /mcp`，按 JSON-RPC 回三件事——
