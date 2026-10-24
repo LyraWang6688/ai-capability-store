@@ -56,17 +56,15 @@ BROWSER_BODY = """# Demo Topic
 先 list_pages 确认连上，再 navigate_page 到目标地址，最后 take_snapshot 取结构；
 每步之后检查返回里是否出现期望的标题或元素。
 
-## 如何验证
-
-list_pages 返回的标签页与屏幕上一致；导航后快照标题与预期相同。
-
 ## 何时别用
 
 需要干净环境做回归时改用 Playwright MCP 独立实例；只读内容用 web_fetch。
 
-## 已知坑
+## 踩坑实录
 
---autoConnect 依赖 Chrome 侧开启远端调试；关掉后 MCP 仍注册但调用失败。
+| 症状 | 原因 | 修法 |
+|---|---|---|
+| MCP 已注册但调用失败 | Chrome 侧远端调试被关 | 重新打开调试开关 |
 """
 
 COMPUTER_BODY = """# Demo Desktop Topic
@@ -80,10 +78,6 @@ COMPUTER_BODY = """# Demo Desktop Topic
 
 需要屏幕录制权限；缺了 screencapture 会静默失败或产出黑图。
 
-## 操作手段
-
-用 screencapture -x 落盘，再用文件大小与像素内容确认不是空图。
-
 ## 工具清单
 
 | 工具 | 类型 | 用来做什么 | 前置条件 |
@@ -94,14 +88,6 @@ COMPUTER_BODY = """# Demo Desktop Topic
 
 先 screencapture -x 写到一个新路径，再读文件大小；为 0 或明显偏小就说明没截到，
 换窗口或先确认屏幕录制权限，再重截一次。
-
-## 如何验证
-
-截图文件存在且非空；读回像素内容与屏幕一致。
-
-## 回退
-
-只读截图不改任何状态；写操作前先备份目标文件。
 
 ## 何时别用
 
