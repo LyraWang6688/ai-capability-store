@@ -1,6 +1,6 @@
 # 文档契约 — 两类文档的必答问题
 
-上级规则：[`../../computer-automation/README.md`](../../computer-automation/README.md)。
+上级规则：[`../../../automations/computer-automation/README.md`](../../../automations/computer-automation/README.md)。
 本文件说明「一篇合格文档长什么样」，`scripts/check_doc.py` 按本文件检查。
 
 ## 所有文档共有：抬头四条
@@ -112,7 +112,7 @@
   等真做了再建。空文档会让 Agent 以为"这里有答案"。
 
 ```text
-computer-automation/computer-use/
+automations/computer-automation/computer-use/
 ├── README.md                 # 总索引：列出所有文档，含子目录入口
 ├── <topic>.md                # 单篇主题（与此前一致）
 └── <app>/

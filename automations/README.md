@@ -13,11 +13,40 @@ before `launchd` existed, and it was already untrue the moment a job ran on a la
 | Belongs here | Does NOT belong here |
 |---|---|
 | A recurring job that runs on a schedule and produces data | A procedure an Agent follows (→ `skills/`) |
+| A **manual** for driving a system that has no API/CLI (→ `computer-automation/`) | Docs about an app's internals (→ `docs/`) |
 | A job whose schedule and output contract must be reviewable | A callable capability/MCP/CLI (→ `external-capabilities/`) |
 | A job that can run unattended in CI | Anything that needs human judgement to execute |
 
 An automation is **execution**, not **capability**: the difference is the trigger.
 A skill runs because an Agent decided to; an automation runs because a clock fired.
+
+## Two kinds of automation, by the layer you can attach to
+
+"Let the machine do it" has a priority order; the higher the layer, the more stable
+the attachment point:
+
+```text
+API          structured, versioned promise
+CLI          a wrapper over the API, scriptable by nature
+Playwright   no API — drive the web page; breaks when the page changes
+GUI clicks   no page either — screenshots + mouse/keyboard; depends on window
+             position, resolution and OS permissions; the most fragile
+```
+
+MCP is not a layer: it is a protocol for packaging a capability (usually over an
+API or CLI) for an Agent. Prefer an existing MCP server; write one only if needed.
+
+So this Domain holds both ends of that order:
+
+| Layer | What lives here | Governed by |
+|---|---|---|
+| API / CLI | the scheduled jobs in this directory | `registry.yaml`, version, tag, CI |
+| Playwright / GUI | `computer-automation/` — manuals for driving a system that offers neither | its own README + `skills/computer-automation-log` gate |
+
+**The rule that decides placement: can it run unattended on a clock?**
+Yes → a job (registry entry). No, it is knowledge about *how* to operate something
+→ `computer-automation/`. A job that drives a GUI is still a job and belongs in this
+directory; its manual belongs in `computer-automation/`.
 
 ## Layout
 
@@ -29,14 +58,18 @@ automations/
 ├── <name>/            ← one automation, kebab-case        (flat — the common shape)
 │   ├── README.md      ← what it does, inputs, outputs, failure modes
 │   └── <entrypoint>   ← the executable named by registry `entrypoint`
-└── <family>/          ← a group of related automations    (see "Families")
-    ├── README.md      ← why these members live together (required)
-    ├── <shared file>  ← contract / data every member uses
-    └── <member>/      ← one automation; registry key is `<family>-<member>`
+├── <family>/          ← a group of related automations    (see "Families")
+│   ├── README.md      ← why these members live together (required)
+│   ├── <shared file>  ← contract / data every member uses
+│   └── <member>/      ← one automation; registry key is `<family>-<member>`
+└── computer-automation/   ← docs only: how to drive systems that have no API/CLI
+    └── README.md          ← its own rules; not a registry entry, not a job
 ```
 
-Exactly two shapes are legal, and nothing else: `automations/<name>/` and
-`automations/<family>/<member>/`.
+Exactly two *automation* shapes are legal: `automations/<name>/` and
+`automations/<family>/<member>/`. The only other directory allowed is
+`computer-automation/` — documentation, exempted by name in
+`scripts/validate_store.py` (`AUTOMATION_DOC_DIRS`).
 
 ## Families — one level, shared files only
 

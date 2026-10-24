@@ -1,13 +1,13 @@
 ---
 name: computer-automation-log
-description: 用操作者的真实电脑或浏览器做 Computer Use / Browser Use（截屏、点击、输入、滚动、AX / CGEvent / AppleScript、Chrome DevTools MCP、Playwright MCP、CDP）时使用。操作前先查 computer-automation/ 里已有的文档并复用，操作后按同一套约定生成或更新文档。当任务需要「像人一样操作界面」、复用操作者登录态、或把一次 GUI / MCP 操作沉淀成别人能照着做的步骤时使用；不要用于纯 CLI / API 就能完成的任务，也不要写没有实际执行过的操作。
-compatibility: "需要 bash 与 python3；需要一份 ai-capability-store 检出（文档写入它的 computer-automation/）；浏览器 / 桌面工具由宿主提供（Chrome DevTools MCP、Playwright MCP、screencapture、AX / CGEvent、AppleScript 等），本 skill 不携带任何工具，也不需要任何 MCP。"
+description: 用操作者的真实电脑或浏览器做 Computer Use / Browser Use（截屏、点击、输入、滚动、AX / CGEvent / AppleScript、Chrome DevTools MCP、Playwright MCP、CDP）时使用。操作前先查 automations/computer-automation/ 里已有的文档并复用，操作后按同一套约定生成或更新文档。当任务需要「像人一样操作界面」、复用操作者登录态、或把一次 GUI / MCP 操作沉淀成别人能照着做的步骤时使用；不要用于纯 CLI / API 就能完成的任务，也不要写没有实际执行过的操作。
+compatibility: "需要 bash 与 python3；需要一份 ai-capability-store 检出（文档写入它的 automations/computer-automation/）；浏览器 / 桌面工具由宿主提供（Chrome DevTools MCP、Playwright MCP、screencapture、AX / CGEvent、AppleScript 等），本 skill 不携带任何工具，也不需要任何 MCP。"
 ---
 
 # Computer Automation Log · 电脑操作文档
 
-> 定位：`computer-automation/` 文档区的**唯一写入口**。文档规则由
-> `computer-automation/README.md` 定义，本 skill 只负责执行它 —— 规则改在那里，不在这里。
+> 定位：`automations/computer-automation/` 文档区的**唯一写入口**。文档规则由
+> `automations/computer-automation/README.md` 定义，本 skill 只负责执行它 —— 规则改在那里，不在这里。
 
 ## 触发条件
 
@@ -20,7 +20,7 @@ compatibility: "需要 bash 与 python3；需要一份 ai-capability-store 检�
 1. **LOCATE** — 定位 Store
    顺序：`--store` 参数 > `$AI_CAPABILITY_STORE` > 由脚本自身路径反推
    （`skills/computer-automation-log/scripts/` → 仓库根）。
-   找不到 `computer-automation/` 就**停**，问人，不要猜路径。
+   找不到 `automations/computer-automation/` 就**停**，问人，不要猜路径。
 
 2. **REUSE**（操作前）— 查已有文档
    读对应子目录的索引表。命中同一主题（同一工具 / 同一站点 / 同一 App）就照它做：
@@ -66,7 +66,7 @@ compatibility: "需要 bash 与 python3；需要一份 ai-capability-store 检�
 
 ## 写入范围
 
-只写 `computer-automation/browser-use/*.md`、`computer-automation/computer-use/*.md`，
+只写 `automations/computer-automation/browser-use/*.md`、`automations/computer-automation/computer-use/*.md`，
 以及这两个目录 `README.md` 的索引表。**不改其他任何文件**：不碰 `registry.yaml`、
 不改 shelf README 的规则段、不动 `skills/` 下的其他资产。
 
@@ -81,4 +81,4 @@ compatibility: "需要 bash 与 python3；需要一份 ai-capability-store 检�
 
 v0.1.0 只覆盖「一次真实操作 → 一篇合规文档」这条链路，以 `scripts/test_scripts.py`
 的离线测试作为确定性证据；触发率、端到端轨迹、效率指标**未评估**。
-文档规则（收什么、怎么命名、何时升级成 Skill）见 `computer-automation/README.md`。
+文档规则（收什么、怎么命名、何时升级成 Skill）见 `automations/computer-automation/README.md`。
