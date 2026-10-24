@@ -45,6 +45,11 @@ BROWSER_BODY = """# Demo Topic
 
 复用操作者自己的 Chrome（--autoConnect），携带登录态；代价是 Chrome 必须运行。
 
+## 可复现步骤
+
+先 list_pages 确认连上，再 navigate_page 到目标地址，最后 take_snapshot 取结构；
+每步之后检查返回里是否出现期望的标题或元素。
+
 ## 如何验证
 
 list_pages 返回的标签页与屏幕上一致；导航后快照标题与预期相同。
@@ -73,6 +78,11 @@ COMPUTER_BODY = """# Demo Desktop Topic
 
 用 screencapture -x 落盘，再用文件大小与像素内容确认不是空图。
 
+## 可复现步骤
+
+先 screencapture -x 写到一个新路径，再读文件大小；为 0 或明显偏小就说明没截到，
+换窗口或先确认屏幕录制权限，再重截一次。
+
 ## 如何验证
 
 截图文件存在且非空；读回像素内容与屏幕一致。
@@ -84,6 +94,12 @@ COMPUTER_BODY = """# Demo Desktop Topic
 ## 何时别用
 
 有 CLI 或 API 时优先走它们；GUI 只在前两者都不可用时使用。
+
+## 踩坑实录
+
+| 症状 | 原因 | 修法 |
+|---|---|---|
+| 截图是黑图 | 缺屏幕录制权限 | 去系统设置授予后重开进程 |
 """
 
 
