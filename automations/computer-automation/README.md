@@ -1,7 +1,9 @@
-# computer-automation/ — 电脑自动化文档区
+# automations/computer-automation/ — 电脑自动化文档区
 
-> **这不是第五个资产域。** 不登记 `registry.yaml`，不参与 Store 的资产口径。
-> 只收「怎么操作浏览器 / 怎么操作电脑」的交接文档。可复用的流程成熟后再升级成 Skill（见文末）。
+> **位于 `automations/` 域内的文档区**：不是第五个资产域，也不是自动化作业。
+> 不登记 `registry.yaml`、不参与 Store 的资产口径，只收「怎么操作浏览器 / 怎么操作电脑」的
+> 交接文档。同域的作业（能按钟无人运行的那些）在上一级目录，用 registry 管；这里收的是
+> 「系统没给 API/CLI 时怎么驱动它」的手册。可复用的流程成熟后再升级成 Skill（见文末）。
 
 ## 怎么用（读的人先看这段）
 
@@ -40,7 +42,7 @@
 ## 结构
 
 ```text
-computer-automation/
+automations/computer-automation/
 ├── README.md              # 本文件
 ├── browser-use/           # 浏览器操作
 │   ├── README.md          # 索引
@@ -70,7 +72,7 @@ python3 skills/computer-automation-log/scripts/check_doc.py <doc.md>
 
 必须给三样东西：**工具清单**（用了什么）、**可复现步骤**（走通的路）、
 **踩坑实录**（没走通的教训）。只写结论的文档只完成了一半。
-规则细节见 [`doc-contract.md`](../skills/computer-automation-log/references/doc-contract.md)。
+规则细节见 [`doc-contract.md`](../../skills/computer-automation-log/references/doc-contract.md)。
 
 ## 不收什么
 

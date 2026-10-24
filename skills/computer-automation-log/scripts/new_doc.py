@@ -23,6 +23,8 @@ import re
 import sys
 
 KIND_DIRS = {"browser": "browser-use", "computer": "computer-use"}
+# 文档区位于 Automation 域内：automations/computer-automation/<kind>/
+DOC_ROOT = pathlib.Path("automations") / "computer-automation"
 SLUG_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 INDEX_HEADING = "## 文档索引"
 
@@ -50,7 +52,7 @@ def fail(msg: str) -> "NoReturn":  # pragma: no cover - thin wrapper
 
 
 def looks_like_store(root: pathlib.Path) -> bool:
-    return (root / "computer-automation").is_dir() and (
+    return (root / DOC_ROOT).is_dir() and (
         root / "skills" / "registry.yaml"
     ).is_file()
 
@@ -66,7 +68,7 @@ def find_store(arg: str | None) -> pathlib.Path:
         if not looks_like_store(root):
             fail(
                 f"--store 指向的不是 Store 根目录：{root}\n"
-                "需要同时存在 computer-automation/ 与 skills/registry.yaml。"
+                "需要同时存在 automations/computer-automation/ 与 skills/registry.yaml。"
             )
         return root
 
@@ -76,7 +78,7 @@ def find_store(arg: str | None) -> pathlib.Path:
         if not looks_like_store(root):
             fail(
                 f"$AI_CAPABILITY_STORE 指向的不是 Store 根目录：{root}\n"
-                "需要同时存在 computer-automation/ 与 skills/registry.yaml。"
+                "需要同时存在 automations/computer-automation/ 与 skills/registry.yaml。"
             )
         return root
 
@@ -154,11 +156,11 @@ def main() -> int:
         fail(f"--date 必须是 YYYY-MM-DD：{date!r}")
 
     root = find_store(args.store)
-    subdir = root / "computer-automation" / KIND_DIRS[args.kind]
+    subdir = root / DOC_ROOT / KIND_DIRS[args.kind]
     doc = subdir / f"{args.slug}.md"
     readme = subdir / "README.md"
     if not subdir.is_dir():
-        fail(f"缺少目录 {subdir} —— 先确认 computer-automation 文档区存在。")
+        fail(f"缺少目录 {subdir} —— 先确认 automations/computer-automation 文档区存在。")
     if not readme.is_file():
         fail(f"缺少索引文件 {readme}。")
     if doc.exists():
