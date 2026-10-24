@@ -27,8 +27,8 @@ computer-automation/
 │   └── <topic>.md         # 待填充
 └── computer-use/
     ├── README.md
-    ├── <topic>.md            # 单篇主题
-    └── <app>/                # 一个 App 有多条操作路径时
+    ├── <topic>.md            # 不属于任何 App 的通用主题
+    └── <app>/                # 一个 App 一个文件夹
         ├── README.md         # 该 App 的主题索引
         └── <topic>.md
 ```
@@ -36,8 +36,10 @@ computer-automation/
 ## 文档约定（填充者照此写）
 
 1. **一篇一件事**，文件名 kebab-case，例如 `chrome-devtools-mcp.md`。
-1.1 **一个 App 多篇时用文件夹**：`<app>/README.md` 做主题索引（含这个 App 的特征与选路），
-   每条操作路径一篇 `<topic>.md`。单篇能写完的就别建文件夹。
+1.1 **一个 App 一个文件夹**：`<app>/README.md` 做主题索引（含这个 App 的特征与选路），
+   每条操作路径一篇 `<topic>.md`。即便现在只有一篇，也先建文件夹——后续那条路径
+   迟早会长出来，事后再搬一次只会多一次链接修复。
+   只有不属于任何 App 的通用主题（`ax-tree.md`、`cgevent-input.md`）才单篇放本层。
 2. 每篇开头四行抬头：`环境` / `实测日期` / `验证方式` / `结论`。
 3. **区分「已验证」与「听说」**：没实测的标 `未验证`，不要写成事实。
 4. 不写凭据（token / cookie / 账号）；引用外部资料只给链接 + 结论，不整段复制。
