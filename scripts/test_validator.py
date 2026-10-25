@@ -89,6 +89,26 @@ def _set_commerce(record, block):
     return mutate
 
 
+def _in_record(record, old, new):
+    """Replace `old` with `new`, scoped to ONE registry record.
+
+    The registry repeats the same field lines across records
+    (`status: testing`, `trigger: host-schedule`), so a file-wide replace would
+    silently mutate whichever record comes first. Scoping is what makes each
+    case test the record its label names.
+    """
+    def mutate(text):
+        head = re.search(rf"(?m)^  {re.escape(record)}:\n", text)
+        assert head, f"record not found: {record}"
+        rest = text[head.end():]
+        nxt = re.search(r"(?m)^  \S", rest)
+        end = head.end() + (nxt.start() if nxt else len(rest))
+        body = text[head.end():end]
+        assert old in body, f"{old!r} not in record {record}"
+        return text[:head.end()] + body.replace(old, new, 1) + text[end:]
+    return mutate
+
+
 MUTATIONS = {
     "none": lambda t: t,
     # name
@@ -241,6 +261,28 @@ MUTATIONS = {
     "commerce-optional-dependency": lambda t: t.replace(
         "      - capability: readloop-service\n        required: true",
         "      - capability: readloop-service\n        required: false", 1),
+    # ---- 编排层：吸收 Automation Domain 的三格 ----
+    # 两域合并的第一步是词表并集：quarterly / manual 原本是 automations 的说法。
+    "orc-trigger-quarterly": _in_record(
+        "teaming-meeting-review-self-api", "trigger: human", "trigger: quarterly"),
+    "orc-trigger-unknown": _in_record(
+        "teaming-meeting-review-self-api", "trigger: human", "trigger: yearly"),
+    "orc-executor-host": _in_record(
+        "readloop-daily-self-api",
+        "    trigger: host-schedule\n",
+        "    trigger: host-schedule\n    executor: host\n"),
+    "orc-executor-unknown": _in_record(
+        "readloop-daily-self-api",
+        "    trigger: host-schedule\n",
+        "    trigger: host-schedule\n    executor: cron\n"),
+    "orc-output-human": _in_record(
+        "wechat-article",
+        "    status: testing\n",
+        "    status: testing\n    output:\n      target: human\n"),
+    "orc-output-unknown": _in_record(
+        "wechat-article",
+        "    status: testing\n",
+        "    status: testing\n    output:\n      target: nowhere\n"),
 }
 
 
@@ -329,6 +371,20 @@ CASES = [
     # 放行它是为了证明上面的红来自规则，而不是来自"改动了任何东西就红"。
     ("hosted carrier on an external capability passes", 0,
      CAPABILITY_REGISTRY, "commerce-hosted-on-external"),
+    # 编排层开始吸收 Automation Domain 的三格。这一步只加字段、不动记录，
+    # 所以每个正例都必须真能放行 —— 否则下一步迁移无从下手。
+    ("orchestration accepts a quarterly trigger", 0,
+     ORCHESTRATION_REGISTRY, "orc-trigger-quarterly"),
+    ("orchestration rejects an unknown trigger", 1,
+     ORCHESTRATION_REGISTRY, "orc-trigger-unknown"),
+    ("orchestration accepts a declared executor", 0,
+     ORCHESTRATION_REGISTRY, "orc-executor-host"),
+    ("orchestration rejects an unknown executor", 1,
+     ORCHESTRATION_REGISTRY, "orc-executor-unknown"),
+    ("orchestration accepts a human output target", 0,
+     ORCHESTRATION_REGISTRY, "orc-output-human"),
+    ("orchestration rejects an unknown output target", 1,
+     ORCHESTRATION_REGISTRY, "orc-output-unknown"),
 ]
 
 # The first case is the baseline: untouched, so it must pass.

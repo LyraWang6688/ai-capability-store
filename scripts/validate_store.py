@@ -263,7 +263,32 @@ ORCHESTRATION_MODES = {"manual", "automated"}
 
 # 谁发起/什么叫醒。可选字段；存在的值必须合法。
 # host-schedule = 宿主自带的定时任务（豆包/Codex 的 schedule），不是 store 里的 automation。
-ALLOWED_ORCHESTRATION_TRIGGERS = {"human", "host-schedule", "daily", "weekly", "monthly", "event"}
+#
+# schema_version 2 起，这套词表开始【吸收 automations 域的 trigger_kind】。目的不是
+# 让枚举更宽，而是让"多久跑一次"这件事只有一套词：
+#   automations 的 trigger_kind : daily weekly monthly quarterly manual event
+#   本域原来的 trigger          : human host-schedule daily weekly monthly event
+# 两份词表重叠 4 个、各自还有对方没有的值，同一个事实用两种说法记在两处 ——
+# 这就是"automations 与 orchestrations 各拿了一半"的具体形状。合并先从词表开始：
+# 并集在这里，automations 侧的下线留到它的记录真正迁进来时再做（那一步会动记录）。
+ALLOWED_ORCHESTRATION_TRIGGERS = {
+    "human", "host-schedule", "daily", "weekly", "monthly", "quarterly", "event",
+    # manual（automations 的说法）= human（本域的说法）：人的一次明确指令。
+    # 收敛成一个词是 schema_version 3 的事；过渡期两个都收，避免记录先红。
+    "manual",
+}
+
+# 谁执行。与 trigger 无关：trigger 说多久一次，executor 说谁在跑。
+# github-actions / launchd / systemd / human 从 Automation Domain 原样继承。
+# host 是新增的：readloop、teaming-minute-scan 那几条由【宿主自己的定时任务】叫醒，
+# 它们没有 workflow、没有 systemd unit，原来无处登记"谁在跑" —— 这正是把
+# automations 并进编排以后必须补上的一格。
+ORCHESTRATION_EXECUTORS = {"github-actions", "launchd", "systemd", "human", "host"}
+
+# 输出落到哪。Automation Domain 的三个来源（git-branch / external-system / local-file）
+# 原样继承，另加 human —— 人发起的编排，产物是给人看的一段文字或一个文件，
+# 它不写分支、不进外部系统、也不是"落盘后离开这台机器"。
+ORCHESTRATION_OUTPUT_TARGETS = {"git-branch", "external-system", "local-file", "human"}
 
 # 调自建 API 的编排：任务目录名必须带这个后缀，且 step 里必须有 calls。
 SELF_API_SUFFIX = "-self-api"
@@ -1847,6 +1872,9 @@ def validate_orchestrations(orc_reg: dict) -> None:
                     known.add(value.rstrip("/"))
 
     entries = orc_reg.get(ORCHESTRATION_DIR) or {}
+    check("orchestration registry schema_version", orc_reg.get("schema_version") == 2,
+          f"got {orc_reg.get('schema_version')!r} (expected 2: trigger vocabulary merged "
+          f"with the Automation Domain, + executor / output)")
     check("orchestration registry declares orchestrations", isinstance(entries, dict),
           type(entries).__name__)
     if not isinstance(entries, dict):
@@ -1883,6 +1911,26 @@ def validate_orchestrations(orc_reg: dict) -> None:
             check(f"orchestration {name} trigger legal",
                   trigger in ALLOWED_ORCHESTRATION_TRIGGERS,
                   f"trigger={trigger!r} (expected one of {sorted(ALLOWED_ORCHESTRATION_TRIGGERS)})")
+
+        # executor / output：从 Automation Domain 继承的两格。记录迁进来之前它们是
+        # 可选的（现有 5 条没有），一旦迁进来就是必填 —— 那是 schema_version 3 的事。
+        # 现在只保证"写了就必须是真的"，否则这两格会在过渡期变成自由文本。
+        executor = entry.get("executor")
+        if executor is not None:
+            check(f"orchestration {name} executor legal",
+                  executor in ORCHESTRATION_EXECUTORS,
+                  f"executor={executor!r} (expected one of {sorted(ORCHESTRATION_EXECUTORS)})")
+
+        output = entry.get("output")
+        if output is not None:
+            check(f"orchestration {name} output is a mapping",
+                  isinstance(output, dict), type(output).__name__)
+            if isinstance(output, dict):
+                target = output.get("target")
+                check(f"orchestration {name} output target legal",
+                      target in ORCHESTRATION_OUTPUT_TARGETS,
+                      f"target={target!r} (expected one of "
+                      f"{sorted(ORCHESTRATION_OUTPUT_TARGETS)})")
 
         steps = entry.get("steps")
         if not isinstance(steps, list) or not steps:
