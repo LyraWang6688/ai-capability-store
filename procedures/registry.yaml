@@ -1,0 +1,61 @@
+# Procedures Domain Registry
+# Source of Truth for: procedure identity / path / lifecycle status / version /
+# entrypoint / runtime.
+#
+# What this Domain is: the deterministic twin of `skills/`. Both answer "how to do
+# it"; the difference is WHO executes — `skills/` is read by a model and needs
+# judgment, `procedures/` is run by a machine and can be asserted on. See
+# procedures/README.md.
+#
+# Why it exists: the Store had ~700 lines of deterministic implementation with no
+# identity. 24 scripts live inside skills, 9 inside jobs, another ~700 lines under
+# scripts/server-timers/. None was registered, so none could be versioned, tested,
+# or referenced — which is why the Feishu OpenAPI client got rewritten five times.
+# A Domain is what gives code an identity here.
+#
+# Entry threshold is NOT "it is a script". It is "it has a second consumer, or an
+# orchestration references it". A script with exactly one consumer stays inside
+# that asset's `scripts/` — moving it here would only scatter `skills/`.
+#
+# 平铺布局：procedures/<name>/. 分类（browser / computer / api）**不是目录层级**，
+# 是未来记录上的字段 —— 与 skills/README.md「分类是 registry 状态，不是目录结构」同理。
+#
+# schema_version 1: 骨架。本步只建立域与校验规则，不收记录；第一条记录
+# （expected: procedures/deepseek-invoice）会同时把记录级规则和它的 fixture 带进来。
+schema_version: 1
+
+domain: procedures
+description: Procedure identity, path, lifecycle status, version, entrypoint, runtime.
+
+allowed_statuses:
+  - draft
+  - testing
+  - active
+  - deprecated
+  - archived
+
+# 执行入口需要什么运行时。这是【声明】，不是发现：读记录的人不该去猜
+# 那个 .mjs 能不能跑。binary = 自带可执行文件（如编译好的 Swift 工具）。
+allowed_runtimes:
+  - python
+  - node
+  - bash
+  - binary
+
+procedures:
+  platform-intel:
+    name: platform-intel
+    path: procedures/platform-intel
+    status: testing
+    version: 0.1.0
+    updated: "2026-10-25"
+    entrypoint: collect.py
+    runtime: python
+    commerce: {charge: free}
+    notes: >
+      四平台（Codex / Claude / DSH / 豆包工作）× 三层的平台信息采集。
+      三层 = 产品（它有什么）/ API（开放什么，能不能做插件、能不能被 agent 调）/
+      生态（个人能不能上传、怎么收费）。collect.py 是阶段 1：抓源、存快照摘要、
+      产可达性报告，不提取字段 —— 提取需要固定页面夹具，见 README。
+      它是 procedure 而不是 skill，因为流程确定、要能回归测试；页面里的 prose 靠读，
+      那是流水线内部的解析步骤，不是"这件事需要判断"。

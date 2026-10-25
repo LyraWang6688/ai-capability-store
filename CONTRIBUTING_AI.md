@@ -9,14 +9,15 @@ Before making changes:
 1. Read `AGENTS.md`.
 2. Read `CONTRIBUTING_AI.md` (this file).
 3. Read `PUBLISHING.md` when publishing an asset.
-4. Read `VERSIONING.md` (store-wide versioning contract).
-5. Read `registry.yaml` (top-level store router).
-6. Read the README of the Domain being touched:
+4. Read `COMMERCE.md` when deciding or changing whether an asset is sold.
+5. Read `VERSIONING.md` (store-wide versioning contract).
+6. Read `registry.yaml` (top-level store router).
+7. Read the README of the Domain being touched:
    - Skills work → `skills/README.md`
    - External Capability work → `external-capabilities/README.md`
-7. Read the Domain Policy of the touched area
+8. Read the Domain Policy of the touched area
    (LIFECYCLE / VERSIONING / ACCEPTANCE / SECURITY as applicable).
-8. Inspect the current target entity before editing it.
+9. Inspect the current target entity before editing it.
 
 Do not create, move, rename, deprecate, or archive an entity without checking its registry first.
 
@@ -132,6 +133,8 @@ High-risk operations require explicit human approval:
   separate decisions, not one)
 - any change affecting permissions or authentication
 - any change to the dependency contract
+- **any change to an asset's `commerce` block** — whether something is sold is a
+  commercial decision, not a maintenance edit (`COMMERCE.md` §6)
 
 ## No Unrelated Changes
 

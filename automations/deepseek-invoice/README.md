@@ -1,85 +1,36 @@
-# deepseek-invoice
+# deepseek-invoice（作业登记处 · 实现已迁出）
 
-每月自动为 **DeepSeek 开放平台**（`platform.deepseek.com`）申请开具企业增值税普通发票。
+> **实现不在这里。** 确定性的开票脚本与「DeepSeek 账单页」的界面档案都在
+> [`computer-automation/browser-use/deepseek-billing/`](../../computer-automation/browser-use/deepseek-billing/)。
 
-## 它做什么
+本目录现在只剩两样东西：
 
-1. 用 headless Chromium 打开 `https://platform.deepseek.com/transactions`
-2. 校验登录态（失效则退出码 2）
-3. 点「发票管理」，读「可开票金额」
-4. **读不到金额**（页面改版 / 未加载 / 匹配规则失效）→ 截图、退出码 **4**，不猜 0
-5. 金额**明确为 0** → 跳过（幂等，不重复开票）
-6. 金额 > 0 → 选「按充值金额开票」，填固定抬头 / 税号 / 邮箱 / 增值税普通发票，填全额并提交
-7. 提交后**未验证到成功提示** → 退出码 **5**，人工核对，**不要自动重提**
-8. 输出 JSON（stdout 末尾 `@@RESULT@@`）+ 日志与截图（`local-file`）
-
-## 为什么需要 `systemd` 执行器
-
-| 备选 | 为什么不行 |
+| 东西 | 为什么还在这 |
 |---|---|
-| `github-actions` | 需要**长期登录态**（浏览器 token）且平台有**风控**；云端 runner 每次 IP 不同且在境外，会被判为可疑 |
-| `launchd` | 目标机是 Linux，不是 macOS |
-| `human` | 这是无人值守的月度定时任务 |
-
-## 输入（不入库）
-
-| 文件 | 说明 |
-|---|---|
-| `config.json` | 抬头 / 税号 / 邮箱 / `maxAmount`；权限 `600` |
-| `auth/storage-state.deepseek.json` | 登录态（cookie + localStorage 的 `userToken`），约 6KB；权限 `600` |
-
-## 运行
-
-```bash
-node run.mjs --dry-run     # 只读：读金额、不提交
-node run.mjs --live        # 真提交（金额 > 0 且未超上限时）
-```
-
-退出码：
-
-| 码 | 含义 |
-|---|---|
-| 0 | 成功（含「金额明确为 0，跳过」） |
-| 1 | 未捕获异常 |
-| 2 | 登录失效，需重新导出登录态 |
-| 3 | 金额超过 `maxAmount`，已中止 |
-| **4** | **读不到可开票金额**（页面改版 / 未加载 / 匹配规则失效）—— 已截图，未提交 |
-| **5** | **提交后未验证到成功提示** —— 人工核对，**不要自动重提**（可能已提交，重提会重复申请） |
-
-systemd 只看退出码：4 / 5 都会让 unit 变 `failed`。unit 里显式 `Restart=no`，避免自动重提。
-
-## 登录态维护
-
-登录态会过期。刷新步骤：
-
-1. 本地 Chrome 登录 `https://platform.deepseek.com`
-2. 导出并裁剪为只含 deepseek 的 storageState（`cookies` 过滤 `domain` 含 deepseek；`origins` 只留 `platform.deepseek.com`）
-3. `scp` 到目标机 `/opt/deepseek-invoice/auth/storage-state.deepseek.json`
-4. `chmod 600`
-
-失效信号：systemd 退出码 2，日志里出现「登录态失效」。
-
-## 安全设计
-
-- **默认 dry-run**；只有 systemd unit 里显式 `--live`
-- `maxAmount` 金额上限保护，超过即中止（退出码 3）
-- 金额**明确为 0** 才跳过（天然幂等）；**读不到金额不算 0**，按失败处理（退出码 4）
-- 提交结果不确定时按失败处理（退出码 5），不自动重提
-- 登录态与配置被 `.gitignore` 排除，不进仓库
-- 只操作 DeepSeek 一站点的账单页，不触碰其它系统
-
-## 定时
-
-`deploy/deepseek-invoice.timer`：`OnCalendar=*-*-01 10:00:00`，`Persistent=true`（错过会补跑）。
-
-## 已知限制
-
-- 发票抬头是 DeepSeek 自研的自动补全组件，**「有额度」场景尚未真机验证**；脚本按「输入 → 等下拉 → 点第一项」处理，首次真实提交建议人工旁看。
-- 页面改版会导致选择器失效：读不到金额会以退出码 4 结束（截图留证），不会当成 0 静默跳过。
-- 提交后若页面没有成功提示，只能判定「结果未知」（退出码 5）——脚本无法区分「已提交但提示没出现」和「提交失败」，因此必须人工核对，不能自动重提。
+| `deploy/`（systemd unit + timer + install.sh） | 「谁跑、多久跑一次」属于编排层，本作业迁到 `orchestrations/automated/` 之前留在这里 |
+| `run.mjs` → 软链 | 过渡用：`automations/registry.yaml` 要求 `entrypoint` 是**本目录内的文件名**，所以留一个指针让记录仍然成立。作业迁走时删掉。 |
 
 ## 部署
 
 ```bash
 bash automations/deepseek-invoice/deploy/install.sh
 ```
+
+`OnCalendar=*-*-01 10:00:00`，`Persistent=true`（错过会补跑）。
+
+## 为什么是 systemd 而不是 github-actions
+
+| 备选 | 为什么不行 |
+|---|---|
+| `github-actions` | 需要**长期登录态**且平台有**风控**；云端 runner 每次 IP 不同且在境外，会被判为可疑 |
+| `launchd` | 目标机是 Linux，不是 macOS |
+| `human` | 这是无人值守的月度定时任务 |
+
+## 迁移计划
+
+1. ~~实现搬到 `computer-automation/`~~（已完成）
+2. 把本目录的 `deploy/` 与触发/输出契约迁到 `orchestrations/automated/deepseek-invoice/`
+3. 删掉本目录与 `automations/registry.yaml` 里的这条记录
+
+在完成第 2 步之前，**不要**删 `run.mjs` 这个软链——删了校验器会报
+`automation deepseek-invoice entrypoint exists` 失败。

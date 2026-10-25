@@ -6,6 +6,14 @@
 # lives only in the bound workflow file — see automations/README.md
 # §"The cron lives in exactly one place".
 #
+# schema_version 3 (breaking): `commerce:` is a REQUIRED record field, and for
+# this Domain it is always `{charge: free}`. An Automation is triggered by a
+# clock on someone's machine or CI; it is not an artifact a consumer installs
+# (PUBLISHING.md §D), so "sell the Automation" is a domain error rather than a
+# pricing choice. What gets sold is the service it calls — a Capability.
+# The field is still required here: a domain that is exempt from a decision
+# should say so explicitly, not by staying silent.
+#
 # schema_version 2 (breaking): `workflow` was unconditionally required, which made
 # a launchd-driven automation unrepresentable. `executor` now names WHO runs it and
 # each executor requires exactly its own descriptor:
@@ -13,7 +21,7 @@
 #   launchd        -> launchd {label, template}
 #   human          -> neither
 # `output` gained `target`, because not every automation writes to the data branch.
-schema_version: 2
+schema_version: 3
 
 domain: automations
 description: Automation identity, path, lifecycle status, version, trigger kind, bound workflow, output contract.
@@ -57,6 +65,7 @@ automations:
       destination: "DSH 收件箱 + https://automation.bamamei.online/reports/github-trending-daily/<date>.html"
     description: >
       采集 GitHub Trending 日榜与周榜、以及近 7 天新建的高星仓库，附话题频次直方图。
+    commerce: {charge: free}
     notes: >
       0.6.1 起两段式：Actions 只抓数据（不调模型、不写飞书），SSH 推给服务器 DSH；
       服务器判断有无变化、需要时调 DeepSeek 出报告、渲染 HTML 到 automation.bamamei.online、
@@ -79,6 +88,7 @@ automations:
     description: >
       读取 data 分支最近 7 天的日快照，聚合出话题持续度、仓库一周净增星、
       一日热度与常驻项目。
+    commerce: {charge: free}
     notes: >
       0.2.1 起两段式：Actions 只做聚合（不调模型、不写飞书），SSH 推给服务器 DSH；
       服务器判断/调模型/出周报 HTML/写收件箱。`data` 分支仍保留每周聚合（归档）。
@@ -101,6 +111,7 @@ automations:
     description: >
       每月对 GitHub 账号下的仓库做一次状态快照：存在哪些仓库、相对上一期有什么变化、
       各自处于什么活性档位与可发现性得分，写入飞书 Base。
+    commerce: {charge: free}
     notes: >
       0.3.1 起两段式：Actions 只抓仓库元数据（SNAPSHOT_GH_TOKEN），SSH 推给服务器 DSH；
       服务器写三张 Base 表并写任务收件箱，Actions 不再持有 FEISHU_APP_ID / FEISHU_APP_SECRET。
@@ -154,6 +165,7 @@ automations:
       llms.txt / AGENTS.md / DSH 徽章 为生态约定。
       **只读 + 开 issue，不写任何仓库** —— 不合格就开 issue 派给仓库负责的 AI，
       「怎么按标准执行」由用户与各仓库 AI 约定，不归本自动化。
+    commerce: {charge: free}
     notes: >
       为什么是 Automation：触发由时钟决定（每周一晚 20:00），不需要人或模型参与。
       issue 幂等：同一仓库只维护一条（带隐藏 marker），修好会自动关闭，不会每周堆单。
@@ -183,6 +195,7 @@ automations:
       每周一 09:00（Asia/Shanghai）批量审计名下所有 GitHub 仓库（公开 + 私有；默认跳过已归档与 fork）的公开项目基线
       （17 项：安全 / 合并纪律 / CI / 可维护 / 可扩展），每项 PASS/FAIL/UNKNOWN，
       结果写入飞书 Base「仓库基线体检」表（一行一个仓库 + 不合格项清单）。
+    commerce: {charge: free}
     notes: >
       为什么是 Automation：触发由时钟决定（每月 1 号），不需要人或模型参与；
       只审计、不改任何仓库设置。UNKNOWN 表示查不到而不是没开。
@@ -208,6 +221,7 @@ automations:
       每周一 10:00（Asia/Shanghai）抓取 Codex Releases 与 Claude 发布说明，用模型提取
       「新增产品功能」，按功能名去重后写入飞书 Base 的「前沿功能与插件灵感」表，
       供后续把好用的功能做成 DSH 插件。
+    commerce: {charge: free}
     notes: >
       为什么是 Automation：触发由时钟决定（周一 10:00），不是人或模型决定。
       0.2.0 从 launchd 迁到 github-actions：0.1.x 用 launchd + 本机 lark-cli 的 user 令牌
@@ -256,6 +270,7 @@ automations:
       不再依赖 external-capabilities 里的能力包（原先共用的 MCP 形态已不再需要）。
       20:00 时 A 股收盘价已定、场外基金净值开始公布；QDII 与部分基金净值
       可能更晚，那部分会滞后一天，属正常。市值与日盈亏由表格公式自动重算。
+    commerce: {charge: free}
     notes: >
       代码在 Store 检出目录，状态（.cache 等）在工作目录 INVESTDESK_HOME，
       默认 ~/.investdesk。执行器是 github-actions：认证走飞书自建应用的
@@ -299,6 +314,7 @@ automations:
       每月对 owner 自有 Linux 服务器做一次只读审计：资源水位、服务存活、域名可达性、
       证书到期、OOM 与环比变化；并审计服务器上部署项目对应的 GitHub 仓库是否仍存在且活跃。
       产出单文件 HTML 报告（样式内联，可直接打开或转发）。
+    commerce: {charge: free}
     notes: >
       只读：不重启服务、不改配置、不动服务器文件。发现「上游已归档/删除但服务仍在跑」时
       只输出建议退休清单并标注需人工确认——仓库状态不等于业务状态，删除必须由人决定。
@@ -337,9 +353,15 @@ automations:
     description: >
       每月 1 日在 owner 自有 Linux 服务器上，用 headless Chromium 打开 DeepSeek 开放平台账单页，
       读取「可开票金额」；大于 0 时按固定抬头/税号/邮箱提交增值税普通发票申请，为 0 时跳过。
+    commerce: {charge: free}
     notes: >
       执行器选 systemd 而不是 github-actions：需要长期登录态（storageState）与国内固定 IP，
       云端 runner 的 IP 漂移且位于境外，会被目标平台风控。
+      2026-10-25：确定性实现（run.mjs / lib.mjs / test_lib.mjs / package.json）已迁到
+      computer-automation/browser-use/deepseek-billing/ —— 脚本就是这个界面的操作，
+      两者同时失效，所以放在一起。本目录只剩 deploy/ 与一个 run.mjs 软链；软链是过渡物，
+      因为 registry 要求 entrypoint 是本目录内的文件名。本作业迁到 orchestrations/investdesk/
+      之后，这个目录和这条记录一起删除。
 
       登录态由本地 Chrome 导出并裁剪到仅 deepseek 域（约 6KB），放在
       auth/storage-state.deepseek.json（600）。失效时脚本以退出码 2 结束，需要重新导出；

@@ -1,6 +1,20 @@
 # AI Capability Store — Top-level Registry Router
 # This file ONLY routes to Domain registries. It does NOT hold Domain state.
+#
 # schema_version 2: `platform:` renamed to `store:` (Store rebrand, breaking).
+#
+# 模块域（4）：skill / procedure / external-capability / computer-automation
+#   按"这件事的载体是什么"分：
+#     skills/                怎么做 · 执行者是模型
+#     procedures/            怎么做 · 执行者是机器
+#     external-capabilities/ 能调什么
+#     computer-automation/   界面能被怎么操作（一个界面 = 一条记录）
+# 组合层（1）：orchestrations/ —— 只引用模块域，不实现任何东西
+#   谁触发（manual / automated）+ 按什么顺序组合 + 产出落哪
+#
+# automations/ 不在这个列表里：它记录的其实是"触发器 + 组合 + 输出"，
+# 也就是编排层，所以它并入 orchestrations/<项目>/<任务>/。迁移分阶段进行，
+# 详见 orchestrations/registry.yaml 的 schema_version 2 注释。
 schema_version: 2
 
 store:
@@ -9,7 +23,9 @@ store:
 
 registries:
   skills: skills/registry.yaml
+  procedures: procedures/registry.yaml
   external_capabilities: external-capabilities/registry.yaml
+  computer_automation: computer-automation/registry.yaml
   dependencies: dependencies/capability-map.yaml
   automations: automations/registry.yaml
 

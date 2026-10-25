@@ -35,20 +35,25 @@ LyraWang6688/ai-capability-store
 ## Core Model
 
 ```text
-Skill               = How to do
-External Capability = What can be called
-Automation          = When it runs
-Orchestration       = In what order, for one task
+Skill                = How to do          (model executes)
+Procedure            = How to do          (machine executes)
+External Capability  = What can be called
+Computer Automation  = What an interface lets us do
+Orchestration        = In what order, for one task, triggered by whom
 ```
 
-Four **peer Domains**:
+**Four module Domains** plus **one composition layer**:
 
-| Domain | Owns | Examples |
-|---|---|---|
-| Skills | How to do | Method / SOP / Workflow / Decision Rule / Know-how |
-| External Capabilities | What can be called | MCP / Plugin / CLI / Connector / API / Integration |
-| Automations | What runs by itself | Scheduled collection / recurring aggregation / event-driven maintenance |
-| Orchestrations | In what order, for one task | Multi-asset pipelines and the hand-off rules between them |
+| Layer | Domain | Owns | Examples |
+|---|---|---|---|
+| Module | Skills | How to do — executed by a **model**, so it needs judgment | Method / SOP / Decision Rule / Know-how |
+| Module | Procedures | How to do — executed by a **machine**, so it is deterministic | Data transform / sync / publish / render |
+| Module | External Capabilities | What can be called | MCP / Plugin / CLI / Connector / API / Integration |
+| Module | Computer Automation | What a third party's **interface** lets us do, and when we last verified it | Browser Use / Computer Use surfaces |
+| Composition | Orchestrations | In what order, for one task, triggered by whom, output where | Multi-asset pipelines and their hand-off rules |
+
+A module Domain is a unit of identity: its own registry, lifecycle, version and tag.
+The composition layer has none of those for itself — it only references.
 
 A Plugin is NOT a sub-entity of a Skill. Formal Domain remains
 **External Capability**, which also covers plugin / mcp / connector / cli /
@@ -103,29 +108,39 @@ ai-capability-store/
 ├── README.md
 ├── CONTRIBUTING_AI.md             # Public contribution rules
 ├── PUBLISHING.md                  # Asset Publishing Protocol
+├── COMMERCE.md                    # Asset Commerce Protocol (is it sold, how, what enforces it)
 ├── VERSIONING.md                  # Store-wide versioning contract
 ├── SKILL-FORMAT.md                # Asset format contract (external spec + Store additions)
 ├── RETIREMENT.md                  # How to retire an asset without losing the record
 ├── registry.yaml                  # Top-level Store Router
-├── skills/                         # Domain A: Skills (how to do)
+├── skills/                         # Module Domain: how to do (model executes)
 │   ├── README.md
 │   ├── registry.yaml
 │   ├── LIFECYCLE.md
 │   ├── ACCEPTANCE.md
 │   └── <skill-name>/               # flat: one directory per skill, no nesting
-├── external-capabilities/          # Domain B: External Capabilities (what can be called)
+├── procedures/                     # Module Domain: how to do (machine executes)
+│   ├── README.md
+│   ├── registry.yaml
+│   └── <procedure-name>/           # flat: entrypoint + its tests
+├── computer-automation/            # Module Domain: what an interface lets us do
+│   ├── README.md
+│   ├── registry.yaml
+│   ├── browser-use/<app>/          # one folder per surface
+│   └── computer-use/<app>/
+├── external-capabilities/          # Module Domain: what can be called
 │   ├── README.md
 │   ├── registry.yaml
 │   ├── SECURITY.md
 │   ├── mcp/                        # Store-managed MCP implementations (created as needed)
 │   ├── providers/
 │   └── use-cases/
-├── automations/                    # Domain C: Automations (what runs by itself)
+├── automations/                    # (being absorbed into orchestrations/<project>/)
 │   ├── README.md
 │   ├── registry.yaml
 │   ├── LIFECYCLE.md
 │   └── <automation-name>/          # implementation + test_*.py, one per automation
-├── orchestrations/                 # Domain D: Orchestrations (in what order, for one task)
+├── orchestrations/                 # Composition layer: order + trigger + output
 │   ├── README.md
 │   ├── registry.yaml               # steps are the machine truth; directory symlinks mirror them
 │   └── <mode>/<ecosystem>/<task>/  # mode: manual / automated
@@ -159,5 +174,24 @@ version; immutable historical versions via namespaced Git Tags
 
 Whether an asset is published is a **Human decision**. See
 [PUBLISHING.md](./PUBLISHING.md).
+
+## Commerce
+
+Whether an asset is **sold** — and what enforces it — is a separate decision from
+publishing, and it is recorded on the asset's own record rather than in a
+separate registry:
+
+```yaml
+commerce: {charge: free}                     # not sold
+commerce:                                    # sold
+  charge: paid
+  model: subscription                        # oneoff | subscription | enterprise
+  carrier: self-api                          # capability only: license | self-api | hosted
+  value: "what the user is paying for"
+```
+
+A paid Skill must bill through a `required: true` capability that is itself paid
+and gated, so "we intend to charge for this" and "this record can charge" can
+never look the same. See [COMMERCE.md](./COMMERCE.md).
 
 [![](https://img.shields.io/badge/powered_by-dsh-4D6BFE?style=flat-square&logo=deepseek&logoColor=white)](https://github.com/deepseek-ai/deepseek-harness)

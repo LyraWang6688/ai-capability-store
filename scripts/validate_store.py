@@ -64,6 +64,16 @@ Checks:
     12. secret scan: only credential-bearing fields are flagged;
         reference-name metadata (e.g. secret_reference: production-github-token)
         is permitted and NOT flagged
+    13. commerce contract (COMMERCE.md): every asset answers "is it sold?" via
+        `commerce.charge` (free | paid). A paid record must also carry `model` +
+        `value`, and a free record must carry NOTHING else — the shape is decided
+        by charge so one record cannot answer the question twice. `carrier`
+        (license | self-api | hosted) exists on capabilities only and must agree
+        with `hosting`: a local license check needs code here, a server-side gate
+        needs an endpoint. Automations are forced to `free` (not distributable).
+        Cross-domain: a paid Skill must require (required: true) a capability
+        that is itself paid and carries a carrier — otherwise "paid" is a claim
+        with nothing behind it.
 
 NOTE on the secret scan: it is a LIGHTWEIGHT HEURISTIC, not a full repository
 secret scanner. It guards registry files only. A stronger secret gate
@@ -210,6 +220,51 @@ CAPABILITY_SHELVES = {"mcp", "connectors", "cli", "api", "plugin"}
 # 其它货架暂时平的。强制所有货架都加一层会让 8 个不需要分类的资产凭空多一级。
 CAPABILITY_ECOSYSTEMS = {"dsh"}
 
+# ---- Commerce Domain (store-wide policy: COMMERCE.md) ----
+#
+# 三个问题，三个字段。加这个块不是为了记录价格（价格会变，且不该进仓库），
+# 而是为了让「这个资产卖不卖、靠什么收得住钱」从聊天的结论变成 registry 里
+# 可查的事实 —— 否则 41 个资产里哪几个真的能收钱，只有作者记得。
+#
+#   charge  收不收费           free | paid
+#   model   怎么收（仅 paid）   oneoff | subscription | enterprise
+#   value   收的是什么钱（仅 paid）一句话，说清用户为什么付
+#   carrier 收费闸门装在哪（仅 paid，仅 capability）
+#
+# `carrier` 只在 capability 上，因为收费能力是一个可执行物 / 服务端点的事实；
+# Skill 能不能收钱由它的依赖推导（见 validate_commerce_carrier_chain），
+# 两边都写就是在维护第二份事实。
+ALLOWED_CHARGE = {"free", "paid"}
+ALLOWED_COMMERCE_MODELS = {"oneoff", "subscription", "enterprise"}
+# 闸门强度从弱到强。没有 "none"：`charge: paid` + 无闸门正是这个检查要拦的东西
+# （收了钱但没有任何可吊销的载体）。不收费的形状是 charge: free，不带 carrier。
+#   license   本地校验：防顺手转卖，不防有心复制（能 fork）
+#   self-api  核心逻辑在店外服务端：可吊销、可计量，用户装的是薄壳
+#   hosted    我们代跑：不可复制，但我们承担可用性与运维
+ALLOWED_COMMERCE_CARRIERS = {"license", "self-api", "hosted"}
+# `value` 的下限不是文风检查，是防止用 "付费" / "收费" 这种占位句把三个问题
+# 里的第三个糊过去 —— 说不清收的是什么钱，就不该标 paid。
+COMMERCE_MIN_VALUE_LEN = 10
+
+# ---- Procedures Domain ----
+# skills/ 和 procedures/ 回答同一个问题（怎么做），区别是【谁执行】：模型 vs 机器。
+# 因此这个域的资产必须能被断言 —— 没有确定性分支的东西留在这里只会变成
+# "一个要跑 runtime 的 skill"，两边都不合格。
+ALLOWED_PROCEDURE_RUNTIMES = {"python", "node", "bash", "binary"}
+ALLOWED_PROCEDURE_STATUSES = {"draft", "testing", "active", "deprecated", "archived"}
+
+# ---- Computer Automation Domain ----
+# 本域的资产是【界面】，不是脚本也不是 Skill —— 那两样留在自己的域里，
+# 本域用 driven_by 引用它们。见 computer-automation/README.md。
+ALLOWED_SURFACE_FACETS = {"browser", "computer"}
+# 作用域名与目录名不相等是有意的：`browser-use` 读起来是"这个文件夹收浏览器操作"，
+# 而记录里的 facet 是分类值。两处都改成一样会让 "use" 混进枚举值。
+SURFACE_FACET_DIRS = {"browser": "browser-use", "computer": "computer-use"}
+ALLOWED_SURFACE_VERIFICATIONS = {"verified", "unverified", "broken"}
+ALLOWED_SURFACE_PLATFORMS = {"web", "macos", "linux", "windows"}
+ALLOWED_DRIVE_ROUTES = {"cdp", "playwright", "ax", "cgevent", "applescript",
+                        "screencapture", "mcp"}
+
 # ---- Orchestration Domain ----
 ORCHESTRATION_DIR = "orchestrations"
 ALLOWED_ORCHESTRATION_STATUSES = {"testing", "available", "deprecated"}
@@ -227,7 +282,32 @@ ORCHESTRATION_MODES = {"manual", "automated"}
 
 # 谁发起/什么叫醒。可选字段；存在的值必须合法。
 # host-schedule = 宿主自带的定时任务（豆包/Codex 的 schedule），不是 store 里的 automation。
-ALLOWED_ORCHESTRATION_TRIGGERS = {"human", "host-schedule", "daily", "weekly", "monthly", "event"}
+#
+# schema_version 2 起，这套词表开始【吸收 automations 域的 trigger_kind】。目的不是
+# 让枚举更宽，而是让"多久跑一次"这件事只有一套词：
+#   automations 的 trigger_kind : daily weekly monthly quarterly manual event
+#   本域原来的 trigger          : human host-schedule daily weekly monthly event
+# 两份词表重叠 4 个、各自还有对方没有的值，同一个事实用两种说法记在两处 ——
+# 这就是"automations 与 orchestrations 各拿了一半"的具体形状。合并先从词表开始：
+# 并集在这里，automations 侧的下线留到它的记录真正迁进来时再做（那一步会动记录）。
+ALLOWED_ORCHESTRATION_TRIGGERS = {
+    "human", "host-schedule", "daily", "weekly", "monthly", "quarterly", "event",
+    # manual（automations 的说法）= human（本域的说法）：人的一次明确指令。
+    # 收敛成一个词是 schema_version 3 的事；过渡期两个都收，避免记录先红。
+    "manual",
+}
+
+# 谁执行。与 trigger 无关：trigger 说多久一次，executor 说谁在跑。
+# github-actions / launchd / systemd / human 从 Automation Domain 原样继承。
+# host 是新增的：readloop、teaming-minute-scan 那几条由【宿主自己的定时任务】叫醒，
+# 它们没有 workflow、没有 systemd unit，原来无处登记"谁在跑" —— 这正是把
+# automations 并进编排以后必须补上的一格。
+ORCHESTRATION_EXECUTORS = {"github-actions", "launchd", "systemd", "human", "host"}
+
+# 输出落到哪。Automation Domain 的三个来源（git-branch / external-system / local-file）
+# 原样继承，另加 human —— 人发起的编排，产物是给人看的一段文字或一个文件，
+# 它不写分支、不进外部系统、也不是"落盘后离开这台机器"。
+ORCHESTRATION_OUTPUT_TARGETS = {"git-branch", "external-system", "local-file", "human"}
 
 # 调自建 API 的编排：任务目录名必须带这个后缀，且 step 里必须有 calls。
 SELF_API_SUFFIX = "-self-api"
@@ -270,6 +350,12 @@ REQUIRED_POLICY_FILES = [
     "skills/ACCEPTANCE.md",
     "external-capabilities/README.md",
     "external-capabilities/registry.yaml",
+    "procedures/README.md",
+    "procedures/registry.yaml",
+    "computer-automation/README.md",
+    "computer-automation/registry.yaml",
+    "computer-automation/browser-use/README.md",
+    "computer-automation/computer-use/README.md",
     "external-capabilities/SECURITY.md",
     "dependencies/capability-map.yaml",
     "automations/README.md",
@@ -406,6 +492,172 @@ def scan_for_secrets(rel_path: str) -> None:
     check(f"secret scan: {rel_path}", not hits, "; ".join(hits) if hits else "clean")
 
 
+def validate_commerce(key: str, entry: dict, domain: str,
+                      allow_carrier: bool = False,
+                      force_free: bool = False) -> dict | None:
+    """Validate the `commerce:` block. Returns it, or None when absent/invalid.
+
+    The block's SHAPE is decided by `charge`, not by which fields happen to be
+    present. A free record carries `charge` only; a paid record carries
+    `model` + `value` (and `carrier` on a capability). That asymmetry is the
+    point: `charge: free` sitting next to `model: subscription` answers the
+    same question twice, and the next reader cannot tell which answer to trust.
+
+    `allow_carrier` is False for Skills and Automations on purpose. A Skill's
+    charging gate is derivable from its dependency chain
+    (validate_commerce_carrier_chain), so restating it here would create a
+    second source of truth for the same fact — the exact failure shape this
+    repository rejects everywhere else.
+
+    `force_free` exists for Automations only: an Automation is not
+    distributable as an artifact (PUBLISHING.md §D — it runs on someone's clock,
+    it is not installed by a consumer), so "sell the Automation" is always a
+    domain error. What gets sold is the service it calls, and that is a
+    Capability.
+    """
+    raw = entry.get("commerce")
+    if raw is None:
+        check(f"{domain} {key} declares commerce", False,
+              "missing `commerce:` — COMMERCE.md requires every asset to answer "
+              "whether it is sold; write `commerce: {charge: free}` when it is not")
+        return None
+    if not isinstance(raw, dict):
+        check(f"{domain} {key} commerce is a mapping", False, type(raw).__name__)
+        return None
+
+    allowed = {"charge", "model", "value"} | ({"carrier"} if allow_carrier else set())
+    unknown = set(raw.keys()) - allowed
+    check(f"{domain} {key} commerce has only allowed fields", not unknown,
+          f"unknown fields: {sorted(unknown)}"
+          + ("" if allow_carrier else
+             " — carrier is a CAPABILITY fact; a Skill's gate is derived from its "
+             "dependencies (COMMERCE.md §carrier)"))
+
+    charge = raw.get("charge")
+    check(f"{domain} {key} commerce charge legal", charge in ALLOWED_CHARGE,
+          f"charge={charge!r} (allowed: {sorted(ALLOWED_CHARGE)})")
+    if charge is None or charge not in ALLOWED_CHARGE:
+        return raw
+
+    if charge == "free":
+        redundant = [f for f in ("model", "carrier", "value") if f in raw]
+        check(f"{domain} {key} free commerce declares nothing else", not redundant,
+              f"a free record must not carry {sorted(redundant)} — `charge` decides "
+              f"the record's shape, and 'free but subscription' answers the same "
+              f"question twice")
+        return raw
+
+    # charge == paid
+    if force_free:
+        check(f"{domain} {key} automation is not sold as an artifact", False,
+              "an Automation is not distributable (PUBLISHING.md §D); sell the "
+              "service it calls as a Capability instead")
+
+    model = raw.get("model")
+    check(f"{domain} {key} paid commerce declares model",
+          model in ALLOWED_COMMERCE_MODELS,
+          f"model={model!r} (allowed: {sorted(ALLOWED_COMMERCE_MODELS)})")
+
+    value = raw.get("value")
+    ok_value = (isinstance(value, str) and len(value.strip()) >= COMMERCE_MIN_VALUE_LEN)
+    check(f"{domain} {key} paid commerce declares value", ok_value,
+          f"value={value!r} — say in one sentence what the user is paying for "
+          f"(>= {COMMERCE_MIN_VALUE_LEN} characters); 'paid' without that sentence "
+          f"is a claim with nothing behind it")
+
+    if allow_carrier:
+        carrier = raw.get("carrier")
+        check(f"{domain} {key} paid commerce declares carrier",
+              carrier in ALLOWED_COMMERCE_CARRIERS,
+              f"carrier={carrier!r} (allowed: {sorted(ALLOWED_COMMERCE_CARRIERS)}) "
+              f"— a paid asset with no gate cannot be revoked or metered; "
+              f"if nothing can enforce it, the answer to question 1 is 'free'")
+    return raw
+
+
+def _check_carrier_matches_hosting(key: str, commerce, hosting) -> None:
+    """The declared gate must be physically possible for this capability.
+
+    `hosting` says where the code is; `carrier` says where the gate is. They
+    cannot disagree: a local license check needs code on the user's machine,
+    while server-side gating needs an endpoint to gate. Cross-checking them is
+    what turns "we plan to charge for this" into "this record can actually
+    charge".
+    """
+    if not isinstance(commerce, dict) or commerce.get("charge") != "paid":
+        return
+    carrier = commerce.get("carrier")
+    if carrier not in ALLOWED_COMMERCE_CARRIERS:
+        return  # already failed above; do not cascade
+    if carrier == "license":
+        check(f"capability {key} license carrier requires store-managed hosting",
+              hosting == "store-managed",
+              f"hosting={hosting!r} — a local license check needs code that runs "
+              f"on the user's machine, so it cannot live behind an endpoint-only "
+              f"(hosting: external) record")
+    else:  # self-api | hosted
+        check(f"capability {key} {carrier} carrier requires external hosting",
+              hosting == "external",
+              f"hosting={hosting!r} — {carrier} means the core logic runs behind "
+              f"an endpoint, so the record must be hosting: external with an "
+              f"`endpoint:`; otherwise the gate described here has nowhere to live")
+
+
+def validate_commerce_carrier_chain(skill_entries, cap_entries, deps_reg) -> None:
+    """A paid Skill must bill through a capability that can actually bill.
+
+    This is the one cross-domain rule in the commerce contract, and it is the
+    reason the field is worth having. Without it `charge: paid` is free text:
+    anyone can write it, and nothing downstream changes. With it, marking a
+    Skill paid REQUIRES a required dependency on a capability that is itself
+    paid and carries a gate — which means the service端点, the license check or
+    the hosted runner has to exist first.
+
+    Everything already true is preserved: a Skill that is not sold needs no
+    dependency at all, so this check never fires for the 10 free Skills.
+    """
+    if not deps_reg:
+        return
+    cap_gate = {}
+    for key, entry in cap_entries:
+        commerce = entry.get("commerce")
+        if isinstance(commerce, dict):
+            cap_gate[key] = (commerce.get("charge"), commerce.get("carrier"))
+
+    paid_skills = [key for key, entry in skill_entries
+                   if isinstance(entry.get("commerce"), dict)
+                   and entry["commerce"].get("charge") == "paid"]
+    if not paid_skills:
+        return
+
+    required_by_skill = {}
+    deps = deps_reg.get("dependencies")
+    if isinstance(deps, list):
+        for dep in deps:
+            if not isinstance(dep, dict):
+                continue
+            skill = dep.get("skill")
+            requires = dep.get("requires")
+            if not isinstance(skill, str) or not isinstance(requires, list):
+                continue
+            for req in requires:
+                if isinstance(req, dict) and req.get("required") is True:
+                    required_by_skill.setdefault(skill, []).append(req.get("capability"))
+
+    for key in paid_skills:
+        required = required_by_skill.get(key, [])
+        # A dependency marked required: false is optional — an optional gate is
+        # bypassable, so it does not count as the thing the user pays for.
+        gated = [cap for cap in required
+                 if cap_gate.get(cap, (None, None))[0] == "paid"
+                 and cap_gate.get(cap, (None, None))[1] in ALLOWED_COMMERCE_CARRIERS]
+        check(f"skill {key} paid bills through a gated capability", bool(gated),
+              f"required capabilities={required!r}; a paid Skill must require "
+              f"(required: true) a capability that is itself paid AND carries a "
+              f"carrier ({sorted(ALLOWED_COMMERCE_CARRIERS)}) — otherwise 'paid' "
+              f"is a claim with nothing behind it (COMMERCE.md §carrier)")
+
+
 def validate_skill_entries(reg: dict):
     """Validate the required-field schema of every skill record.
 
@@ -454,9 +706,13 @@ def validate_skill_entries(reg: dict):
         # Closed field set: classification is a record field, not a section.
         unknown = set(entry.keys()) - {
             "name", "path", "scope", "project", "status", "version", "updated", "notes",
+            "commerce",
         }
         check(f"skill {key} has only allowed fields", not unknown,
               f"unknown fields: {sorted(unknown)}")
+        # Commerce is a store-wide decision, so it is checked for every domain
+        # against one contract (COMMERCE.md) rather than per-domain ad hoc.
+        validate_commerce(key, entry, "skill", allow_carrier=False)
         scope = entry.get("scope")
         if scope is not None:
             check(f"skill {key} scope legal", scope in ALLOWED_SKILL_SCOPES,
@@ -739,6 +995,166 @@ def validate_capability_entries(reg: dict):
                           not os.path.isabs(contract) and ".." not in cparts, contract)
                     check(f"capability {key} contract_path exists",
                           os.path.isfile(os.path.join(ROOT, contract)), contract)
+        # Commerce: the gate and the hosting shape must agree, because the gate
+        # has to physically live somewhere (COMMERCE.md §carrier).
+        commerce = validate_commerce(key, entry, "capability", allow_carrier=True)
+        _check_carrier_matches_hosting(key, commerce, entry.get("hosting"))
+    return collected
+
+
+def validate_procedure_entries(reg: dict) -> list:
+    """Procedures Domain: 一条记录 = 一项确定性操作。
+
+    和 Skills 的区别只有一个：执行者是机器。所以"能不能跑"必须是记录里的事实，
+    不是读代码才知道的事 —— entrypoint 与 runtime 都必填，且 entrypoint 必须真的
+    在那个目录里存在。缺了 runtime 就等于说"这个东西能跑，但不知道怎么跑"。
+    """
+    entries = reg.get("procedures") or {}
+    if not isinstance(entries, dict):
+        check("procedures registry procedures is a mapping", False, type(entries).__name__)
+        return []
+    collected = []
+    for key, entry in entries.items():
+        if not isinstance(entry, dict):
+            check(f"procedure {key} is a mapping", False, type(entry).__name__)
+            continue
+        collected.append((key, entry))
+        check(f"procedure {key} identifier kebab-case", bool(KEBAB_RE.match(key)), key)
+        unknown = set(entry.keys()) - {
+            "name", "path", "status", "version", "updated", "entrypoint", "runtime",
+            "notes", "commerce",
+        }
+        check(f"procedure {key} has only allowed fields", not unknown,
+              f"unknown fields: {sorted(unknown)}")
+        for field in ("name", "path", "status", "version", "updated", "entrypoint", "runtime"):
+            val = entry.get(field)
+            check(f"procedure {key} has required field: {field}", val is not None,
+                  f"value={val!r}")
+        check(f"procedure {key} map key == name", key == entry.get("name"),
+              f"key={key!r} name={entry.get('name')!r}")
+
+        status = entry.get("status")
+        check(f"procedure {key} status legal", status in ALLOWED_PROCEDURE_STATUSES,
+              f"status={status!r} (allowed: {sorted(ALLOWED_PROCEDURE_STATUSES)})")
+        version = entry.get("version")
+        check(f"procedure {key} version X.Y.Z",
+              isinstance(version, str) and bool(VERSION_RE.match(version)), f"version={version!r}")
+        updated = entry.get("updated")
+        check(f"procedure {key} updated is YYYY-MM-DD",
+              isinstance(updated, str) and bool(DATE_RE.match(updated)), f"updated={updated!r}")
+
+        runtime = entry.get("runtime")
+        check(f"procedure {key} runtime legal", runtime in ALLOWED_PROCEDURE_RUNTIMES,
+              f"runtime={runtime!r} (allowed: {sorted(ALLOWED_PROCEDURE_RUNTIMES)})")
+
+        path = entry.get("path")
+        expected = f"procedures/{key}"
+        check(f"procedure {key} path is procedures/<name>", path == expected,
+              f"path={path!r} (expected {expected!r})")
+        check(f"procedure {key} path exists",
+              isinstance(path, str) and os.path.isdir(os.path.join(ROOT, path)),
+              f"path={path!r}")
+
+        entrypoint = entry.get("entrypoint")
+        check(f"procedure {key} entrypoint has no path separators",
+              isinstance(entrypoint, str) and bool(entrypoint)
+              and "/" not in entrypoint and "\\" not in entrypoint, f"entrypoint={entrypoint!r}")
+        if isinstance(path, str) and isinstance(entrypoint, str) and entrypoint:
+            check(f"procedure {key} entrypoint exists",
+                  os.path.isfile(os.path.join(ROOT, path, entrypoint)),
+                  f"{path}/{entrypoint}")
+        validate_commerce(key, entry, "procedure", allow_carrier=False)
+    return collected
+
+
+def validate_surface_entries(reg: dict) -> list:
+    """Computer Automation Domain: 一条记录 = 一个界面。
+
+    这个域和别的域最大的不同：它的资产会被第三方**静默地**作废。所以记录里必须有
+    "上次亲手验证是哪天"，而且验证状态和日期不能各说各的 —— 说 verified 却没有日期，
+    等于给自己的记忆打了一个不可信的勾。
+
+    路径不是自由字段：它由 facet + name 决定（computer-automation/<facet>/<name>），
+    这样"目录结构"和"注册表"两处不会各写一个。这条规则让新增一个界面变成
+    "建目录 + 加记录"两件必须同时发生的事。
+    """
+    entries = reg.get("surfaces") or {}
+    if not isinstance(entries, dict):
+        check("computer automation surfaces is a mapping", False, type(entries).__name__)
+        return []
+    collected = []
+    for key, entry in entries.items():
+        if not isinstance(entry, dict):
+            check(f"surface {key} is a mapping", False, type(entry).__name__)
+            continue
+        collected.append((key, entry))
+        check(f"surface {key} identifier kebab-case", bool(KEBAB_RE.match(key)), key)
+        for field in ("name", "path", "facet", "platform", "drive", "verification"):
+            val = entry.get(field)
+            check(f"surface {key} has required field: {field}", val is not None, f"value={val!r}")
+        check(f"surface {key} map key == name", key == entry.get("name"),
+              f"key={key!r} name={entry.get('name')!r}")
+
+        facet = entry.get("facet")
+        check(f"surface {key} facet legal", facet in ALLOWED_SURFACE_FACETS,
+              f"facet={facet!r} (allowed: {sorted(ALLOWED_SURFACE_FACETS)})")
+        platform = entry.get("platform")
+        check(f"surface {key} platform legal", platform in ALLOWED_SURFACE_PLATFORMS,
+              f"platform={platform!r} (allowed: {sorted(ALLOWED_SURFACE_PLATFORMS)})")
+
+        drive = entry.get("drive")
+        check(f"surface {key} drive is a non-empty list",
+              isinstance(drive, list) and bool(drive), f"drive={drive!r}")
+        if isinstance(drive, list):
+            for route in drive:
+                check(f"surface {key} drive route legal: {route}",
+                      route in ALLOWED_DRIVE_ROUTES,
+                      f"route={route!r} (allowed: {sorted(ALLOWED_DRIVE_ROUTES)})")
+
+        # 验证状态与验证日期：说 verified 就必须有日期；说别的状态就不能带日期
+        # （带一个日期却又说 broken/unverified，下一个人不知道该信哪个）。
+        verification = entry.get("verification")
+        verified = entry.get("verified")
+        check(f"surface {key} verification legal", verification in ALLOWED_SURFACE_VERIFICATIONS,
+              f"verification={verification!r} (allowed: {sorted(ALLOWED_SURFACE_VERIFICATIONS)})")
+        if verification == "verified":
+            date_ok = (isinstance(verified, str) and bool(DATE_RE.match(verified))) or \
+                      isinstance(verified, datetime.date)
+            check(f"surface {key} verified declares a date", date_ok,
+                  f"verified={verified!r} — 'verified' 必须带上次实测日期，"
+                  f"否则这个状态只是自我声明")
+        else:
+            check(f"surface {key} non-verified declares no date", verified is None,
+                  f"verified={verified!r} — 只有 verification: verified 才带日期")
+
+        path = entry.get("path")
+        if isinstance(facet, str) and facet in ALLOWED_SURFACE_FACETS:
+            expected = f"computer-automation/{SURFACE_FACET_DIRS[facet]}/{key}"
+            check(f"surface {key} path is <facet>/<name>", path == expected,
+                  f"path={path!r} (expected {expected!r})")
+            check(f"surface {key} path exists",
+                  isinstance(path, str) and os.path.isdir(os.path.join(ROOT, path)),
+                  f"path={path!r}")
+
+        # 确定性驱动脚本是本域的可选附件：有就必须能跑，能跑就必须声明运行时。
+        entrypoint = entry.get("entrypoint")
+        runtime = entry.get("runtime")
+        if entrypoint is not None:
+            check(f"surface {key} entrypoint has no path separators",
+                  isinstance(entrypoint, str) and bool(entrypoint)
+                  and "/" not in entrypoint and "\\" not in entrypoint, f"entrypoint={entrypoint!r}")
+            if isinstance(path, str) and isinstance(entrypoint, str) and entrypoint:
+                check(f"surface {key} entrypoint exists",
+                      os.path.isfile(os.path.join(ROOT, path, entrypoint)),
+                      f"{path}/{entrypoint}")
+            check(f"surface {key} entrypoint declares runtime",
+                  runtime in ALLOWED_PROCEDURE_RUNTIMES,
+                  f"runtime={runtime!r} (allowed: {sorted(ALLOWED_PROCEDURE_RUNTIMES)})")
+        else:
+            check(f"surface {key} runtime requires an entrypoint", runtime is None,
+                  f"runtime={runtime!r} 但没有 entrypoint")
+        # 界面档案不是可交付的商品：收费发生在它驱动的脚本/服务上（COMMERCE.md）。
+        validate_commerce(key, entry, "surface", force_free=True)
     return collected
 
 
@@ -803,6 +1219,10 @@ def validate_automation_entries(reg: dict):
         if status is not None:
             check(f"automation {key} status legal", status in ALLOWED_AUTOMATION_STATUSES,
                   f"status={status!r}")
+        # An Automation is not an artifact a consumer installs, so it can never be
+        # the thing that is sold (PUBLISHING.md §D). force_free keeps that from
+        # being re-litigated record by record.
+        validate_commerce(key, entry, "automation", force_free=True)
         trigger = entry.get("trigger_kind")
         if trigger is not None:
             check(f"automation {key} trigger_kind legal", trigger in ALLOWED_TRIGGER_KINDS,
@@ -1178,8 +1598,13 @@ def main() -> int:
     refs = check_mapping(top.get("registries"), "top-level registries")
     if refs is None:
         return report(1)
-    expected_domains = ("skills", "external_capabilities", "dependencies", "automations",
-                       "orchestrations")
+    # 模块域在前（4 个），依赖与组合层在后。顺序不是语义，只是让这份清单
+    # 读起来和 AGENTS.md 的域列表一致 —— 一个域被登记到 router，就必须同时
+    # 出现在这里，否则它会被静默跳过（这正是头部 schema_version 检查漏掉
+    # orchestrations 时的形状）。
+    expected_domains = ("skills", "procedures", "external_capabilities",
+                        "computer_automation", "dependencies", "automations",
+                        "orchestrations")
     check("top-level registry routes all domains", set(refs.keys()) == set(expected_domains),
           f"routes: {sorted(refs.keys())}")
     routed = {}
@@ -1204,11 +1629,21 @@ def main() -> int:
     if skills_ok:
         skills_reg = check_mapping(skills_reg, "skills registry")
         skills_ok = skills_reg is not None
+    proc_rel = _routed("procedures")
+    proc_reg, proc_ok = load_yaml(proc_rel) if proc_rel else (None, False)
+    if proc_ok:
+        proc_reg = check_mapping(proc_reg, "procedures registry")
+        proc_ok = proc_reg is not None
     caps_rel = _routed("external_capabilities")
     caps_reg, caps_ok = load_yaml(caps_rel) if caps_rel else (None, False)
     if caps_ok:
         caps_reg = check_mapping(caps_reg, "capability registry")
         caps_ok = caps_reg is not None
+    ca_rel = _routed("computer_automation")
+    ca_reg, ca_ok = load_yaml(ca_rel) if ca_rel else (None, False)
+    if ca_ok:
+        ca_reg = check_mapping(ca_reg, "computer automation registry")
+        ca_ok = ca_reg is not None
     deps_rel = _routed("dependencies")
     deps_reg, deps_ok = load_yaml(deps_rel) if deps_rel else (None, False)
     if deps_ok:
@@ -1227,21 +1662,60 @@ def main() -> int:
 
     # ---- 3. Domain registry headers ----
     if skills_ok:
-        check("skills registry schema_version", skills_reg.get("schema_version") == 2,
-              f"got {skills_reg.get('schema_version')!r} (expected 2: flat skills map)")
+        check("skills registry schema_version", skills_reg.get("schema_version") == 3,
+              f"got {skills_reg.get('schema_version')!r} (expected 3: flat skills map "
+              f"+ required commerce field)")
         check("skills registry domain", skills_reg.get("domain") == "skills",
               repr(skills_reg.get("domain")))
+    if proc_ok:
+        check("procedures registry schema_version", proc_reg.get("schema_version") == 1,
+              f"got {proc_reg.get('schema_version')!r}")
+        check("procedures registry domain", proc_reg.get("domain") == "procedures",
+              repr(proc_reg.get("domain")))
+        # 声明式的运行时清单：读记录的人不该去猜那个 .mjs 能不能跑。
+        allowed_rt = set(proc_reg.get("allowed_runtimes") or [])
+        check("procedures registry keeps 4 runtimes", allowed_rt == ALLOWED_PROCEDURE_RUNTIMES,
+              f"runtimes={sorted(allowed_rt)}")
+        check("procedures registry procedures is a mapping",
+              isinstance(proc_reg.get("procedures"), dict),
+              type(proc_reg.get("procedures")).__name__)
+    procedure_entries = validate_procedure_entries(proc_reg) if proc_ok else []
+    if ca_ok:
+        check("computer automation registry schema_version", ca_reg.get("schema_version") == 1,
+              f"got {ca_reg.get('schema_version')!r}")
+        check("computer automation registry domain",
+              ca_reg.get("domain") == "computer_automation", repr(ca_reg.get("domain")))
+        facets = set(ca_reg.get("allowed_facets") or [])
+        check("computer automation registry keeps 2 facets",
+              facets == ALLOWED_SURFACE_FACETS, f"facets={sorted(facets)}")
+        # 本域特有的词汇，刻意与生命周期五档分开：五档回答"这个资产成熟到哪一步"，
+        # 这里回答"这个界面现在还能不能用"。两个问题共用一个词表会互相污染。
+        vers = set(ca_reg.get("allowed_verifications") or [])
+        check("computer automation registry keeps 3 verification states",
+              vers == ALLOWED_SURFACE_VERIFICATIONS, f"states={sorted(vers)}")
+        platforms = set(ca_reg.get("allowed_platforms") or [])
+        check("computer automation registry keeps 4 platforms",
+              platforms == ALLOWED_SURFACE_PLATFORMS, f"platforms={sorted(platforms)}")
+        routes = set(ca_reg.get("allowed_drive_routes") or [])
+        check("computer automation registry keeps 7 drive routes",
+              routes == ALLOWED_DRIVE_ROUTES, f"routes={sorted(routes)}")
+        check("computer automation registry surfaces is a mapping",
+              isinstance(ca_reg.get("surfaces"), dict),
+              type(ca_reg.get("surfaces")).__name__)
+    surface_entries = validate_surface_entries(ca_reg) if ca_ok else []
     if caps_ok:
-        check("capability registry schema_version", caps_reg.get("schema_version") == 1,
-              f"got {caps_reg.get('schema_version')!r}")
+        check("capability registry schema_version", caps_reg.get("schema_version") == 2,
+              f"got {caps_reg.get('schema_version')!r} (expected 2: required commerce "
+              f"field, carrier owned here)")
         check("capability registry domain", caps_reg.get("domain") == "external_capabilities",
               repr(caps_reg.get("domain")))
     if deps_ok:
         check("dependency registry schema_version", deps_reg.get("schema_version") == 1,
               f"got {deps_reg.get('schema_version')!r}")
     if autos_ok:
-        check("automation registry schema_version", autos_reg.get("schema_version") == 2,
-              f"got {autos_reg.get('schema_version')!r}")
+        check("automation registry schema_version", autos_reg.get("schema_version") == 3,
+              f"got {autos_reg.get('schema_version')!r} (expected 3: required commerce "
+              f"field, always free in this Domain)")
         check("automation registry domain", autos_reg.get("domain") == "automations",
               repr(autos_reg.get("domain")))
         allowed_auto = set(autos_reg.get("allowed_statuses") or [])
@@ -1375,6 +1849,12 @@ def main() -> int:
                         required = req.get("required")
                         check(f"dependency {i}.requires[{j}] required is a boolean",
                               isinstance(required, bool), repr(required))
+
+    # ---- 11b. Commerce: a paid Skill must bill through a gated capability ----
+    # Runs after BOTH registries and the dependency contract are known, because
+    # the fact it checks is a join across all three — the same shape as the
+    # self-api checks (directory name ↔ steps ↔ capability record).
+    validate_commerce_carrier_chain(skill_entries, cap_entries, deps_reg)
 
     # ---- 12b. Capability shelves: every directory is a registered asset ----
     # `providers/` and `use-cases/` hold documents, not capabilities, and are
@@ -1624,6 +2104,10 @@ def validate_orchestrations(orc_reg: dict) -> None:
                     known.add(value.rstrip("/"))
 
     entries = orc_reg.get(ORCHESTRATION_DIR) or {}
+    # 3 = 迁移中（两种 path 形状都收）；4 = 迁完（只收 <项目>/<任务>）。
+    check("orchestration registry schema_version",
+          orc_reg.get("schema_version") in (3, 4),
+          f"got {orc_reg.get('schema_version')!r} (expected 3 while migrating, 4 when done)")
     check("orchestration registry declares orchestrations", isinstance(entries, dict),
           type(entries).__name__)
     if not isinstance(entries, dict):
@@ -1647,19 +2131,58 @@ def validate_orchestrations(orc_reg: dict) -> None:
               isinstance(version, str) and bool(VERSION_RE.match(version)), f"version={version!r}")
         path = entry.get("path")
         parts = path.split("/") if isinstance(path, str) else []
-        check(f"orchestration {name} path is <mode>/<target>/<name>",
-              len(parts) == 4 and parts[0] == ORCHESTRATION_DIR
-              and parts[1] in ORCHESTRATION_MODES
-              and parts[2] in ORCHESTRATION_ECOSYSTEMS
-              and parts[3] == name,
-              f"path={path!r} — 期望 {ORCHESTRATION_DIR}/<mode>/<target>/{name}")
+        # schema_version 3 起，编排按【项目】组织：orchestrations/<project>/<task>。
+        # "谁发起"不再是目录层级，而是记录字段 trigger —— 与 skills 的 scope 同一条原则：
+        # 分类是注册表状态，不是目录结构。旧的三层形状（<mode>/<target>/<task>）在迁移期
+        # 继续接受，迁完就收紧（见 orchestrations/registry.yaml schema_version 3 注释）。
+        project_shape = len(parts) == 3 and parts[0] == ORCHESTRATION_DIR and bool(KEBAB_RE.match(parts[1])) and parts[2] == name
+        legacy_shape = (len(parts) == 4 and parts[0] == ORCHESTRATION_DIR
+                        and parts[1] in ORCHESTRATION_MODES
+                        and parts[2] in ORCHESTRATION_ECOSYSTEMS
+                        and parts[3] == name)
+        # 迁移期（schema_version 3）两种形状都收；迁完把 registry 升到 4，
+        # 这条严格检查才开始生效 —— 否则迁移一半的仓库会永远红。
+        strict = orc_reg.get("schema_version", 0) >= 4
+        if strict:
+            check(f"orchestration {name} path is <project>/<name>",
+                  project_shape,
+                  f"path={path!r} — 期望 {ORCHESTRATION_DIR}/<project>/{name}")
+        check(f"orchestration {name} path is a known shape",
+              project_shape or legacy_shape,
+              f"path={path!r} — 既不是 {ORCHESTRATION_DIR}/<project>/{name}，"
+              f"也不是迁移期兼容的 {ORCHESTRATION_DIR}/<mode>/<target>/{name}")
+        if project_shape:
+            # 新形状里 trigger 必填：一个任务必须说清谁发起它
+            check(f"orchestration {name} declares trigger",
+                  entry.get("trigger") is not None,
+                  "trigger 缺失 —— 新形状里 trigger 是必填（human / host-schedule / daily / …）")
 
-        mode = parts[1] if len(parts) == 4 else None
+        mode = parts[1] if legacy_shape else None
         trigger = entry.get("trigger")
         if trigger is not None:
             check(f"orchestration {name} trigger legal",
                   trigger in ALLOWED_ORCHESTRATION_TRIGGERS,
                   f"trigger={trigger!r} (expected one of {sorted(ALLOWED_ORCHESTRATION_TRIGGERS)})")
+
+        # executor / output：从 Automation Domain 继承的两格。记录迁进来之前它们是
+        # 可选的（现有 5 条没有），一旦迁进来就是必填 —— 那是 schema_version 3 的事。
+        # 现在只保证"写了就必须是真的"，否则这两格会在过渡期变成自由文本。
+        executor = entry.get("executor")
+        if executor is not None:
+            check(f"orchestration {name} executor legal",
+                  executor in ORCHESTRATION_EXECUTORS,
+                  f"executor={executor!r} (expected one of {sorted(ORCHESTRATION_EXECUTORS)})")
+
+        output = entry.get("output")
+        if output is not None:
+            check(f"orchestration {name} output is a mapping",
+                  isinstance(output, dict), type(output).__name__)
+            if isinstance(output, dict):
+                target = output.get("target")
+                check(f"orchestration {name} output target legal",
+                      target in ORCHESTRATION_OUTPUT_TARGETS,
+                      f"target={target!r} (expected one of "
+                      f"{sorted(ORCHESTRATION_OUTPUT_TARGETS)})")
 
         steps = entry.get("steps")
         if not isinstance(steps, list) or not steps:
@@ -1709,7 +2232,7 @@ def validate_orchestrations(orc_reg: dict) -> None:
                           isinstance(endpoints, list) and bool(endpoints), f"endpoints={endpoints!r}")
 
             link = step.get("link")
-            base = os.path.join(ROOT, *parts) if len(parts) == 4 else os.path.join(ROOT, ORCHESTRATION_DIR, name)
+            base = os.path.join(ROOT, *parts)
             link_path = os.path.join(base, link) if isinstance(link, str) and link else None
             if link_path is None:
                 check(f"orchestration {name} step {sid} declares a link", False, f"link={link!r}")
@@ -1838,24 +2361,35 @@ def validate_orchestrations(orc_reg: dict) -> None:
             mode_dir = os.path.join(base, mode)
             if mode.startswith(".") or not os.path.isdir(mode_dir):
                 continue
-            check(f"orchestration mode is declared: {mode}",
-                  mode in ORCHESTRATION_MODES,
-                  f"unknown mode {mode!r} — declare it in ORCHESTRATION_MODES")
-            for target in sorted(os.listdir(mode_dir)):
-                target_dir = os.path.join(mode_dir, target)
-                if target.startswith(".") or not os.path.isdir(target_dir):
-                    continue
-                check(f"orchestration ecosystem is declared: {mode}/{target}",
-                      target in ORCHESTRATION_ECOSYSTEMS,
-                      f"unknown ecosystem {target!r} — declare it in ORCHESTRATION_ECOSYSTEMS")
-                for task in sorted(os.listdir(target_dir)):
-                    task_dir = os.path.join(target_dir, task)
-                    if task.startswith(".") or not os.path.isdir(task_dir):
+            if mode in ORCHESTRATION_MODES:
+                # 过渡期的旧形状：<mode>/<target>/<task>
+                for target in sorted(os.listdir(mode_dir)):
+                    target_dir = os.path.join(mode_dir, target)
+                    if target.startswith(".") or not os.path.isdir(target_dir):
                         continue
-                    rel = f"{ORCHESTRATION_DIR}/{mode}/{target}/{task}"
-                    check(f"filesystem orchestration directory is registered: {rel}",
-                          rel in declared,
-                          "directory exists under orchestrations/ but no registry entry points at it")
+                    check(f"orchestration ecosystem is declared: {mode}/{target}",
+                          target in ORCHESTRATION_ECOSYSTEMS,
+                          f"unknown ecosystem {target!r} — declare it in ORCHESTRATION_ECOSYSTEMS")
+                    for task in sorted(os.listdir(target_dir)):
+                        task_dir = os.path.join(target_dir, task)
+                        if task.startswith(".") or not os.path.isdir(task_dir):
+                            continue
+                        rel = f"{ORCHESTRATION_DIR}/{mode}/{target}/{task}"
+                        check(f"filesystem orchestration directory is registered: {rel}",
+                              rel in declared,
+                              "directory exists under orchestrations/ but no registry entry points at it")
+                continue
+            # 新形状：orchestrations/<project>/<task>
+            check(f"orchestration project name kebab-case: {mode}",
+                  bool(KEBAB_RE.match(mode)), mode)
+            for task in sorted(os.listdir(mode_dir)):
+                task_dir = os.path.join(mode_dir, task)
+                if task.startswith(".") or not os.path.isdir(task_dir):
+                    continue
+                rel = f"{ORCHESTRATION_DIR}/{mode}/{task}"
+                check(f"filesystem orchestration directory is registered: {rel}",
+                      rel in declared,
+                      "directory exists under orchestrations/ but no registry entry points at it")
 
 
 def report(exit_code: int) -> int:

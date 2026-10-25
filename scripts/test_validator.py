@@ -35,6 +35,8 @@ SKILL_REGISTRY = os.path.join("skills", "registry.yaml")
 AUTOMATION_REGISTRY = os.path.join("automations", "registry.yaml")
 CAPABILITY_REGISTRY = os.path.join("external-capabilities", "registry.yaml")
 ORCHESTRATION_REGISTRY = os.path.join("orchestrations", "registry.yaml")
+PROCEDURES_REGISTRY = os.path.join("procedures", "registry.yaml")
+COMPUTER_AUTOMATION_REGISTRY = os.path.join("computer-automation", "registry.yaml")
 
 VERBOSE = "-v" in sys.argv or "--verbose" in sys.argv
 
@@ -61,6 +63,52 @@ def _append_frontmatter(line):
 
 def _duplicate_key(text):
     return text.replace("name: repo-hygiene", "name: repo-hygiene\nname: repo-hygiene", 1)
+
+
+def _set_commerce(record, block):
+    """Replace exactly ONE record's `commerce:` block in a registry file.
+
+    Records are 2-space-indented top-level keys and their fields are 4-space
+    indented, so a record's body runs until the next `^  <non-space>`. Scoping
+    the replacement this way is what lets each case break exactly one thing: a
+    registry-wide `replace(..., 1)` lands on whichever record happens to come
+    first and would quietly test a different asset than the label claims.
+
+    `block` is the literal replacement (4-space indented, newline-terminated),
+    or "" to delete the block.
+    """
+    def mutate(text):
+        head = re.search(rf"(?m)^  {re.escape(record)}:\n", text)
+        assert head, f"record not found: {record}"
+        rest = text[head.end():]
+        nxt = re.search(r"(?m)^  \S", rest)
+        end = head.end() + (nxt.start() if nxt else len(rest))
+        body = text[head.end():end]
+        assert "    commerce:" in body, f"no commerce block in {record}"
+        # Matches the inline form as well as the block form (6-space continuations).
+        new_body = re.sub(r"(?m)^    commerce:.*\n(?:      .*\n)*", block, body, count=1)
+        return text[:head.end()] + new_body + text[end:]
+    return mutate
+
+
+def _in_record(record, old, new):
+    """Replace `old` with `new`, scoped to ONE registry record.
+
+    The registry repeats the same field lines across records
+    (`status: testing`, `trigger: host-schedule`), so a file-wide replace would
+    silently mutate whichever record comes first. Scoping is what makes each
+    case test the record its label names.
+    """
+    def mutate(text):
+        head = re.search(rf"(?m)^  {re.escape(record)}:\n", text)
+        assert head, f"record not found: {record}"
+        rest = text[head.end():]
+        nxt = re.search(r"(?m)^  \S", rest)
+        end = head.end() + (nxt.start() if nxt else len(rest))
+        body = text[head.end():end]
+        assert old in body, f"{old!r} not in record {record}"
+        return text[:head.end()] + body.replace(old, new, 1) + text[end:]
+    return mutate
 
 
 MUTATIONS = {
@@ -162,6 +210,115 @@ MUTATIONS = {
     # whitelist
     "unknown-field": _append_frontmatter("version: 9.9.9"),
     "duplicate-key": _duplicate_key,
+    # ---- commerce (COMMERCE.md) ----
+    # The contract's whole value is "a record may not contradict itself", so
+    # every contradiction needs an input that turns it red. Each mutation below
+    # touches ONE record — see _set_commerce.
+    "commerce-missing": _set_commerce("repo-hygiene", ""),
+    "commerce-free-with-model": _set_commerce(
+        "repo-hygiene",
+        "    commerce:\n      charge: free\n      model: subscription\n"),
+    "commerce-skill-declares-carrier": _set_commerce(
+        "repo-hygiene",
+        "    commerce:\n      charge: paid\n      model: subscription\n"
+        "      carrier: self-api\n"
+        '      value: "demo value long enough to pass"\n'),
+    "commerce-paid-without-value": _set_commerce(
+        "readloop-service",
+        "    commerce:\n      charge: paid\n      model: subscription\n"
+        "      carrier: self-api\n"),
+    "commerce-paid-without-carrier": _set_commerce(
+        "readloop-service",
+        "    commerce:\n      charge: paid\n      model: subscription\n"
+        '      value: "demo value long enough to pass"\n'),
+    # carrier 与 hosting 必须能对上：本地校验要有本地代码，服务端闸门要有端点。
+    "commerce-license-on-external": _set_commerce(
+        "readloop-service",
+        "    commerce:\n      charge: paid\n      model: subscription\n"
+        "      carrier: license\n"
+        '      value: "demo value long enough to pass"\n'),
+    "commerce-selfapi-on-store-managed": _set_commerce(
+        "wechat-draft-mcp",
+        "    commerce:\n      charge: paid\n      model: subscription\n"
+        "      carrier: self-api\n"
+        '      value: "demo value long enough to pass"\n'),
+    # 正例用：同样是"核心在端点后面"，换个值必须仍然放行。
+    "commerce-hosted-on-external": _set_commerce(
+        "readloop-service",
+        "    commerce:\n      charge: paid\n      model: subscription\n"
+        "      carrier: hosted\n"
+        '      value: "demo value long enough to pass"\n'),
+    # Automation 不可分发（PUBLISHING.md §D），所以"卖 automation"是域错误。
+    "commerce-automation-paid": _set_commerce(
+        "ops-audit",
+        "    commerce:\n      charge: paid\n      model: subscription\n"
+        '      value: "demo value long enough to pass"\n'),
+    # 跨域联合：paid Skill 必须有一条 required: true 的付费能力兜底。
+    # repo-hygiene 没有任何依赖，所以它标 paid 时没有任何东西能收钱。
+    "commerce-paid-skill-without-gate": _set_commerce(
+        "repo-hygiene",
+        "    commerce:\n      charge: paid\n      model: subscription\n"
+        '      value: "demo value long enough to pass"\n'),
+    # 把唯一那条 required: true 改成 false —— 可选依赖不算收费闸门。
+    "commerce-optional-dependency": lambda t: t.replace(
+        "      - capability: readloop-service\n        required: true",
+        "      - capability: readloop-service\n        required: false", 1),
+    # ---- 编排层：吸收 Automation Domain 的三格 ----
+    # 两域合并的第一步是词表并集：quarterly / manual 原本是 automations 的说法。
+    "orc-trigger-quarterly": _in_record(
+        "teaming-meeting-review-self-api", "trigger: human", "trigger: quarterly"),
+    "orc-trigger-unknown": _in_record(
+        "teaming-meeting-review-self-api", "trigger: human", "trigger: yearly"),
+    "orc-executor-host": _in_record(
+        "readloop-daily-self-api",
+        "    trigger: host-schedule\n",
+        "    trigger: host-schedule\n    executor: host\n"),
+    "orc-executor-unknown": _in_record(
+        "readloop-daily-self-api",
+        "    trigger: host-schedule\n",
+        "    trigger: host-schedule\n    executor: cron\n"),
+    "orc-output-human": _in_record(
+        "wechat-article",
+        "    status: testing\n",
+        "    status: testing\n    output:\n      target: human\n"),
+    # 迁移期：新形状（<项目>/<任务>）里 trigger 必填 —— 一个任务必须说清谁发起它
+    "orc-project-missing-trigger": _in_record(
+        "wechat-article", "    trigger: human\n", ""),
+    "orc-project-bad-name": _in_record(
+        "wechat-article",
+        "path: orchestrations/wechat/wechat-article",
+        "path: orchestrations/WeChat/wechat-article"),
+    "orc-output-unknown": _in_record(
+        "wechat-article",
+        "    status: testing\n",
+        "    status: testing\n    output:\n      target: nowhere\n"),
+    # ---- 两个新模块域：骨架阶段的检查就是"声明与实现一致" ----
+    # 新域还没有记录，能坏的就是注册表头本身：枚举被悄悄改窄，等于把
+    # "我们支持哪些运行时 / 哪种作用域"这条事实改了而不自知。
+    "procedures-runtime-dropped": lambda t: t.replace("  - binary\n", "", 1),
+    "computer-automation-facet-dropped": lambda t: t.replace("  - computer\n", "", 1),
+    "computer-automation-domain-wrong": lambda t: t.replace(
+        "domain: computer_automation", "domain: computer-automation", 1),
+    # ---- 界面记录：本域最容易自相矛盾的地方就是"验证状态 vs 验证日期" ----
+    "surface-verified-without-date": _in_record(
+        "deepseek-billing", '    verified: "2026-10-23"\n', ""),
+    "surface-unverified-with-date": _in_record(
+        "deepseek-billing", "    verification: verified", "    verification: unverified"),
+    "surface-bad-drive-route": _in_record(
+        "deepseek-billing", "drive: [playwright]", "drive: [puppeteer]"),
+    "surface-entrypoint-without-runtime": _in_record(
+        "deepseek-billing", "    runtime: node\n", ""),
+    "surface-new-date-passes": _in_record(
+        "deepseek-billing", 'verified: "2026-10-23"', 'verified: "2026-10-25"'),
+    # ---- procedure 记录：能跑必须是记录里的事实，不是读代码才知道的事 ----
+    "procedure-runtime-missing": _in_record(
+        "platform-intel", "    runtime: python\n", ""),
+    "procedure-entrypoint-missing": _in_record(
+        "platform-intel", "entrypoint: collect.py", "entrypoint: nope.py"),
+    "procedure-path-wrong": _in_record(
+        "platform-intel", "path: procedures/platform-intel", "path: procedures/elsewhere"),
+    "procedure-version-bump-passes": _in_record(
+        "platform-intel", "version: 0.1.0", "version: 0.1.1"),
 }
 
 
@@ -223,6 +380,81 @@ CASES = [
      ORCHESTRATION_REGISTRY, "egress-misses-service"),
     ("calls contract differing from the service record is rejected", 1,
      ORCHESTRATION_REGISTRY, "calls-contract-mismatch"),
+    # commerce: 三个问题各自可校验，形状由 charge 决定 —— 一条记录不许把同一个
+    # 问题回答两遍，标了 paid 就必须能说出"收的是什么钱"、并且真有闸门活着。
+    ("asset without a commerce block is rejected", 1,
+     SKILL_REGISTRY, "commerce-missing"),
+    ("free asset that also declares a model is rejected", 1,
+     SKILL_REGISTRY, "commerce-free-with-model"),
+    ("skill declaring a carrier is rejected", 1,
+     SKILL_REGISTRY, "commerce-skill-declares-carrier"),
+    ("paid capability without value is rejected", 1,
+     CAPABILITY_REGISTRY, "commerce-paid-without-value"),
+    ("paid capability without carrier is rejected", 1,
+     CAPABILITY_REGISTRY, "commerce-paid-without-carrier"),
+    ("license carrier on an external capability is rejected", 1,
+     CAPABILITY_REGISTRY, "commerce-license-on-external"),
+    ("self-api carrier on a store-managed capability is rejected", 1,
+     CAPABILITY_REGISTRY, "commerce-selfapi-on-store-managed"),
+    ("paid automation is rejected", 1,
+     AUTOMATION_REGISTRY, "commerce-automation-paid"),
+    # 这里是整块契约存在的理由：没有这条，"paid" 就只是一句可以随手写的话。
+    ("paid skill with no gated dependency is rejected", 1,
+     SKILL_REGISTRY, "commerce-paid-skill-without-gate"),
+    ("paid skill whose gate is only an optional dependency is rejected", 1,
+     os.path.join("dependencies", "capability-map.yaml"), "commerce-optional-dependency"),
+    # 正例：self-api 改成 hosted 仍然合法 —— 两个值都是"核心在端点后面"，
+    # 放行它是为了证明上面的红来自规则，而不是来自"改动了任何东西就红"。
+    ("hosted carrier on an external capability passes", 0,
+     CAPABILITY_REGISTRY, "commerce-hosted-on-external"),
+    # 编排层开始吸收 Automation Domain 的三格。这一步只加字段、不动记录，
+    # 所以每个正例都必须真能放行 —— 否则下一步迁移无从下手。
+    ("orchestration in project shape without trigger is rejected", 1,
+     ORCHESTRATION_REGISTRY, "orc-project-missing-trigger"),
+    ("orchestration project name must be kebab-case", 1,
+     ORCHESTRATION_REGISTRY, "orc-project-bad-name"),
+    ("orchestration accepts a quarterly trigger", 0,
+     ORCHESTRATION_REGISTRY, "orc-trigger-quarterly"),
+    ("orchestration rejects an unknown trigger", 1,
+     ORCHESTRATION_REGISTRY, "orc-trigger-unknown"),
+    ("orchestration accepts a declared executor", 0,
+     ORCHESTRATION_REGISTRY, "orc-executor-host"),
+    ("orchestration rejects an unknown executor", 1,
+     ORCHESTRATION_REGISTRY, "orc-executor-unknown"),
+    ("orchestration accepts a human output target", 0,
+     ORCHESTRATION_REGISTRY, "orc-output-human"),
+    ("orchestration rejects an unknown output target", 1,
+     ORCHESTRATION_REGISTRY, "orc-output-unknown"),
+    # 新域的头：枚举清单被改窄就必须红，否则"我们支持哪些运行时"会随手的
+    # 一次编辑悄悄变少，而没有任何记录会因此失败。
+    ("procedures registry rejects a narrowed runtime list", 1,
+     PROCEDURES_REGISTRY, "procedures-runtime-dropped"),
+    ("computer automation registry rejects a narrowed facet list", 1,
+     COMPUTER_AUTOMATION_REGISTRY, "computer-automation-facet-dropped"),
+    ("computer automation registry domain must be snake_case", 1,
+     COMPUTER_AUTOMATION_REGISTRY, "computer-automation-domain-wrong"),
+    # 界面记录：verification 和 verified 是一对，说 verified 却没日期 = 自我声明的勾；
+    # 说 unverified 却带日期 = 两个答案，下一个读的人不知道该信哪个。
+    ("surface marked verified without a date is rejected", 1,
+     COMPUTER_AUTOMATION_REGISTRY, "surface-verified-without-date"),
+    ("surface not verified must not carry a date", 1,
+     COMPUTER_AUTOMATION_REGISTRY, "surface-unverified-with-date"),
+    ("surface with an unknown drive route is rejected", 1,
+     COMPUTER_AUTOMATION_REGISTRY, "surface-bad-drive-route"),
+    ("surface entrypoint without a runtime is rejected", 1,
+     COMPUTER_AUTOMATION_REGISTRY, "surface-entrypoint-without-runtime"),
+    # 正例：换个日期仍然合法 —— 复核是这个域的正常动作，不是例外。
+    ("surface re-verified with a new date passes", 0,
+     COMPUTER_AUTOMATION_REGISTRY, "surface-new-date-passes"),
+    # procedure：entrypoint 与 runtime 是"能跑"的两个必要条件，缺一个就红。
+    ("procedure without runtime is rejected", 1,
+     PROCEDURES_REGISTRY, "procedure-runtime-missing"),
+    ("procedure whose entrypoint does not exist is rejected", 1,
+     PROCEDURES_REGISTRY, "procedure-entrypoint-missing"),
+    ("procedure path must be procedures/<name>", 1,
+     PROCEDURES_REGISTRY, "procedure-path-wrong"),
+    ("procedure version bump passes", 0,
+     PROCEDURES_REGISTRY, "procedure-version-bump-passes"),
 ]
 
 # The first case is the baseline: untouched, so it must pass.

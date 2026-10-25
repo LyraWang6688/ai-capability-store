@@ -21,40 +21,39 @@ orchestrations/         —— 按什么顺序连（这一次任务）
 
 一个编排可以**被** automation 定时触发；编排自己不当时钟。
 
-## 布局：三层
+## 布局：两层
 
 ```text
 orchestrations/
-  registry.yaml                     ← 唯一机器真相（验证器查这个）
-  SELF-API.md                       ← 调自建 API 的编排怎么标
-  <模式>/<生态>/<任务>/
-    README.md                       ← 人读：流程 + 衔接规则
-    <link>  →  ../../../里的资产      ← 软链，给人看的那一份
+  registry.yaml                 ← 唯一机器真相（验证器查这个）
+  SELF-API.md                   ← 调自建 API 的编排怎么标
+  <项目>/<任务>/
+    README.md                   ← 人读：这条流程 + 衔接规则
+    <link>  →  ../../../里的资产  ← 软链，给人看的那一份
 ```
 
-| 层 | 回答什么 | 现在有哪些 |
-|---|---|---|
-| **模式** | 这一类任务**谁发起** | `manual`（人说一句就做）· `automated`（系统发起：钟或事件，不需要人触发）|
-| **生态** | 它动用了**哪个平台**的资产 | `wechat` · `dsh` · `doubao-work` |
-| **任务** | 具体那一条 | `wechat-article` · `investdesk-daily-report` · `teaming-meeting-review-self-api` · `teaming-minute-scan-self-api` · `readloop-daily-self-api` |
+| 层 | 回答什么 |
+|---|---|
+| **项目** | 这个任务属于哪个产品/项目。人找东西是按这个找的（"投资台那些""公众号那些"）|
+| **任务** | 具体那一条。**谁发起它**写在记录的 `trigger` 字段里，不是目录层级 |
 
-### 为什么第二级是「生态」而不是「谁执行」
+**为什么不按"人发起 / 钟发起"分目录：** 那是任务的一个属性，不是它所在的位置 ——
+和 `skills/` 一样，分类是注册表状态，不是目录结构。按模式分会把同一个项目的任务劈到
+两棵树上，而人要的恰恰是"这个项目有哪些任务"。
 
-```text
-"谁执行"已经在 automations/registry.yaml 的 executor 字段里记过一次了
-        ↓
-再在编排里记一遍，就是两个真相
-        ↓
-而"动用了哪个平台的资产"是编排自己的事 —— 看 steps 里的 use: 就知道
-```
+`trigger` 取值：`human`（人说一句才做）· `host-schedule`（宿主自己的定时器）·
+`daily` / `weekly` / `monthly` / `quarterly` · `event`。
+自动不等于定时：事件（比如"本周第一次开机"）也是自动的一种。
 
-`wechat-article` 放在 `manual/wechat/` 而不是某个 agent 下面，因为它的四步
-（写 / 排版 / 动图 / 上传）没有一步是「只能在某个 agent 上跑」的。
+**项目名不是封闭集合**：新增一个项目是一次正常的产品动作，不该变成一次 policy 决策。
+任务名则必须精确等于目录名（`tag` 是 `<资产名>-v<版本>`，改名会让 tag 变孤儿）。
 
-**两个都是封闭集合**（`ORCHESTRATION_MODES` / `ORCHESTRATION_ECOSYSTEMS`），和货架、生态同一套纪律。
+### 软链退几级
 
-> 模式不描述"跑什么"，只描述"**谁发起**"。自动不等于定时：`automated` 的输入可以是
-> 钟，也可以是事件（比如「本周第一次开机/登录」）。所以它不叫 `scheduled-task`。
+从任务目录到仓库根是 **3 层**（任务 → 项目 → orchestrations → 根），所以是
+`../../../skills/...`。少退一级 = 断链，而验证器会抓住它。
+
+**软链和 `registry.yaml` 的 `steps` 是同一份事实的两个视图。** 验证器保证两者一致。
 
 ### 调自建 API 的编排：任务名带 `-self-api`
 
@@ -77,16 +76,6 @@ orchestrations/
 
 判据三条，缺一不算：**endpoint 写在 skill 里** + **后面是自建后端** + **契约在 skill 的 `references/` 里**。
 细节和"不算"的例子见 [`SELF-API.md`](./SELF-API.md)。
-
-### 三级路径的代价
-
-软链要多退一级：从任务目录到仓库根是 **4 层**（任务 → 目标 → 模式 → orchestrations → 根），
-所以是 `../../../../skills/...`。少退一级 = 断链，而验证器会抓住它。
-
-**软链和 `registry.yaml` 的 `steps` 是同一份事实的两个视图。** 验证器保证两者一致。
-
-> ⚠️ 为什么需要验证器管这个：**git 不会告诉你软链断了。** 实测——删掉目标之后
-> `git status` 是干净的，而软链仍然指着不存在的地方。这是这个仓库最防的那种"安静地坏掉"。
 
 ## steps 的形状
 
@@ -166,14 +155,14 @@ steps:
 
 ---
 
-## 两个模式各自的通用流程
+## 两种触发方式的通用流程
 
 | 模式 | 抽象 |
 |---|---|
 | `automated/` | **三段**：输入（钟或事件）→ 处理 → 输出（必须是 GUI）<br>段间：**能直连就直连，不能直连才插桥** |
 | `manual/` | 没有钟：人触发 → 调几个资产 → 交付 |
 
-见各自的 `README.md`。
+见 [`MANUAL.md`](./MANUAL.md)（人发起）与 [`AUTOMATED.md`](./AUTOMATED.md)（钟或事件发起）。
 
 **调自建 API 不是第三个模式** —— manual 和 automated 里都可能有；标志是
 **任务名带 `-self-api` + step 里有 `calls`**，不是它被谁发起。

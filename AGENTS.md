@@ -5,21 +5,25 @@ Any Agent (human or AI) modifying this repository MUST read, in order, before ma
 1. `AGENTS.md` (this file — routing only)
 2. `CONTRIBUTING_AI.md` (public contribution rules)
 3. `PUBLISHING.md` (asset publishing protocol — when publishing an asset)
-4. `VERSIONING.md` (store-wide versioning contract)
-5. `SKILL-FORMAT.md` (asset format contract — the whitelist the external
+4. `COMMERCE.md` (is the asset sold, how, and what enforces it — when deciding
+   or changing whether an asset is charged for)
+5. `VERSIONING.md` (store-wide versioning contract)
+6. `SKILL-FORMAT.md` (asset format contract — the whitelist the external
    standards impose, plus what the Store adds on top)
-6. `RETIREMENT.md` (how to end an asset — the one operation that shrinks the Store)
-7. `registry.yaml` (top-level store router)
-8. The README of the Domain being touched:
+7. `RETIREMENT.md` (how to end an asset — the one operation that shrinks the Store)
+8. `registry.yaml` (top-level store router)
+9. The README of the Domain being touched:
    - `orchestrations/README.md` for Orchestration Domain work
    - `skills/README.md` for Skill Domain work
+   - `procedures/README.md` for Procedure Domain work
    - `external-capabilities/README.md` for External Capability Domain work
+   - `computer-automation/README.md` for Computer Automation Domain work
    - `automations/README.md` for Automation Domain work
    - `dependencies/capability-map.yaml` for dependency work
-9. The Domain Policy files of the touched area
-   (e.g. `skills/LIFECYCLE.md`, `skills/ACCEPTANCE.md`, `external-capabilities/SECURITY.md`,
-   `automations/LIFECYCLE.md`)
-10. The current target entity (skill / capability / dependency record) before editing it
+10. The Domain Policy files of the touched area
+    (e.g. `skills/LIFECYCLE.md`, `skills/ACCEPTANCE.md`, `external-capabilities/SECURITY.md`,
+    `automations/LIFECYCLE.md`)
+11. The current target entity (skill / capability / dependency record) before editing it
 
 **Handoffs do NOT go into this repository.** They describe internal coordinates — server
 addresses, Feishu base/table tokens, deployment paths, session ids. None of that is a
@@ -35,24 +39,37 @@ Domain-specific policy lives in the Domain directories.
 
 | Intent | Route |
 |---|---|
-| Add / change a Skill (how to do one thing) | `skills/` |
+| Add / change a Skill (how to do one thing — model decides) | `skills/` |
+| Add / change a Procedure (how to do one thing — machine executes) | `procedures/` |
 | Add / change an Orchestration (in what order several things run, for one task) | `orchestrations/` |
 | Add / change an External Capability (plugin / MCP / connector / CLI / API / integration) | `external-capabilities/` |
 | Add / change an Automation (scheduled or event-driven job) | `automations/` |
 | Record a Skill ↔ External Capability dependency | `dependencies/capability-map.yaml` |
-| Add / change a computer-automation doc (browser use / computer use — docs only) | `automations/computer-automation/` |
+| Register / verify a UI surface (browser use / computer use) | `computer-automation/` |
 | Change store-wide policy | top-level policy files |
 
-Skills, External Capabilities, Automations and Orchestrations are **peer Domains**.
-`automations/computer-automation/` is a documentation shelf *inside* the Automation Domain,
-not a fifth Domain: no assets, no registry. It is exempted by name from the "every
-directory under `automations/` is a registered job or a family" rule (`AUTOMATION_DOC_DIRS`).
+There are **four module Domains** and **one composition layer**.
+
+| Layer | Directories | Holds |
+|---|---|---|
+| Module | `skills/` `procedures/` `external-capabilities/` `computer-automation/` | independent, reusable units — everything an orchestration may reference |
+| Composition | `orchestrations/` | order + trigger + output; holds no implementation of its own |
+
+A module Domain is a unit of *identity*: it has its own registry, lifecycle, version and
+tag. The composition layer has none of those for itself — it only references.
+
+`automations/` is being absorbed into `orchestrations/automated/` because a job is
+"trigger + an ordered set of modules + output", which is exactly what an orchestration
+records. It stays registered during the migration; see `orchestrations/registry.yaml`
+schema_version 2.
 
 What separates them is the question each one answers:
 
 | Domain | Question |
 |---|---|
-| `skills/` | **how** to do one thing |
+| `skills/` | **how** to do one thing — executed by a model, so it needs judgment |
+| `procedures/` | **how** to do one thing — executed by a machine, so it is deterministic |
+| `computer-automation/` | **what a third party's interface lets us do**, and when we last verified it |
 | `external-capabilities/` | **what** can be called |
 | `automations/` | **when** something runs (a clock) |
 | `orchestrations/` | **in what order** several of the above run, for one task |
@@ -67,9 +84,12 @@ automation is triggered by a clock.
 | State | Owner |
 |---|---|
 | Skill identity / path / lifecycle / version | `skills/registry.yaml` |
+| Procedure identity / path / lifecycle / version / entrypoint / runtime | `procedures/registry.yaml` |
 | External capability identity / provider / type / availability / auth / permissions / version / implementation | `external-capabilities/registry.yaml` |
+| UI surface identity / facet / drive routes / verified date / driven_by | `computer-automation/registry.yaml` |
 | Skill ↔ External Capability dependencies | `dependencies/capability-map.yaml` |
 | Automation identity / path / lifecycle / trigger / workflow / output | `automations/registry.yaml` |
+| Asset commerce (charge / model / carrier / value) | the asset's own record in its Domain registry — no separate registry |
 | Store registry routing | `registry.yaml` (top level, router only) |
 
 A single core fact is maintained in exactly one registry. Do not duplicate Domain state into the top level.

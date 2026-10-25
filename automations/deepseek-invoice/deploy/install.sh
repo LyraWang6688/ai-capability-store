@@ -4,6 +4,9 @@
 set -euo pipefail
 
 SRC="$(cd "$(dirname "$0")/.." && pwd)"
+# 实现（run.mjs / lib.mjs / package.json / config.example.json）住在 computer-automation/，
+# 因为"确定性脚本 + 界面档案"一起维护；本目录只剩部署物。
+CODE="$(cd "$SRC/../../computer-automation/browser-use/deepseek-billing" && pwd)"
 TARGET="${TARGET:-/opt/deepseek-invoice}"
 OWNER="$(id -un)"
 
@@ -13,9 +16,9 @@ sudo chown -R "$OWNER":"$(id -gn)" "$TARGET"
 chmod 700 "$TARGET/auth"
 
 echo "== 2. 代码与配置 =="
-cp "$SRC/run.mjs" "$SRC/lib.mjs" "$SRC/package.json" "$TARGET/"
+cp "$CODE/run.mjs" "$CODE/lib.mjs" "$CODE/package.json" "$TARGET/"
 if [ ! -f "$TARGET/config.json" ]; then
-  cp "$SRC/config.example.json" "$TARGET/config.json"
+  cp "$CODE/config.example.json" "$TARGET/config.json"
   echo "⚠️  已生成 config.json 模板，请填入真实抬头/税号/邮箱后 chmod 600"
 fi
 chmod 600 "$TARGET/config.json" 2>/dev/null || true
