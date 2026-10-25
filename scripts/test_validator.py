@@ -292,6 +292,17 @@ MUTATIONS = {
     "computer-automation-facet-dropped": lambda t: t.replace("  - computer\n", "", 1),
     "computer-automation-domain-wrong": lambda t: t.replace(
         "domain: computer_automation", "domain: computer-automation", 1),
+    # ---- 界面记录：本域最容易自相矛盾的地方就是"验证状态 vs 验证日期" ----
+    "surface-verified-without-date": _in_record(
+        "deepseek-billing", '    verified: "2026-10-23"\n', ""),
+    "surface-unverified-with-date": _in_record(
+        "deepseek-billing", "    verification: verified", "    verification: unverified"),
+    "surface-bad-drive-route": _in_record(
+        "deepseek-billing", "drive: [playwright]", "drive: [puppeteer]"),
+    "surface-entrypoint-without-runtime": _in_record(
+        "deepseek-billing", "    runtime: node\n", ""),
+    "surface-new-date-passes": _in_record(
+        "deepseek-billing", 'verified: "2026-10-23"', 'verified: "2026-10-25"'),
 }
 
 
@@ -402,6 +413,19 @@ CASES = [
      COMPUTER_AUTOMATION_REGISTRY, "computer-automation-facet-dropped"),
     ("computer automation registry domain must be snake_case", 1,
      COMPUTER_AUTOMATION_REGISTRY, "computer-automation-domain-wrong"),
+    # 界面记录：verification 和 verified 是一对，说 verified 却没日期 = 自我声明的勾；
+    # 说 unverified 却带日期 = 两个答案，下一个读的人不知道该信哪个。
+    ("surface marked verified without a date is rejected", 1,
+     COMPUTER_AUTOMATION_REGISTRY, "surface-verified-without-date"),
+    ("surface not verified must not carry a date", 1,
+     COMPUTER_AUTOMATION_REGISTRY, "surface-unverified-with-date"),
+    ("surface with an unknown drive route is rejected", 1,
+     COMPUTER_AUTOMATION_REGISTRY, "surface-bad-drive-route"),
+    ("surface entrypoint without a runtime is rejected", 1,
+     COMPUTER_AUTOMATION_REGISTRY, "surface-entrypoint-without-runtime"),
+    # 正例：换个日期仍然合法 —— 复核是这个域的正常动作，不是例外。
+    ("surface re-verified with a new date passes", 0,
+     COMPUTER_AUTOMATION_REGISTRY, "surface-new-date-passes"),
 ]
 
 # The first case is the baseline: untouched, so it must pass.

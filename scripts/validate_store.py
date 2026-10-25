@@ -257,6 +257,9 @@ ALLOWED_PROCEDURE_STATUSES = {"draft", "testing", "active", "deprecated", "archi
 # 本域的资产是【界面】，不是脚本也不是 Skill —— 那两样留在自己的域里，
 # 本域用 driven_by 引用它们。见 computer-automation/README.md。
 ALLOWED_SURFACE_FACETS = {"browser", "computer"}
+# 作用域名与目录名不相等是有意的：`browser-use` 读起来是"这个文件夹收浏览器操作"，
+# 而记录里的 facet 是分类值。两处都改成一样会让 "use" 混进枚举值。
+SURFACE_FACET_DIRS = {"browser": "browser-use", "computer": "computer-use"}
 ALLOWED_SURFACE_VERIFICATIONS = {"verified", "unverified", "broken"}
 ALLOWED_SURFACE_PLATFORMS = {"web", "macos", "linux", "windows"}
 ALLOWED_DRIVE_ROUTES = {"cdp", "playwright", "ax", "cgevent", "applescript",
@@ -999,6 +1002,97 @@ def validate_capability_entries(reg: dict):
     return collected
 
 
+def validate_surface_entries(reg: dict) -> list:
+    """Computer Automation Domain: 一条记录 = 一个界面。
+
+    这个域和别的域最大的不同：它的资产会被第三方**静默地**作废。所以记录里必须有
+    "上次亲手验证是哪天"，而且验证状态和日期不能各说各的 —— 说 verified 却没有日期，
+    等于给自己的记忆打了一个不可信的勾。
+
+    路径不是自由字段：它由 facet + name 决定（computer-automation/<facet>/<name>），
+    这样"目录结构"和"注册表"两处不会各写一个。这条规则让新增一个界面变成
+    "建目录 + 加记录"两件必须同时发生的事。
+    """
+    entries = reg.get("surfaces") or {}
+    if not isinstance(entries, dict):
+        check("computer automation surfaces is a mapping", False, type(entries).__name__)
+        return []
+    collected = []
+    for key, entry in entries.items():
+        if not isinstance(entry, dict):
+            check(f"surface {key} is a mapping", False, type(entry).__name__)
+            continue
+        collected.append((key, entry))
+        check(f"surface {key} identifier kebab-case", bool(KEBAB_RE.match(key)), key)
+        for field in ("name", "path", "facet", "platform", "drive", "verification"):
+            val = entry.get(field)
+            check(f"surface {key} has required field: {field}", val is not None, f"value={val!r}")
+        check(f"surface {key} map key == name", key == entry.get("name"),
+              f"key={key!r} name={entry.get('name')!r}")
+
+        facet = entry.get("facet")
+        check(f"surface {key} facet legal", facet in ALLOWED_SURFACE_FACETS,
+              f"facet={facet!r} (allowed: {sorted(ALLOWED_SURFACE_FACETS)})")
+        platform = entry.get("platform")
+        check(f"surface {key} platform legal", platform in ALLOWED_SURFACE_PLATFORMS,
+              f"platform={platform!r} (allowed: {sorted(ALLOWED_SURFACE_PLATFORMS)})")
+
+        drive = entry.get("drive")
+        check(f"surface {key} drive is a non-empty list",
+              isinstance(drive, list) and bool(drive), f"drive={drive!r}")
+        if isinstance(drive, list):
+            for route in drive:
+                check(f"surface {key} drive route legal: {route}",
+                      route in ALLOWED_DRIVE_ROUTES,
+                      f"route={route!r} (allowed: {sorted(ALLOWED_DRIVE_ROUTES)})")
+
+        # 验证状态与验证日期：说 verified 就必须有日期；说别的状态就不能带日期
+        # （带一个日期却又说 broken/unverified，下一个人不知道该信哪个）。
+        verification = entry.get("verification")
+        verified = entry.get("verified")
+        check(f"surface {key} verification legal", verification in ALLOWED_SURFACE_VERIFICATIONS,
+              f"verification={verification!r} (allowed: {sorted(ALLOWED_SURFACE_VERIFICATIONS)})")
+        if verification == "verified":
+            date_ok = (isinstance(verified, str) and bool(DATE_RE.match(verified))) or \
+                      isinstance(verified, datetime.date)
+            check(f"surface {key} verified declares a date", date_ok,
+                  f"verified={verified!r} — 'verified' 必须带上次实测日期，"
+                  f"否则这个状态只是自我声明")
+        else:
+            check(f"surface {key} non-verified declares no date", verified is None,
+                  f"verified={verified!r} — 只有 verification: verified 才带日期")
+
+        path = entry.get("path")
+        if isinstance(facet, str) and facet in ALLOWED_SURFACE_FACETS:
+            expected = f"computer-automation/{SURFACE_FACET_DIRS[facet]}/{key}"
+            check(f"surface {key} path is <facet>/<name>", path == expected,
+                  f"path={path!r} (expected {expected!r})")
+            check(f"surface {key} path exists",
+                  isinstance(path, str) and os.path.isdir(os.path.join(ROOT, path)),
+                  f"path={path!r}")
+
+        # 确定性驱动脚本是本域的可选附件：有就必须能跑，能跑就必须声明运行时。
+        entrypoint = entry.get("entrypoint")
+        runtime = entry.get("runtime")
+        if entrypoint is not None:
+            check(f"surface {key} entrypoint has no path separators",
+                  isinstance(entrypoint, str) and bool(entrypoint)
+                  and "/" not in entrypoint and "\\" not in entrypoint, f"entrypoint={entrypoint!r}")
+            if isinstance(path, str) and isinstance(entrypoint, str) and entrypoint:
+                check(f"surface {key} entrypoint exists",
+                      os.path.isfile(os.path.join(ROOT, path, entrypoint)),
+                      f"{path}/{entrypoint}")
+            check(f"surface {key} entrypoint declares runtime",
+                  runtime in ALLOWED_PROCEDURE_RUNTIMES,
+                  f"runtime={runtime!r} (allowed: {sorted(ALLOWED_PROCEDURE_RUNTIMES)})")
+        else:
+            check(f"surface {key} runtime requires an entrypoint", runtime is None,
+                  f"runtime={runtime!r} 但没有 entrypoint")
+        # 界面档案不是可交付的商品：收费发生在它驱动的脚本/服务上（COMMERCE.md）。
+        validate_commerce(key, entry, "surface", force_free=True)
+    return collected
+
+
 def _executor_descriptor_ok(executor, entry: dict) -> bool:
     """Each executor requires exactly its own runner descriptor, and no other.
 
@@ -1542,6 +1636,7 @@ def main() -> int:
         check("computer automation registry surfaces is a mapping",
               isinstance(ca_reg.get("surfaces"), dict),
               type(ca_reg.get("surfaces")).__name__)
+    surface_entries = validate_surface_entries(ca_reg) if ca_ok else []
     if caps_ok:
         check("capability registry schema_version", caps_reg.get("schema_version") == 2,
               f"got {caps_reg.get('schema_version')!r} (expected 2: required commerce "
