@@ -134,6 +134,15 @@ async function checkOne(client, url) {
         h1: (document.querySelector('h1') || {}).innerText || '',
         textLen: (document.body && document.body.innerText || '').length,
         head: ((document.body && document.body.innerText) || '').slice(0, 200).replace(/\\s+/g, ' '),
+        // 第二层验证：这一页有没有「更新痕迹」。
+        // 打得开不等于在跟踪更新 —— 一个只有营销文案的首页也能打开。
+        markers: (() => {
+          const t = (document.body && document.body.innerText) || '';
+          const dates = (t.match(/20[2-9]\\d[-/.年]\\s?\\d{1,2}[-/.月]\\s?\\d{1,2}/g) || []).slice(0, 40);
+          const vers = (t.match(/\\bv?\\d+\\.\\d+(\\.\\d+)?\\b/g) || []).slice(0, 40);
+          const years = (t.match(/20[2-9]\\d/g) || []);
+          return { dates: dates.length, versions: vers.length, years: years.length, sampleDate: dates[0] || '', sampleVer: vers[0] || '' };
+        })(),
       }))()`,
       returnByValue: true,
     }, sid)
@@ -186,14 +195,26 @@ client.close()
 proc.kill()
 try { rmSync(dir, { recursive: true, force: true }) } catch {}
 
+// 第二层：这个源有没有「更新痕迹」。打得开但零日期零版本 = 采集它没用。
+for (const r of results) {
+  if (r.verdict !== 'ok') { r.extraction = 'n/a'; continue }
+  const m = r.markers || {}
+  r.extraction = (m.dates || 0) + (m.versions || 0) >= 3 ? 'has-markers'
+    : (m.years || 0) > 0 ? 'weak'
+    : 'no-markers'
+}
 const bad = results.filter((r) => r.verdict !== 'ok')
+const noMark = results.filter((r) => r.extraction === 'no-markers' || r.extraction === 'weak')
 if (json) {
   console.log(JSON.stringify(results, null, 2))
 } else {
   for (const r of results) {
     const mark = r.verdict === 'ok' ? 'OK  ' : 'FAIL'
-    console.log(`${mark} ${r.verdict.padEnd(11)} ${r.id.padEnd(28)} ${(r.title || '').slice(0, 52)}`)
+    const ext = r.extraction === 'has-markers' ? '✓' : r.extraction === 'n/a' ? ' ' : '⚠'
+    console.log(`${mark} ${ext} ${r.verdict.padEnd(11)} ${r.id.padEnd(26)} ${(r.title || '').slice(0, 44)}  [${r.markers?.dates || 0}日期 ${r.markers?.versions || 0}版本]`)
   }
-  console.log(`\n${results.length} 个源，${bad.length} 个有问题`)
+  console.log(`\n${results.length} 个源：${results.length - bad.length} 能开，${bad.length} 打不开`)
+  console.log(`其中 ${noMark.length} 个源「打得开但没有更新痕迹」——采集它们没用：`)
+  for (const r of noMark) console.log(`  - ${r.id}（${r.extraction}）`)
 }
 process.exit(bad.length ? 1 : 0)
