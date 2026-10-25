@@ -13,11 +13,14 @@ import json
 import os
 import re
 import subprocess
+import sys
 import time
+import urllib.request
 from datetime import datetime, timezone, timedelta
 
 TZ = timezone(timedelta(hours=8))
-DEFAULT_CLI = os.path.expanduser("~/.agents/skills/wind-mcp-skill/scripts/cli.mjs")
+WIND_BASE = "https://mcp.wind.com.cn"       # 直连，不依赖本机安装的万得 skill
+WIND_SERVER = "financial_docs"
 DEFAULT_BASE = os.environ.get("INVESTDESK_BASE_TOKEN", "")   # 飞书 Base token，走环境变量
 DEFAULT_TABLE = "tblrWsYmW93ujgqC"
 
@@ -153,15 +156,56 @@ def to_record(item: dict, company: str, now_ms: int) -> dict:
 
 # ---------------- IO ----------------
 
-def wind_news(cli: str, query: str, top_k: int = 6) -> list[dict]:
-    cmd = ["node", cli, "call", "financial_docs", "get_financial_news",
-           json.dumps({"query": query, "top_k": top_k}, ensure_ascii=False)]
-    out = subprocess.run(cmd, capture_output=True, text=True, timeout=180)
-    if out.returncode != 0:
-        raise RuntimeError(f"Wind 调用失败: {out.stderr[:200]}")
-    payload = json.loads(out.stdout)
-    inner = json.loads(payload["content"][0]["text"])
-    return (inner.get("data") or {}).get("items") or []
+def _parse_payload(text: str) -> dict:
+    text = text.strip()
+    if text.startswith("{"):
+        return json.loads(text)
+    for line in text.splitlines():
+        line = line.strip()
+        if line.startswith("data:"):
+            data = line[5:].strip()
+            if data and data != "[DONE]":
+                return json.loads(data)
+    raise RuntimeError(f"无法解析 Wind 响应: {text[:200]}")
+
+
+class Wind:
+    """最小 MCP 客户端：initialize + tools/call（响应可能是 SSE）。
+
+    为什么不用 wind skill 的 cli.mjs：那条路依赖本机 ~/.agents 下的文件，
+    GitHub Actions 的 runner 上没有，且别人要用也得先装一份 skill。
+    """
+
+    def __init__(self, api_key: str, server: str = WIND_SERVER, timeout: int = 60):
+        self.key = api_key
+        self.url = f"{WIND_BASE}/vserver_{server}/mcp/"
+        self.timeout = timeout
+        self.calls = 0
+
+    def _rpc(self, method: str, params: dict) -> dict:
+        body = json.dumps({"jsonrpc": "2.0", "id": int(datetime.now().timestamp() * 1000),
+                           "method": method, "params": params}).encode()
+        req = urllib.request.Request(self.url, data=body, method="POST", headers={
+            "Authorization": f"Bearer {self.key}",
+            "Accept": "application/json, text/event-stream",
+            "Content-Type": "application/json"})
+        with urllib.request.urlopen(req, timeout=self.timeout) as resp:
+            payload = _parse_payload(resp.read().decode())
+        if payload.get("error"):
+            err = payload["error"]
+            raise RuntimeError(f"Wind {err.get('code')}: {err.get('message')}")
+        return payload.get("result") or {}
+
+    def news(self, query: str, top_k: int = 6) -> list[dict]:
+        self._rpc("initialize", {"protocolVersion": "2025-03-26", "capabilities": {},
+                                 "clientInfo": {"name": "investdesk-funding-news", "version": "0.2.0"}})
+        self.calls += 1
+        result = self._rpc("tools/call", {"name": "get_financial_news",
+                                          "arguments": {"query": query, "top_k": top_k}})
+        if result.get("isError"):
+            raise RuntimeError(str((result.get("content") or [{}])[0].get("text"))[:300])
+        inner = json.loads(result["content"][0]["text"])
+        return (inner.get("data") or {}).get("items") or []
 
 
 def base_existing_links(base: str, table: str, lark: str) -> set[str]:
@@ -196,50 +240,82 @@ def base_create(base: str, table: str, recs: list[dict], lark: str) -> int:
         os.unlink(path)
 
 
-def main() -> None:
-    ap = argparse.ArgumentParser(description="投融资事件采集（Wind 新闻 → 飞书）")
-    ap.add_argument("--cli", default=DEFAULT_CLI)
-    ap.add_argument("--base-token", default=DEFAULT_BASE)
-    ap.add_argument("--table", default=DEFAULT_TABLE)
-    ap.add_argument("--top-k", type=int, default=6)
-    ap.add_argument("--dry-run", action="store_true")
-    ap.add_argument("--lark-cli", default="lark-cli")
-    args = ap.parse_args()
-    if not args.base_token:
-        raise SystemExit("缺少飞书 Base token：设置环境变量 INVESTDESK_BASE_TOKEN 或传 --base-token")
+def build(s: "Wind", top_k: int) -> tuple[list[dict], dict]:
+    """抓取 + 分类 → (待写入记录, 各公司统计)。不碰飞书。"""
     now_ms = int(time.time() * 1000)
-
     raw, report = [], {}
     for company, query in GROUPS.items():
-        items = wind_news(args.cli, query, args.top_k)
+        items = s.news(query, top_k)
         raw += [{**it, "_company": company} for it in items]
         report[company] = {"fetched": len(items)}
         time.sleep(0.3)
-
-    existing = set() if args.dry_run else base_existing_links(args.base_token, args.table, args.lark_cli)
-    recs, seen = [], set()
-    dropped = 0
+    recs, dropped = [], 0
     for it in dedupe(raw):
         if not is_relevant(it, it["_company"]):
             dropped += 1
             continue
         rec = to_record(it, it["_company"], now_ms)
-        link = rec["来源链接"]
+        recs.append(rec)
+        report[it["_company"]]["kept"] = report[it["_company"]].get("kept", 0) + 1
+    return recs, {"by_company": report, "dropped_noise": dropped, "credits": s.calls}
+
+
+def write(records: list[dict], base: str, table: str, lark: str) -> dict:
+    """写入飞书（按来源链接去重）。只在有 Base 凭据的一侧执行。"""
+    existing = base_existing_links(base, table, lark)
+    recs, seen = [], set()
+    for rec in records:
+        link = str(rec.get("来源链接") or "").strip()
         if not link or link in existing or link in seen:
             continue
         seen.add(link)
         recs.append(rec)
-        report[it["_company"]]["kept"] = report[it["_company"]].get("kept", 0) + 1
+    created = base_create(base, table, recs, lark)
+    return {"payload": len(records), "to_create": len(recs), "created": created,
+            "already_in_base": len(records) - len(recs)}
 
-    created = 0 if args.dry_run else base_create(args.base_token, args.table, recs, args.lark_cli)
-    print(json.dumps({"dry_run": args.dry_run, "report": report, "dropped_noise": dropped,
-                      "to_create": len(recs), "created": created}, ensure_ascii=False, indent=2))
-    if args.dry_run:
-        for r in recs[:6]:
-            d = datetime.fromtimestamp(r["新闻日期"]/1000, TZ).date() if r.get("新闻日期") else "无日期"
-            print(f"  [{d}] {r['公司']} / {r['事件类型']} / {r['可信度']}")
-            print(f"      {r['来源标题'][:56]}")
-            print(f"      金额: {r['金额原文'] or '—'}")
+
+def main() -> None:
+    ap = argparse.ArgumentParser(description="投融资事件采集（万得新闻 → 飞书）")
+    ap.add_argument("--mode", choices=["fetch", "write", "all"], default="all",
+                    help="fetch=只抓取产出 payload；write=只把 payload 写入飞书；all=两者都做")
+    ap.add_argument("--in", dest="infile", default="", help="write 模式的 payload 文件（默认读 stdin）")
+    ap.add_argument("--out", default="", help="fetch 模式的 payload 输出文件（默认 stdout）")
+    ap.add_argument("--base-token", default=DEFAULT_BASE)
+    ap.add_argument("--table", default=DEFAULT_TABLE)
+    ap.add_argument("--top-k", type=int, default=6)
+    ap.add_argument("--lark-cli", default="lark-cli")
+    ap.add_argument("--dry-run", action="store_true")
+    args = ap.parse_args()
+
+    if args.mode in ("fetch", "all"):
+        key = os.environ.get("WIND_API_KEY", "").strip()
+        if not key:
+            raise SystemExit("缺少环境变量 WIND_API_KEY")
+        recs, meta = build(Wind(key), args.top_k)
+        payload = {"generated_at": datetime.now(TZ).isoformat(timespec="seconds"),
+                   "records": recs, "meta": meta}
+        text = json.dumps(payload, ensure_ascii=False)
+        if args.out:
+            with open(args.out, "w", encoding="utf-8") as fh:
+                fh.write(text)
+            print(json.dumps({"out": args.out, "records": len(recs), **meta}, ensure_ascii=False))
+        else:
+            print(text)
+        if args.mode == "fetch" or args.dry_run:
+            return
+
+    # write / all
+    if not args.base_token:
+        raise SystemExit("缺少 --base-token 或 INVESTDESK_BASE_TOKEN")
+    if args.mode == "write":
+        raw = open(args.infile, encoding="utf-8").read() if args.infile else sys.stdin.read()
+        payload = json.loads(raw)
+        recs = payload.get("records") or []
+    else:
+        recs = payload["records"]
+    result = write(recs, args.base_token, args.table, args.lark_cli)
+    print(json.dumps({"mode": args.mode, "records": len(recs), **result}, ensure_ascii=False))
 
 
 if __name__ == "__main__":

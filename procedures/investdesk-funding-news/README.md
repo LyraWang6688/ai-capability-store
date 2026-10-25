@@ -14,23 +14,35 @@
 ## 跑什么
 
 ```bash
-export INVESTDESK_BASE_TOKEN=<飞书 Base token>   # 目标 Base（不入库）
-node --version                       # 需要 node >= 20（技能 CLI 依赖）
-python3 collect.py --dry-run         # 只取数、分类、打印，不写库
-python3 collect.py                   # 写入飞书
-python3 collect.py --top-k 10        # 每家公司取更多条
+# 只抓取：产出 payload，完全不碰飞书（GitHub Actions 用的就是这个模式）
+export WIND_API_KEY=<万得 key>
+python3 collect.py --mode fetch --out payload.json
+
+# 只写入：把 payload 写进飞书（服务器侧执行，需要 lark-cli 已登录）
+export INVESTDESK_BASE_TOKEN=<飞书 Base token>
+python3 collect.py --mode write --in payload.json
+
+# 一把梭（本机调试用）
+export WIND_API_KEY=... INVESTDESK_BASE_TOKEN=...
+python3 collect.py
 ```
+
+`--mode fetch` **只需要万得 key**，不读也不写飞书；`--mode write` **只需要飞书凭据**，不调万得。
+这个切分是为了让 GitHub Actions 只承担抓取，把飞书写入留在服务器（详见下面的调度）。
 
 输出 JSON：`fetched / kept / dropped_noise / to_create / created`。
 
 ## 数据链路
 
 ```
-关键词组 → node ~/.agents/skills/wind-mcp-skill/scripts/cli.mjs
-                 call financial_docs get_financial_news
+关键词组 → 直连万得 MCP over HTTP（initialize + tools/call，响应可能是 SSE）
          → 事件判定/分类/金额抽取（纯逻辑，见 collect.py 顶部规则）
+         → payload JSON
          → 按「来源链接」去重 → 写入飞书表
 ```
+
+**不依赖本机安装的万得 skill**：万得的 `cli.mjs` 只是 JSON-RPC 薄封装，这里直接发 HTTP，
+因此 GitHub Actions 的 runner 上也能跑。
 
 ## 三条纪律（写死在代码里）
 
