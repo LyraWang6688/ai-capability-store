@@ -59,3 +59,20 @@ procedures:
       产可达性报告，不提取字段 —— 提取需要固定页面夹具，见 README。
       它是 procedure 而不是 skill，因为流程确定、要能回归测试；页面里的 prose 靠读，
       那是流水线内部的解析步骤，不是"这件事需要判断"。
+  portfolio-holdings:
+    name: portfolio-holdings
+    path: procedures/portfolio-holdings
+    status: testing
+    version: 0.1.0
+    updated: "2026-10-25"
+    entrypoint: dump.ts
+    runtime: node
+    commerce: {charge: free}
+    notes: >
+      从飞书多维表格取出持仓（listHoldings + listPlatformNames）。这是 investdesk
+      的「取数」那一段，从 automations/investdesk-quote-sync/src/feishu/ 搬出来独立成
+      资产：它原来埋在一条定时作业里，没有任何身份。
+      两个消费者：quote-sync 作业（取报价标的）与 investdesk-portfolio 这个 skill
+      （取数做分析）。按 procedures/README.md 的入域方式①（被复用的实现）够格。
+      依赖仍是 automation 的 config（读同样的环境变量）——先把位置放对，参数化留到
+      真有第二个部署环境时再做，不为将来的形状提前抽象。
