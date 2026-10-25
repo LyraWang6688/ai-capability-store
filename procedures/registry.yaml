@@ -91,3 +91,19 @@ procedures:
       叫 automation 只是因为它有一个钟；钟归编排层（orchestrations/investdesk/），
       这里只管"怎么做"。取数依赖 procedures/portfolio-holdings。
       deploy/ 暂留本目录：部署物属于执行方式，等编排条目建好后一并迁走。
+  deepseek-invoice:
+    name: deepseek-invoice
+    path: procedures/deepseek-invoice
+    status: testing
+    version: 0.1.3
+    updated: "2026-10-25"
+    entrypoint: run.mjs
+    runtime: node
+    commerce: {charge: free}
+    notes: >
+      给 DeepSeek 开放平台账户的余额申请企业增值税普通发票：headless Chromium 打开
+      账单页 → 校验登录态 → 读可开票金额 → 填抬头/税号/邮箱 → 提交 → 验证成功提示。
+      零模型参与，纯确定性。从 computer-automation/browser-use/deepseek-billing 迁入：
+      界面档案进 orchestration 任务的 README，脚本留在这里。
+      界面事实（选择器、登录锚点、抬头下拉的坑）随 README 一起在本目录，因为改版时
+      脚本和选择器是同一次改动 —— 但"这个界面是否还能用"记在编排任务的验证状态里。

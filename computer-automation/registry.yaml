@@ -67,23 +67,4 @@ allowed_drive_routes:
   - screencapture
   - mcp
 
-surfaces:
-  deepseek-billing:
-    name: deepseek-billing
-    path: computer-automation/browser-use/deepseek-billing
-    facet: browser
-    platform: web
-    drive: [playwright]
-    verification: verified
-    verified: "2026-10-23"
-    entrypoint: run.mjs
-    runtime: node
-    commerce: {charge: free}
-    notes: >
-      DeepSeek 开放平台账单页（platform.deepseek.com/transactions）。
-      第一条记录：它是确定性脚本 + 界面档案放在一起的样本 —— run.mjs 就是这个界面的
-      操作，两者同时失效（DeepSeek 改版时选择器和「读不到金额必须报错」的分支往往是
-      同一次改动），所以不分家。
-      verified 2026-10-23 覆盖的是金额读取与失败分支；「有额度」真实提交尚未真机验证，
-      见目录 README「已知限制」。定时与部署仍登记在 automations/deepseek-invoice/，
-      等它迁到编排层后本记录才完整。
+surfaces: {}

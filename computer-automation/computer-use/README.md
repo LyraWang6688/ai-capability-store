@@ -13,7 +13,11 @@
 
 | 界面 | 平台 | 能怎么驱动 | 被什么挡住 | 验证状态 | 实测日期 |
 |---|---|---|---|---|---|
-| *(空 —— 第一条记录见 README §复核节奏)* | | | | | |
+| [微信（macOS 桌面版）](./wechat-macos/README.md) | macos | cgevent / ax / screencapture | applescript 自动化未授权（-10004）；内容区不可 AX 读取 | verified | 2026-10-25 |
+
+## 文档索引
+
+- [微信 · 腾讯充值发票（普通发票）申请流程](./wechat-macos/tencent-recharge-invoice.md) —— 小程序「我的帐户」→ 申请发票 → 选单 → 填抬头 → 提交
 
 ## 每个界面文件夹必须有
 
