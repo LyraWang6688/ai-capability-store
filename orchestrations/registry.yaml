@@ -216,3 +216,46 @@ orchestrations:
       workflow 里【故意没有 schedule】—— GitHub 的定时器在本仓库实测延迟 4-5 小时，
       而这条链必须赶在次日 09:00 消费前落地；所以由自建服务器的 systemd timer 准点
       dispatch，代价是没有兜底。
+  portfolio:
+    name: portfolio
+    path: orchestrations/investdesk/portfolio
+    status: testing
+    version: 0.1.0
+    updated: "2026-10-25"
+    trigger: human
+    executor: human
+    goal: 人问「我的组合怎么样」时，取持仓 → 六视角分析 → 给结论
+    steps:
+      - id: holdings
+        link: 1-holdings
+        use: procedures/portfolio-holdings
+        produces: 持仓明细 + 平台维度（结构化，不是模型读表）
+      - id: analyze
+        link: 2-analyze
+        use: skills/investdesk-portfolio
+        needs: [holdings]
+        produces: 六视角分析 + 一句话结论 + 值得复核项
+    output:
+      target: human
+      destination: 对话里直接给出（定时模式才推送日报）
+
+  research:
+    name: research
+    path: orchestrations/investdesk/research
+    status: testing
+    version: 0.1.0
+    updated: "2026-10-25"
+    trigger: human
+    executor: human
+    goal: 人问「XX 主题有什么值得看的」时，翻译成筛选条件 → 出候选清单
+    steps:
+      - id: research
+        link: 1-research
+        use: skills/investdesk-research
+        produces: 可落库的结构化候选清单（写进飞书备选池）
+    output:
+      target: human
+      destination: 候选清单 + 写进飞书备选池
+    notes: >
+      这条没有 procedure —— 它刻意不自己抓数据：行情归 procedures/quote-sync，
+      查询交给成熟插件。所以它是纯判断，没有确定性实现可抽。

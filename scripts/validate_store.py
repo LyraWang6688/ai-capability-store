@@ -2219,16 +2219,17 @@ def validate_orchestrations(orc_reg: dict) -> None:
                 body = open(flow, encoding="utf-8").read()
                 check(f"orchestration {name} flow diagram is mermaid",
                       "```mermaid" in body, "flow.md 里没有 ```mermaid 代码块")
+
+        # 由我们的钟驱动的任务，必须写清用哪个钟、且目录里有指向钟表的软链；
+        # 人发起的任务没有钟，不该被要求指一个。
+        clocked = entry.get("executor") in {"github-actions", "systemd", "launchd"}
+        if clocked:
             link = os.path.join(ROOT, path, "clock")
             check(f"orchestration {name} links the shared clocks file",
                   os.path.islink(link), f"{path}/clock 应当是指向 clocks.yaml 的软链")
             if os.path.islink(link):
                 check(f"orchestration {name} clock link resolves",
                       os.path.exists(link), f"{path}/clock 是断链")
-
-        # 由我们的钟驱动的任务，必须写清用哪个钟，且那个钟必须存在。
-        clocked = entry.get("executor") in {"github-actions", "systemd", "launchd"}
-        if clocked:
             clock_id = entry.get("clock")
             check(f"orchestration {name} declares its clock", isinstance(clock_id, str) and bool(clock_id),
                   f"executor={entry.get('executor')!r} 的编排必须写 clock: <clocks.yaml 里的 id>")
