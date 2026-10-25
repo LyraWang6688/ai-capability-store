@@ -23,7 +23,7 @@
 | Belongs here | Does NOT belong here |
 |---|---|
 | 一段确定性的数据处理 / 转换 | 需要品味判断的内容（→ `skills/`） |
-| 一个可被编排调用的操作（发一篇文章、同步一次价格） | 被操作的**界面**本身（→ `computer-automation/`） |
+| 一个可被编排调用的操作（发一篇文章、同步一次价格） | 操作界面的那条作业（→ `orchestrations/computer-automation/`） |
 | 被 ≥2 个资产引用的共用实现 | 只有一个消费者的小脚本（留在那个资产的 `scripts/` 里） |
 | 有 `entrypoint`、能单独跑起来的东西 | 服务端实现（→ `external-capabilities/`，或店外仓库） |
 
@@ -33,7 +33,6 @@
 skills/                 怎么做 · 模型判断
 procedures/             怎么做 · 机器确定    ← 本域
 external-capabilities/  能调什么（API / MCP / CLI / 只有界面的软件）
-computer-automation/    界面能被怎么操作
 ```
 
 一个 procedure **可以被** `orchestrations/` 的某一步引用（`steps[].use:`），
