@@ -57,6 +57,10 @@ jobs:
       # 这组测试不需要浏览器 / 配置 / 登录态，可以在 PR 门禁里跑。
       - name: deepseek-invoice failure-branch logic
         run: node --test computer-automation/browser-use/deepseek-billing/test_lib.mjs
+      # server-timers 的投递脚本也在"没人看的时候"执行：水位算错 = 重复总结或
+      # 永久丢内容，没有新对话却投递 = 收件箱被刷屏。用夹具把这三件事钉住。
+      - name: server-timers digest fixtures
+        run: python3 scripts/server-timers/test_feishu_digest.py
       # procedure 的测试和 skill 的测试分开跑：procedure 的契约是"同样的输入必须
       # 产出同样的结果"，所以它天然是夹具测试，不联网、不依赖任何 runtime。
       - name: procedure fixtures
