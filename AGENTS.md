@@ -5,21 +5,23 @@ Any Agent (human or AI) modifying this repository MUST read, in order, before ma
 1. `AGENTS.md` (this file — routing only)
 2. `CONTRIBUTING_AI.md` (public contribution rules)
 3. `PUBLISHING.md` (asset publishing protocol — when publishing an asset)
-4. `VERSIONING.md` (store-wide versioning contract)
-5. `SKILL-FORMAT.md` (asset format contract — the whitelist the external
+4. `COMMERCE.md` (is the asset sold, how, and what enforces it — when deciding
+   or changing whether an asset is charged for)
+5. `VERSIONING.md` (store-wide versioning contract)
+6. `SKILL-FORMAT.md` (asset format contract — the whitelist the external
    standards impose, plus what the Store adds on top)
-6. `RETIREMENT.md` (how to end an asset — the one operation that shrinks the Store)
-7. `registry.yaml` (top-level store router)
-8. The README of the Domain being touched:
+7. `RETIREMENT.md` (how to end an asset — the one operation that shrinks the Store)
+8. `registry.yaml` (top-level store router)
+9. The README of the Domain being touched:
    - `orchestrations/README.md` for Orchestration Domain work
    - `skills/README.md` for Skill Domain work
    - `external-capabilities/README.md` for External Capability Domain work
    - `automations/README.md` for Automation Domain work
    - `dependencies/capability-map.yaml` for dependency work
-9. The Domain Policy files of the touched area
-   (e.g. `skills/LIFECYCLE.md`, `skills/ACCEPTANCE.md`, `external-capabilities/SECURITY.md`,
-   `automations/LIFECYCLE.md`)
-10. The current target entity (skill / capability / dependency record) before editing it
+10. The Domain Policy files of the touched area
+    (e.g. `skills/LIFECYCLE.md`, `skills/ACCEPTANCE.md`, `external-capabilities/SECURITY.md`,
+    `automations/LIFECYCLE.md`)
+11. The current target entity (skill / capability / dependency record) before editing it
 
 **Handoffs do NOT go into this repository.** They describe internal coordinates — server
 addresses, Feishu base/table tokens, deployment paths, session ids. None of that is a
@@ -70,6 +72,7 @@ automation is triggered by a clock.
 | External capability identity / provider / type / availability / auth / permissions / version / implementation | `external-capabilities/registry.yaml` |
 | Skill ↔ External Capability dependencies | `dependencies/capability-map.yaml` |
 | Automation identity / path / lifecycle / trigger / workflow / output | `automations/registry.yaml` |
+| Asset commerce (charge / model / carrier / value) | the asset's own record in its Domain registry — no fourth registry |
 | Store registry routing | `registry.yaml` (top level, router only) |
 
 A single core fact is maintained in exactly one registry. Do not duplicate Domain state into the top level.

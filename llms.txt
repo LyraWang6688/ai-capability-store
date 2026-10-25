@@ -6,6 +6,7 @@
 
 - [README](./README.md)：项目说明与用法
 - [AGENTS.md](./AGENTS.md)：agent 进入本仓库前先读的规则
+- [COMMERCE.md](./COMMERCE.md)：资产收不收费、怎么收、靠什么收得住（registry 里的 `commerce:` 字段是唯一事实）
 
 ## 主要章节
 
@@ -17,6 +18,7 @@
 - Placement
 - Versioning
 - Publishing
+- Commerce
 
 ## 怎么用这份索引
 

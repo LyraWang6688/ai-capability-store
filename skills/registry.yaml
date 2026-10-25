@@ -1,5 +1,17 @@
 # Skill Domain Registry
 # Source of Truth for: Skill identity / path / lifecycle / version / placement
+#                      / commerce (charge · model · value)
+#
+# schema_version 3: `commerce:` is a REQUIRED record field. Every Skill answers
+# "is it sold?" in the registry (COMMERCE.md), and a paid Skill must bill
+# through a capability that is itself paid and gated — so marking one paid
+# cannot be done by editing this file alone. See dependencies/capability-map.yaml.
+#
+# Why (breaking): "which of our assets can actually charge money" was a fact
+# that only existed in the author's head. A 41-asset audit found exactly 2 with
+# any authorisation mechanism, and nothing in the repository said so. A field
+# that every record must carry turns that into a query, and a field that can
+# only say `paid` when a gate exists behind it turns a claim into a fact.
 #
 # schema_version 2: `shared:` + `projects:` merged into ONE flat `skills:` map,
 # and placement moved out of the registry section into the record field `scope`.
@@ -10,7 +22,7 @@
 # recurse into deeper descendants. A nested layout such as
 # `skills/shared/<name>/` would therefore be invisible to conformant clients.
 # Classification is registry state, not a directory level.
-schema_version: 2
+schema_version: 3
 
 domain: skills
 description: Skill identity, path, lifecycle status, version, and placement scope.
@@ -24,6 +36,7 @@ skills:
     status: testing
     version: 0.1.0
     updated: "2026-10-20"
+    commerce: {charge: free}
     notes: >
       Store-native reusable content creation, review and revision workflow for
       human readability and accurate AI retrieval, summarization and citation.
@@ -37,6 +50,7 @@ skills:
     status: testing
     version: 0.1.0
     updated: "2026-10-20"
+    commerce: {charge: free}
     notes: >
       Store-native source migrated from the local Agent Skills directory; the
       local installation is a symlink to this canonical directory, not an upstream.
@@ -52,6 +66,7 @@ skills:
     status: testing
     version: 0.1.0
     updated: "2026-10-18"
+    commerce: {charge: free}
     notes: >
       持仓分析与复盘。读飞书多维表格的持仓，按六个视角分析：总览 / 平台分布 /
       集中度 / 盈亏归因 / 风险敞口 / 异常项。强制区分「今日涨跌」与「累计盈亏」
@@ -65,6 +80,7 @@ skills:
     status: testing
     version: 0.1.0
     updated: "2026-10-18"
+    commerce: {charge: free}
     notes: >
       投资标的推荐与沉淀。把「XX 主题有什么值得看的股票/ETF」翻译成可执行的筛选条件，
       通过豆包工作里的免费插件（广发 ETF/基金研究、盈米基金、证券之星）与 Wind Alice
@@ -78,6 +94,7 @@ skills:
     status: testing
     version: 0.1.2
     updated: "2026-10-20"
+    commerce: {charge: free}
   teaming-meeting-analysis:
     name: teaming-meeting-analysis
     path: skills/teaming-meeting-analysis
@@ -85,6 +102,10 @@ skills:
     status: testing
     version: 0.1.2
     updated: "2026-10-15"
+    commerce:
+      charge: paid
+      model: subscription
+      value: "接入码按年计费：团队动力分析规则与报告生成在店外服务端，skill 只取逐字稿和交付报告，用户付的是分析规则本身"
     notes: >
       Analyze a finished Feishu meeting with the Teaming framework and produce a
       four-part report (team state, interaction overview, unfinished dialogues and
@@ -101,6 +122,10 @@ skills:
     status: testing
     version: 0.2.4
     updated: "2026-10-23"
+    commerce:
+      charge: paid
+      model: subscription
+      value: "授权码按年计费：选题、判分、间隔调度的规则在店外服务端，用户付的是规则随平台变化持续更新 + 不用自己实现调度算法"
     notes: >
       Daily English review loop built on real reading. The host reads and writes
       the user's own Feishu Bitable with its native Feishu ability (Doubao Work
@@ -159,6 +184,7 @@ skills:
     status: testing
     version: 0.1.1
     updated: "2026-10-20"
+    commerce: {charge: free}
     notes: >
       多 agent 协作的收尾工具。审计分支 / worktree / PR 的残留状态，按安全边界
       清理已合并且无风险的分支，并在交付时生成「收尾报告」——让
@@ -172,6 +198,7 @@ skills:
     status: testing
     version: 0.1.0
     updated: "2026-10-20"
+    commerce: {charge: free}
   animated-chart-gif:
     name: animated-chart-gif
     path: skills/animated-chart-gif
@@ -179,6 +206,7 @@ skills:
     status: testing
     version: 0.2.0
     updated: "2026-10-24"
+    commerce: {charge: free}
     notes: >
       Animated process explanations beyond WeChat: explicit business/time/state
       event sequences, retries and feedback paths. White/light-blue visual style;
@@ -192,6 +220,7 @@ skills:
     status: testing
     version: 0.1.0
     updated: "2026-10-21"
+    commerce: {charge: free}
     notes: >
       「京城好戏」项目的日历 Skill：查询北京地区戏曲（京剧/昆曲/评剧/河北梆子/秦腔等）
       与话剧的演出日程与购票信息。双轨工作流——用户提问走决策层（先查 Base 判新鲜度，
@@ -206,6 +235,7 @@ skills:
     status: testing
     version: 0.1.7
     updated: "2026-10-24"
+    commerce: {charge: free}
     notes: >
       automations/computer-automation/ 文档区的唯一写入口：agent 用操作者的真实浏览器或桌面做
       Computer Use / Browser Use 时触发 —— 先查已有文档复用，操作后按

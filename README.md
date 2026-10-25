@@ -103,6 +103,7 @@ ai-capability-store/
 ├── README.md
 ├── CONTRIBUTING_AI.md             # Public contribution rules
 ├── PUBLISHING.md                  # Asset Publishing Protocol
+├── COMMERCE.md                    # Asset Commerce Protocol (is it sold, how, what enforces it)
 ├── VERSIONING.md                  # Store-wide versioning contract
 ├── SKILL-FORMAT.md                # Asset format contract (external spec + Store additions)
 ├── RETIREMENT.md                  # How to retire an asset without losing the record
@@ -159,5 +160,24 @@ version; immutable historical versions via namespaced Git Tags
 
 Whether an asset is published is a **Human decision**. See
 [PUBLISHING.md](./PUBLISHING.md).
+
+## Commerce
+
+Whether an asset is **sold** — and what enforces it — is a separate decision from
+publishing, and it is recorded on the asset's own record rather than in a
+separate registry:
+
+```yaml
+commerce: {charge: free}                     # not sold
+commerce:                                    # sold
+  charge: paid
+  model: subscription                        # oneoff | subscription | enterprise
+  carrier: self-api                          # capability only: license | self-api | hosted
+  value: "what the user is paying for"
+```
+
+A paid Skill must bill through a `required: true` capability that is itself paid
+and gated, so "we intend to charge for this" and "this record can charge" can
+never look the same. See [COMMERCE.md](./COMMERCE.md).
 
 [![](https://img.shields.io/badge/powered_by-dsh-4D6BFE?style=flat-square&logo=deepseek&logoColor=white)](https://github.com/deepseek-ai/deepseek-harness)

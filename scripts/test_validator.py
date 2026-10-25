@@ -63,6 +63,32 @@ def _duplicate_key(text):
     return text.replace("name: repo-hygiene", "name: repo-hygiene\nname: repo-hygiene", 1)
 
 
+def _set_commerce(record, block):
+    """Replace exactly ONE record's `commerce:` block in a registry file.
+
+    Records are 2-space-indented top-level keys and their fields are 4-space
+    indented, so a record's body runs until the next `^  <non-space>`. Scoping
+    the replacement this way is what lets each case break exactly one thing: a
+    registry-wide `replace(..., 1)` lands on whichever record happens to come
+    first and would quietly test a different asset than the label claims.
+
+    `block` is the literal replacement (4-space indented, newline-terminated),
+    or "" to delete the block.
+    """
+    def mutate(text):
+        head = re.search(rf"(?m)^  {re.escape(record)}:\n", text)
+        assert head, f"record not found: {record}"
+        rest = text[head.end():]
+        nxt = re.search(r"(?m)^  \S", rest)
+        end = head.end() + (nxt.start() if nxt else len(rest))
+        body = text[head.end():end]
+        assert "    commerce:" in body, f"no commerce block in {record}"
+        # Matches the inline form as well as the block form (6-space continuations).
+        new_body = re.sub(r"(?m)^    commerce:.*\n(?:      .*\n)*", block, body, count=1)
+        return text[:head.end()] + new_body + text[end:]
+    return mutate
+
+
 MUTATIONS = {
     "none": lambda t: t,
     # name
@@ -162,6 +188,59 @@ MUTATIONS = {
     # whitelist
     "unknown-field": _append_frontmatter("version: 9.9.9"),
     "duplicate-key": _duplicate_key,
+    # ---- commerce (COMMERCE.md) ----
+    # The contract's whole value is "a record may not contradict itself", so
+    # every contradiction needs an input that turns it red. Each mutation below
+    # touches ONE record — see _set_commerce.
+    "commerce-missing": _set_commerce("repo-hygiene", ""),
+    "commerce-free-with-model": _set_commerce(
+        "repo-hygiene",
+        "    commerce:\n      charge: free\n      model: subscription\n"),
+    "commerce-skill-declares-carrier": _set_commerce(
+        "repo-hygiene",
+        "    commerce:\n      charge: paid\n      model: subscription\n"
+        "      carrier: self-api\n"
+        '      value: "demo value long enough to pass"\n'),
+    "commerce-paid-without-value": _set_commerce(
+        "readloop-service",
+        "    commerce:\n      charge: paid\n      model: subscription\n"
+        "      carrier: self-api\n"),
+    "commerce-paid-without-carrier": _set_commerce(
+        "readloop-service",
+        "    commerce:\n      charge: paid\n      model: subscription\n"
+        '      value: "demo value long enough to pass"\n'),
+    # carrier 与 hosting 必须能对上：本地校验要有本地代码，服务端闸门要有端点。
+    "commerce-license-on-external": _set_commerce(
+        "readloop-service",
+        "    commerce:\n      charge: paid\n      model: subscription\n"
+        "      carrier: license\n"
+        '      value: "demo value long enough to pass"\n'),
+    "commerce-selfapi-on-store-managed": _set_commerce(
+        "wechat-draft-mcp",
+        "    commerce:\n      charge: paid\n      model: subscription\n"
+        "      carrier: self-api\n"
+        '      value: "demo value long enough to pass"\n'),
+    # 正例用：同样是"核心在端点后面"，换个值必须仍然放行。
+    "commerce-hosted-on-external": _set_commerce(
+        "readloop-service",
+        "    commerce:\n      charge: paid\n      model: subscription\n"
+        "      carrier: hosted\n"
+        '      value: "demo value long enough to pass"\n'),
+    # Automation 不可分发（PUBLISHING.md §D），所以"卖 automation"是域错误。
+    "commerce-automation-paid": _set_commerce(
+        "ops-audit",
+        "    commerce:\n      charge: paid\n      model: subscription\n"
+        '      value: "demo value long enough to pass"\n'),
+    # 跨域联合：paid Skill 必须有一条 required: true 的付费能力兜底。
+    # repo-hygiene 没有任何依赖，所以它标 paid 时没有任何东西能收钱。
+    "commerce-paid-skill-without-gate": _set_commerce(
+        "repo-hygiene",
+        "    commerce:\n      charge: paid\n      model: subscription\n"
+        '      value: "demo value long enough to pass"\n'),
+    # 把唯一那条 required: true 改成 false —— 可选依赖不算收费闸门。
+    "commerce-optional-dependency": lambda t: t.replace(
+        "      - capability: readloop-service\n        required: true",
+        "      - capability: readloop-service\n        required: false", 1),
 }
 
 
@@ -223,6 +302,33 @@ CASES = [
      ORCHESTRATION_REGISTRY, "egress-misses-service"),
     ("calls contract differing from the service record is rejected", 1,
      ORCHESTRATION_REGISTRY, "calls-contract-mismatch"),
+    # commerce: 三个问题各自可校验，形状由 charge 决定 —— 一条记录不许把同一个
+    # 问题回答两遍，标了 paid 就必须能说出"收的是什么钱"、并且真有闸门活着。
+    ("asset without a commerce block is rejected", 1,
+     SKILL_REGISTRY, "commerce-missing"),
+    ("free asset that also declares a model is rejected", 1,
+     SKILL_REGISTRY, "commerce-free-with-model"),
+    ("skill declaring a carrier is rejected", 1,
+     SKILL_REGISTRY, "commerce-skill-declares-carrier"),
+    ("paid capability without value is rejected", 1,
+     CAPABILITY_REGISTRY, "commerce-paid-without-value"),
+    ("paid capability without carrier is rejected", 1,
+     CAPABILITY_REGISTRY, "commerce-paid-without-carrier"),
+    ("license carrier on an external capability is rejected", 1,
+     CAPABILITY_REGISTRY, "commerce-license-on-external"),
+    ("self-api carrier on a store-managed capability is rejected", 1,
+     CAPABILITY_REGISTRY, "commerce-selfapi-on-store-managed"),
+    ("paid automation is rejected", 1,
+     AUTOMATION_REGISTRY, "commerce-automation-paid"),
+    # 这里是整块契约存在的理由：没有这条，"paid" 就只是一句可以随手写的话。
+    ("paid skill with no gated dependency is rejected", 1,
+     SKILL_REGISTRY, "commerce-paid-skill-without-gate"),
+    ("paid skill whose gate is only an optional dependency is rejected", 1,
+     os.path.join("dependencies", "capability-map.yaml"), "commerce-optional-dependency"),
+    # 正例：self-api 改成 hosted 仍然合法 —— 两个值都是"核心在端点后面"，
+    # 放行它是为了证明上面的红来自规则，而不是来自"改动了任何东西就红"。
+    ("hosted carrier on an external capability passes", 0,
+     CAPABILITY_REGISTRY, "commerce-hosted-on-external"),
 ]
 
 # The first case is the baseline: untouched, so it must pass.

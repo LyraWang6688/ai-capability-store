@@ -64,6 +64,16 @@ Checks:
     12. secret scan: only credential-bearing fields are flagged;
         reference-name metadata (e.g. secret_reference: production-github-token)
         is permitted and NOT flagged
+    13. commerce contract (COMMERCE.md): every asset answers "is it sold?" via
+        `commerce.charge` (free | paid). A paid record must also carry `model` +
+        `value`, and a free record must carry NOTHING else — the shape is decided
+        by charge so one record cannot answer the question twice. `carrier`
+        (license | self-api | hosted) exists on capabilities only and must agree
+        with `hosting`: a local license check needs code here, a server-side gate
+        needs an endpoint. Automations are forced to `free` (not distributable).
+        Cross-domain: a paid Skill must require (required: true) a capability
+        that is itself paid and carries a carrier — otherwise "paid" is a claim
+        with nothing behind it.
 
 NOTE on the secret scan: it is a LIGHTWEIGHT HEURISTIC, not a full repository
 secret scanner. It guards registry files only. A stronger secret gate
@@ -209,6 +219,32 @@ CAPABILITY_SHELVES = {"mcp", "connectors", "cli", "api", "plugin"}
 # 为什么是可选而不是必选：现在只有 plugin/ 下的三个 DSH 插件需要分组，
 # 其它货架暂时平的。强制所有货架都加一层会让 8 个不需要分类的资产凭空多一级。
 CAPABILITY_ECOSYSTEMS = {"dsh"}
+
+# ---- Commerce Domain (store-wide policy: COMMERCE.md) ----
+#
+# 三个问题，三个字段。加这个块不是为了记录价格（价格会变，且不该进仓库），
+# 而是为了让「这个资产卖不卖、靠什么收得住钱」从聊天的结论变成 registry 里
+# 可查的事实 —— 否则 41 个资产里哪几个真的能收钱，只有作者记得。
+#
+#   charge  收不收费           free | paid
+#   model   怎么收（仅 paid）   oneoff | subscription | enterprise
+#   value   收的是什么钱（仅 paid）一句话，说清用户为什么付
+#   carrier 收费闸门装在哪（仅 paid，仅 capability）
+#
+# `carrier` 只在 capability 上，因为收费能力是一个可执行物 / 服务端点的事实；
+# Skill 能不能收钱由它的依赖推导（见 validate_commerce_carrier_chain），
+# 两边都写就是在维护第二份事实。
+ALLOWED_CHARGE = {"free", "paid"}
+ALLOWED_COMMERCE_MODELS = {"oneoff", "subscription", "enterprise"}
+# 闸门强度从弱到强。没有 "none"：`charge: paid` + 无闸门正是这个检查要拦的东西
+# （收了钱但没有任何可吊销的载体）。不收费的形状是 charge: free，不带 carrier。
+#   license   本地校验：防顺手转卖，不防有心复制（能 fork）
+#   self-api  核心逻辑在店外服务端：可吊销、可计量，用户装的是薄壳
+#   hosted    我们代跑：不可复制，但我们承担可用性与运维
+ALLOWED_COMMERCE_CARRIERS = {"license", "self-api", "hosted"}
+# `value` 的下限不是文风检查，是防止用 "付费" / "收费" 这种占位句把三个问题
+# 里的第三个糊过去 —— 说不清收的是什么钱，就不该标 paid。
+COMMERCE_MIN_VALUE_LEN = 10
 
 # ---- Orchestration Domain ----
 ORCHESTRATION_DIR = "orchestrations"
@@ -406,6 +442,172 @@ def scan_for_secrets(rel_path: str) -> None:
     check(f"secret scan: {rel_path}", not hits, "; ".join(hits) if hits else "clean")
 
 
+def validate_commerce(key: str, entry: dict, domain: str,
+                      allow_carrier: bool = False,
+                      force_free: bool = False) -> dict | None:
+    """Validate the `commerce:` block. Returns it, or None when absent/invalid.
+
+    The block's SHAPE is decided by `charge`, not by which fields happen to be
+    present. A free record carries `charge` only; a paid record carries
+    `model` + `value` (and `carrier` on a capability). That asymmetry is the
+    point: `charge: free` sitting next to `model: subscription` answers the
+    same question twice, and the next reader cannot tell which answer to trust.
+
+    `allow_carrier` is False for Skills and Automations on purpose. A Skill's
+    charging gate is derivable from its dependency chain
+    (validate_commerce_carrier_chain), so restating it here would create a
+    second source of truth for the same fact — the exact failure shape this
+    repository rejects everywhere else.
+
+    `force_free` exists for Automations only: an Automation is not
+    distributable as an artifact (PUBLISHING.md §D — it runs on someone's clock,
+    it is not installed by a consumer), so "sell the Automation" is always a
+    domain error. What gets sold is the service it calls, and that is a
+    Capability.
+    """
+    raw = entry.get("commerce")
+    if raw is None:
+        check(f"{domain} {key} declares commerce", False,
+              "missing `commerce:` — COMMERCE.md requires every asset to answer "
+              "whether it is sold; write `commerce: {charge: free}` when it is not")
+        return None
+    if not isinstance(raw, dict):
+        check(f"{domain} {key} commerce is a mapping", False, type(raw).__name__)
+        return None
+
+    allowed = {"charge", "model", "value"} | ({"carrier"} if allow_carrier else set())
+    unknown = set(raw.keys()) - allowed
+    check(f"{domain} {key} commerce has only allowed fields", not unknown,
+          f"unknown fields: {sorted(unknown)}"
+          + ("" if allow_carrier else
+             " — carrier is a CAPABILITY fact; a Skill's gate is derived from its "
+             "dependencies (COMMERCE.md §carrier)"))
+
+    charge = raw.get("charge")
+    check(f"{domain} {key} commerce charge legal", charge in ALLOWED_CHARGE,
+          f"charge={charge!r} (allowed: {sorted(ALLOWED_CHARGE)})")
+    if charge is None or charge not in ALLOWED_CHARGE:
+        return raw
+
+    if charge == "free":
+        redundant = [f for f in ("model", "carrier", "value") if f in raw]
+        check(f"{domain} {key} free commerce declares nothing else", not redundant,
+              f"a free record must not carry {sorted(redundant)} — `charge` decides "
+              f"the record's shape, and 'free but subscription' answers the same "
+              f"question twice")
+        return raw
+
+    # charge == paid
+    if force_free:
+        check(f"{domain} {key} automation is not sold as an artifact", False,
+              "an Automation is not distributable (PUBLISHING.md §D); sell the "
+              "service it calls as a Capability instead")
+
+    model = raw.get("model")
+    check(f"{domain} {key} paid commerce declares model",
+          model in ALLOWED_COMMERCE_MODELS,
+          f"model={model!r} (allowed: {sorted(ALLOWED_COMMERCE_MODELS)})")
+
+    value = raw.get("value")
+    ok_value = (isinstance(value, str) and len(value.strip()) >= COMMERCE_MIN_VALUE_LEN)
+    check(f"{domain} {key} paid commerce declares value", ok_value,
+          f"value={value!r} — say in one sentence what the user is paying for "
+          f"(>= {COMMERCE_MIN_VALUE_LEN} characters); 'paid' without that sentence "
+          f"is a claim with nothing behind it")
+
+    if allow_carrier:
+        carrier = raw.get("carrier")
+        check(f"{domain} {key} paid commerce declares carrier",
+              carrier in ALLOWED_COMMERCE_CARRIERS,
+              f"carrier={carrier!r} (allowed: {sorted(ALLOWED_COMMERCE_CARRIERS)}) "
+              f"— a paid asset with no gate cannot be revoked or metered; "
+              f"if nothing can enforce it, the answer to question 1 is 'free'")
+    return raw
+
+
+def _check_carrier_matches_hosting(key: str, commerce, hosting) -> None:
+    """The declared gate must be physically possible for this capability.
+
+    `hosting` says where the code is; `carrier` says where the gate is. They
+    cannot disagree: a local license check needs code on the user's machine,
+    while server-side gating needs an endpoint to gate. Cross-checking them is
+    what turns "we plan to charge for this" into "this record can actually
+    charge".
+    """
+    if not isinstance(commerce, dict) or commerce.get("charge") != "paid":
+        return
+    carrier = commerce.get("carrier")
+    if carrier not in ALLOWED_COMMERCE_CARRIERS:
+        return  # already failed above; do not cascade
+    if carrier == "license":
+        check(f"capability {key} license carrier requires store-managed hosting",
+              hosting == "store-managed",
+              f"hosting={hosting!r} — a local license check needs code that runs "
+              f"on the user's machine, so it cannot live behind an endpoint-only "
+              f"(hosting: external) record")
+    else:  # self-api | hosted
+        check(f"capability {key} {carrier} carrier requires external hosting",
+              hosting == "external",
+              f"hosting={hosting!r} — {carrier} means the core logic runs behind "
+              f"an endpoint, so the record must be hosting: external with an "
+              f"`endpoint:`; otherwise the gate described here has nowhere to live")
+
+
+def validate_commerce_carrier_chain(skill_entries, cap_entries, deps_reg) -> None:
+    """A paid Skill must bill through a capability that can actually bill.
+
+    This is the one cross-domain rule in the commerce contract, and it is the
+    reason the field is worth having. Without it `charge: paid` is free text:
+    anyone can write it, and nothing downstream changes. With it, marking a
+    Skill paid REQUIRES a required dependency on a capability that is itself
+    paid and carries a gate — which means the service端点, the license check or
+    the hosted runner has to exist first.
+
+    Everything already true is preserved: a Skill that is not sold needs no
+    dependency at all, so this check never fires for the 10 free Skills.
+    """
+    if not deps_reg:
+        return
+    cap_gate = {}
+    for key, entry in cap_entries:
+        commerce = entry.get("commerce")
+        if isinstance(commerce, dict):
+            cap_gate[key] = (commerce.get("charge"), commerce.get("carrier"))
+
+    paid_skills = [key for key, entry in skill_entries
+                   if isinstance(entry.get("commerce"), dict)
+                   and entry["commerce"].get("charge") == "paid"]
+    if not paid_skills:
+        return
+
+    required_by_skill = {}
+    deps = deps_reg.get("dependencies")
+    if isinstance(deps, list):
+        for dep in deps:
+            if not isinstance(dep, dict):
+                continue
+            skill = dep.get("skill")
+            requires = dep.get("requires")
+            if not isinstance(skill, str) or not isinstance(requires, list):
+                continue
+            for req in requires:
+                if isinstance(req, dict) and req.get("required") is True:
+                    required_by_skill.setdefault(skill, []).append(req.get("capability"))
+
+    for key in paid_skills:
+        required = required_by_skill.get(key, [])
+        # A dependency marked required: false is optional — an optional gate is
+        # bypassable, so it does not count as the thing the user pays for.
+        gated = [cap for cap in required
+                 if cap_gate.get(cap, (None, None))[0] == "paid"
+                 and cap_gate.get(cap, (None, None))[1] in ALLOWED_COMMERCE_CARRIERS]
+        check(f"skill {key} paid bills through a gated capability", bool(gated),
+              f"required capabilities={required!r}; a paid Skill must require "
+              f"(required: true) a capability that is itself paid AND carries a "
+              f"carrier ({sorted(ALLOWED_COMMERCE_CARRIERS)}) — otherwise 'paid' "
+              f"is a claim with nothing behind it (COMMERCE.md §carrier)")
+
+
 def validate_skill_entries(reg: dict):
     """Validate the required-field schema of every skill record.
 
@@ -454,9 +656,13 @@ def validate_skill_entries(reg: dict):
         # Closed field set: classification is a record field, not a section.
         unknown = set(entry.keys()) - {
             "name", "path", "scope", "project", "status", "version", "updated", "notes",
+            "commerce",
         }
         check(f"skill {key} has only allowed fields", not unknown,
               f"unknown fields: {sorted(unknown)}")
+        # Commerce is a store-wide decision, so it is checked for every domain
+        # against one contract (COMMERCE.md) rather than per-domain ad hoc.
+        validate_commerce(key, entry, "skill", allow_carrier=False)
         scope = entry.get("scope")
         if scope is not None:
             check(f"skill {key} scope legal", scope in ALLOWED_SKILL_SCOPES,
@@ -739,6 +945,10 @@ def validate_capability_entries(reg: dict):
                           not os.path.isabs(contract) and ".." not in cparts, contract)
                     check(f"capability {key} contract_path exists",
                           os.path.isfile(os.path.join(ROOT, contract)), contract)
+        # Commerce: the gate and the hosting shape must agree, because the gate
+        # has to physically live somewhere (COMMERCE.md §carrier).
+        commerce = validate_commerce(key, entry, "capability", allow_carrier=True)
+        _check_carrier_matches_hosting(key, commerce, entry.get("hosting"))
     return collected
 
 
@@ -803,6 +1013,10 @@ def validate_automation_entries(reg: dict):
         if status is not None:
             check(f"automation {key} status legal", status in ALLOWED_AUTOMATION_STATUSES,
                   f"status={status!r}")
+        # An Automation is not an artifact a consumer installs, so it can never be
+        # the thing that is sold (PUBLISHING.md §D). force_free keeps that from
+        # being re-litigated record by record.
+        validate_commerce(key, entry, "automation", force_free=True)
         trigger = entry.get("trigger_kind")
         if trigger is not None:
             check(f"automation {key} trigger_kind legal", trigger in ALLOWED_TRIGGER_KINDS,
@@ -1227,21 +1441,24 @@ def main() -> int:
 
     # ---- 3. Domain registry headers ----
     if skills_ok:
-        check("skills registry schema_version", skills_reg.get("schema_version") == 2,
-              f"got {skills_reg.get('schema_version')!r} (expected 2: flat skills map)")
+        check("skills registry schema_version", skills_reg.get("schema_version") == 3,
+              f"got {skills_reg.get('schema_version')!r} (expected 3: flat skills map "
+              f"+ required commerce field)")
         check("skills registry domain", skills_reg.get("domain") == "skills",
               repr(skills_reg.get("domain")))
     if caps_ok:
-        check("capability registry schema_version", caps_reg.get("schema_version") == 1,
-              f"got {caps_reg.get('schema_version')!r}")
+        check("capability registry schema_version", caps_reg.get("schema_version") == 2,
+              f"got {caps_reg.get('schema_version')!r} (expected 2: required commerce "
+              f"field, carrier owned here)")
         check("capability registry domain", caps_reg.get("domain") == "external_capabilities",
               repr(caps_reg.get("domain")))
     if deps_ok:
         check("dependency registry schema_version", deps_reg.get("schema_version") == 1,
               f"got {deps_reg.get('schema_version')!r}")
     if autos_ok:
-        check("automation registry schema_version", autos_reg.get("schema_version") == 2,
-              f"got {autos_reg.get('schema_version')!r}")
+        check("automation registry schema_version", autos_reg.get("schema_version") == 3,
+              f"got {autos_reg.get('schema_version')!r} (expected 3: required commerce "
+              f"field, always free in this Domain)")
         check("automation registry domain", autos_reg.get("domain") == "automations",
               repr(autos_reg.get("domain")))
         allowed_auto = set(autos_reg.get("allowed_statuses") or [])
@@ -1375,6 +1592,12 @@ def main() -> int:
                         required = req.get("required")
                         check(f"dependency {i}.requires[{j}] required is a boolean",
                               isinstance(required, bool), repr(required))
+
+    # ---- 11b. Commerce: a paid Skill must bill through a gated capability ----
+    # Runs after BOTH registries and the dependency contract are known, because
+    # the fact it checks is a join across all three — the same shape as the
+    # self-api checks (directory name ↔ steps ↔ capability record).
+    validate_commerce_carrier_chain(skill_entries, cap_entries, deps_reg)
 
     # ---- 12b. Capability shelves: every directory is a registered asset ----
     # `providers/` and `use-cases/` hold documents, not capabilities, and are
