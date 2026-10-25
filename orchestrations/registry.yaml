@@ -196,6 +196,7 @@ orchestrations:
     updated: "2026-10-25"
     trigger: daily
     executor: github-actions
+    clock: investdesk-quote-sync
     # 钟就在这两处，且都必须在仓库里：timer 决定"什么时候"，
     # workflow 决定"跑什么"。registry 记录指向它们，不是复制它们的内容。
     external_trigger: scripts/server-timers/systemd/investdesk-quote-sync.timer

@@ -284,6 +284,9 @@ MUTATIONS = {
     # 迁移期：新形状（<项目>/<任务>）里 trigger 必填 —— 一个任务必须说清谁发起它
     "orc-project-missing-trigger": _in_record(
         "wechat-article", "    trigger: human\n", ""),
+    "orc-missing-flow": lambda t: t,  # 由文件删除模拟，见 CASES 注释
+    "orc-clock-unknown": _in_record(
+        "quote-sync", "clock: investdesk-quote-sync", "clock: nope"),
     "orc-project-bad-name": _in_record(
         "wechat-article",
         "path: orchestrations/wechat/wechat-article",
@@ -411,6 +414,8 @@ CASES = [
     # 所以每个正例都必须真能放行 —— 否则下一步迁移无从下手。
     ("orchestration in project shape without trigger is rejected", 1,
      ORCHESTRATION_REGISTRY, "orc-project-missing-trigger"),
+    ("orchestration clock must exist in clocks.yaml", 1,
+     ORCHESTRATION_REGISTRY, "orc-clock-unknown"),
     ("orchestration project name must be kebab-case", 1,
      ORCHESTRATION_REGISTRY, "orc-project-bad-name"),
     ("orchestration accepts a quarterly trigger", 0,
