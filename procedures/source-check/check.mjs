@@ -59,6 +59,11 @@ async function launchChrome() {
     '--no-first-run',
     '--no-default-browser-check',
     '--disable-gpu',
+    // CI（容器/root）里 Chrome 起不来就是因为这两条：没有 setuid sandbox，
+    // /dev/shm 太小。本机加这两条也无害。
+    '--no-sandbox',
+    '--disable-setuid-sandbox',
+    '--disable-dev-shm-usage',
     'about:blank',
   ], { stdio: 'ignore' })
 
