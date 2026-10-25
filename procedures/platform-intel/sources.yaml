@@ -238,8 +238,11 @@ platforms:
       - point: 要不要审核、多久
         from: [codex-plugins-portal]
         extract: 审核流程说明
-      - point: 平台对开发者怎么收费 / 有没有分成
+      - point: 平台上有没有付费条目、怎么定价（一次性 / 订阅 / 内购）
+        from: [codex-plugins-portal]
+      - point: 平台对开发者的分成比例 / 结算方式
         from: []
+        blocked: 平台内部文档，不对外公布；等真要上架时向平台确认，暂不追踪
         blocked: 未找到官方定价或分成说明；门户里若无开发者条款，这一格只能记"无官方机制"
 
   claude:
@@ -282,8 +285,11 @@ platforms:
       - point: 平台收不收费、有没有结算
         from: [claude-plugins-publish]
         extract: 文档里有无价格/结算字段（目前结论：没有）
-      - point: 分成比例
+      - point: 平台上有没有付费条目、怎么定价（一次性 / 订阅 / 内购）
+        from: [claude-directory]
+      - point: 平台的分成比例 / 结算方式
         from: []
+        blocked: 平台内部文档，不对外公布；等真要上架时向平台确认，暂不追踪
         blocked: 官方文档无相关机制；第三方"抽成 15%"说法未获证实，不采信
 
   dsh:
@@ -320,8 +326,11 @@ platforms:
       - point: 有没有审核 / 资质要求
         from: [dsh-plugin-market]
         extract: 提交说明
-      - point: 平台收不收费 / 有没有分成
+      - point: 平台上有没有付费条目、怎么定价（一次性 / 订阅 / 内购）
+        from: [dsh-plugin-market]
+      - point: 平台的分成比例 / 结算方式
         from: []
+        blocked: 平台内部文档，不对外公布；等真要上架时向平台确认，暂不追踪
         blocked: 未找到任何收费或分成说明
 
   doubao-work:
