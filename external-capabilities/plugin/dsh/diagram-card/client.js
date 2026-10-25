@@ -73,6 +73,37 @@ window.__ModuleLoader__.load({
   --ddg-success:#1B8F4E; --ddg-success-bg:rgba(22,163,74,.06); --ddg-success-line:rgba(22,163,74,.28);
 }
 .dshdg-root *{box-sizing:border-box}
+/* Host isolation. The transcript renders this card inside markdown content, where
+   element-level rules (e.g. p { margin:16px 0 }, hr { margin:16px 0 }) out-specify
+   the class rules below. Every paragraph in the card then picked up 32px of dead
+   space — measured: a 4-card layered diagram grew 690px tall with 288px of that
+   being margins alone. Reset them with the only mechanism that always wins. */
+.dshdg-root{white-space:normal}
+.dshdg-root p,.dshdg-root hr{margin:0!important;padding:0!important;border:0!important}
+/* ---- viewport fit (0.1.3) ----------------------------------------------
+   The card is a flow item in a scrolling transcript, so its height is decided
+   by content, not by a fixed canvas. Fit is a three-step ladder, run once per
+   mount and then only when the available width/height changes:
+     normal -> compact -> scrollable (with a 展开/收起 toggle).
+   User scrolling NEVER triggers a re-fit: resizing while scrolling would make
+   the transcript height change under the pointer. */
+.dshdg-body{display:flex;flex-direction:column;gap:var(--ddg-gap);min-height:0}
+.dshdg-root.dshdg-compact{
+  --ddg-pad-canvas:8px; --ddg-pad-node:6px; --ddg-pad-card:4px;
+  --ddg-gap:5px; --ddg-grid-gap:5px;
+}
+.dshdg-root.dshdg-compact .dshdg-arrow{height:10px}
+.dshdg-root.dshdg-compact .dshdg-card{min-height:0}
+.dshdg-root.dshdg-compact .dshdg-card-cn{line-height:1.25;display:-webkit-box;
+  -webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.dshdg-root.dshdg-compact.dshdg-wide .dshdg-grid{grid-template-columns:repeat(3,1fr)}
+.dshdg-root.dshdg-scrollable{max-height:var(--dshdg-budget,70vh);overflow:hidden}
+.dshdg-root.dshdg-scrollable .dshdg-body{overflow-y:auto;overscroll-behavior:contain;padding-right:4px}
+.dshdg-root.dshdg-expanded{max-height:none}
+.dshdg-toggle{align-self:center;margin-top:2px;background:transparent;border:1px solid var(--ddg-line);
+  border-radius:8px;padding:3px 12px;font:500 var(--ddg-fs-small)/1.3 inherit;color:var(--ddg-text2);
+  cursor:pointer}
+.dshdg-toggle:hover{color:var(--ddg-text)}
 .dshdg-title{margin:0;font-size:var(--ddg-fs-small);font-weight:500;line-height:1.4;color:var(--ddg-text)}
 .dshdg-arrow{display:flex;justify-content:center;align-items:center;height:clamp(10px,.5vw + 8px,16px);color:var(--ddg-text3)}
 .dshdg-node{width:100%;background:var(--ddg-panel);border-radius:10px;padding:var(--ddg-pad-node);
@@ -260,11 +291,122 @@ window.__ModuleLoader__.load({
       if (!spec || typeof spec !== 'object') return null;
       const root = el('div', ROOT + (isDarkTheme() ? '' : ' dshdg-light'));
       if (spec.title) root.appendChild(el('p', 'dshdg-title', spec.title));
-      const config = Object.assign({}, spec, { __root: root });
+      const body = el('div', 'dshdg-body');
+      const config = Object.assign({}, spec, { __root: body });
       if (spec.type === 'flow') renderFlow(config);
       else renderLayered(config);
-      if (root.childElementCount <= (spec.title ? 1 : 0)) return null;
+      if (!body.childElementCount) return null;
+      root.appendChild(body);
       return root;
+    }
+
+    /* -------------------------------------------------------------- viewport fit
+       The transcript is a flow, so the only way to keep a card readable is to cap
+       it against the *visible* area of its scroll container (not the window, not
+       the card's offset) and degrade in a fixed order. Measured with the real
+       container: visible = intersection(scroller rect, viewport), then take 80%
+       of it as the card budget — a flat margin instead of guessing which floating
+       element (composer, header) overlaps. */
+    const FIT_RATIO = 0.8;
+    const FIT_GAP = 24;
+    const COMPACT_COLUMNS_MIN_WIDTH = 720;
+    const cards = new Set();
+    let fitFrame = null;
+
+    function parentAcrossShadow(node) {
+      if (node.parentElement) return node.parentElement;
+      const root = node.getRootNode ? node.getRootNode() : null;
+      return root && typeof ShadowRoot !== 'undefined' && root instanceof ShadowRoot ? root.host : null;
+    }
+
+    function findScroller(card) {
+      const doc = card.ownerDocument;
+      const win = doc.defaultView;
+      if (!win) return null;
+      for (let node = parentAcrossShadow(card); node; node = parentAcrossShadow(node)) {
+        if (node === doc.body || node === doc.documentElement) break;
+        const overflowY = win.getComputedStyle(node).overflowY;
+        if ((overflowY === 'auto' || overflowY === 'scroll') && node.clientHeight > 0) return node;
+      }
+      return null;
+    }
+
+    function computeBudget(card, scroller) {
+      const doc = card.ownerDocument;
+      const viewport = doc.documentElement.clientHeight || window.innerHeight || 800;
+      let visible = viewport;
+      if (scroller) {
+        const rect = scroller.getBoundingClientRect();
+        const top = rect.top + scroller.clientTop;
+        const bottom = top + scroller.clientHeight;
+        visible = Math.max(0, Math.min(viewport, bottom) - Math.max(0, top));
+      }
+      return Math.floor(Math.min(visible * FIT_RATIO, Math.max(0, visible - FIT_GAP)));
+    }
+
+    function ensureToggle(card) {
+      let button = card.querySelector(':scope > .dshdg-toggle');
+      if (button) return;
+      button = el('button', 'dshdg-toggle', '展开查看');
+      button.type = 'button';
+      button.addEventListener('click', () => {
+        const expanded = card.classList.toggle('dshdg-expanded');
+        button.textContent = expanded ? '收起' : '展开查看';
+      });
+      card.appendChild(button);
+    }
+
+    function fitCard(card) {
+      if (!card.isConnected) return;
+      const scroller = findScroller(card);
+      const budget = computeBudget(card, scroller);
+      const key = card.clientWidth + 'x' + budget + 'x' + (card.classList.contains('dshdg-expanded') ? 1 : 0);
+      if (card.dataset.dshdgFit === key) return;
+      card.dataset.dshdgFit = key;
+
+      card.classList.remove('dshdg-compact', 'dshdg-wide', 'dshdg-scrollable');
+      card.style.removeProperty('--dshdg-budget');
+      if (card.getBoundingClientRect().height <= budget) return;
+
+      card.classList.add('dshdg-compact');
+      if (card.clientWidth >= COMPACT_COLUMNS_MIN_WIDTH) card.classList.add('dshdg-wide');
+      if (card.getBoundingClientRect().height <= budget) return;
+
+      card.classList.add('dshdg-scrollable');
+      card.style.setProperty('--dshdg-budget', String(budget) + 'px');
+      ensureToggle(card);
+    }
+
+    function refitAll() {
+      if (fitFrame) return;
+      const run = () => {
+        fitFrame = null;
+        for (const card of Array.from(cards)) {
+          if (!card.isConnected) {
+            cards.delete(card);
+            if (fitObserver) fitObserver.unobserve(card);
+            continue;
+          }
+          fitCard(card);
+        }
+      };
+      fitFrame = typeof requestAnimationFrame === 'function' ? requestAnimationFrame(run) : setTimeout(run, 16);
+    }
+
+    const fitObserver = typeof ResizeObserver !== 'undefined'
+      ? new ResizeObserver(() => refitAll())
+      : null;
+
+    function registerCard(card) {
+      cards.add(card);
+      if (fitObserver) {
+        try { fitObserver.observe(card); } catch (_) { /* ignore */ }
+        const scroller = findScroller(card);
+        if (scroller) {
+          try { fitObserver.observe(scroller); } catch (_) { /* ignore */ }
+        }
+      }
+      fitCard(card);
     }
 
     /* ------------------------------------------------------------------ scan */
@@ -292,6 +434,10 @@ window.__ModuleLoader__.load({
             pre.style.display = 'none';
             continue;
           }
+          cards.delete(sibling);
+          if (fitObserver) {
+            try { fitObserver.unobserve(sibling); } catch (_) { /* ignore */ }
+          }
           sibling.remove();
         }
 
@@ -304,6 +450,7 @@ window.__ModuleLoader__.load({
         if (!card) continue;
         card.setAttribute(HASH_ATTR, hash);
         if (pre.parentNode) pre.parentNode.insertBefore(card, pre.nextSibling);
+        registerCard(card);
         pre.style.display = 'none';
       }
     }
@@ -329,10 +476,16 @@ window.__ModuleLoader__.load({
         const interval = setInterval(() => {
           try { scan(); } catch (_) { /* ignore */ }
         }, SCAN_INTERVAL_MS);
+        const onResize = () => { try { refitAll(); } catch (_) { /* ignore */ } };
+        window.addEventListener('resize', onResize);
+        if (document.fonts && document.fonts.ready) {
+          document.fonts.ready.then(() => { try { refitAll(); } catch (_) { /* ignore */ } }).catch(() => {});
+        }
         try { scan(); } catch (_) { /* ignore */ }
         return () => {
           observer.disconnect();
           clearInterval(interval);
+          window.removeEventListener('resize', onResize);
           booted = false;
         };
       }, []);
@@ -344,7 +497,10 @@ window.__ModuleLoader__.load({
     // case debuggable from the console: __dshdg.scan() forces a pass and
     // __dshdg.render(spec) renders one spec without touching the transcript.
     try {
-      window.__dshdg = { render: render, scan: scan, hash: hashText, css: CSS, version: '0.1.2' };
+      window.__dshdg = {
+        render: render, scan: scan, hash: hashText, css: CSS,
+        fitAll: refitAll, fitCard: fitCard, version: '0.1.3',
+      };
     } catch (_) { /* non-browser context */ }
 
     return {
