@@ -30,11 +30,24 @@ STATE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "state")
 
 # ---------------- 纯逻辑（可测，无 IO） ----------------
 
+FINISHED_THRESHOLD = 98
+
+
 def is_finished(progress: dict | None) -> bool:
-    """读完判定：progress 恰为 100 且存在 finishTime。"""
+    """读完判定：progress >= 98 且存在 finishTime。
+
+    阈值从 100 放宽到 98（2026-10-26 明确要求）：微信读书的进度在很多书上停在
+    98/99 就不再前进，但它们确实读完了、也有 finishTime。
+
+    仍然保留 "必须有 finishTime" 这一条：
+      - finishTime 是"读完时间"的唯一来源，没有它就没法按读完时间排序
+      - 实测有 7 本 progress=100 却没有 finishTime 的书（多为翻到最后一页就退出，
+        未触发"读完"事件），把它们算读完会让排序出现空值
+    """
     if not progress:
         return False
-    return progress.get("progress") == 100 and bool(progress.get("finishTime"))
+    value = progress.get("progress")
+    return value is not None and value >= FINISHED_THRESHOLD and bool(progress.get("finishTime"))
 
 
 def is_reading(progress: dict | None, now_ts: float, days: int) -> bool:

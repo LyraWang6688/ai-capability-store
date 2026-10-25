@@ -19,9 +19,19 @@ class TestFinished(unittest.TestCase):
         # 真实案例：6 本书进度 100% 但接口不给 finishTime，官方不计入
         self.assertFalse(c.is_finished({"progress": 100, "finishTime": None}))
 
-    def test_98_with_finish_time_is_not_finished(self):
-        # 真实案例：《21天说服力养成》有 finishTime 但进度回退到 98
-        self.assertFalse(c.is_finished({"progress": 98, "finishTime": 1607529600}))
+    def test_98_with_finish_time_is_finished(self):
+        # 2026-10-26 起阈值放宽到 98：真实案例《21天说服力养成》98% + finishTime → 读完
+        self.assertTrue(c.is_finished({"progress": 98, "finishTime": 1607529600}))
+
+    def test_99_with_finish_time_is_finished(self):
+        self.assertTrue(c.is_finished({"progress": 99, "finishTime": 1607529600}))
+
+    def test_97_with_finish_time_is_not_finished(self):
+        self.assertFalse(c.is_finished({"progress": 97, "finishTime": 1607529600}))
+
+    def test_98_without_finish_time_is_not_finished(self):
+        # 阈值放宽了，但 finishTime 仍是硬要求
+        self.assertFalse(c.is_finished({"progress": 98, "finishTime": None}))
 
     def test_none_progress(self):
         self.assertFalse(c.is_finished(None))
