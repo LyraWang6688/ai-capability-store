@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""投融资事件采集（MVP）—— Wind 财经新闻 → 飞书「投融资事件」表。
+"""投融资事件采集 —— Wind 财经新闻 → 飞书「投融资事件」表。
 
 纪律（写死在代码里，不接受临场判断）：
   1. 金额只记录原文，不换算、不合并、不推断
@@ -23,10 +23,18 @@ DEFAULT_TABLE = "tblrWsYmW93ujgqC"
 
 # 关键词组：公司 → 检索意图
 GROUPS = {
+    # 国内
     "腾讯控股": "近一年腾讯控股的对外投资、并购、参股、出售资产新闻",
     "阿里巴巴": "近一年阿里巴巴集团的投资、并购、战略入股、减持新闻",
     "字节跳动": "近一年字节跳动（ByteDance）的融资、估值、投资并购新闻",
     "DeepSeek": "近一年 DeepSeek 深度求索 的融资、投资、股东新闻",
+    # 海外
+    "英伟达": "近一年英伟达（NVIDIA）的投资、并购、参股新闻",
+    # 注意：问「谷歌 投资并购」会召回一堆财报与「如何买谷歌股票」的稿子；
+    # 加上「收购、并购交易、投资入股」并显式带 Alphabet 才能命中交易类新闻。
+    "谷歌": "近一年谷歌 Alphabet 收购、并购交易、投资入股新闻",
+    "OpenAI": "近一年 OpenAI 的融资、估值、投资新闻",
+    "苹果": "近一年苹果（Apple）的收购、投资、并购新闻",
 }
 
 # 事件类型：按顺序命中第一个
@@ -66,8 +74,12 @@ NOISE_RE = re.compile(r"评级|研报|目标价|维持|预计.*收入|债券|付
                       r"价值投资|体系构建|启示|专访|访谈|书摘|"
                       r"如何|为什么|怎么看|解析|盘点|启示录|发生了什么")
 QUESTION_RE = re.compile(r"[？?]$")
-COMPANY_ALIAS = {"腾讯控股": r"腾讯", "阿里巴巴": r"阿里|阿里巴巴",
-                 "字节跳动": r"字节|ByteDance", "DeepSeek": r"DeepSeek|深度求索"}
+COMPANY_ALIAS = {
+    "腾讯控股": r"腾讯", "阿里巴巴": r"阿里|阿里巴巴",
+    "字节跳动": r"字节|ByteDance", "DeepSeek": r"DeepSeek|深度求索",
+    "英伟达": r"英伟达|NVIDIA|Nvidia", "谷歌": r"谷歌|Alphabet|Google",
+    "OpenAI": r"OpenAI|Open\s?AI", "苹果": r"苹果|Apple",
+}
 
 
 def classify_credibility(text: str) -> str:

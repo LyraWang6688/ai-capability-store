@@ -136,7 +136,7 @@ procedures:
     runtime: python
     commerce: {charge: free}
     notes: >
-      投融资事件采集 MVP：固定 4 家公司（腾讯/阿里/字节/DeepSeek），
+      投融资事件采集：固定 8 家公司（国内腾讯/阿里/字节/DeepSeek + 海外英伟达/谷歌/OpenAI/苹果），
       走 Wind 的 financial_docs.get_financial_news 取新闻，按写死的规则做事件分类、
       金额原文抽取、可信度分级，写入飞书「王颖的财富管理」Base 的「投融资事件」表。
       三条纪律进代码：金额只录原文不换算、只采集不做建议、每条带来源与可信度。
