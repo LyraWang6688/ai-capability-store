@@ -34,20 +34,30 @@ FINISHED_THRESHOLD = 98
 
 
 def is_finished(progress: dict | None) -> bool:
-    """读完判定：progress >= 98 且存在 finishTime。
+    """读完判定：progress >= 98 即算读完（2026-10-26 口径）。
 
-    阈值从 100 放宽到 98（2026-10-26 明确要求）：微信读书的进度在很多书上停在
-    98/99 就不再前进，但它们确实读完了、也有 finishTime。
+    为什么是 98 而不是 100：
+      很多书的末尾是附录、后记、致谢，用户会跳过不读，进度就停在 98/99 到不了 100。
+      按 100 判定会把"其实读完了"的书一直留在在读列表里。
 
-    仍然保留 "必须有 finishTime" 这一条：
-      - finishTime 是"读完时间"的唯一来源，没有它就没法按读完时间排序
-      - 实测有 7 本 progress=100 却没有 finishTime 的书（多为翻到最后一页就退出，
-        未触发"读完"事件），把它们算读完会让排序出现空值
+    为什么不要求 finishTime：
+      微信读书只在真正触发"读完"事件时才给这个字段；跳过后记的书不会触发，
+      所以它们有进度却没 finishTime。若强制要求 finishTime，这批书依旧不算读完，
+      放宽阈值就失去意义。实测有 21 本（7 本 100% + 14 本 98-99%）属于这种情况。
+
+    代价：这批书的"读完时间"只能退化用最近阅读时间，见 finished_time_of()。
     """
     if not progress:
         return False
     value = progress.get("progress")
-    return value is not None and value >= FINISHED_THRESHOLD and bool(progress.get("finishTime"))
+    return value is not None and value >= FINISHED_THRESHOLD
+
+
+def finished_time_of(progress: dict | None) -> int | None:
+    """读完时间：优先 finishTime（真正的读完事件），缺失时退回最近阅读时间。"""
+    if not progress:
+        return None
+    return progress.get("finishTime") or progress.get("lastReadTime")
 
 
 def is_reading(progress: dict | None, now_ts: float, days: int) -> bool:
@@ -293,7 +303,10 @@ class Base:
         current = self.field_options(table, field)
         opts = current.get("options") or []
         have = {o["name"] for o in opts}
-        missing = [n for n in names if n not in have]
+        missing = []
+        for n in names:                      # 去重：同一分类可能被多本书指向，
+            if n and n not in have and n not in missing:   # 重复提交会被 Base 拒绝
+                missing.append(n)
         if not missing:
             return []
         body = {"name": field, "type": "select", "multiple": bool(current.get("multiple")),
@@ -436,7 +449,7 @@ def collect(args) -> dict:
         desired = []
         if not args.dry_run:
             for bid, prog in fin:
-                desired.append(build_finished_record(get_info(bid), prog["finishTime"]))
+                desired.append(build_finished_record(get_info(bid), finished_time_of(prog)))
         existing = {} if args.dry_run else base.records(args.finished_table)
         plan_ = plan(existing, desired) if desired else {"create": [], "update": {}, "skip": []}
         if not args.dry_run:
