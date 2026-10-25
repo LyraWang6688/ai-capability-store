@@ -1,0 +1,12 @@
+[Unit]
+Description=Quarterly WeChat invoice reminder (Jan/Apr/Jul/Oct 1st 10:00)
+
+[Timer]
+# 季度提醒：每季度第一个月的 1 日 10:00（与 deepseek-invoice 的每月 1 日 10:00 同时段）。
+OnCalendar=*-01,04,07,10-01 10:00:00
+Persistent=true
+RandomizedDelaySec=120
+Unit=wechat-invoice-reminder.service
+
+[Install]
+WantedBy=timers.target

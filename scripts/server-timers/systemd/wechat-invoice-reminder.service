@@ -1,0 +1,13 @@
+[Unit]
+Description=Quarterly reminder: run the WeChat/Tencent invoice for WeChat Reading orders
+# 只提醒、不执行：微信开票必须回到 macOS 桌面版的微信界面，而且提交前必须人工
+# 确认抬头/税号/金额（skill 的硬规则）。服务器能做到的是「到点把这件事放进收件箱」。
+
+[Service]
+Type=oneshot
+User=dshjobs
+Environment=HOME=/srv/dsh-jobs
+Environment=PATH=/srv/dsh-jobs/node/bin:/srv/dsh-jobs/.local/bin:/usr/local/bin:/usr/bin:/bin
+EnvironmentFile=-/srv/dsh-jobs/env/app.env
+ExecStart=/srv/dsh-jobs/scripts/inbox-deliver --task wechat-invoice-reminder --result 成功 --summary "又到季度开票时间：微信 → 腾讯充值 → 我的帐户 → 申请发票（微信读书 / Q币 订单）。在 DSH 桌面端说「去微信里开发票」触发 wechat-tencent-invoice skill；提交前它会先把抬头、税号、金额念给你确认。"
+Nice=10

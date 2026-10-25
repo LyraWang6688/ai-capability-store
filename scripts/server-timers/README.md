@@ -19,7 +19,8 @@ scripts/server-timers/
 │   ├── investdesk-quote-sync.service / .timer
 │   ├── repo-baseline-audit.service / .timer
 │   ├── repo-discoverability.service / .timer
-│   └── feishu-digest.service / .timer
+│   ├── feishu-digest.service / .timer
+│   └── wechat-invoice-reminder.service / .timer
 └── deliver/                ← 投递脚本（装到 /srv/dsh-jobs/scripts，dshjobs 身份）
     ├── inbox-deliver           ← 投递契约的唯一实现（写「任务收件箱」）
     ├── ops-audit-inbox.py / deepseek-invoice-inbox.py
@@ -60,6 +61,7 @@ scripts/server-timers/
 | `repo-baseline-audit` | 每周一 09:00 | 敲 Actions | root | 同上 |
 | `repo-discoverability` | 每周一 20:00 | 敲 Actions | root | 同上 |
 | `feishu-digest` | 每天 22:00 | 本机脚本（读桥会话库 + dsh headless）| dshjobs | **直接投递**收件箱（无内容则静默）|
+| `wechat-invoice-reminder` | 每季度首月 1 日 10:00 | 直接调 `inbox-deliver` | dshjobs | **纯提醒**：收件箱一条「该开票了」，执行仍在 Mac |
 
 > 「未接收件箱」的 8 个任务，下一步按同样模式加 `xxx-inbox.service/.timer` 即可。
 
@@ -102,6 +104,23 @@ sudo -u dshjobs env HOME=/srv/dsh-jobs \
 
 > 摘要源为什么不是桥的审计日志：审计只记用户指令全文，AI 的回答只记字数。
 > 完整对话只在 DSH 会话库里，所以这里解压 `session.v4.jsonl.zstd` 读事件流。
+
+## `wechat-invoice-reminder`：季度开票提醒（只提醒，不执行）
+
+微信开票必须回到 macOS 桌面版的微信界面，且 skill 的硬规则要求提交前人工确认
+抬头/税号/金额——**服务器上没有能自动完成这件事的执行环境**，所以这个钟只做一件事：
+到点把「该开票了」放进收件箱，你在 DSH 里点开，再让桌面端 agent 跑
+`skills/wechat-tencent-invoice`。
+
+```text
+wechat-invoice-reminder.timer（1/4/7/10 月 1 日 10:00）
+  └─ wechat-invoice-reminder.service
+       └─ inbox-deliver → 飞书「任务收件箱」（结果=成功 / 状态=未读）
+            └─ DSH 📥 面板 → 点开 → 桌面端执行 skill
+```
+
+它不判断「这段时间有没有订单」——那需要读微信界面，服务器做不到；所以每季度固定提醒一次，
+金额为 0 时 skill 自己会停在「无可开票订单」。
 
 ## 新增一个任务的步骤
 
