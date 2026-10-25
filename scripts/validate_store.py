@@ -1948,14 +1948,20 @@ def validate_clocks() -> set:
             continue
         ids.add(clock_id)
         check(f"clock {clock_id} kebab-case", bool(KEBAB_RE.match(clock_id)), clock_id)
-        for field in ("schedule", "timer"):
-            check(f"clock {clock_id} declares {field}",
-                  isinstance(spec.get(field), str) and bool(spec.get(field)),
-                  f"{field}={spec.get(field)!r}")
+        # 排期只有一处：timer 文件里的 OnCalendar。钟的登记表不再抄一遍时间，
+        # 否则改了 timer 忘了改表，看文档的人会被骗，而校验器看不出来。
+        check(f"clock {clock_id} declares no schedule",
+              "schedule" not in spec,
+              "排期写在 timer 的 OnCalendar 里，不要在 clocks.yaml 重复")
         timer = spec.get("timer")
         if isinstance(timer, str) and timer:
-            check(f"clock {clock_id} timer exists",
-                  os.path.isfile(os.path.join(ROOT, timer)), timer)
+            timer_path = os.path.join(ROOT, timer)
+            check(f"clock {clock_id} timer exists", os.path.isfile(timer_path), timer)
+            if os.path.isfile(timer_path):
+                body = open(timer_path, encoding="utf-8").read()
+                check(f"clock {clock_id} timer declares OnCalendar",
+                      "OnCalendar=" in body,
+                      f"{timer} 没有 OnCalendar，那它就不是一个钟")
         workflow = spec.get("workflow")
         if workflow is None:
             check(f"clock {clock_id} states why it has no workflow", bool(spec.get("note")),

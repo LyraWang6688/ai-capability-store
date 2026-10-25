@@ -14,55 +14,53 @@ schema_version: 1
 
 clocks:
   investdesk-quote-sync:
-    schedule: "Mon..Fri 20:00"
     timer: scripts/server-timers/systemd/investdesk-quote-sync.timer
     workflow: .github/workflows/automation-investdesk-quote-sync.yml
     note: 必须赶在次日 09:00 消费前落地，所以不用 GitHub 自带 schedule（实测延迟 4-5 小时）
 
   github-trending-daily:
-    schedule: "*-*-* 20:00"
     timer: scripts/server-timers/systemd/github-trending-daily.timer
     workflow: .github/workflows/automation-github-trending-daily.yml
 
   github-trending-weekly:
-    schedule: "Sun 21:00"
     timer: scripts/server-timers/systemd/github-trending-weekly.timer
     workflow: .github/workflows/automation-github-trending-weekly.yml
 
   github-portfolio-snapshot:
-    schedule: "*-*-01 18:00"
     timer: scripts/server-timers/systemd/github-portfolio-snapshot.timer
     workflow: .github/workflows/automation-github-portfolio-snapshot.yml
 
   repo-baseline-audit:
-    schedule: "Mon 09:00"
     timer: scripts/server-timers/systemd/repo-baseline-audit.timer
     workflow: .github/workflows/automation-repo-baseline.yml
 
   repo-discoverability:
-    schedule: "Mon 20:00"
     timer: scripts/server-timers/systemd/repo-discoverability.timer
     workflow: .github/workflows/automation-repo-discoverability.yml
 
   frontier-watch:
-    schedule: "Mon 10:00"
     timer: scripts/server-timers/systemd/frontier-watch.timer
     workflow: .github/workflows/automation-frontier-watch.yml
 
   deepseek-invoice:
-    schedule: "*-*-01 10:00"
     timer: scripts/server-timers/systemd/deepseek-invoice.timer
     workflow: null          # 直接在服务器上跑 /opt/deepseek-invoice/run.mjs，不经 Actions
     note: 需要长期登录态与国内固定 IP，只能在本机跑
 
   ops-audit:
-    schedule: "*-*-01 21:00"
     timer: scripts/server-timers/systemd/ops-audit.timer
     workflow: null          # 直接在服务器上跑，不经 GitHub Actions
     note: systemd 直接执行 unit，没有 workflow
 
   box2bitable-observability:
-    schedule: "*-*-* 09:00"
     timer: scripts/server-timers/systemd/box2bitable-observability.timer
     workflow: null
     note: ⚠️ 有钟、没有任何作业记录 —— 待补登记或停掉
+
+  feishu-digest:
+    timer: scripts/server-timers/systemd/feishu-digest.timer
+    note: 每天 22:00 汇总当天飞书内容，赶在睡前发出去
+
+  wechat-invoice-reminder:
+    timer: scripts/server-timers/systemd/wechat-invoice-reminder.timer
+    note: 每季度（1/4/7/10 月 25 日）提醒一次给微信读书订单开票，只提醒不自动开
