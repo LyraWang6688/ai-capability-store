@@ -1,101 +1,263 @@
-# 源清单 —— 四个平台 × 三层，每格列出"该去看哪儿"
+# 源矩阵 —— 每个平台 × 每一层 × 每个具体抓取点 × 信源
 #
-# url: null 表示"我们还没找到该看哪个页面"，报告里记作 no_source。
-# 这和"抓取失败"是两种事：一个是不知道去哪看，一个是知道了但抓不到。
-# 不猜、不填一个"看起来合理"的地址。
-schema_version: 1
+# 结构：
+#   sources    信源字典（id → URL / 类型 / 上次抓取结果）。一个信源可服务多个抓取点。
+#   platforms  每个平台三层，每层列出【具体抓取点】和它引用哪些信源。
+#
+# 规则：
+#   1. 抓取点写"我们要知道什么"，不写字段名。
+#   2. 每个点必须至少引用一个信源；没有信源的写 `from: []` + `blocked:` 说明为什么。
+#   3. 信源 url: null 表示"还没找到该看哪儿"，与"抓不到"是两回事。
+#   4. 测试保证：每个点引用的信源 id 必须在 sources 里存在（不许悬空引用）。
+schema_version: 2
 
+# ── 信源字典 ────────────────────────────────────────────────────────────
+sources:
+  # Codex
+  codex-releases:
+    url: "https://api.github.com/repos/openai/codex/releases?per_page=10"
+    kind: json
+    verified: "2026-10-25"
+  codex-docs:
+    url: "https://developers.openai.com/codex"
+    kind: html
+    verified: null
+    note: 早期抓取返回 403，未复验
+  codex-plugins-portal:
+    url: "https://developers.openai.com/plugins"
+    kind: html
+    verified: "2026-10-25"
+    note: 插件提交门户 —— "个人能不能上传"最该看的一页
+  agent-plugins-spec:
+    url: "https://agent-plugins.org/specification"
+    kind: html
+    verified: null
+  agents-md:
+    url: "https://agents.md/"
+    kind: html
+    verified: "2026-10-25"
+
+  # Claude
+  claude-release-notes:
+    url: "https://support.claude.com/en/articles/12138966-release-notes"
+    kind: html
+    verified: "2026-10-25"
+    note: 是 Claude 应用的发布说明，不等于 Claude Code 的规范变化
+  claude-plugins-publish:
+    url: "https://code.claude.com/docs/en/plugins/publish"
+    kind: html
+    verified: "2026-10-25"
+  claude-marketplace-hosting:
+    url: "https://code.claude.com/docs/en/plugins/host-marketplace"
+    kind: html
+    verified: "2026-10-25"
+  claude-plugins-security:
+    url: "https://code.claude.com/docs/en/plugins/security"
+    kind: html
+    verified: "2026-10-25"
+  claude-mcp:
+    url: "https://code.claude.com/docs/en/mcp"
+    kind: html
+    verified: "2026-10-25"
+  claude-directory:
+    url: "https://claude.ai/directory"
+    kind: html
+    verified: null
+    note: 市场页；用于数第三方插件（生态是否活着）
+  agentskills-spec:
+    url: "https://agentskills.io/specification"
+    kind: html
+    verified: "2026-10-25"
+
+  # DSH
+  dsh-plugin-market:
+    url: "https://deepseek-harness.github.io/deepseek-harness/en/guide/plugin-market.md"
+    kind: md
+    verified: "2026-10-25"
+    note: 市场仍标 experimental
+  dsh-skills-subsystem:
+    url: "https://deepseek-harness.github.io/deepseek-harness/en/reference/subsystems/skills.md"
+    kind: md
+    verified: "2026-10-25"
+  dsh-npm:
+    url: "https://registry.npmjs.org/@deepseek-ai/dsh"
+    kind: json
+    verified: "2026-10-25"
+    note: 包存在；具体 bin 名待核
+  dsh-releases:
+    url: "https://api.github.com/repos/deepseek-ai/deepseek-harness/releases?per_page=10"
+    kind: json
+    verified: null
+  dsh-desktop-feed:
+    url: "https://download.deepseek.com/dsh-desk/feeds/mac-arm64/nightly-mac.yml"
+    kind: yaml
+    verified: null
+    note: 桌面版版本与发布日期
+
+# ── 抓取矩阵 ────────────────────────────────────────────────────────────
 platforms:
   codex:
     product:
-      - id: releases
-        url: "https://api.github.com/repos/openai/codex/releases?per_page=10"
-        kind: json
-        note: 用 tag / published_at 推发布节奏与是否成型
+      - point: 它有哪些产品形态（CLI / IDE 扩展 / 云端 / 宿主内）
+        from: [codex-docs, codex-releases]
+        extract: 产品页列出的产品线 → 记形态与运行平台
+      - point: 发布节奏与是否成型
+        from: [codex-releases]
+        extract: 最近 10 个 release 的时间间隔 + 是否有独立文档站
+      - point: 它自己宣称的核心功能
+        from: [codex-docs]
+        extract: 产品页首屏的功能列表 3–8 条
     api:
-      - id: agents-md
-        url: "https://agents.md/"
-        kind: html
-        note: 上下文入口规范（AGENTS.md）
-      - id: plugins-portal
-        url: "https://developers.openai.com/plugins"
-        kind: html
-        note: 插件提交门户；本环境返回 403，待换可达源
+      - point: 插件用什么规范文件、放哪
+        from: [codex-plugins-portal, agent-plugins-spec]
+        extract: 提交要求里写明的必需文件与目录结构
+      - point: 插件能注册哪几类能力（tool / command / panel / MCP server…）
+        from: [codex-plugins-portal]
+        extract: 文档里的能力类型清单
+      - point: 插件在哪端生效（桌面 / IDE / 云端 / 移动）
+        from: [codex-plugins-portal]
+        extract: 准入说明里对生效环境的限定
+      - point: 权限模型（能不能读文件 / 起子进程 / 联网）
+        from: [codex-plugins-portal]
+        extract: 安全与权限章节
+      - point: CLI 包名与稳定性
+        from: [codex-releases]
+        extract: release 里出现的包名 / 安装命令
+      - point: agent 怎么调它（CLI / API / MCP）
+        from: [codex-docs]
+        extract: 文档的 API 与 MCP 章节
     ecosystem:
-      - id: pricing
-        url: null
-        note: 未找到官方开发者在插件上的收费 / 分成说明
+      - point: 个人能不能上传插件
+        from: [codex-plugins-portal]
+        extract: 提交资格与准入条件
+      - point: 要不要审核、多久
+        from: [codex-plugins-portal]
+        extract: 审核流程说明
+      - point: 平台对开发者怎么收费 / 有没有分成
+        from: []
+        blocked: 未找到官方定价或分成说明；门户里若无开发者条款，这一格只能记"无官方机制"
 
   claude:
     product:
-      - id: release-notes
-        url: "https://support.claude.com/en/articles/12138966-release-notes"
-        kind: html
-        note: 注意这是 Claude 应用的发布说明，不等于 Claude Code 的规范变化
+      - point: 它有哪些产品（应用 / Claude Code / API）
+        from: [claude-release-notes, claude-plugins-publish]
+        extract: 从文档与发布说明交叉确认产品边界
+      - point: 发布节奏
+        from: [claude-release-notes]
+        extract: 发布说明的条目日期间隔
+      - point: 插件体系覆盖哪些产品
+        from: [claude-plugins-publish]
+        extract: 文档里写明的适用产品（CLI / IDE / 桌面）
     api:
-      - id: plugins-publish
-        url: "https://code.claude.com/docs/en/plugins/publish"
-        kind: html
-      - id: marketplace-hosting
-        url: "https://code.claude.com/docs/en/plugins/host-marketplace"
-        kind: html
-        note: 私有分发（private git / archive + bearer + sha256）写在这里
-      - id: mcp
-        url: "https://code.claude.com/docs/en/mcp"
-        kind: html
-      - id: skills-spec
-        url: "https://agentskills.io/specification"
-        kind: html
-        note: 生态层共用的 Skill 规范
+      - point: 插件规范文件（plugin.json / marketplace.json）
+        from: [claude-plugins-publish, agentskills-spec]
+        extract: 必需文件、目录结构、frontmatter 白名单
+      - point: 安装入口（命令 / URL / 共享盘）
+        from: [claude-marketplace-hosting]
+        extract: "`/plugin marketplace add` 支持的来源类型"
+      - point: 私有分发怎么做
+        from: [claude-marketplace-hosting]
+        extract: private git、archive + headers + sha256 的具体要求
+      - point: 权限模型与安全边界
+        from: [claude-plugins-security]
+        extract: 插件能做什么、被限制什么
+      - point: agent 怎么调外部能力（MCP 传输 + 认证）
+        from: [claude-mcp]
+        extract: stdio / http / sse / ws + OAuth2 / DCR
+      - point: Skill 的规范与发现位置
+        from: [agentskills-spec]
+        extract: SKILL.md 必填字段 + 客户端发现规则
     ecosystem:
-      - id: plugins-security
-        url: "https://code.claude.com/docs/en/plugins/security"
-        kind: html
-      - id: developer_terms
-        url: null
-        note: 官方文档无价格字段；是否存在未公开的开发者条款待核
+      - point: 个人能不能上传、走哪条路
+        from: [claude-plugins-publish, claude-directory]
+        extract: 官方目录 vs 社区目录的准入差别
+      - point: 生态有多活（第三方插件数量）
+        from: [claude-directory]
+        extract: 目录里的插件条数
+      - point: 平台收不收费、有没有结算
+        from: [claude-plugins-publish]
+        extract: 文档里有无价格/结算字段（目前结论：没有）
+      - point: 分成比例
+        from: []
+        blocked: 官方文档无相关机制；第三方"抽成 15%"说法未获证实，不采信
 
   dsh:
     product:
-      - id: plugin-market
-        url: "https://deepseek-harness.github.io/deepseek-harness/en/guide/plugin-market.md"
-        kind: md
-        note: 插件市场仍标 experimental
-      - id: skills-subsystem
-        url: "https://deepseek-harness.github.io/deepseek-harness/en/reference/subsystems/skills.md"
-        kind: md
-        note: skills 发现位置（.dsh/skills、.agents/skills）
+      - point: 它有哪些产品形态（桌面端 / CLI / 插件页）
+        from: [dsh-plugin-market, dsh-desktop-feed]
+        extract: 市场文档 + 桌面版 feed 的版本线
+      - point: 发布节奏
+        from: [dsh-releases, dsh-desktop-feed]
+        extract: release 间隔 + 桌面版 releaseDate
+      - point: 插件体系在哪些产品上生效
+        from: [dsh-plugin-market]
+        extract: 市场文档写明的适用端
     api:
-      - id: npm
-        url: "https://registry.npmjs.org/@deepseek-ai/dsh"
-        kind: json
-        note: 包名待核实；若 404 换成实际包名
+      - point: 插件怎么安装（命令 / 包形态）
+        from: [dsh-plugin-market, dsh-npm]
+        extract: "`dsh plugin add` 的用法 + npm 包信息"
+      - point: 插件规范文件与目录结构
+        from: [dsh-plugin-market]
+        extract: Cordis bundle 的结构要求
+      - point: 技能放哪、怎么被发现
+        from: [dsh-skills-subsystem]
+        extract: "`.dsh/skills` 与 `.agents/skills` 的扫描规则"
+      - point: 宿主提供了哪些可挂钩的槽位
+        from: [dsh-plugin-market]
+        extract: slot 清单（本仓库 5 个插件是活证据）
+      - point: agent 怎么调它（CLI）
+        from: [dsh-npm]
+        extract: bin 名称与入口
     ecosystem:
-      - id: upload_channel
-        url: null
-        note: 个人能否上架、是否有审核，均未找到公开说明
-      - id: pricing
-        url: null
-        note: 未找到任何收费 / 分成说明
+      - point: 个人能不能上架插件
+        from: [dsh-plugin-market]
+        extract: 市场是否开放提交、是否仍 experimental
+      - point: 有没有审核 / 资质要求
+        from: [dsh-plugin-market]
+        extract: 提交说明
+      - point: 平台收不收费 / 有没有分成
+        from: []
+        blocked: 未找到任何收费或分成说明
 
   doubao-work:
     product:
-      # 没有公开文档站，只有 App 本体；产品层靠本机实测（见
-      # computer-automation 域里已有/将有的界面档案）
-      - id: app
-        url: null
-        note: 无公开文档；形态与功能需本机实测后人工填写
+      - point: 产品形态与版本
+        from: []
+        blocked: 无公开信源；只能本机实测（见 computer-automation/computer-use/doubao-work/）
+        extract: 本机实测（App 版本、内核版本）
+      - point: 插件体系有哪几类、各有几个
+        from: []
+        blocked: 无公开信源；只能本机实测（见 computer-automation/computer-use/doubao-work/）
+        extract: 实测界面计数（技能 / 连接器 / 伙伴）
+      - point: 核心功能清单
+        from: []
+        blocked: 无公开信源；只能本机实测（见 computer-automation/computer-use/doubao-work/）
+        extract: 实测界面里的功能入口
     api:
-      - id: custom-connector
-        url: null
-        note: 自定义连接器仅限本机（本机实测结论，非文档来源）
-      - id: mcp-http
-        url: null
-        note: 本机 HTTP 地址可连；无公开规范文档
+      - point: 自定义连接器能否连公网 / 范围限制
+        from: []
+        blocked: 无公开信源；只能本机实测（见 computer-automation/computer-use/doubao-work/）
+        extract: 实测表单原文 + 本机 HTTP 连通性
+      - point: 技能怎么安装（对话新建 / 上传）
+        from: []
+        blocked: 无公开信源；只能本机实测（见 computer-automation/computer-use/doubao-work/）
+        extract: 实测安装路径
+      - point: 有没有开放 CLI / API
+        from: []
+        blocked: 未找到任何公开接口文档；实测亦未见 CLI
+      - point: MCP 支持形态
+        from: []
+        blocked: 无公开信源；只能本机实测（见 computer-automation/computer-use/doubao-work/）
+        extract: 实测本机 HTTP MCP 能否被调用
+      - point: 插件在哪端生效
+        from: []
+        blocked: 无公开信源；只能本机实测（见 computer-automation/computer-use/doubao-work/）
+        extract: 实测：仅桌面 App，无移动端插件入口
     ecosystem:
-      - id: upload_channel
-        url: null
-        note: 未找到公开的技能 / 插件上传通道
-      - id: pricing
-        url: null
-        note: 未找到收费或分成说明
+      - point: 个人能不能上传插件 / 技能
+        from: []
+        blocked: 无公开信源；只能本机实测（见 computer-automation/computer-use/doubao-work/）
+        extract: 实测有无公开上传通道
+      - point: 平台收不收费 / 有没有分成
+        from: []
+        blocked: 未找到任何公开收费或分成说明

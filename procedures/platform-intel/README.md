@@ -46,23 +46,37 @@ python3 collect.py --only codex       # 只跑一个平台
 
 ## 报告长什么样
 
+两段：**信源可达性** + **按矩阵汇总的覆盖情况**。
+
 ```json
 {
-  "generated_at": "2026-10-25T…",
-  "platforms": {
-    "codex": {
-      "product": [{"id": "releases", "status": "ok", "sha256": "…", "bytes": 1234, "snapshot": "…"}],
-      "api": [{"id": "plugins-portal", "status": "http_403", "...": "..."}],
-      "ecosystem": [{"id": "pricing", "status": "no_source", "note": "未找到官方定价说明"}]
+  "sources": {
+    "claude-plugins-publish": {"url": "…", "status": "ok", "bytes": 4210, "sha256": "…"},
+    "codex-plugins-portal":   {"url": "…", "status": "ok", "bytes": 90311, "sha256": "…"}
+  },
+  "coverage": {
+    "claude": {
+      "ecosystem": [
+        {"point": "个人能不能上传、走哪条路", "state": "ready", "from": ["claude-plugins-publish"]},
+        {"point": "分成比例", "state": "blocked", "from": [],
+         "blocked": "官方文档无相关机制"}
+      ]
     }
   },
-  "summary": {"ok": 0, "failed": 0, "no_source": 0}
+  "summary": {"ok": 17, "failed": 0, "no_source": 0, "points_ready": 33, "points_blocked": 13}
 }
 ```
 
-`status` 的取值是封闭集合：`ok` / `http_<code>` / `unreachable` / `timeout` / `no_source`。
-**`no_source` 和 `failed` 必须分开**——一个是"我们还没找到该看哪里"，
-一个是"找到了但抓不到"，处置方式完全不同。
+`state` 三值，含义必须分清：
+
+| state | 含义 | 处置 |
+|---|---|---|
+| `ready` | 这个点引用的**全部**信源都抓到了 | 阶段 2 可以提取 |
+| `source_unavailable` | 有信源，但至少一个抓不到 | 换手段或换源 |
+| `blocked` | **还没有信源**，靠 `blocked:` 说明为什么 | 去补源，或改走实测 |
+
+**一个点只有在它引用的全部信源都 ok 时才算 ready** —— 部分成功不算成功，
+否则报告会安静地比现实乐观。
 
 ## 纪律
 
