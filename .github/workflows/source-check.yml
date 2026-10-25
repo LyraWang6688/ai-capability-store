@@ -1,0 +1,54 @@
+name: source-check
+
+# 信源可用性校验：用真实浏览器打开每一个源，看页面里有没有真内容。
+#
+# 为什么必须在 CI 里跑：本机在中国大陆，curl 连不上 Google、被 OpenAI 拦；
+# 但那些源在境外网络里是好的。本地结论会把人带偏，所以判据只能来自这里。
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, feat/platform-intel-sources]
+    paths:
+      - 'procedures/source-check/**'
+      - 'procedures/platform-intel/sources.yaml'
+      - '.github/workflows/source-check.yml'
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: 安装 chromium
+        run: npx --yes playwright@latest install --with-deps chromium
+
+      - name: 找出 chromium 路径
+        run: |
+          BIN=$(node -e "console.log(require('playwright').chromium.executablePath())" 2>/dev/null || true)
+          if [ -z "$BIN" ] || [ ! -x "$BIN" ]; then
+            BIN=$(find ~/.cache/ms-playwright -name 'chrome' -type f | head -1)
+          fi
+          echo "CHROME_BIN=$BIN" >> "$GITHUB_ENV"
+          echo "chromium: $BIN"
+
+      - name: 校验全部信源
+        run: node procedures/source-check/check.mjs --json > source-report.json || true
+
+      - name: 打印结果
+        run: |
+          node -e '
+            const r = require("./source-report.json");
+            const bad = r.filter(x => x.verdict !== "ok");
+            for (const x of r) console.log(`${x.verdict === "ok" ? "OK  " : "FAIL"} ${x.verdict.padEnd(11)} ${String(x.id).padEnd(28)} ${(x.title||"").slice(0,50)}`);
+            console.log(`\n合计 ${r.length}，异常 ${bad.length}`);
+          '
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: source-report
+          path: source-report.json

@@ -98,11 +98,14 @@ sources:
   # ── 大模型层：四家官方更新日志 ──────────────────────────────────────
   # 这一层回答"出了什么新模型、新模型多了什么能力"，与产品层的问题不同：
   # 产品层问"这个工具能不能装我们的东西"，模型层问"它能干什么、多花多少钱"。
+  # DeepSeek 文档站是 Docusaurus 前端路由：任何路径都返回 200，「/news」在浏览器里
+  # 其实是 Page Not Found。所以不能靠状态码判断，只能靠 sitemap 列真实路径。
   deepseek-news:
-    url: "https://api-docs.deepseek.com/news"
-    kind: html
-    verified: null
+    url: "https://api-docs.deepseek.com/sitemap.xml"
+    kind: xml-sitemap
+    verified: "2026-10-25"
     layer: model
+    note: 没有 news 索引页，新闻是 /news/newsMMDD 独立页；定期抓 sitemap 与上次比对，新增的 /news/* 即新公告
   deepseek-github:
     url: "https://api.github.com/repos/deepseek-ai/DeepSeek-V3/releases?per_page=10"
     kind: json
