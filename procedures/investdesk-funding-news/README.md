@@ -14,23 +14,71 @@
 ## 跑什么
 
 ```bash
-export INVESTDESK_BASE_TOKEN=<飞书 Base token>   # 目标 Base（不入库）
-node --version                       # 需要 node >= 20（技能 CLI 依赖）
-python3 collect.py --dry-run         # 只取数、分类、打印，不写库
-python3 collect.py                   # 写入飞书
-python3 collect.py --top-k 10        # 每家公司取更多条
+# 只抓取：产出 payload，完全不碰飞书（GitHub Actions 用的就是这个模式）
+export WIND_API_KEY=<万得 key>
+python3 collect.py --mode fetch --out payload.json
+
+# 只写入：把 payload 写进飞书（服务器侧执行，需要 lark-cli 已登录）
+export INVESTDESK_BASE_TOKEN=<飞书 Base token>
+python3 collect.py --mode write --in payload.json
+
+# 把表里已有的重复报道合并成「一件事」（一次性清理，可 --dry-run）
+python3 collect.py --mode consolidate --dry-run
+python3 collect.py --mode consolidate
+
+# 一把梭（本机调试用）
+export WIND_API_KEY=... INVESTDESK_BASE_TOKEN=...
+python3 collect.py
 ```
+
+`--mode fetch` **只需要万得 key**，不读也不写飞书；`--mode write` **只需要飞书凭据**，不调万得。
+这个切分是为了让 GitHub Actions 只承担抓取，把飞书写入留在服务器（详见下面的调度）。
 
 输出 JSON：`fetched / kept / dropped_noise / to_create / created`。
 
 ## 数据链路
 
 ```
-关键词组 → node ~/.agents/skills/wind-mcp-skill/scripts/cli.mjs
-                 call financial_docs get_financial_news
+关键词组 → 直连万得 MCP over HTTP（initialize + tools/call，响应可能是 SSE）
          → 事件判定/分类/金额抽取（纯逻辑，见 collect.py 顶部规则）
+         → payload JSON
          → 按「来源链接」去重 → 写入飞书表
 ```
+
+**不依赖本机安装的万得 skill**：万得的 `cli.mjs` 只是 JSON-RPC 薄封装，这里直接发 HTTP，
+因此 GitHub Actions 的 runner 上也能跑。
+
+## 聚合：一篇报道 ≠ 一件事
+
+同一件事常被多家媒体各写一篇。入库前会先聚成「事件」，否则表里全是重复：
+
+| 判据 | 说明 |
+|---|---|
+| 同公司 + 同事件类型 | 必要前提 |
+| 日期相近 | ±14 天 |
+| 标题相似 ≥ 0.35 | 中文 2-gram Jaccard |
+| 或金额写法完全相同 | `320亿美元` == `320亿美元` |
+
+合并后一条记录含：
+
+- `来源数`：这条事件被几家报道
+- `来源链接`：所有来源链接（换行分隔）
+- `其他来源`：其余报道的标题
+- `事件摘要`：取最长的那份
+- `新闻日期`：取**最早**的报道日期（事件发生时间点）
+
+`--mode consolidate` 可以把表里**已经存在的**重复报道做同样合并（保留最早一条，其余合并后删除）。
+它会先打印 `merge_clusters / update_rows / delete_rows` 的计数，加 `--dry-run` 则不动数据。
+
+## 摘要：按整句截断，不切断句子
+
+原来的 `[:140]` 会把「…约等于一百亿人民币」切成半句，看起来像坏数据。
+
+现在按句号/问号/感叹号/换行切句，贪心取整句直到 200 字；只有单句本身超长时才硬截断加 `…`。
+顺带剥掉 Markdown 链接语法（`[00700.HK](http://…)` → `00700.HK`）。
+
+> 注意：**已经入库的历史摘要无法复原** —— 当时只存了截断后的文本，原文没留。
+> 新抓到的同一事件如果摘要更长，会在合并时覆盖；否则保留原样。
 
 ## 三条纪律（写死在代码里）
 
