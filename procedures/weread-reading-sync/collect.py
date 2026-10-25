@@ -86,6 +86,7 @@ def build_finished_record(info: dict, finish_ts: int) -> dict:
         "分类": [info["category"]] if info.get("category") else None,
         "简介": (info.get("intro") or "")[:1500],
         "微信读书ID": info["bookId"],
+        "阅读链接": info.get("readerLink"),
         "读完时间": ms_of_date(fmt_date(finish_ts)),
     }
 
@@ -98,6 +99,7 @@ def build_reading_record(info: dict, progress: dict) -> dict:
         "阅读进度": progress.get("progress"),
         "最近阅读时间": progress.get("lastReadTime"),
         "微信读书ID": info["bookId"],
+        "阅读链接": info.get("readerLink"),
         "简介": (info.get("intro") or "")[:1200],
     }
 
@@ -130,6 +132,9 @@ def cache_is_stale(entry: dict | None, shelf_read_ts: int | None,
 def info_is_stale(entry: dict | None, now_ts: float, ttl_days: float = INFO_TTL_DAYS) -> bool:
     """书籍元数据缓存是否过期（元数据几乎不变，所以 TTL 比进度长得多）。"""
     if not entry or "cachedAt" not in entry or "info" not in entry:
+        return True
+    # 缓存结构升级：加入 readerLink 之前存下的条目要重查一次
+    if "readerLink" not in entry["info"]:
         return True
     return (now_ts - entry["cachedAt"]) > ttl_days * 86400
 
@@ -393,6 +398,8 @@ def info_getter(ww: "WeRead", cache: dict, now_ts: float, ttl_days: float = INFO
                 "author": info.get("author"),
                 "category": info.get("category"),
                 "intro": (info.get("intro") or "")[:1500],
+                "readerLink": info.get("readerLink"),
+                "deepLink": info.get("deepLink"),
             }}
         return cache[bid]["info"]
     return get

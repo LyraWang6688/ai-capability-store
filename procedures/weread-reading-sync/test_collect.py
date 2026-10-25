@@ -78,7 +78,8 @@ class TestDates(unittest.TestCase):
 
 
 class TestRecords(unittest.TestCase):
-    INFO = {"bookId": "123", "title": "书名", "author": "作者", "category": "文学-散文杂著", "intro": "x" * 2000}
+    INFO = {"bookId": "123", "title": "书名", "author": "作者", "category": "文学-散文杂著",
+            "intro": "x" * 2000, "readerLink": "https://weread.qq.com/web/reader/abc"}
 
     def test_finished_record(self):
         rec = c.build_finished_record(self.INFO, c.ms_of_date("2024-08-11") // 1000)
@@ -86,6 +87,10 @@ class TestRecords(unittest.TestCase):
         self.assertEqual(rec["分类"], ["文学-散文杂著"])
         self.assertEqual(len(rec["简介"]), 1500)          # 截断
         self.assertIsInstance(rec["读完时间"], int)       # 毫秒时间戳
+
+    def test_finished_record_carries_reader_link(self):
+        rec = c.build_finished_record(self.INFO, 1_700_000_000)
+        self.assertEqual(rec["阅读链接"], "https://weread.qq.com/web/reader/abc")
 
     def test_reading_record(self):
         rec = c.build_reading_record(self.INFO, {"progress": 36, "lastReadTime": 1_700_000_000})
@@ -166,6 +171,19 @@ class TestCacheFreshness(unittest.TestCase):
         self.assertFalse(c.cache_is_stale(e, None, self.NOW))
 
 
+class TestInfoCacheUpgrade(unittest.TestCase):
+    NOW = 1_700_000_000
+
+    def test_cache_without_reader_link_is_stale(self):
+        # 旧缓存（加 readerLink 之前）要重查一次，否则阅读链接永远补不上
+        entry = {"cachedAt": self.NOW, "info": {"title": "x"}}
+        self.assertTrue(c.info_is_stale(entry, self.NOW))
+
+    def test_cache_with_reader_link_is_fresh(self):
+        entry = {"cachedAt": self.NOW, "info": {"readerLink": None}}
+        self.assertFalse(c.info_is_stale(entry, self.NOW))
+
+
 class TestInfoCache(unittest.TestCase):
     NOW = 1_700_000_000
 
@@ -173,7 +191,8 @@ class TestInfoCache(unittest.TestCase):
         self.assertTrue(c.info_is_stale(None, self.NOW))
 
     def test_fresh(self):
-        self.assertFalse(c.info_is_stale({"cachedAt": self.NOW - 86400, "info": {"title": "x"}}, self.NOW))
+        self.assertFalse(c.info_is_stale(
+            {"cachedAt": self.NOW - 86400, "info": {"title": "x", "readerLink": "u"}}, self.NOW))
 
     def test_ttl_expiry_30d(self):
         self.assertTrue(c.info_is_stale({"cachedAt": self.NOW - 31 * 86400, "info": {}}, self.NOW))
