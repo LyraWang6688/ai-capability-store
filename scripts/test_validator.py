@@ -281,6 +281,13 @@ MUTATIONS = {
         "wechat-article",
         "    status: testing\n",
         "    status: testing\n    output:\n      target: human\n"),
+    # 迁移期：新形状（<项目>/<任务>）里 trigger 必填 —— 一个任务必须说清谁发起它
+    "orc-project-missing-trigger": _in_record(
+        "wechat-article", "    trigger: human\n", ""),
+    "orc-project-bad-name": _in_record(
+        "wechat-article",
+        "path: orchestrations/wechat/wechat-article",
+        "path: orchestrations/WeChat/wechat-article"),
     "orc-output-unknown": _in_record(
         "wechat-article",
         "    status: testing\n",
@@ -402,6 +409,10 @@ CASES = [
      CAPABILITY_REGISTRY, "commerce-hosted-on-external"),
     # 编排层开始吸收 Automation Domain 的三格。这一步只加字段、不动记录，
     # 所以每个正例都必须真能放行 —— 否则下一步迁移无从下手。
+    ("orchestration in project shape without trigger is rejected", 1,
+     ORCHESTRATION_REGISTRY, "orc-project-missing-trigger"),
+    ("orchestration project name must be kebab-case", 1,
+     ORCHESTRATION_REGISTRY, "orc-project-bad-name"),
     ("orchestration accepts a quarterly trigger", 0,
      ORCHESTRATION_REGISTRY, "orc-trigger-quarterly"),
     ("orchestration rejects an unknown trigger", 1,

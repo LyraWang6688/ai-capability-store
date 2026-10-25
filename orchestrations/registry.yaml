@@ -35,7 +35,14 @@
 #   ② 补上 executor 与 output 两格（可选，迁入时变必填）。
 #   为什么先做词表：两份词表重叠 4 个值、各自还有对方没有的值，同一个事实用
 #   两种说法记在两处 —— 这是"两域各拿一半"最具体的样子，也是合并最先撞上的地方。
-schema_version: 2
+#
+# schema_version 3（迁移中，兼容两种形状）：
+#   本域从「<模式>/<生态>/<任务>」改成「<项目>/<任务>」两层。
+#   理由：一个任务属于哪个【项目】才是人要找它的方式；"人发起还是钟发起"是记录字段
+#   `trigger`，不是目录层级 —— 与 skills 的 scope 同一条原则（分类是注册表状态）。
+#   现有的 5 条里已迁 1 条（wechat-article → orchestrations/wechat/），其余保持旧形状，
+#   校验器两种都收。全部迁完后把这里升到 4，严格检查（只接受项目形状）才生效。
+schema_version: 3
 
 allowed_statuses:
   - testing
@@ -45,10 +52,11 @@ allowed_statuses:
 orchestrations:
   wechat-article:
     name: wechat-article
-    path: orchestrations/manual/wechat/wechat-article
+    path: orchestrations/wechat/wechat-article
     status: testing
     version: 0.1.0
-    updated: "2026-10-22"
+    updated: "2026-10-25"
+    trigger: human
     goal: 从选题到公众号草稿箱
     steps:
       - id: write

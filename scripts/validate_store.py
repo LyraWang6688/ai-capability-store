@@ -2104,9 +2104,10 @@ def validate_orchestrations(orc_reg: dict) -> None:
                     known.add(value.rstrip("/"))
 
     entries = orc_reg.get(ORCHESTRATION_DIR) or {}
-    check("orchestration registry schema_version", orc_reg.get("schema_version") == 2,
-          f"got {orc_reg.get('schema_version')!r} (expected 2: trigger vocabulary merged "
-          f"with the Automation Domain, + executor / output)")
+    # 3 = 迁移中（两种 path 形状都收）；4 = 迁完（只收 <项目>/<任务>）。
+    check("orchestration registry schema_version",
+          orc_reg.get("schema_version") in (3, 4),
+          f"got {orc_reg.get('schema_version')!r} (expected 3 while migrating, 4 when done)")
     check("orchestration registry declares orchestrations", isinstance(entries, dict),
           type(entries).__name__)
     if not isinstance(entries, dict):
@@ -2130,14 +2131,33 @@ def validate_orchestrations(orc_reg: dict) -> None:
               isinstance(version, str) and bool(VERSION_RE.match(version)), f"version={version!r}")
         path = entry.get("path")
         parts = path.split("/") if isinstance(path, str) else []
-        check(f"orchestration {name} path is <mode>/<target>/<name>",
-              len(parts) == 4 and parts[0] == ORCHESTRATION_DIR
-              and parts[1] in ORCHESTRATION_MODES
-              and parts[2] in ORCHESTRATION_ECOSYSTEMS
-              and parts[3] == name,
-              f"path={path!r} — 期望 {ORCHESTRATION_DIR}/<mode>/<target>/{name}")
+        # schema_version 3 起，编排按【项目】组织：orchestrations/<project>/<task>。
+        # "谁发起"不再是目录层级，而是记录字段 trigger —— 与 skills 的 scope 同一条原则：
+        # 分类是注册表状态，不是目录结构。旧的三层形状（<mode>/<target>/<task>）在迁移期
+        # 继续接受，迁完就收紧（见 orchestrations/registry.yaml schema_version 3 注释）。
+        project_shape = len(parts) == 3 and parts[0] == ORCHESTRATION_DIR and bool(KEBAB_RE.match(parts[1])) and parts[2] == name
+        legacy_shape = (len(parts) == 4 and parts[0] == ORCHESTRATION_DIR
+                        and parts[1] in ORCHESTRATION_MODES
+                        and parts[2] in ORCHESTRATION_ECOSYSTEMS
+                        and parts[3] == name)
+        # 迁移期（schema_version 3）两种形状都收；迁完把 registry 升到 4，
+        # 这条严格检查才开始生效 —— 否则迁移一半的仓库会永远红。
+        strict = orc_reg.get("schema_version", 0) >= 4
+        if strict:
+            check(f"orchestration {name} path is <project>/<name>",
+                  project_shape,
+                  f"path={path!r} — 期望 {ORCHESTRATION_DIR}/<project>/{name}")
+        check(f"orchestration {name} path is a known shape",
+              project_shape or legacy_shape,
+              f"path={path!r} — 既不是 {ORCHESTRATION_DIR}/<project>/{name}，"
+              f"也不是迁移期兼容的 {ORCHESTRATION_DIR}/<mode>/<target>/{name}")
+        if project_shape:
+            # 新形状里 trigger 必填：一个任务必须说清谁发起它
+            check(f"orchestration {name} declares trigger",
+                  entry.get("trigger") is not None,
+                  "trigger 缺失 —— 新形状里 trigger 是必填（human / host-schedule / daily / …）")
 
-        mode = parts[1] if len(parts) == 4 else None
+        mode = parts[1] if legacy_shape else None
         trigger = entry.get("trigger")
         if trigger is not None:
             check(f"orchestration {name} trigger legal",
@@ -2212,7 +2232,7 @@ def validate_orchestrations(orc_reg: dict) -> None:
                           isinstance(endpoints, list) and bool(endpoints), f"endpoints={endpoints!r}")
 
             link = step.get("link")
-            base = os.path.join(ROOT, *parts) if len(parts) == 4 else os.path.join(ROOT, ORCHESTRATION_DIR, name)
+            base = os.path.join(ROOT, *parts)
             link_path = os.path.join(base, link) if isinstance(link, str) and link else None
             if link_path is None:
                 check(f"orchestration {name} step {sid} declares a link", False, f"link={link!r}")
@@ -2341,24 +2361,35 @@ def validate_orchestrations(orc_reg: dict) -> None:
             mode_dir = os.path.join(base, mode)
             if mode.startswith(".") or not os.path.isdir(mode_dir):
                 continue
-            check(f"orchestration mode is declared: {mode}",
-                  mode in ORCHESTRATION_MODES,
-                  f"unknown mode {mode!r} — declare it in ORCHESTRATION_MODES")
-            for target in sorted(os.listdir(mode_dir)):
-                target_dir = os.path.join(mode_dir, target)
-                if target.startswith(".") or not os.path.isdir(target_dir):
-                    continue
-                check(f"orchestration ecosystem is declared: {mode}/{target}",
-                      target in ORCHESTRATION_ECOSYSTEMS,
-                      f"unknown ecosystem {target!r} — declare it in ORCHESTRATION_ECOSYSTEMS")
-                for task in sorted(os.listdir(target_dir)):
-                    task_dir = os.path.join(target_dir, task)
-                    if task.startswith(".") or not os.path.isdir(task_dir):
+            if mode in ORCHESTRATION_MODES:
+                # 过渡期的旧形状：<mode>/<target>/<task>
+                for target in sorted(os.listdir(mode_dir)):
+                    target_dir = os.path.join(mode_dir, target)
+                    if target.startswith(".") or not os.path.isdir(target_dir):
                         continue
-                    rel = f"{ORCHESTRATION_DIR}/{mode}/{target}/{task}"
-                    check(f"filesystem orchestration directory is registered: {rel}",
-                          rel in declared,
-                          "directory exists under orchestrations/ but no registry entry points at it")
+                    check(f"orchestration ecosystem is declared: {mode}/{target}",
+                          target in ORCHESTRATION_ECOSYSTEMS,
+                          f"unknown ecosystem {target!r} — declare it in ORCHESTRATION_ECOSYSTEMS")
+                    for task in sorted(os.listdir(target_dir)):
+                        task_dir = os.path.join(target_dir, task)
+                        if task.startswith(".") or not os.path.isdir(task_dir):
+                            continue
+                        rel = f"{ORCHESTRATION_DIR}/{mode}/{target}/{task}"
+                        check(f"filesystem orchestration directory is registered: {rel}",
+                              rel in declared,
+                              "directory exists under orchestrations/ but no registry entry points at it")
+                continue
+            # 新形状：orchestrations/<project>/<task>
+            check(f"orchestration project name kebab-case: {mode}",
+                  bool(KEBAB_RE.match(mode)), mode)
+            for task in sorted(os.listdir(mode_dir)):
+                task_dir = os.path.join(mode_dir, task)
+                if task.startswith(".") or not os.path.isdir(task_dir):
+                    continue
+                rel = f"{ORCHESTRATION_DIR}/{mode}/{task}"
+                check(f"filesystem orchestration directory is registered: {rel}",
+                      rel in declared,
+                      "directory exists under orchestrations/ but no registry entry points at it")
 
 
 def report(exit_code: int) -> int:
