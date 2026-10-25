@@ -22,6 +22,10 @@ python3 collect.py --mode fetch --out payload.json
 export INVESTDESK_BASE_TOKEN=<飞书 Base token>
 python3 collect.py --mode write --in payload.json
 
+# 把表里已有的重复报道合并成「一件事」（一次性清理，可 --dry-run）
+python3 collect.py --mode consolidate --dry-run
+python3 collect.py --mode consolidate
+
 # 一把梭（本机调试用）
 export WIND_API_KEY=... INVESTDESK_BASE_TOKEN=...
 python3 collect.py
@@ -43,6 +47,38 @@ python3 collect.py
 
 **不依赖本机安装的万得 skill**：万得的 `cli.mjs` 只是 JSON-RPC 薄封装，这里直接发 HTTP，
 因此 GitHub Actions 的 runner 上也能跑。
+
+## 聚合：一篇报道 ≠ 一件事
+
+同一件事常被多家媒体各写一篇。入库前会先聚成「事件」，否则表里全是重复：
+
+| 判据 | 说明 |
+|---|---|
+| 同公司 + 同事件类型 | 必要前提 |
+| 日期相近 | ±14 天 |
+| 标题相似 ≥ 0.35 | 中文 2-gram Jaccard |
+| 或金额写法完全相同 | `320亿美元` == `320亿美元` |
+
+合并后一条记录含：
+
+- `来源数`：这条事件被几家报道
+- `来源链接`：所有来源链接（换行分隔）
+- `其他来源`：其余报道的标题
+- `事件摘要`：取最长的那份
+- `新闻日期`：取**最早**的报道日期（事件发生时间点）
+
+`--mode consolidate` 可以把表里**已经存在的**重复报道做同样合并（保留最早一条，其余合并后删除）。
+它会先打印 `merge_clusters / update_rows / delete_rows` 的计数，加 `--dry-run` 则不动数据。
+
+## 摘要：按整句截断，不切断句子
+
+原来的 `[:140]` 会把「…约等于一百亿人民币」切成半句，看起来像坏数据。
+
+现在按句号/问号/感叹号/换行切句，贪心取整句直到 200 字；只有单句本身超长时才硬截断加 `…`。
+顺带剥掉 Markdown 链接语法（`[00700.HK](http://…)` → `00700.HK`）。
+
+> 注意：**已经入库的历史摘要无法复原** —— 当时只存了截断后的文本，原文没留。
+> 新抓到的同一事件如果摘要更长，会在合并时覆盖；否则保留原样。
 
 ## 三条纪律（写死在代码里）
 

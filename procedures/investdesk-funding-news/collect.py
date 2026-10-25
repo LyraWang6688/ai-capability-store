@@ -104,8 +104,33 @@ def extract_amounts(text: str, limit: int = 2) -> str:
     return "；".join(out)
 
 
-def summarize(text: str, limit: int = 140) -> str:
-    return re.sub(r"\s+", " ", (text or "")).strip()[:limit]
+SENT_RE = re.compile(r"[^。！？!?\n]+[。！？!?]?")
+MD_LINK_RE = re.compile(r"\[([^\]]+)\]\([^)]+\)")
+
+
+def summarize(text: str, limit: int = 200, min_len: int = 50) -> str:
+    """按整句截断，不切断句子。
+
+    原来的 `[:140]` 会把「…约等于一百亿人民币」切成半句，读起来像坏数据。
+    现在贪心取整句直到 limit；若第一句就超长，才退化为硬截断并加省略号。
+    """
+    t = MD_LINK_RE.sub(r"\1", str(text or ""))
+    t = re.sub(r"\s+", " ", t).strip()
+    if not t:
+        return ""
+    out = ""
+    for m in SENT_RE.finditer(t):
+        sent = m.group(0).strip()
+        if not sent:
+            continue
+        if len(out) + len(sent) > limit:
+            break
+        out += sent
+        if len(out) >= min_len:
+            break
+    if not out:
+        return t[:limit].rstrip() + ("…" if len(t) > limit else "")
+    return out
 
 
 def is_relevant(item: dict, company: str) -> bool:
@@ -131,6 +156,64 @@ def dedupe(items: list[dict]) -> list[dict]:
         if cur is None or str(it.get("date") or "") > str(cur.get("date") or ""):
             best[key] = it
     return list(best.values())
+
+
+DATE_WINDOW_DAYS = 14
+SIM_THRESHOLD = 0.35
+
+
+def title_tokens(title: str) -> set[str]:
+    t = re.sub(r"[^\u4e00-\u9fa5A-Za-z0-9]", "", str(title or ""))
+    return {t[i:i + 2] for i in range(len(t) - 1)}
+
+
+def _day(ms: int | None) -> int:
+    return int((ms or 0) // 86_400_000)
+
+
+def same_event(a: dict, b: dict) -> bool:
+    """同一事件的判据：同公司 + 同类型 + 日期相近 + （标题相似 或 金额写法相同）。"""
+    if a.get("公司") != b.get("公司") or a.get("事件类型") != b.get("事件类型"):
+        return False
+    if abs(_day(a.get("新闻日期")) - _day(b.get("新闻日期"))) > DATE_WINDOW_DAYS:
+        return False
+    ta, tb = title_tokens(a.get("来源标题")), title_tokens(b.get("来源标题"))
+    sim = len(ta & tb) / max(1, len(ta | tb))
+    if sim >= SIM_THRESHOLD:
+        return True
+    amount = str(a.get("金额原文") or "").strip()
+    return bool(amount) and amount == str(b.get("金额原文") or "").strip()
+
+
+def cluster(records: list[dict]) -> list[list[dict]]:
+    """把同一事件的多篇报道聚成一簇（先到先聚，O(n²)，量级在几百条以内够用）。"""
+    groups: list[list[dict]] = []
+    for rec in records:
+        for g in groups:
+            if same_event(g[0], rec):
+                g.append(rec)
+                break
+        else:
+            groups.append([rec])
+    return groups
+
+
+def merge_cluster(group: list[dict]) -> dict:
+    """一簇 → 一条记录：日期取最早，摘要取最长，来源全部保留。"""
+    group = sorted(group, key=lambda r: (r.get("新闻日期") or 0))
+    best = max(group, key=lambda r: len(str(r.get("事件摘要") or "")))
+    links = []
+    for r in group:
+        link = str(r.get("来源链接") or "").strip()
+        if link and link not in links:
+            links.append(link)
+    merged = dict(best)
+    merged["新闻日期"] = group[0].get("新闻日期")
+    merged["来源链接"] = "\n".join(links)
+    merged["来源数"] = len(links)
+    others = [str(r.get("来源标题") or "") for r in group if r is not best]
+    merged["其他来源"] = "\n".join(dict.fromkeys(others))[:1500]
+    return merged
 
 
 def to_record(item: dict, company: str, now_ms: int) -> dict:
@@ -208,44 +291,107 @@ class Wind:
         return (inner.get("data") or {}).get("items") or []
 
 
-def base_existing_links(base: str, table: str, lark: str) -> set[str]:
+def base_rows(base: str, table: str, lark: str) -> list[dict]:
     tmp = os.path.join(os.getcwd(), f".lark-tmp-{os.getpid()}.ndjson")
     try:
-        subprocess.run([lark, "base", "+record-list", "--base-token", base,
-                        "--table-id", table, "--limit", "2000", "--format", "ndjson",
-                        "--output", tmp, "--as", "user"], capture_output=True, text=True, timeout=180)
+        subprocess.run([lark, "base", "+record-list", "--base-token", base, "--table-id", table,
+                        "--limit", "2000", "--format", "ndjson", "--output", tmp, "--as", "user"],
+                       capture_output=True, text=True, timeout=180)
         if not os.path.exists(tmp):
-            return set()
-        rows = [json.loads(x) for x in open(tmp, encoding="utf-8") if x.strip()]
+            raise RuntimeError("读取投融资表失败（lark-cli 无输出）")
+        return [json.loads(x) for x in open(tmp, encoding="utf-8") if x.strip()]
     finally:
         if os.path.exists(tmp):
             os.unlink(tmp)
-    return {str(r.get("来源链接") or "").strip() for r in rows if r.get("来源链接")}
+
+
+def _payload_json(path: str, obj: dict) -> str:
+    with open(path, "w", encoding="utf-8") as fh:
+        json.dump(obj, fh, ensure_ascii=False)
+    return path
+
+
+def _lark_batch(lark: str, base: str, table: str, action: str, body: dict) -> int:
+    path = _payload_json(os.path.join(os.getcwd(), f".lark-payload-{os.getpid()}.json"), body)
+    try:
+        out = subprocess.run([lark, "base", action, "--base-token", base, "--table-id", table,
+                              "--json", f"@{path}", "--as", "user"],
+                             capture_output=True, text=True, timeout=180)
+        data = json.loads(out.stdout)
+        if data.get("ok") is False:
+            raise RuntimeError((data.get("error") or {}).get("message"))
+        ids = (data.get("data") or {}).get("record_id_list")
+        return len(ids) if ids else 0
+    finally:
+        os.unlink(path)
 
 
 def base_create(base: str, table: str, recs: list[dict], lark: str) -> int:
     if not recs:
         return 0
-    path = os.path.join(os.getcwd(), f".lark-payload-{os.getpid()}.json")
-    try:
-        json.dump({"create_records": recs}, open(path, "w", encoding="utf-8"), ensure_ascii=False)
-        out = subprocess.run([lark, "base", "+record-batch-create", "--base-token", base,
-                              "--table-id", table, "--json", f"@{path}", "--as", "user"],
-                             capture_output=True, text=True, timeout=180)
-        data = json.loads(out.stdout)
-        if data.get("ok") is False:
-            raise RuntimeError((data.get("error") or {}).get("message"))
-        return len(recs)
-    finally:
-        os.unlink(path)
+    return _lark_batch(lark, base, table, "+record-batch-create", {"create_records": recs})
 
 
-def build(s: "Wind", top_k: int) -> tuple[list[dict], dict]:
-    """抓取 + 分类 → (待写入记录, 各公司统计)。不碰飞书。"""
+def base_update(base: str, table: str, mapping: dict[str, dict], lark: str) -> int:
+    if not mapping:
+        return 0
+    return _lark_batch(lark, base, table, "+record-batch-update", {"update_records": mapping})
+
+
+def base_delete(base: str, table: str, record_ids: list[str], lark: str) -> int:
+    if not record_ids:
+        return 0
+    args = [lark, "base", "+record-delete", "--base-token", base, "--table-id", table, "--yes", "--as", "user"]
+    for rid in record_ids:
+        args += ["--record-id", rid]
+    out = subprocess.run(args, capture_output=True, text=True, timeout=180)
+    data = json.loads(out.stdout)
+    if data.get("ok") is False:
+        raise RuntimeError((data.get("error") or {}).get("message"))
+    return len(record_ids)
+
+
+def _one(v):
+    """飞书单选返回 ["值"]，统一取值。"""
+    return v[0] if isinstance(v, list) and v else v
+
+
+def normalize_existing(rows: list[dict]) -> list[dict]:
+    """把飞书行转成与 payload 记录同构的字典，便于同一套 same_event 比较。"""
+    out = []
+    for r in rows:
+        out.append({
+            "record_id": r.get("record_id"),
+            "公司": _one(r.get("公司")),
+            "事件类型": _one(r.get("事件类型")),
+            "来源标题": r.get("来源标题") or "",
+            "新闻日期": _ms(r.get("新闻日期")),
+            "金额原文": r.get("金额原文") or "",
+            "事件摘要": r.get("事件摘要") or "",
+            "来源链接": r.get("来源链接") or "",
+            "来源数": r.get("来源数") or 1,
+            "其他来源": r.get("其他来源") or "",
+        })
+    return out
+
+
+def _ms(value) -> int:
+    if isinstance(value, (int, float)):
+        return int(value / 1000) * 1000 if value > 1e11 else int(value)
+    if isinstance(value, str) and value:
+        try:
+            return int(datetime.fromisoformat(value.replace("Z", "+00:00")).timestamp() * 1000)
+        except ValueError:
+            return 0
+    return 0
+
+
+def build(wind: "Wind", top_k: int) -> tuple[list[dict], dict]:
+    """抓取 + 分类 + 聚合成「事件」。不碰飞书。"""
     now_ms = int(time.time() * 1000)
     raw, report = [], {}
     for company, query in GROUPS.items():
-        items = s.news(query, top_k)
+        items = wind.news(query, top_k)
         raw += [{**it, "_company": company} for it in items]
         report[company] = {"fetched": len(items)}
         time.sleep(0.3)
@@ -257,29 +403,89 @@ def build(s: "Wind", top_k: int) -> tuple[list[dict], dict]:
         rec = to_record(it, it["_company"], now_ms)
         recs.append(rec)
         report[it["_company"]]["kept"] = report[it["_company"]].get("kept", 0) + 1
-    return recs, {"by_company": report, "dropped_noise": dropped, "credits": s.calls}
+    merged = [merge_cluster(g) for g in cluster(recs)]
+    return merged, {"by_company": report, "dropped_noise": dropped, "credits": wind.calls,
+                    "articles": len(recs), "events": len(merged)}
 
 
-def write(records: list[dict], base: str, table: str, lark: str) -> dict:
-    """写入飞书（按来源链接去重）。只在有 Base 凭据的一侧执行。"""
-    existing = base_existing_links(base, table, lark)
-    recs, seen = [], set()
+def _merge_into(target: dict, extra: dict) -> dict:
+    """把 extra 的来源并进 target（链接并集、来源数累加、摘要取更长的）。"""
+    links = [x for x in str(target.get("来源链接") or "").split("\n") if x]
+    for x in str(extra.get("来源链接") or "").split("\n"):
+        if x and x not in links:
+            links.append(x)
+    others = [x for x in str(target.get("其他来源") or "").split("\n") if x]
+    for x in str(extra.get("其他来源") or "").split("\n"):
+        if x and x not in others:
+            others.append(x)
+    if str(extra.get("来源标题") or "") and extra.get("来源标题") != target.get("来源标题"):
+        if extra["来源标题"] not in others:
+            others.append(extra["来源标题"])
+    out = dict(target)
+    out["来源链接"] = "\n".join(links)
+    out["来源数"] = len(links)
+    out["其他来源"] = "\n".join(others)[:1500]
+    if len(str(extra.get("事件摘要") or "")) > len(str(target.get("事件摘要") or "")):
+        out["事件摘要"] = extra["事件摘要"]
+    if extra.get("新闻日期") and (not out.get("新闻日期") or extra["新闻日期"] < out["新闻日期"]):
+        out["新闻日期"] = extra["新闻日期"]
+    return out
+
+
+def write(records: list[dict], base: str, table: str, lark: str, dry_run: bool = False) -> dict:
+    """写入飞书：同一事件已存在则合并来源，否则新建。"""
+    existing = normalize_existing(base_rows(base, table, lark))
+    updates: dict[str, dict] = {}
+    creates: list[dict] = []
     for rec in records:
-        link = str(rec.get("来源链接") or "").strip()
-        if not link or link in existing or link in seen:
+        hit = None
+        for e in existing:
+            if same_event(e, rec):
+                hit = e
+                break
+        if hit is None:
+            creates.append(rec)
             continue
-        seen.add(link)
-        recs.append(rec)
-    created = base_create(base, table, recs, lark)
-    return {"payload": len(records), "to_create": len(recs), "created": created,
-            "already_in_base": len(records) - len(recs)}
+        merged = _merge_into(hit, rec)
+        updates[hit["record_id"]] = {k: merged[k] for k in
+                                     ("来源链接", "来源数", "其他来源", "事件摘要", "新闻日期")}
+    if dry_run:
+        return {"records": len(records), "would_create": len(creates),
+                "would_update": len(updates), "skipped": len(records) - len(creates) - len(updates)}
+    return {"records": len(records),
+            "created": base_create(base, table, creates, lark),
+            "updated": base_update(base, table, updates, lark)}
+
+
+def consolidate(base: str, table: str, lark: str, dry_run: bool = False) -> dict:
+    """把表里已有的重复报道合并成一件事（保留最早一条，来源并进去，其余删除）。"""
+    rows = normalize_existing(base_rows(base, table, lark))
+    groups = cluster(rows)
+    updates, deletes = {}, []
+    for g in groups:
+        if len(g) < 2:
+            continue
+        keeper = min(g, key=lambda r: r.get("新闻日期") or 0)
+        merged = keeper
+        for other in g:
+            if other is not keeper:
+                merged = _merge_into(merged, other)
+        updates[keeper["record_id"]] = {k: merged[k] for k in
+                                        ("来源链接", "来源数", "其他来源", "事件摘要", "新闻日期")}
+        deletes += [r["record_id"] for r in g if r is not keeper]
+    plan = {"rows": len(rows), "clusters": len(groups),
+            "merge_clusters": len(updates), "update_rows": len(updates), "delete_rows": len(deletes)}
+    if dry_run:
+        return plan
+    plan["updated"] = base_update(base, table, updates, lark)
+    plan["deleted"] = base_delete(base, table, deletes, lark)
+    return plan
 
 
 def main() -> None:
     ap = argparse.ArgumentParser(description="投融资事件采集（万得新闻 → 飞书）")
-    ap.add_argument("--mode", choices=["fetch", "write", "all"], default="all",
-                    help="fetch=只抓取产出 payload；write=只把 payload 写入飞书；all=两者都做")
-    ap.add_argument("--in", dest="infile", default="", help="write 模式的 payload 文件（默认读 stdin）")
+    ap.add_argument("--mode", choices=["fetch", "write", "all", "consolidate"], default="all")
+    ap.add_argument("--in", dest="infile", default="", help="write 模式的 payload 文件（默认 stdin）")
     ap.add_argument("--out", default="", help="fetch 模式的 payload 输出文件（默认 stdout）")
     ap.add_argument("--base-token", default=DEFAULT_BASE)
     ap.add_argument("--table", default=DEFAULT_TABLE)
@@ -287,6 +493,13 @@ def main() -> None:
     ap.add_argument("--lark-cli", default="lark-cli")
     ap.add_argument("--dry-run", action="store_true")
     args = ap.parse_args()
+
+    if args.mode == "consolidate":
+        if not args.base_token:
+            raise SystemExit("缺少 --base-token 或 INVESTDESK_BASE_TOKEN")
+        print(json.dumps(consolidate(args.base_token, args.table, args.lark_cli, args.dry_run),
+                         ensure_ascii=False))
+        return
 
     if args.mode in ("fetch", "all"):
         key = os.environ.get("WIND_API_KEY", "").strip()
@@ -299,13 +512,12 @@ def main() -> None:
         if args.out:
             with open(args.out, "w", encoding="utf-8") as fh:
                 fh.write(text)
-            print(json.dumps({"out": args.out, "records": len(recs), **meta}, ensure_ascii=False))
+            print(json.dumps({"out": args.out, "events": len(recs), **meta}, ensure_ascii=False))
         else:
             print(text)
         if args.mode == "fetch" or args.dry_run:
             return
 
-    # write / all
     if not args.base_token:
         raise SystemExit("缺少 --base-token 或 INVESTDESK_BASE_TOKEN")
     if args.mode == "write":
@@ -314,8 +526,8 @@ def main() -> None:
         recs = payload.get("records") or []
     else:
         recs = payload["records"]
-    result = write(recs, args.base_token, args.table, args.lark_cli)
-    print(json.dumps({"mode": args.mode, "records": len(recs), **result}, ensure_ascii=False))
+    print(json.dumps({"mode": args.mode, **write(recs, args.base_token, args.table,
+                                                 args.lark_cli, args.dry_run)}, ensure_ascii=False))
 
 
 if __name__ == "__main__":

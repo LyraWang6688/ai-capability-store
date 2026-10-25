@@ -64,5 +64,74 @@ class TestDedupe(unittest.TestCase):
         self.assertEqual(out[0]["date"], "2026-02-01")
 
 
+
+
+class TestSummarize(unittest.TestCase):
+    def test_stops_at_sentence_boundary(self):
+        text = "第一句话说明事件。第二句话补充细节。第三句话不该出现。"
+        out = c.summarize(text, limit=40, min_len=10)
+        self.assertTrue(out.endswith("。"))
+        self.assertNotIn("第三句", out)
+
+    def test_never_cuts_mid_sentence(self):
+        text = "苹果拟收购芯片公司弥补AI算力缺口，曾斥20亿美元完成史上第二大并购。" * 5
+        out = c.summarize(text, limit=100)
+        self.assertTrue(out.endswith("。"), out)
+
+    def test_overlong_single_sentence_gets_ellipsis(self):
+        text = "这是一个没有任何标点的超长句子" * 20
+        out = c.summarize(text, limit=50)
+        self.assertLessEqual(len(out), 51)
+        self.assertTrue(out.endswith("…"))
+
+    def test_strips_markdown_links(self):
+        out = c.summarize("腾讯控股([00700.HK](http://00700.HK))发布公告。延迟 10 分钟。")
+        self.assertNotIn("http", out)
+        self.assertIn("00700.HK", out)
+
+    def test_empty(self):
+        self.assertEqual(c.summarize(""), "")
+
+
+def rec(title, company="腾讯控股", ev="并购", day_ms=1_790_000_000_000, amount="", summary="摘要。", link="u"):
+    return {"公司": company, "事件类型": ev, "来源标题": title, "新闻日期": day_ms,
+            "金额原文": amount, "事件摘要": summary, "来源链接": link}
+
+
+class TestCluster(unittest.TestCase):
+    def test_same_event_merged(self):
+        a = rec("腾讯209亿收购喜马拉雅获批")
+        b = rec("腾讯209亿元收购喜马拉雅获附条件批准", day_ms=1_790_500_000_000)
+        self.assertTrue(c.same_event(a, b))
+        self.assertEqual(len(c.cluster([a, b])), 1)
+
+    def test_different_company_not_merged(self):
+        a = rec("腾讯收购某公司")
+        b = rec("阿里收购某公司", company="阿里巴巴")
+        self.assertEqual(len(c.cluster([a, b])), 2)
+
+    def test_date_window_respected(self):
+        a = rec("腾讯收购某游戏工作室")
+        b = rec("腾讯收购某游戏工作室", day_ms=a["新闻日期"] + 30 * 86_400_000)
+        self.assertFalse(c.same_event(a, b))
+
+    def test_same_amount_links_them(self):
+        a = rec("腾讯出手", amount="100亿")
+        b = rec("另一篇报道", amount="100亿")
+        self.assertTrue(c.same_event(a, b))
+
+
+class TestMergeCluster(unittest.TestCase):
+    def test_keeps_earliest_date_and_all_links(self):
+        g = [rec("A报道", day_ms=1_790_000_000_000, link="u1", summary="短。"),
+             rec("B报道", day_ms=1_780_000_000_000, link="u2", summary="更长的摘要内容完整。")]
+        m = c.merge_cluster(g)
+        self.assertEqual(m["新闻日期"], 1_780_000_000_000)      # 最早
+        self.assertEqual(m["来源数"], 2)
+        self.assertEqual(m["来源链接"], "u2\nu1")
+        self.assertEqual(m["事件摘要"], "更长的摘要内容完整。")   # 保留最长摘要
+        self.assertIn("A报道", m["其他来源"])
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
