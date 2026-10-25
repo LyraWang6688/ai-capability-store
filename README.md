@@ -35,20 +35,25 @@ LyraWang6688/ai-capability-store
 ## Core Model
 
 ```text
-Skill               = How to do
-External Capability = What can be called
-Automation          = When it runs
-Orchestration       = In what order, for one task
+Skill                = How to do          (model executes)
+Procedure            = How to do          (machine executes)
+External Capability  = What can be called
+Computer Automation  = What an interface lets us do
+Orchestration        = In what order, for one task, triggered by whom
 ```
 
-Four **peer Domains**:
+**Four module Domains** plus **one composition layer**:
 
-| Domain | Owns | Examples |
-|---|---|---|
-| Skills | How to do | Method / SOP / Workflow / Decision Rule / Know-how |
-| External Capabilities | What can be called | MCP / Plugin / CLI / Connector / API / Integration |
-| Automations | What runs by itself | Scheduled collection / recurring aggregation / event-driven maintenance |
-| Orchestrations | In what order, for one task | Multi-asset pipelines and the hand-off rules between them |
+| Layer | Domain | Owns | Examples |
+|---|---|---|---|
+| Module | Skills | How to do — executed by a **model**, so it needs judgment | Method / SOP / Decision Rule / Know-how |
+| Module | Procedures | How to do — executed by a **machine**, so it is deterministic | Data transform / sync / publish / render |
+| Module | External Capabilities | What can be called | MCP / Plugin / CLI / Connector / API / Integration |
+| Module | Computer Automation | What a third party's **interface** lets us do, and when we last verified it | Browser Use / Computer Use surfaces |
+| Composition | Orchestrations | In what order, for one task, triggered by whom, output where | Multi-asset pipelines and their hand-off rules |
+
+A module Domain is a unit of identity: its own registry, lifecycle, version and tag.
+The composition layer has none of those for itself — it only references.
 
 A Plugin is NOT a sub-entity of a Skill. Formal Domain remains
 **External Capability**, which also covers plugin / mcp / connector / cli /
@@ -108,25 +113,34 @@ ai-capability-store/
 ├── SKILL-FORMAT.md                # Asset format contract (external spec + Store additions)
 ├── RETIREMENT.md                  # How to retire an asset without losing the record
 ├── registry.yaml                  # Top-level Store Router
-├── skills/                         # Domain A: Skills (how to do)
+├── skills/                         # Module Domain: how to do (model executes)
 │   ├── README.md
 │   ├── registry.yaml
 │   ├── LIFECYCLE.md
 │   ├── ACCEPTANCE.md
 │   └── <skill-name>/               # flat: one directory per skill, no nesting
-├── external-capabilities/          # Domain B: External Capabilities (what can be called)
+├── procedures/                     # Module Domain: how to do (machine executes)
+│   ├── README.md
+│   ├── registry.yaml
+│   └── <procedure-name>/           # flat: entrypoint + its tests
+├── computer-automation/            # Module Domain: what an interface lets us do
+│   ├── README.md
+│   ├── registry.yaml
+│   ├── browser-use/<app>/          # one folder per surface
+│   └── computer-use/<app>/
+├── external-capabilities/          # Module Domain: what can be called
 │   ├── README.md
 │   ├── registry.yaml
 │   ├── SECURITY.md
 │   ├── mcp/                        # Store-managed MCP implementations (created as needed)
 │   ├── providers/
 │   └── use-cases/
-├── automations/                    # Domain C: Automations (what runs by itself)
+├── automations/                    # (being absorbed into orchestrations/automated/)
 │   ├── README.md
 │   ├── registry.yaml
 │   ├── LIFECYCLE.md
 │   └── <automation-name>/          # implementation + test_*.py, one per automation
-├── orchestrations/                 # Domain D: Orchestrations (in what order, for one task)
+├── orchestrations/                 # Composition layer: order + trigger + output
 │   ├── README.md
 │   ├── registry.yaml               # steps are the machine truth; directory symlinks mirror them
 │   └── <mode>/<ecosystem>/<task>/  # mode: manual / automated

@@ -35,6 +35,8 @@ SKILL_REGISTRY = os.path.join("skills", "registry.yaml")
 AUTOMATION_REGISTRY = os.path.join("automations", "registry.yaml")
 CAPABILITY_REGISTRY = os.path.join("external-capabilities", "registry.yaml")
 ORCHESTRATION_REGISTRY = os.path.join("orchestrations", "registry.yaml")
+PROCEDURES_REGISTRY = os.path.join("procedures", "registry.yaml")
+COMPUTER_AUTOMATION_REGISTRY = os.path.join("computer-automation", "registry.yaml")
 
 VERBOSE = "-v" in sys.argv or "--verbose" in sys.argv
 
@@ -283,6 +285,13 @@ MUTATIONS = {
         "wechat-article",
         "    status: testing\n",
         "    status: testing\n    output:\n      target: nowhere\n"),
+    # ---- 两个新模块域：骨架阶段的检查就是"声明与实现一致" ----
+    # 新域还没有记录，能坏的就是注册表头本身：枚举被悄悄改窄，等于把
+    # "我们支持哪些运行时 / 哪种作用域"这条事实改了而不自知。
+    "procedures-runtime-dropped": lambda t: t.replace("  - binary\n", "", 1),
+    "computer-automation-facet-dropped": lambda t: t.replace("  - computer\n", "", 1),
+    "computer-automation-domain-wrong": lambda t: t.replace(
+        "domain: computer_automation", "domain: computer-automation", 1),
 }
 
 
@@ -385,6 +394,14 @@ CASES = [
      ORCHESTRATION_REGISTRY, "orc-output-human"),
     ("orchestration rejects an unknown output target", 1,
      ORCHESTRATION_REGISTRY, "orc-output-unknown"),
+    # 新域的头：枚举清单被改窄就必须红，否则"我们支持哪些运行时"会随手的
+    # 一次编辑悄悄变少，而没有任何记录会因此失败。
+    ("procedures registry rejects a narrowed runtime list", 1,
+     PROCEDURES_REGISTRY, "procedures-runtime-dropped"),
+    ("computer automation registry rejects a narrowed facet list", 1,
+     COMPUTER_AUTOMATION_REGISTRY, "computer-automation-facet-dropped"),
+    ("computer automation registry domain must be snake_case", 1,
+     COMPUTER_AUTOMATION_REGISTRY, "computer-automation-domain-wrong"),
 ]
 
 # The first case is the baseline: untouched, so it must pass.

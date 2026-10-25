@@ -246,6 +246,22 @@ ALLOWED_COMMERCE_CARRIERS = {"license", "self-api", "hosted"}
 # 里的第三个糊过去 —— 说不清收的是什么钱，就不该标 paid。
 COMMERCE_MIN_VALUE_LEN = 10
 
+# ---- Procedures Domain ----
+# skills/ 和 procedures/ 回答同一个问题（怎么做），区别是【谁执行】：模型 vs 机器。
+# 因此这个域的资产必须能被断言 —— 没有确定性分支的东西留在这里只会变成
+# "一个要跑 runtime 的 skill"，两边都不合格。
+ALLOWED_PROCEDURE_RUNTIMES = {"python", "node", "bash", "binary"}
+ALLOWED_PROCEDURE_STATUSES = {"draft", "testing", "active", "deprecated", "archived"}
+
+# ---- Computer Automation Domain ----
+# 本域的资产是【界面】，不是脚本也不是 Skill —— 那两样留在自己的域里，
+# 本域用 driven_by 引用它们。见 computer-automation/README.md。
+ALLOWED_SURFACE_FACETS = {"browser", "computer"}
+ALLOWED_SURFACE_VERIFICATIONS = {"verified", "unverified", "broken"}
+ALLOWED_SURFACE_PLATFORMS = {"web", "macos", "linux", "windows"}
+ALLOWED_DRIVE_ROUTES = {"cdp", "playwright", "ax", "cgevent", "applescript",
+                        "screencapture", "mcp"}
+
 # ---- Orchestration Domain ----
 ORCHESTRATION_DIR = "orchestrations"
 ALLOWED_ORCHESTRATION_STATUSES = {"testing", "available", "deprecated"}
@@ -331,6 +347,12 @@ REQUIRED_POLICY_FILES = [
     "skills/ACCEPTANCE.md",
     "external-capabilities/README.md",
     "external-capabilities/registry.yaml",
+    "procedures/README.md",
+    "procedures/registry.yaml",
+    "computer-automation/README.md",
+    "computer-automation/registry.yaml",
+    "computer-automation/browser-use/README.md",
+    "computer-automation/computer-use/README.md",
     "external-capabilities/SECURITY.md",
     "dependencies/capability-map.yaml",
     "automations/README.md",
@@ -1417,8 +1439,13 @@ def main() -> int:
     refs = check_mapping(top.get("registries"), "top-level registries")
     if refs is None:
         return report(1)
-    expected_domains = ("skills", "external_capabilities", "dependencies", "automations",
-                       "orchestrations")
+    # 模块域在前（4 个），依赖与组合层在后。顺序不是语义，只是让这份清单
+    # 读起来和 AGENTS.md 的域列表一致 —— 一个域被登记到 router，就必须同时
+    # 出现在这里，否则它会被静默跳过（这正是头部 schema_version 检查漏掉
+    # orchestrations 时的形状）。
+    expected_domains = ("skills", "procedures", "external_capabilities",
+                        "computer_automation", "dependencies", "automations",
+                        "orchestrations")
     check("top-level registry routes all domains", set(refs.keys()) == set(expected_domains),
           f"routes: {sorted(refs.keys())}")
     routed = {}
@@ -1443,11 +1470,21 @@ def main() -> int:
     if skills_ok:
         skills_reg = check_mapping(skills_reg, "skills registry")
         skills_ok = skills_reg is not None
+    proc_rel = _routed("procedures")
+    proc_reg, proc_ok = load_yaml(proc_rel) if proc_rel else (None, False)
+    if proc_ok:
+        proc_reg = check_mapping(proc_reg, "procedures registry")
+        proc_ok = proc_reg is not None
     caps_rel = _routed("external_capabilities")
     caps_reg, caps_ok = load_yaml(caps_rel) if caps_rel else (None, False)
     if caps_ok:
         caps_reg = check_mapping(caps_reg, "capability registry")
         caps_ok = caps_reg is not None
+    ca_rel = _routed("computer_automation")
+    ca_reg, ca_ok = load_yaml(ca_rel) if ca_rel else (None, False)
+    if ca_ok:
+        ca_reg = check_mapping(ca_reg, "computer automation registry")
+        ca_ok = ca_reg is not None
     deps_rel = _routed("dependencies")
     deps_reg, deps_ok = load_yaml(deps_rel) if deps_rel else (None, False)
     if deps_ok:
@@ -1471,6 +1508,40 @@ def main() -> int:
               f"+ required commerce field)")
         check("skills registry domain", skills_reg.get("domain") == "skills",
               repr(skills_reg.get("domain")))
+    if proc_ok:
+        check("procedures registry schema_version", proc_reg.get("schema_version") == 1,
+              f"got {proc_reg.get('schema_version')!r}")
+        check("procedures registry domain", proc_reg.get("domain") == "procedures",
+              repr(proc_reg.get("domain")))
+        # 声明式的运行时清单：读记录的人不该去猜那个 .mjs 能不能跑。
+        allowed_rt = set(proc_reg.get("allowed_runtimes") or [])
+        check("procedures registry keeps 4 runtimes", allowed_rt == ALLOWED_PROCEDURE_RUNTIMES,
+              f"runtimes={sorted(allowed_rt)}")
+        check("procedures registry procedures is a mapping",
+              isinstance(proc_reg.get("procedures"), dict),
+              type(proc_reg.get("procedures")).__name__)
+    if ca_ok:
+        check("computer automation registry schema_version", ca_reg.get("schema_version") == 1,
+              f"got {ca_reg.get('schema_version')!r}")
+        check("computer automation registry domain",
+              ca_reg.get("domain") == "computer_automation", repr(ca_reg.get("domain")))
+        facets = set(ca_reg.get("allowed_facets") or [])
+        check("computer automation registry keeps 2 facets",
+              facets == ALLOWED_SURFACE_FACETS, f"facets={sorted(facets)}")
+        # 本域特有的词汇，刻意与生命周期五档分开：五档回答"这个资产成熟到哪一步"，
+        # 这里回答"这个界面现在还能不能用"。两个问题共用一个词表会互相污染。
+        vers = set(ca_reg.get("allowed_verifications") or [])
+        check("computer automation registry keeps 3 verification states",
+              vers == ALLOWED_SURFACE_VERIFICATIONS, f"states={sorted(vers)}")
+        platforms = set(ca_reg.get("allowed_platforms") or [])
+        check("computer automation registry keeps 4 platforms",
+              platforms == ALLOWED_SURFACE_PLATFORMS, f"platforms={sorted(platforms)}")
+        routes = set(ca_reg.get("allowed_drive_routes") or [])
+        check("computer automation registry keeps 7 drive routes",
+              routes == ALLOWED_DRIVE_ROUTES, f"routes={sorted(routes)}")
+        check("computer automation registry surfaces is a mapping",
+              isinstance(ca_reg.get("surfaces"), dict),
+              type(ca_reg.get("surfaces")).__name__)
     if caps_ok:
         check("capability registry schema_version", caps_reg.get("schema_version") == 2,
               f"got {caps_reg.get('schema_version')!r} (expected 2: required commerce "
