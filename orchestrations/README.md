@@ -25,8 +25,14 @@ orchestrations/         —— 按什么顺序连（这一次任务）
 
 > **当前处于迁移期。** 目标形状是 `<项目>/<任务>/`：一个任务属于哪个项目才是人找它的方式，
 > "人发起 / 钟发起"变成记录字段 `trigger`，不再是目录层级。
-> 已迁：`wechat/wechat-article`。其余 4 条仍是旧的 `<模式>/<生态>/<任务>`，校验器两种都收。
-> 全部迁完后 schema_version 升到 4，下面的三层描述同时作废。
+> **5 条任务已全部迁移完成。** 剩下的只有 `manual/` 与 `automated/` 两个容器目录（各自一份
+> README），以及它们描述的"模式"这一层 —— 那两篇要并进本文件，然后删目录、schema_version
+> 升到 4，下面的三层描述同时作废。
+>
+> 迁移结果：
+> `wechat/wechat-article` · `teaming/teaming-meeting-review-self-api` ·
+> `teaming/teaming-minute-scan-self-api` · `readloop/readloop-daily-self-api` ·
+> `investdesk/investdesk-daily-report`
 
 ## 布局：三层（旧形状，迁移期保留）
 
