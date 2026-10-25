@@ -13,7 +13,7 @@
 #   谁触发（manual / automated）+ 按什么顺序组合 + 产出落哪
 #
 # automations/ 不在这个列表里：它记录的其实是"触发器 + 组合 + 输出"，
-# 也就是编排层，所以它并入 orchestrations/automated/。迁移分阶段进行，
+# 也就是编排层，所以它并入 orchestrations/<项目>/<任务>/。迁移分阶段进行，
 # 详见 orchestrations/registry.yaml 的 schema_version 2 注释。
 schema_version: 2
 

@@ -360,7 +360,7 @@ automations:
       2026-10-25：确定性实现（run.mjs / lib.mjs / test_lib.mjs / package.json）已迁到
       computer-automation/browser-use/deepseek-billing/ —— 脚本就是这个界面的操作，
       两者同时失效，所以放在一起。本目录只剩 deploy/ 与一个 run.mjs 软链；软链是过渡物，
-      因为 registry 要求 entrypoint 是本目录内的文件名。本作业迁到 orchestrations/automated/
+      因为 registry 要求 entrypoint 是本目录内的文件名。本作业迁到 orchestrations/investdesk/
       之后，这个目录和这条记录一起删除。
 
       登录态由本地 Chrome 导出并裁剪到仅 deepseek 域（约 6KB），放在

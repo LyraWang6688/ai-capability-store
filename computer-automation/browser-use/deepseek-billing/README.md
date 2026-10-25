@@ -90,4 +90,4 @@ node run.mjs --live        # 真提交（金额 > 0 且未超上限时）
 
 不在这里。这是「谁触发、多久一次、产出落哪」——属于编排层。
 当前作业仍登记在 `automations/deepseek-invoice/`（含 `deploy/` 与 systemd unit），
-待它迁到 `orchestrations/automated/` 后，本目录只留界面与脚本。
+待它迁进编排层后，本目录只留界面与脚本。

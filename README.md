@@ -135,7 +135,7 @@ ai-capability-store/
 │   ├── mcp/                        # Store-managed MCP implementations (created as needed)
 │   ├── providers/
 │   └── use-cases/
-├── automations/                    # (being absorbed into orchestrations/automated/)
+├── automations/                    # (being absorbed into orchestrations/<project>/)
 │   ├── README.md
 │   ├── registry.yaml
 │   ├── LIFECYCLE.md
