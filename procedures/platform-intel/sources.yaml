@@ -223,40 +223,40 @@ platforms:
     product:
       - point: 产品形态与版本
         from: []
-        blocked: 无公开信源；只能本机实测（见 computer-automation/computer-use/doubao-work/）
+        blocked: 无公开信源；只能本机实测（见 orchestrations/computer-automation/ 里那条任务的界面档案）
         extract: 本机实测（App 版本、内核版本）
       - point: 插件体系有哪几类、各有几个
         from: []
-        blocked: 无公开信源；只能本机实测（见 computer-automation/computer-use/doubao-work/）
+        blocked: 无公开信源；只能本机实测（见 orchestrations/computer-automation/ 里那条任务的界面档案）
         extract: 实测界面计数（技能 / 连接器 / 伙伴）
       - point: 核心功能清单
         from: []
-        blocked: 无公开信源；只能本机实测（见 computer-automation/computer-use/doubao-work/）
+        blocked: 无公开信源；只能本机实测（见 orchestrations/computer-automation/ 里那条任务的界面档案）
         extract: 实测界面里的功能入口
     api:
       - point: 自定义连接器能否连公网 / 范围限制
         from: []
-        blocked: 无公开信源；只能本机实测（见 computer-automation/computer-use/doubao-work/）
+        blocked: 无公开信源；只能本机实测（见 orchestrations/computer-automation/ 里那条任务的界面档案）
         extract: 实测表单原文 + 本机 HTTP 连通性
       - point: 技能怎么安装（对话新建 / 上传）
         from: []
-        blocked: 无公开信源；只能本机实测（见 computer-automation/computer-use/doubao-work/）
+        blocked: 无公开信源；只能本机实测（见 orchestrations/computer-automation/ 里那条任务的界面档案）
         extract: 实测安装路径
       - point: 有没有开放 CLI / API
         from: []
         blocked: 未找到任何公开接口文档；实测亦未见 CLI
       - point: MCP 支持形态
         from: []
-        blocked: 无公开信源；只能本机实测（见 computer-automation/computer-use/doubao-work/）
+        blocked: 无公开信源；只能本机实测（见 orchestrations/computer-automation/ 里那条任务的界面档案）
         extract: 实测本机 HTTP MCP 能否被调用
       - point: 插件在哪端生效
         from: []
-        blocked: 无公开信源；只能本机实测（见 computer-automation/computer-use/doubao-work/）
+        blocked: 无公开信源；只能本机实测（见 orchestrations/computer-automation/ 里那条任务的界面档案）
         extract: 实测：仅桌面 App，无移动端插件入口
     ecosystem:
       - point: 个人能不能上传插件 / 技能
         from: []
-        blocked: 无公开信源；只能本机实测（见 computer-automation/computer-use/doubao-work/）
+        blocked: 无公开信源；只能本机实测（见 orchestrations/computer-automation/ 里那条任务的界面档案）
         extract: 实测有无公开上传通道
       - point: 平台收不收费 / 有没有分成
         from: []

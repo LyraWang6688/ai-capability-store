@@ -103,7 +103,7 @@ procedures:
     notes: >
       给 DeepSeek 开放平台账户的余额申请企业增值税普通发票：headless Chromium 打开
       账单页 → 校验登录态 → 读可开票金额 → 填抬头/税号/邮箱 → 提交 → 验证成功提示。
-      零模型参与，纯确定性。从 computer-automation/browser-use/deepseek-billing 迁入：
+      零模型参与，纯确定性。从已撤销的 computer-automation 域迁入：
       界面档案进 orchestration 任务的 README，脚本留在这里。
       界面事实（选择器、登录锚点、抬头下拉的坑）随 README 一起在本目录，因为改版时
       脚本和选择器是同一次改动 —— 但"这个界面是否还能用"记在编排任务的验证状态里。

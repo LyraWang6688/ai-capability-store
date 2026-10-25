@@ -27,9 +27,6 @@ DOMAIN_ENTRY_KEYS = {
     # 但通常没有 package.json —— 版本由 registry 承载，tag 规则与其它资产一致。
     "procedures": "procedures",
     "external_capabilities": "capabilities",
-    # computer_automation 的资产是【界面】：有 identity / path / version，
-    # 没有可执行包，所以 --package 跳过它，--missing 仍然要管它。
-    "computer_automation": "surfaces",
     "automations": "automations",
     # 编排是一个【资产】域：每个编排各有 identity / path / version，
     # 只是它没有实现代码，所以没有 package.json，--package 会跳过它。

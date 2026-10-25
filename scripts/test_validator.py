@@ -36,7 +36,6 @@ AUTOMATION_REGISTRY = os.path.join("automations", "registry.yaml")
 CAPABILITY_REGISTRY = os.path.join("external-capabilities", "registry.yaml")
 ORCHESTRATION_REGISTRY = os.path.join("orchestrations", "registry.yaml")
 PROCEDURES_REGISTRY = os.path.join("procedures", "registry.yaml")
-COMPUTER_AUTOMATION_REGISTRY = os.path.join("computer-automation", "registry.yaml")
 
 VERBOSE = "-v" in sys.argv or "--verbose" in sys.argv
 
@@ -299,9 +298,6 @@ MUTATIONS = {
     # 新域还没有记录，能坏的就是注册表头本身：枚举被悄悄改窄，等于把
     # "我们支持哪些运行时 / 哪种作用域"这条事实改了而不自知。
     "procedures-runtime-dropped": lambda t: t.replace("  - binary\n", "", 1),
-    "computer-automation-facet-dropped": lambda t: t.replace("  - computer\n", "", 1),
-    "computer-automation-domain-wrong": lambda t: t.replace(
-        "domain: computer_automation", "domain: computer-automation", 1),
     # ---- 界面记录：本域最容易自相矛盾的地方就是"验证状态 vs 验证日期" ----
     "surface-new-date-passes": _in_record(
         "deepseek-billing", 'verified: "2026-10-23"', 'verified: "2026-10-25"'),
@@ -426,10 +422,6 @@ CASES = [
     # 一次编辑悄悄变少，而没有任何记录会因此失败。
     ("procedures registry rejects a narrowed runtime list", 1,
      PROCEDURES_REGISTRY, "procedures-runtime-dropped"),
-    ("computer automation registry rejects a narrowed facet list", 1,
-     COMPUTER_AUTOMATION_REGISTRY, "computer-automation-facet-dropped"),
-    ("computer automation registry domain must be snake_case", 1,
-     COMPUTER_AUTOMATION_REGISTRY, "computer-automation-domain-wrong"),
     ("procedure without runtime is rejected", 1,
      PROCEDURES_REGISTRY, "procedure-runtime-missing"),
     ("procedure whose entrypoint does not exist is rejected", 1,
