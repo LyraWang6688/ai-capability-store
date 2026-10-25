@@ -15,9 +15,9 @@ class TestFinished(unittest.TestCase):
     def test_only_100_with_finish_time_counts(self):
         self.assertTrue(c.is_finished({"progress": 100, "finishTime": 1607529600}))
 
-    def test_100_without_finish_time_is_not_finished(self):
-        # 真实案例：6 本书进度 100% 但接口不给 finishTime，官方不计入
-        self.assertFalse(c.is_finished({"progress": 100, "finishTime": None}))
+    def test_100_without_finish_time_is_finished(self):
+        # 2026-10-26 起不再要求 finishTime：跳过后记的书不会触发"读完"事件
+        self.assertTrue(c.is_finished({"progress": 100, "finishTime": None}))
 
     def test_98_with_finish_time_is_finished(self):
         # 2026-10-26 起阈值放宽到 98：真实案例《21天说服力养成》98% + finishTime → 读完
@@ -29,9 +29,9 @@ class TestFinished(unittest.TestCase):
     def test_97_with_finish_time_is_not_finished(self):
         self.assertFalse(c.is_finished({"progress": 97, "finishTime": 1607529600}))
 
-    def test_98_without_finish_time_is_not_finished(self):
-        # 阈值放宽了，但 finishTime 仍是硬要求
-        self.assertFalse(c.is_finished({"progress": 98, "finishTime": None}))
+    def test_98_without_finish_time_is_finished(self):
+        # 用户跳过后记/致谢，进度停在 98 且没有 finishTime —— 这就是要覆盖的真实场景
+        self.assertTrue(c.is_finished({"progress": 98, "finishTime": None}))
 
     def test_none_progress(self):
         self.assertFalse(c.is_finished(None))
@@ -55,6 +55,17 @@ class TestReading(unittest.TestCase):
 
     def test_missing_timestamp(self):
         self.assertFalse(c.is_reading({"progress": 10}, self.NOW, 30))
+
+
+class TestFinishedTime(unittest.TestCase):
+    def test_prefers_finish_time(self):
+        self.assertEqual(c.finished_time_of({"finishTime": 111, "lastReadTime": 222}), 111)
+
+    def test_falls_back_to_last_read(self):
+        self.assertEqual(c.finished_time_of({"finishTime": None, "lastReadTime": 222}), 222)
+
+    def test_none(self):
+        self.assertIsNone(c.finished_time_of({}))
 
 
 class TestDates(unittest.TestCase):
@@ -197,10 +208,12 @@ class TestMigration(unittest.TestCase):
         prog = {"b": {"progress": 40, "lastReadTime": 1}}
         self.assertEqual(c.books_to_leave_reading(recs, prog.get), [])
 
-    def test_progress_100_without_finish_time_stays(self):
+    def test_progress_100_without_finish_time_leaves(self):
+        # 口径变更后，这类书也算读完，应从在读表迁出
         recs = {"a": {"record_id": "rec1"}}
         prog = {"a": {"progress": 100, "finishTime": None}}
-        self.assertEqual(c.books_to_leave_reading(recs, prog.get), [])
+        out = c.books_to_leave_reading(recs, prog.get)
+        self.assertEqual([r["record_id"] for r in out], ["rec1"])
 
 
 if __name__ == "__main__":
