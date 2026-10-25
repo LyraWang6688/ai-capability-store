@@ -1,4 +1,6 @@
-# Weekly execution of automations/frontier-watch.
+# Weekly execution of platform-intel 的抓取与提取。
+# 原 automations/frontier-watch 已并入 procedures/platform-intel（2026-10-25），
+# 文件名保留是为了不断掉 server timer 的 dispatch 目标。
 #
 # 2026-10-24 起分工变化：
 #   * GitHub Actions 只负责「抓原文 + 拉版本号」（海外网络好），不调模型、不写飞书
@@ -64,14 +66,14 @@ jobs:
           PY
 
       - name: Offline test suite (no network, no credentials)
-        run: python3 automations/frontier-watch/test_watch.py
+        run: python3 -m unittest procedures/platform-intel/test_extract.py
 
       - name: Collect sources and versions (no model, no Feishu)
         env:
           FRONTIER_CONFIG_JSON: ${{ secrets.FRONTIER_CONFIG_JSON }}
         run: |
           set -euo pipefail
-          python3 automations/frontier-watch/watch.py --emit-all > payload.json
+          python3 procedures/platform-intel/extract.py --emit-all > payload.json
           python3 - <<'PY'
           import json
           d = json.load(open("payload.json"))
