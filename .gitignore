@@ -49,3 +49,9 @@ skills/context-submit
 skills/dsh-diagram
 skills/repo-collector
 skills/store-publish
+
+# Swift 编译产物：skills/*/scripts/ui 由 build.sh 现场编译，二进制不入库。
+skills/*/scripts/ui
+
+# 分发产物：skills 打包出来的 tar.gz（package.sh 生成，不入库）。
+skills/*/dist/
