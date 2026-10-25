@@ -303,6 +303,15 @@ MUTATIONS = {
         "deepseek-billing", "    runtime: node\n", ""),
     "surface-new-date-passes": _in_record(
         "deepseek-billing", 'verified: "2026-10-23"', 'verified: "2026-10-25"'),
+    # ---- procedure 记录：能跑必须是记录里的事实，不是读代码才知道的事 ----
+    "procedure-runtime-missing": _in_record(
+        "platform-intel", "    runtime: python\n", ""),
+    "procedure-entrypoint-missing": _in_record(
+        "platform-intel", "entrypoint: collect.py", "entrypoint: nope.py"),
+    "procedure-path-wrong": _in_record(
+        "platform-intel", "path: procedures/platform-intel", "path: procedures/elsewhere"),
+    "procedure-version-bump-passes": _in_record(
+        "platform-intel", "version: 0.1.0", "version: 0.1.1"),
 }
 
 
@@ -426,6 +435,15 @@ CASES = [
     # 正例：换个日期仍然合法 —— 复核是这个域的正常动作，不是例外。
     ("surface re-verified with a new date passes", 0,
      COMPUTER_AUTOMATION_REGISTRY, "surface-new-date-passes"),
+    # procedure：entrypoint 与 runtime 是"能跑"的两个必要条件，缺一个就红。
+    ("procedure without runtime is rejected", 1,
+     PROCEDURES_REGISTRY, "procedure-runtime-missing"),
+    ("procedure whose entrypoint does not exist is rejected", 1,
+     PROCEDURES_REGISTRY, "procedure-entrypoint-missing"),
+    ("procedure path must be procedures/<name>", 1,
+     PROCEDURES_REGISTRY, "procedure-path-wrong"),
+    ("procedure version bump passes", 0,
+     PROCEDURES_REGISTRY, "procedure-version-bump-passes"),
 ]
 
 # The first case is the baseline: untouched, so it must pass.

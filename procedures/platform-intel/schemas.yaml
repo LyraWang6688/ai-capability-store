@@ -1,0 +1,108 @@
+# 三层提取 schema —— 四个平台（Codex / Claude / DSH / 豆包工作）逐字段填这张表
+#
+# 规则：
+#   1. 每个字段必须有值 + 证据链接；没有证据写 "未找到"，不写"大概"。
+#   2. 字段值是封闭集合的，只能从 allowed 里选。
+#   3. 这一层的目的是"能不能做我们的插件、怎么收钱"，不是"它强不强"。
+schema_version: 1
+
+layers:
+  # ── ① 产品层：它有什么 ──────────────────────────────────────────────
+  product:
+    question: 它现有的产品有哪些功能
+    purpose: 知道产品边界，判断插件该挂在哪个产品上
+    fields:
+      - id: product_name
+        desc: 产品名（一个平台可有多条：Codex CLI / Codex 桌面 / Claude Code …）
+      - id: form
+        desc: 形态
+        allowed: [cli, desktop, web, mobile, browser-extension, api]
+      - id: platform
+        desc: 运行平台（可多选）
+        allowed: [macos, windows, linux, ios, android, web]
+      - id: core_features
+        desc: 它自称的核心功能，3–8 条短句
+      - id: shipped
+        desc: 是否成型（有独立发布节奏、有独立文档站）
+        allowed: [yes, partial, no, unknown]
+      - id: cadence
+        desc: 发布节奏（从 releases 时间推）
+        allowed: [daily, weekly, monthly, irregular, unknown]
+
+  # ── ② API 层：它开放什么 ────────────────────────────────────────────
+  # 拆两组，因为这是两个不同的问题：
+  #   extension = 我们能不能挂上去（做插件）
+  #   invocation = agent 能不能调它
+  api:
+    extension:
+      question: 我们能不能开发它的插件
+      fields:
+        - id: manifest
+          desc: 插件规范文件
+          allowed: [plugin.json, SKILL.md, mcp.json, manifest, other, none, unknown]
+        - id: install_entry
+          desc: 安装入口（命令 / 目录 URL / 手动放置路径）
+        - id: capability_types
+          desc: 可注册的能力类型（可多选）
+          allowed: [tool, command, panel, skill, mcp-server, background, none, unknown]
+        - id: effective_surface
+          desc: 插件在哪端生效 —— 覆盖面由它决定
+          allowed: [desktop, web, mobile, all, unknown]
+        - id: permission_model
+          desc: 权限模型（沙箱？能读文件？能起子进程？能联网？）
+        - id: lifecycle_hooks
+          desc: 生命周期钩子（有则列名，无写 none）
+        - id: runtime_constraint
+          desc: 语言 / 运行时限制（只能 JS？能跑二进制？）
+    invocation:
+      question: agent 能不能调用它
+      fields:
+        - id: cli
+          desc: 命令行（有/无 + 包名 + --help 是否稳定）
+        - id: api
+          desc: HTTP API（有/无 + 认证方式）
+          allowed: [none, api-key, oauth, both, unknown]
+        - id: mcp
+          desc: MCP 支持（传输方式）
+          allowed: [none, stdio, http, both, unknown]
+        - id: sdk
+          desc: 官方 SDK（语言列表 / none / unknown）
+        - id: limits
+          desc: 速率 / 额度 / 资质门槛
+
+  # ── ③ 生态层：它怎么建生态、怎么收钱 ────────────────────────────────
+  # 两个必答小节，直接对应用户的两个问题。
+  ecosystem:
+    upload:
+      question: 个人能不能上传插件 / 技能
+      fields:
+        - id: channel
+          desc: 上传通道
+          allowed: [portal, form-application, repo-only, none, unknown]
+        - id: review
+          desc: 是否审核 + 时长
+          allowed: [no-review, review, review-with-sla, unknown]
+        - id: qualification
+          desc: 资质要求
+          allowed: [individual-ok, company-required, invite-only, unstated, unknown]
+        - id: distribution
+          desc: 分发形态
+          allowed: [public-directory, private, local-only, unknown]
+        - id: third_party_count
+          desc: 市场里已有的第三方插件数（判断生态是否活着）
+    monetization:
+      question: 现在怎么收费
+      fields:
+        - id: developer_fee
+          desc: 平台对开发者收费
+          allowed: [free, entry-fee, annual-fee, revenue-share, mixed, unknown]
+        - id: plugin_paid
+          desc: 插件内能否收费
+          allowed: [yes, no, unknown]
+        - id: settlement
+          desc: 结算方式
+          allowed: [platform-split, self-collect, none, unknown]
+        - id: revenue_split
+          desc: 分成比例（没有官方机制写 "无官方机制"）
+        - id: paid_cases
+          desc: 已有付费案例（最硬的信号）

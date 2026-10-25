@@ -42,4 +42,20 @@ allowed_runtimes:
   - bash
   - binary
 
-procedures: {}
+procedures:
+  platform-intel:
+    name: platform-intel
+    path: procedures/platform-intel
+    status: testing
+    version: 0.1.0
+    updated: "2026-10-25"
+    entrypoint: collect.py
+    runtime: python
+    commerce: {charge: free}
+    notes: >
+      四平台（Codex / Claude / DSH / 豆包工作）× 三层的平台信息采集。
+      三层 = 产品（它有什么）/ API（开放什么，能不能做插件、能不能被 agent 调）/
+      生态（个人能不能上传、怎么收费）。collect.py 是阶段 1：抓源、存快照摘要、
+      产可达性报告，不提取字段 —— 提取需要固定页面夹具，见 README。
+      它是 procedure 而不是 skill，因为流程确定、要能回归测试；页面里的 prose 靠读，
+      那是流水线内部的解析步骤，不是"这件事需要判断"。

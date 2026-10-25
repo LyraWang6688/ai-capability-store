@@ -57,6 +57,19 @@ jobs:
       # 这组测试不需要浏览器 / 配置 / 登录态，可以在 PR 门禁里跑。
       - name: deepseek-invoice failure-branch logic
         run: node --test computer-automation/browser-use/deepseek-billing/test_lib.mjs
+      # procedure 的测试和 skill 的测试分开跑：procedure 的契约是"同样的输入必须
+      # 产出同样的结果"，所以它天然是夹具测试，不联网、不依赖任何 runtime。
+      - name: procedure fixtures
+        run: |
+          set -euo pipefail
+          ran=0
+          for f in procedures/*/test_*.py; do
+            [ -e "$f" ] || continue
+            python3 "$f"
+            ran=$((ran+1))
+          done
+          echo "ran $ran procedure test suites"
+          [ "$ran" -gt 0 ] || { echo "no procedure test suites found"; exit 1; }
       # 自动化自己的离线测试以前只在各自定时执行时才跑：PR 改坏了，要等下一次
       # 定时任务（可能是几天后，甚至永远不会跑）才发现。这里把它们一起接进 PR 门禁。
       - name: Automation offline tests

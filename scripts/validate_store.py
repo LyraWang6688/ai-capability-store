@@ -1002,6 +1002,71 @@ def validate_capability_entries(reg: dict):
     return collected
 
 
+def validate_procedure_entries(reg: dict) -> list:
+    """Procedures Domain: 一条记录 = 一项确定性操作。
+
+    和 Skills 的区别只有一个：执行者是机器。所以"能不能跑"必须是记录里的事实，
+    不是读代码才知道的事 —— entrypoint 与 runtime 都必填，且 entrypoint 必须真的
+    在那个目录里存在。缺了 runtime 就等于说"这个东西能跑，但不知道怎么跑"。
+    """
+    entries = reg.get("procedures") or {}
+    if not isinstance(entries, dict):
+        check("procedures registry procedures is a mapping", False, type(entries).__name__)
+        return []
+    collected = []
+    for key, entry in entries.items():
+        if not isinstance(entry, dict):
+            check(f"procedure {key} is a mapping", False, type(entry).__name__)
+            continue
+        collected.append((key, entry))
+        check(f"procedure {key} identifier kebab-case", bool(KEBAB_RE.match(key)), key)
+        unknown = set(entry.keys()) - {
+            "name", "path", "status", "version", "updated", "entrypoint", "runtime",
+            "notes", "commerce",
+        }
+        check(f"procedure {key} has only allowed fields", not unknown,
+              f"unknown fields: {sorted(unknown)}")
+        for field in ("name", "path", "status", "version", "updated", "entrypoint", "runtime"):
+            val = entry.get(field)
+            check(f"procedure {key} has required field: {field}", val is not None,
+                  f"value={val!r}")
+        check(f"procedure {key} map key == name", key == entry.get("name"),
+              f"key={key!r} name={entry.get('name')!r}")
+
+        status = entry.get("status")
+        check(f"procedure {key} status legal", status in ALLOWED_PROCEDURE_STATUSES,
+              f"status={status!r} (allowed: {sorted(ALLOWED_PROCEDURE_STATUSES)})")
+        version = entry.get("version")
+        check(f"procedure {key} version X.Y.Z",
+              isinstance(version, str) and bool(VERSION_RE.match(version)), f"version={version!r}")
+        updated = entry.get("updated")
+        check(f"procedure {key} updated is YYYY-MM-DD",
+              isinstance(updated, str) and bool(DATE_RE.match(updated)), f"updated={updated!r}")
+
+        runtime = entry.get("runtime")
+        check(f"procedure {key} runtime legal", runtime in ALLOWED_PROCEDURE_RUNTIMES,
+              f"runtime={runtime!r} (allowed: {sorted(ALLOWED_PROCEDURE_RUNTIMES)})")
+
+        path = entry.get("path")
+        expected = f"procedures/{key}"
+        check(f"procedure {key} path is procedures/<name>", path == expected,
+              f"path={path!r} (expected {expected!r})")
+        check(f"procedure {key} path exists",
+              isinstance(path, str) and os.path.isdir(os.path.join(ROOT, path)),
+              f"path={path!r}")
+
+        entrypoint = entry.get("entrypoint")
+        check(f"procedure {key} entrypoint has no path separators",
+              isinstance(entrypoint, str) and bool(entrypoint)
+              and "/" not in entrypoint and "\\" not in entrypoint, f"entrypoint={entrypoint!r}")
+        if isinstance(path, str) and isinstance(entrypoint, str) and entrypoint:
+            check(f"procedure {key} entrypoint exists",
+                  os.path.isfile(os.path.join(ROOT, path, entrypoint)),
+                  f"{path}/{entrypoint}")
+        validate_commerce(key, entry, "procedure", allow_carrier=False)
+    return collected
+
+
 def validate_surface_entries(reg: dict) -> list:
     """Computer Automation Domain: 一条记录 = 一个界面。
 
@@ -1614,6 +1679,7 @@ def main() -> int:
         check("procedures registry procedures is a mapping",
               isinstance(proc_reg.get("procedures"), dict),
               type(proc_reg.get("procedures")).__name__)
+    procedure_entries = validate_procedure_entries(proc_reg) if proc_ok else []
     if ca_ok:
         check("computer automation registry schema_version", ca_reg.get("schema_version") == 1,
               f"got {ca_reg.get('schema_version')!r}")

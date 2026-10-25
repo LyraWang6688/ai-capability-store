@@ -1,0 +1,101 @@
+# 源清单 —— 四个平台 × 三层，每格列出"该去看哪儿"
+#
+# url: null 表示"我们还没找到该看哪个页面"，报告里记作 no_source。
+# 这和"抓取失败"是两种事：一个是不知道去哪看，一个是知道了但抓不到。
+# 不猜、不填一个"看起来合理"的地址。
+schema_version: 1
+
+platforms:
+  codex:
+    product:
+      - id: releases
+        url: "https://api.github.com/repos/openai/codex/releases?per_page=10"
+        kind: json
+        note: 用 tag / published_at 推发布节奏与是否成型
+    api:
+      - id: agents-md
+        url: "https://agents.md/"
+        kind: html
+        note: 上下文入口规范（AGENTS.md）
+      - id: plugins-portal
+        url: "https://developers.openai.com/plugins"
+        kind: html
+        note: 插件提交门户；本环境返回 403，待换可达源
+    ecosystem:
+      - id: pricing
+        url: null
+        note: 未找到官方开发者在插件上的收费 / 分成说明
+
+  claude:
+    product:
+      - id: release-notes
+        url: "https://support.claude.com/en/articles/12138966-release-notes"
+        kind: html
+        note: 注意这是 Claude 应用的发布说明，不等于 Claude Code 的规范变化
+    api:
+      - id: plugins-publish
+        url: "https://code.claude.com/docs/en/plugins/publish"
+        kind: html
+      - id: marketplace-hosting
+        url: "https://code.claude.com/docs/en/plugins/host-marketplace"
+        kind: html
+        note: 私有分发（private git / archive + bearer + sha256）写在这里
+      - id: mcp
+        url: "https://code.claude.com/docs/en/mcp"
+        kind: html
+      - id: skills-spec
+        url: "https://agentskills.io/specification"
+        kind: html
+        note: 生态层共用的 Skill 规范
+    ecosystem:
+      - id: plugins-security
+        url: "https://code.claude.com/docs/en/plugins/security"
+        kind: html
+      - id: developer_terms
+        url: null
+        note: 官方文档无价格字段；是否存在未公开的开发者条款待核
+
+  dsh:
+    product:
+      - id: plugin-market
+        url: "https://deepseek-harness.github.io/deepseek-harness/en/guide/plugin-market.md"
+        kind: md
+        note: 插件市场仍标 experimental
+      - id: skills-subsystem
+        url: "https://deepseek-harness.github.io/deepseek-harness/en/reference/subsystems/skills.md"
+        kind: md
+        note: skills 发现位置（.dsh/skills、.agents/skills）
+    api:
+      - id: npm
+        url: "https://registry.npmjs.org/@deepseek-ai/dsh"
+        kind: json
+        note: 包名待核实；若 404 换成实际包名
+    ecosystem:
+      - id: upload_channel
+        url: null
+        note: 个人能否上架、是否有审核，均未找到公开说明
+      - id: pricing
+        url: null
+        note: 未找到任何收费 / 分成说明
+
+  doubao-work:
+    product:
+      # 没有公开文档站，只有 App 本体；产品层靠本机实测（见
+      # computer-automation 域里已有/将有的界面档案）
+      - id: app
+        url: null
+        note: 无公开文档；形态与功能需本机实测后人工填写
+    api:
+      - id: custom-connector
+        url: null
+        note: 自定义连接器仅限本机（本机实测结论，非文档来源）
+      - id: mcp-http
+        url: null
+        note: 本机 HTTP 地址可连；无公开规范文档
+    ecosystem:
+      - id: upload_channel
+        url: null
+        note: 未找到公开的技能 / 插件上传通道
+      - id: pricing
+        url: null
+        note: 未找到收费或分成说明
