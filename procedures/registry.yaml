@@ -107,3 +107,40 @@ procedures:
       界面档案进 orchestration 任务的 README，脚本留在这里。
       界面事实（选择器、登录锚点、抬头下拉的坑）随 README 一起在本目录，因为改版时
       脚本和选择器是同一次改动 —— 但"这个界面是否还能用"记在编排任务的验证状态里。
+  weread-reading-sync:
+    name: weread-reading-sync
+    path: procedures/weread-reading-sync
+    status: testing
+    version: 0.1.0
+    updated: "2026-10-26"
+    entrypoint: collect.py
+    runtime: python
+    commerce: {charge: free}
+    notes: >
+      把微信读书的「已读完」与「最近 N 天打开未读完」同步到飞书多维表格两张表
+      （已读书籍 / 在读书籍）。接口 /shelf/sync 取书架，/book/getprogress 逐本核验。
+      口径写死：读完 = progress 恰为 100 且存在 finishTime；在读 = 未读完且最近阅读
+      落在窗口内。反例都进了测试：进度 100% 但无 finishTime 不算读完；有 finishTime
+      但进度回退到 98% 也不算。
+      入域理由：两个消费者 —— cron 定时与一条薄 skill 入口，且判定口径必须固化成
+      assert，不能每次让模型现推（同一份数据按"标记"和"事实"两种口径会得出 78 / 81 /
+      85 三个不同答案，这正是脚本存在的理由）。
+      已知边界：书若已从书架移除，接口取不到，故结果会略少于官方 readStat 统计。
+  investdesk-funding-news:
+    name: investdesk-funding-news
+    path: procedures/investdesk-funding-news
+    status: testing
+    version: 0.1.0
+    updated: "2026-10-26"
+    entrypoint: collect.py
+    runtime: python
+    commerce: {charge: free}
+    notes: >
+      投融资事件采集：固定 8 家公司（国内腾讯/阿里/字节/DeepSeek + 海外英伟达/谷歌/OpenAI/苹果），
+      走 Wind 的 financial_docs.get_financial_news 取新闻，按写死的规则做事件分类、
+      金额原文抽取、可信度分级，写入飞书「王颖的财富管理」Base 的「投融资事件」表。
+      三条纪律进代码：金额只录原文不换算、只采集不做建议、每条带来源与可信度。
+      已知局限：同一事件不聚合（同期 4 篇报道就是 4 行）；可信度靠关键词会低估；
+      公司列表写死；未上市公司无官方口径。
+      顺带记录一个平台事实：get_company_announcements 的语料是 A 股公告库，
+      港股（腾讯/阿里）与未上市公司查不到，只能走新闻通道。
