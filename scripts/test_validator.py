@@ -35,6 +35,7 @@ SKILL_REGISTRY = os.path.join("skills", "registry.yaml")
 AUTOMATION_REGISTRY = os.path.join("automations", "registry.yaml")
 CAPABILITY_REGISTRY = os.path.join("external-capabilities", "registry.yaml")
 ORCHESTRATION_REGISTRY = os.path.join("orchestrations", "registry.yaml")
+CLOCKS_REGISTRY = os.path.join("orchestrations", "clocks.yaml")
 PROCEDURES_REGISTRY = os.path.join("procedures", "registry.yaml")
 
 VERBOSE = "-v" in sys.argv or "--verbose" in sys.argv
@@ -284,6 +285,12 @@ MUTATIONS = {
     "orc-project-missing-trigger": _in_record(
         "wechat-article", "    trigger: human\n", ""),
     "orc-missing-flow": lambda t: t,  # 由文件删除模拟，见 CASES 注释
+    # 排期只该在 timer 的 OnCalendar 里。钟的登记表塞回 schedule 就等于两份真相，
+    # 这条规则防的是它悄悄回来。
+    "clock-with-schedule": lambda t: t.replace(
+        "    timer: scripts/server-timers/systemd/repo-baseline-audit.timer",
+        '    schedule: "Mon 09:00"\n'
+        "    timer: scripts/server-timers/systemd/repo-baseline-audit.timer", 1),
     "orc-clock-unknown": _in_record(
         "quote-sync", "clock: investdesk-quote-sync", "clock: nope"),
     "orc-project-bad-name": _in_record(
@@ -402,6 +409,8 @@ CASES = [
     # 所以每个正例都必须真能放行 —— 否则下一步迁移无从下手。
     ("orchestration in project shape without trigger is rejected", 1,
      ORCHESTRATION_REGISTRY, "orc-project-missing-trigger"),
+    ("clock must not repeat the timer's schedule", 1,
+     CLOCKS_REGISTRY, "clock-with-schedule"),
     ("orchestration clock must exist in clocks.yaml", 1,
      ORCHESTRATION_REGISTRY, "orc-clock-unknown"),
     ("orchestration project name must be kebab-case", 1,
