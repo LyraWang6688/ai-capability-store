@@ -84,10 +84,19 @@ sources:
     url: "https://api.github.com/repos/deepseek-ai/deepseek-harness/releases?per_page=10"
     kind: json
     verified: null
-  # dsh-desktop-feed: 已移除 —— download.deepseek.com/dsh-desk/feeds 路径已失效（COS NoSuchKey 404，5 个变体全 404）。版本信息由 dsh-releases 与 dsh-npm 覆盖
+  # 2026-10-25 第一次写时判它"失效"并移除 —— 错在只试了 nightly，而正确路径
+  # nightly-mac.yml 一直写在 automations/frontier-watch/config.example.json 里。
+  # 教训：删源之前先查仓库里别处有没有用过这个域名。
+  dsh-desktop-feed:
+    url: "https://download.deepseek.com/dsh-desk/feeds/mac-arm64/nightly-mac.yml"
+    kind: yaml-tauri
+    verified: "2026-10-25"
+    layer: product
+    note: Tauri 更新清单，直接给 version 字段 —— 想知道桌面端版本号，这是最省事的一处
   deepseek-news:
-    url: "https://api-docs.deepseek.com/sitemap.xml"
-    kind: xml-sitemap
+    url: "https://api-docs.deepseek.com/updates"
+    kind: html
+    note: 官方的 updates 页，比 sitemap 直接；sitemap 仍可用于发现新路径
     verified: "2026-10-25"
     layer: model
     note: 没有 news 索引页，新闻是 /news/newsMMDD 独立页；定期抓 sitemap 与上次比对，新增的 /news/* 即新公告
