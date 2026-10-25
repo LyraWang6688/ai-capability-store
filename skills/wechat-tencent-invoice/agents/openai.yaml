@@ -1,0 +1,10 @@
+interface:
+  display_name: "微信腾讯充值开票"
+  short_description: "Drive the WeChat macOS UI to request a Tencent recharge general invoice"
+  default_prompt: "Use $wechat-tencent-invoice to request a 增值税普通发票 for 腾讯充值 orders in the WeChat macOS app. Locate the UI by screenshot + OCR, stop for confirmation before submitting, then verify the result in 开票记录."
+
+dependencies:
+  tools:
+    - type: "cli"
+      value: "swiftc"
+      description: "Compile scripts/ui.swift once; needed for CGEvent clicks, AX window control and Vision OCR"

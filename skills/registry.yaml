@@ -250,6 +250,44 @@ skills:
       （与 repo-collector 一致：不制造虚假依赖记录）。
       文档规则本身不在本 skill 里：收什么、怎么命名、何时升级成 Skill 由
       automations/computer-automation/README.md 定义，改规则改那里。
+  wechat-tencent-invoice:
+    name: wechat-tencent-invoice
+    path: skills/wechat-tencent-invoice
+    scope: shared
+    status: testing
+    version: 0.1.4
+    updated: "2026-10-25"
+    commerce: {charge: free}
+    notes: >
+      0.1.4（patch）：SKILL.md 正文新增「环境与适用范围」表 —— 适用 / 不适用 / 依赖 / 权限授予对象 /
+      已知限制五格写在一处，别人读 SKILL.md 本身就能判断能不能用，不必先翻 references。
+      同时修正硬规则第 2 条里遗留的「像素 = 点数 × 2」写死说法（改为读 shotregion 打印的 scale）。
+      0.1.3（patch）：把架构范围写死成 Apple Silicon（arm64）—— build.sh 在非 arm64 直接拒绝并说明原因；
+      ui doctor 新增「架构」一项（arm64 OK / Intel FAIL），不再让 Intel 机器走到「编译出来跑不起来」这一步。
+      build.sh 同时修了幂等判断的漏洞：源码比 ui 新就重编（否则改了 ui.swift 会静默跑旧二进制）。
+      0.1.2（patch）：分发形态 —— 新增 scripts/package.sh，打包时先编译，把 `scripts/ui`
+      **一起放进 tar.gz**（dist/wechat-tencent-invoice-<version>-<arch>.tar.gz），接收方同架构
+      解压即用、不需要 Swift 工具链；打包脚本会解包自证（跑一次 ui status，跑不过不出包）。
+      build.sh 变幂等：ui 已存在且可用就不重编，跑不起来（如跨架构）则删掉重编；
+      dist/ 与 ui 都在 .gitignore 里（产物只进发布包，不进 git）。SKILL.md 增「分发」一节，
+      portability.md 增「源码包 vs 预编译包」对照表。
+      0.1.1（patch）：跨设备可用性加固 —— 新增 `ui doctor` 环境自检（swiftc / 辅助功能 / 屏幕录制 /
+      系统 OCR / 微信 / 剪贴板 / 显示器七项，逐项给修法，退出码 0/1）；坐标换算改为读
+      `shotregion` 打印的 scale（不再假设 Retina 2x），多屏负坐标一并写进 references/portability.md；
+      build.sh 缺 swiftc 时直接给 `xcode-select --install` 提示；新增 references/portability.md
+      （依赖 / 权限授予对象 / 版本与语言 / 数据不可照抄 / 首次三步 / doctor FAIL 对照表）。
+      0.1.0：首次登记。
+      在微信 macOS 桌面版里给腾讯充值订单申请增值税普通发票：搜索「腾讯充值」小程序 →
+      我的帐户 → 申请发票 → 勾选最近三个月订单 → 抬头类型选「组织」→ 填发票抬头与
+      统一社会信用代码 → 提交 → 到「开票记录」核对开票单号。
+      为什么是 Skill 不是 Procedure：整条路线的定位全靠「截图 + OCR 找锚点 + 每步看观察点」，
+      页面结构由腾讯单方面拥有且改版不通知，没有可断言的选择器，所以判断（找到没找到、
+      要不要停）必须由模型做；确定性部分只有合成点击/键盘与 OCR，已经收进 scripts/ui.swift。
+      2026-10-25 真机走通一次（3 笔微信支付订单合并开 1 张普通发票，57.00 元，开票记录里
+      出现「开票中」的新单），界面层面的事实与 blocked 路线（applescript -10004、
+      AX 读不到内容区）登记在该界面的 computer-automation 档案（重构前 computer-automation/computer-use/wechat-macos/，重构后 orchestrations/computer-automation/wechat-tencent-invoice/README.md）。
+      硬规则：提交前必须人确认抬头/税号/金额；不写死坐标；出现专用发票须知即回退。
+
 allowed_statuses:
   - draft
   - testing
