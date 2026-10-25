@@ -285,10 +285,19 @@ window.__ModuleLoader__.load({
         };
       }, [quote]);
 
-      // 切换会话时清掉引用条（引用是会话内的临时状态）
+      // 引用是「会话内」的临时状态：输入框被重建（切会话/换页面）就清掉。
+      // shell.overlay 拿不到 sessionId，所以用输入框节点身份作为会话标志。
       React.useEffect(() => {
-        setQuote(null);
-      }, [sessionId]);
+        const timer = setInterval(() => {
+          const current = quoteStore.current;
+          if (current === null) return;
+          const bound = current.composer;
+          if (bound === undefined || bound === null) return;
+          if (typeof bound.isConnected !== 'boolean') return;
+          if (!bound.isConnected) setQuote(null);        // 旧输入框已卸载 → 换会话了
+        }, 500);
+        return () => clearInterval(timer);
+      }, []);
       if (selection === null && toast === '' && quote === null) return null;
       const center = selection === null
         ? 0
@@ -312,7 +321,7 @@ window.__ModuleLoader__.load({
           run: (text) => {
             const flat = String(text).replace(/\s+/g, ' ').trim();
             if (flat === '') return;
-            setQuote({ text: flat, at: Date.now() });
+            setQuote({ text: flat, at: Date.now(), composer: findComposer() });
             // 追问后把光标移到输入框末尾，用户可以直接开始打字
             const composer = findComposer();
             if (composer !== null) {
@@ -681,16 +690,51 @@ window.__ModuleLoader__.load({
 
     function QuoteBar() {
       const quote = useQuote();
+      const [pos, setPos] = React.useState(null);
+      // 输入框会随输入行数变高，position:fixed 的坐标必须跟着重算，
+      // 否则引用条会停在旧位置、压住正文。
+      React.useEffect(() => {
+        if (!quote) { setPos(null); return undefined; }
+        let raf = 0;
+        const measure = () => {
+          const node = quote.composer && quote.composer.isConnected ? quote.composer : findComposer();
+          if (node === null) { setPos(null); return; }
+          const rect = node.getBoundingClientRect();
+          setPos({
+            left: Math.max(12, rect.left + 10),
+            width: Math.max(200, rect.width - 20),
+            bottom: Math.max(12, window.innerHeight - rect.top + 8),
+          });
+        };
+        const schedule = () => {
+          if (raf !== 0) return;
+          raf = requestAnimationFrame(() => { raf = 0; measure(); });
+        };
+        measure();
+        const node = quote.composer && quote.composer.isConnected ? quote.composer : findComposer();
+        const observer = typeof ResizeObserver !== 'undefined' && node !== null
+          ? new ResizeObserver(schedule) : null;
+        if (observer !== null) observer.observe(node);
+        window.addEventListener('resize', schedule);
+        window.addEventListener('scroll', schedule, true);
+        const timer = setInterval(measure, 400);
+        return () => {
+          if (raf !== 0) cancelAnimationFrame(raf);
+          if (observer !== null) observer.disconnect();
+          window.removeEventListener('resize', schedule);
+          window.removeEventListener('scroll', schedule, true);
+          clearInterval(timer);
+        };
+      }, [quote]);
       if (!quote) return null;
       const preview = quote.text.length > 90 ? quote.text.slice(0, 90) + '…' : quote.text;
-      const node = findComposer();
-      const rect = node === null ? null : node.getBoundingClientRect();
       const style = {
         position: 'fixed',
-        left: (rect ? Math.max(12, rect.left + 10) : 12) + 'px',
-        width: (rect ? Math.max(200, rect.width - 20) : 360) + 'px',
-        bottom: (rect ? Math.max(12, window.innerHeight - rect.top + 8) : 120) + 'px',
+        left: (pos === null ? 12 : pos.left) + 'px',
+        width: (pos === null ? 360 : pos.width) + 'px',
+        bottom: (pos === null ? 120 : pos.bottom) + 'px',
         zIndex: 9000,
+        visibility: pos === null ? 'hidden' : 'visible',
       };
       return h('div', { className: 'dsh-selection-quote', style }, [
         h('span', { key: 'bar', className: 'dsh-selection-quote-bar' }),
@@ -702,7 +746,7 @@ window.__ModuleLoader__.load({
           onClick: () => {
             setQuote(null);
             const composer = findComposer();
-            if (composer !== null) { composer.focus(); try { document.execCommand('undo'); } catch (error) { /* ignored */ } }
+            if (composer !== null) { composer.focus(); }
           },
         }, '×'),
       ]);

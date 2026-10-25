@@ -38,18 +38,16 @@ LyraWang6688/ai-capability-store
 Skill                = How to do          (model executes)
 Procedure            = How to do          (machine executes)
 External Capability  = What can be called
-Computer Automation  = What an interface lets us do
 Orchestration        = In what order, for one task, triggered by whom
 ```
 
-**Four module Domains** plus **one composition layer**:
+**Three module Domains** plus **one composition layer**:
 
 | Layer | Domain | Owns | Examples |
 |---|---|---|---|
 | Module | Skills | How to do — executed by a **model**, so it needs judgment | Method / SOP / Decision Rule / Know-how |
 | Module | Procedures | How to do — executed by a **machine**, so it is deterministic | Data transform / sync / publish / render |
 | Module | External Capabilities | What can be called | MCP / Plugin / CLI / Connector / API / Integration |
-| Module | Computer Automation | What a third party's **interface** lets us do, and when we last verified it | Browser Use / Computer Use surfaces |
 | Composition | Orchestrations | In what order, for one task, triggered by whom, output where | Multi-asset pipelines and their hand-off rules |
 
 A module Domain is a unit of identity: its own registry, lifecycle, version and tag.
@@ -123,11 +121,6 @@ ai-capability-store/
 │   ├── README.md
 │   ├── registry.yaml
 │   └── <procedure-name>/           # flat: entrypoint + its tests
-├── computer-automation/            # Module Domain: what an interface lets us do
-│   ├── README.md
-│   ├── registry.yaml
-│   ├── browser-use/<app>/          # one folder per surface
-│   └── computer-use/<app>/
 ├── external-capabilities/          # Module Domain: what can be called
 │   ├── README.md
 │   ├── registry.yaml

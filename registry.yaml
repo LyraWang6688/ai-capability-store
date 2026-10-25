@@ -3,12 +3,11 @@
 #
 # schema_version 2: `platform:` renamed to `store:` (Store rebrand, breaking).
 #
-# 模块域（4）：skill / procedure / external-capability / computer-automation
+# 模块域（3）：skill / procedure / external-capability
 #   按"这件事的载体是什么"分：
 #     skills/                怎么做 · 执行者是模型
 #     procedures/            怎么做 · 执行者是机器
 #     external-capabilities/ 能调什么
-#     computer-automation/   界面能被怎么操作（一个界面 = 一条记录）
 # 组合层（1）：orchestrations/ —— 只引用模块域，不实现任何东西
 #   谁触发（manual / automated）+ 按什么顺序组合 + 产出落哪
 #
@@ -25,7 +24,6 @@ registries:
   skills: skills/registry.yaml
   procedures: procedures/registry.yaml
   external_capabilities: external-capabilities/registry.yaml
-  computer_automation: computer-automation/registry.yaml
   dependencies: dependencies/capability-map.yaml
   automations: automations/registry.yaml
 

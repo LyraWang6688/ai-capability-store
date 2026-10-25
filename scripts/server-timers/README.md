@@ -61,7 +61,7 @@ scripts/server-timers/
 | `repo-baseline-audit` | 每周一 09:00 | 敲 Actions | root | 同上 |
 | `repo-discoverability` | 每周一 20:00 | 敲 Actions | root | 同上 |
 | `feishu-digest` | 每天 22:00 | 本机脚本（读桥会话库 + dsh headless）| dshjobs | **直接投递**收件箱（无内容则静默）|
-| `wechat-invoice-reminder` | 每季度首月 1 日 10:00 | 直接调 `inbox-deliver` | dshjobs | **纯提醒**：收件箱一条「该开票了」，执行仍在 Mac |
+| `wechat-invoice-reminder` | 每季度首月 25 日 10:00 | 直接调 `inbox-deliver` | dshjobs | **纯提醒**：收件箱一条「该开票了」，执行仍在 Mac |
 
 > 「未接收件箱」的 8 个任务，下一步按同样模式加 `xxx-inbox.service/.timer` 即可。
 
@@ -113,7 +113,7 @@ sudo -u dshjobs env HOME=/srv/dsh-jobs \
 `skills/wechat-tencent-invoice`。
 
 ```text
-wechat-invoice-reminder.timer（1/4/7/10 月 1 日 10:00）
+wechat-invoice-reminder.timer（1/4/7/10 月 25 日 10:00）
   └─ wechat-invoice-reminder.service
        └─ inbox-deliver → 飞书「任务收件箱」（结果=成功 / 状态=未读）
             └─ DSH 📥 面板 → 点开 → 桌面端执行 skill

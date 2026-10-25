@@ -17,7 +17,6 @@ Any Agent (human or AI) modifying this repository MUST read, in order, before ma
    - `skills/README.md` for Skill Domain work
    - `procedures/README.md` for Procedure Domain work
    - `external-capabilities/README.md` for External Capability Domain work
-   - `computer-automation/README.md` for Computer Automation Domain work
    - `automations/README.md` for Automation Domain work
    - `dependencies/capability-map.yaml` for dependency work
 10. The Domain Policy files of the touched area
@@ -45,14 +44,13 @@ Domain-specific policy lives in the Domain directories.
 | Add / change an External Capability (plugin / MCP / connector / CLI / API / integration) | `external-capabilities/` |
 | Add / change an Automation (scheduled or event-driven job) | `automations/` |
 | Record a Skill ↔ External Capability dependency | `dependencies/capability-map.yaml` |
-| Register / verify a UI surface (browser use / computer use) | `computer-automation/` |
 | Change store-wide policy | top-level policy files |
 
-There are **four module Domains** and **one composition layer**.
+There are **three module Domains** and **one composition layer**.
 
 | Layer | Directories | Holds |
 |---|---|---|
-| Module | `skills/` `procedures/` `external-capabilities/` `computer-automation/` | independent, reusable units — everything an orchestration may reference |
+| Module | `skills/` `procedures/` `external-capabilities/` | independent, reusable units — everything an orchestration may reference |
 | Composition | `orchestrations/` | order + trigger + output; holds no implementation of its own |
 
 A module Domain is a unit of *identity*: it has its own registry, lifecycle, version and
@@ -69,7 +67,6 @@ What separates them is the question each one answers:
 |---|---|
 | `skills/` | **how** to do one thing — executed by a model, so it needs judgment |
 | `procedures/` | **how** to do one thing — executed by a machine, so it is deterministic |
-| `computer-automation/` | **what a third party's interface lets us do**, and when we last verified it |
 | `external-capabilities/` | **what** can be called |
 | `automations/` | **when** something runs (a clock) |
 | `orchestrations/` | **in what order** several of the above run, for one task |
@@ -86,7 +83,6 @@ automation is triggered by a clock.
 | Skill identity / path / lifecycle / version | `skills/registry.yaml` |
 | Procedure identity / path / lifecycle / version / entrypoint / runtime | `procedures/registry.yaml` |
 | External capability identity / provider / type / availability / auth / permissions / version / implementation | `external-capabilities/registry.yaml` |
-| UI surface identity / facet / drive routes / verified date / driven_by | `computer-automation/registry.yaml` |
 | Skill ↔ External Capability dependencies | `dependencies/capability-map.yaml` |
 | Automation identity / path / lifecycle / trigger / workflow / output | `automations/registry.yaml` |
 | Asset commerce (charge / model / carrier / value) | the asset's own record in its Domain registry — no separate registry |

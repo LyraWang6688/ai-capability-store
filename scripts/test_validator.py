@@ -35,8 +35,8 @@ SKILL_REGISTRY = os.path.join("skills", "registry.yaml")
 AUTOMATION_REGISTRY = os.path.join("automations", "registry.yaml")
 CAPABILITY_REGISTRY = os.path.join("external-capabilities", "registry.yaml")
 ORCHESTRATION_REGISTRY = os.path.join("orchestrations", "registry.yaml")
+CLOCKS_REGISTRY = os.path.join("orchestrations", "clocks.yaml")
 PROCEDURES_REGISTRY = os.path.join("procedures", "registry.yaml")
-COMPUTER_AUTOMATION_REGISTRY = os.path.join("computer-automation", "registry.yaml")
 
 VERBOSE = "-v" in sys.argv or "--verbose" in sys.argv
 
@@ -285,6 +285,12 @@ MUTATIONS = {
     "orc-project-missing-trigger": _in_record(
         "wechat-article", "    trigger: human\n", ""),
     "orc-missing-flow": lambda t: t,  # 由文件删除模拟，见 CASES 注释
+    # 排期只该在 timer 的 OnCalendar 里。钟的登记表塞回 schedule 就等于两份真相，
+    # 这条规则防的是它悄悄回来。
+    "clock-with-schedule": lambda t: t.replace(
+        "    timer: scripts/server-timers/systemd/repo-baseline-audit.timer",
+        '    schedule: "Mon 09:00"\n'
+        "    timer: scripts/server-timers/systemd/repo-baseline-audit.timer", 1),
     "orc-clock-unknown": _in_record(
         "quote-sync", "clock: investdesk-quote-sync", "clock: nope"),
     "orc-project-bad-name": _in_record(
@@ -299,18 +305,7 @@ MUTATIONS = {
     # 新域还没有记录，能坏的就是注册表头本身：枚举被悄悄改窄，等于把
     # "我们支持哪些运行时 / 哪种作用域"这条事实改了而不自知。
     "procedures-runtime-dropped": lambda t: t.replace("  - binary\n", "", 1),
-    "computer-automation-facet-dropped": lambda t: t.replace("  - computer\n", "", 1),
-    "computer-automation-domain-wrong": lambda t: t.replace(
-        "domain: computer_automation", "domain: computer-automation", 1),
     # ---- 界面记录：本域最容易自相矛盾的地方就是"验证状态 vs 验证日期" ----
-    "surface-verified-without-date": _in_record(
-        "deepseek-billing", '    verified: "2026-10-23"\n', ""),
-    "surface-unverified-with-date": _in_record(
-        "deepseek-billing", "    verification: verified", "    verification: unverified"),
-    "surface-bad-drive-route": _in_record(
-        "deepseek-billing", "drive: [playwright]", "drive: [puppeteer]"),
-    "surface-entrypoint-without-runtime": _in_record(
-        "deepseek-billing", "    runtime: node\n", ""),
     "surface-new-date-passes": _in_record(
         "deepseek-billing", 'verified: "2026-10-23"', 'verified: "2026-10-25"'),
     # ---- procedure 记录：能跑必须是记录里的事实，不是读代码才知道的事 ----
@@ -414,6 +409,8 @@ CASES = [
     # 所以每个正例都必须真能放行 —— 否则下一步迁移无从下手。
     ("orchestration in project shape without trigger is rejected", 1,
      ORCHESTRATION_REGISTRY, "orc-project-missing-trigger"),
+    ("clock must not repeat the timer's schedule", 1,
+     CLOCKS_REGISTRY, "clock-with-schedule"),
     ("orchestration clock must exist in clocks.yaml", 1,
      ORCHESTRATION_REGISTRY, "orc-clock-unknown"),
     ("orchestration project name must be kebab-case", 1,
@@ -434,24 +431,6 @@ CASES = [
     # 一次编辑悄悄变少，而没有任何记录会因此失败。
     ("procedures registry rejects a narrowed runtime list", 1,
      PROCEDURES_REGISTRY, "procedures-runtime-dropped"),
-    ("computer automation registry rejects a narrowed facet list", 1,
-     COMPUTER_AUTOMATION_REGISTRY, "computer-automation-facet-dropped"),
-    ("computer automation registry domain must be snake_case", 1,
-     COMPUTER_AUTOMATION_REGISTRY, "computer-automation-domain-wrong"),
-    # 界面记录：verification 和 verified 是一对，说 verified 却没日期 = 自我声明的勾；
-    # 说 unverified 却带日期 = 两个答案，下一个读的人不知道该信哪个。
-    ("surface marked verified without a date is rejected", 1,
-     COMPUTER_AUTOMATION_REGISTRY, "surface-verified-without-date"),
-    ("surface not verified must not carry a date", 1,
-     COMPUTER_AUTOMATION_REGISTRY, "surface-unverified-with-date"),
-    ("surface with an unknown drive route is rejected", 1,
-     COMPUTER_AUTOMATION_REGISTRY, "surface-bad-drive-route"),
-    ("surface entrypoint without a runtime is rejected", 1,
-     COMPUTER_AUTOMATION_REGISTRY, "surface-entrypoint-without-runtime"),
-    # 正例：换个日期仍然合法 —— 复核是这个域的正常动作，不是例外。
-    ("surface re-verified with a new date passes", 0,
-     COMPUTER_AUTOMATION_REGISTRY, "surface-new-date-passes"),
-    # procedure：entrypoint 与 runtime 是"能跑"的两个必要条件，缺一个就红。
     ("procedure without runtime is rejected", 1,
      PROCEDURES_REGISTRY, "procedure-runtime-missing"),
     ("procedure whose entrypoint does not exist is rejected", 1,
