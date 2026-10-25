@@ -59,11 +59,7 @@ sources:
     url: "https://code.claude.com/docs/en/mcp"
     kind: html
     verified: "2026-10-25"
-  claude-directory:
-    url: "https://claude.ai/directory"
-    kind: html
-    verified: null
-    note: 市场页；用于数第三方插件（生态是否活着）
+  # claude-directory: 已移除 —— claude.ai 挂在 Cloudflare 后，返回「Just a moment...」验证页，拿不到任何内容。目录信息改用 docs 的 publish / marketplace-hosting 两页
   agentskills-spec:
     url: "https://agentskills.io/specification"
     kind: html
@@ -88,18 +84,7 @@ sources:
     url: "https://api.github.com/repos/deepseek-ai/deepseek-harness/releases?per_page=10"
     kind: json
     verified: null
-  dsh-desktop-feed:
-    url: "https://download.deepseek.com/dsh-desk/feeds/mac-arm64/nightly-mac.yml"
-    kind: yaml
-    verified: null
-    note: 桌面版版本与发布日期
-
-# ── 抓取矩阵 ────────────────────────────────────────────────────────────
-  # ── 大模型层：四家官方更新日志 ──────────────────────────────────────
-  # 这一层回答"出了什么新模型、新模型多了什么能力"，与产品层的问题不同：
-  # 产品层问"这个工具能不能装我们的东西"，模型层问"它能干什么、多花多少钱"。
-  # DeepSeek 文档站是 Docusaurus 前端路由：任何路径都返回 200，「/news」在浏览器里
-  # 其实是 Page Not Found。所以不能靠状态码判断，只能靠 sitemap 列真实路径。
+  # dsh-desktop-feed: 已移除 —— download.deepseek.com/dsh-desk/feeds 路径已失效（COS NoSuchKey 404，5 个变体全 404）。版本信息由 dsh-releases 与 dsh-npm 覆盖
   deepseek-news:
     url: "https://api-docs.deepseek.com/sitemap.xml"
     kind: xml-sitemap
@@ -146,8 +131,10 @@ sources:
     verified: null
     layer: infrastructure
   chrome-platform-status:
-    url: "https://chromestatus.com/features"
-    kind: html
+    # 用它的 API 而不是 /features 页面：那页是 SPA，浏览器打开也读不到正文（thin）。
+    # API 直接返回 JSON，且带 total_count，能算「本周新增了多少 feature」。
+    url: "https://chromestatus.com/api/v0/features?num=20"
+    kind: json
     verified: null
     layer: infrastructure
     note: 按 feature 看"哪个版本开始能用了"，比 release notes 更早
@@ -280,16 +267,16 @@ platforms:
         extract: SKILL.md 必填字段 + 客户端发现规则
     ecosystem:
       - point: 个人能不能上传、走哪条路
-        from: [claude-plugins-publish, claude-directory]
+        from: [claude-plugins-publish, claude-marketplace-hosting]
         extract: 官方目录 vs 社区目录的准入差别
       - point: 生态有多活（第三方插件数量）
-        from: [claude-directory]
+        from: [claude-marketplace-hosting]
         extract: 目录里的插件条数
       - point: 平台收不收费、有没有结算
         from: [claude-plugins-publish]
         extract: 文档里有无价格/结算字段（目前结论：没有）
       - point: 平台上有没有付费条目、怎么定价（一次性 / 订阅 / 内购）
-        from: [claude-directory]
+        from: [claude-marketplace-hosting]
       - point: 平台的分成比例 / 结算方式
         from: []
         blocked: 平台内部文档，不对外公布；等真要上架时向平台确认，暂不追踪
@@ -298,10 +285,10 @@ platforms:
   dsh:
     product:
       - point: 它有哪些产品形态（桌面端 / CLI / 插件页）
-        from: [dsh-plugin-market, dsh-desktop-feed]
+        from: [dsh-plugin-market, dsh-releases]
         extract: 市场文档 + 桌面版 feed 的版本线
       - point: 发布节奏
-        from: [dsh-releases, dsh-desktop-feed]
+        from: [dsh-releases, dsh-npm]
         extract: release 间隔 + 桌面版 releaseDate
       - point: 插件体系在哪些产品上生效
         from: [dsh-plugin-market]
