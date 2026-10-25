@@ -4,11 +4,11 @@ name: automation-investdesk-quote-sync
 #
 # 为什么放在云端：本机 launchd 在关机/睡眠时不会执行。云端由 GitHub 托管，
 # 不依赖任何一台机器开机。执行器与认证方式的对应关系见
-# automations/registry.yaml 与 automations/investdesk-quote-sync/README.md。
+# procedures/registry.yaml 与 procedures/quote-sync/README.md。
 
 on:
   # 只有 workflow_dispatch：由自建服务器的 crontab 准点调用。
-  # 安装与运维见 automations/investdesk-quote-sync/deploy/SERVER-TRIGGER.md。
+  # 安装与运维见 procedures/quote-sync/deploy/SERVER-TRIGGER.md。
   #
   # 这里【故意不再有 schedule】。GitHub 的定时器在本仓库实测延迟 4-5 小时，
   # 而本任务必须赶在次日 09:00 消费方之前落地。改成服务器调 dispatch 之后，
@@ -57,4 +57,4 @@ jobs:
           node-version: '24'
 
       - name: 同步持仓价格
-        run: node automations/investdesk-quote-sync/sync.ts
+        run: node procedures/quote-sync/sync.ts

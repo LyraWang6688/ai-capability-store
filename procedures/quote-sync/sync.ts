@@ -10,7 +10,7 @@
  *   1  成功率低于阈值，或配置缺失（如 WIND_API_KEY）
  */
 
-import { backendName } from './src/feishu/base.ts';
+import { backendName } from '../../procedures/portfolio-holdings/src/holdings.ts';
 import { syncPortfolioPrices } from './src/portfolio.ts';
 import { buildSyncNotifyText, sendNotifyMessage } from './src/notify.ts';
 

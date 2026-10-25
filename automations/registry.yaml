@@ -247,52 +247,6 @@ automations:
       凭据边界：FEISHU_APP_ID 可公开；FEISHU_APP_SECRET 与 DEEPSEEK_API_KEY 只放 GitHub Secrets；
       Base token/表 id 放 FRONTIER_CONFIG_JSON secret（非密钥但标识操作者的 Base）。
 
-  investdesk-quote-sync:
-    name: investdesk-quote-sync
-    path: automations/investdesk-quote-sync
-    entrypoint: sync.ts
-    status: testing
-    version: 0.1.0
-    updated: "2026-10-17"
-    trigger_kind: daily
-    executor: github-actions
-    workflow: .github/workflows/automation-investdesk-quote-sync.yml
-    # 谁敲钟。GitHub 的 schedule 在本仓库实测延迟 4-5 小时，对「必须赶在次日
-    # 09:00 消费前落地」的任务太晚；改由自建服务器的 crontab 准点调
-    # workflow_dispatch，workflow 自身的 cron 已移除。
-    external_trigger: scripts/server-timers/systemd/investdesk-quote-sync.timer
-    output:
-      target: external-system
-      destination: "飞书多维表格：持仓价格表"
-    description: >
-      每个交易日一次（北京 20:00），把全部持仓的最新价格写回飞书多维表格。
-      自包含实现：取价（Wind）、飞书读写、汇总逻辑都在 automations/investdesk-quote-sync/src/ 下，
-      不再依赖 external-capabilities 里的能力包（原先共用的 MCP 形态已不再需要）。
-      20:00 时 A 股收盘价已定、场外基金净值开始公布；QDII 与部分基金净值
-      可能更晚，那部分会滞后一天，属正常。市值与日盈亏由表格公式自动重算。
-    commerce: {charge: free}
-    notes: >
-      代码在 Store 检出目录，状态（.cache 等）在工作目录 INVESTDESK_HOME，
-      默认 ~/.investdesk。执行器是 github-actions：认证走飞书自建应用的
-      tenant_access_token（FEISHU_APP_ID / FEISHU_APP_SECRET），不再依赖
-      操作者本机 keychain，因此云端可跑、不要求任何一台机器开机。
-
-      2026-10-18 从 launchd 迁移过来。迁移前 launchd 是本机唯一执行器，
-      关机即断；迁移后云端为主。过渡期内本机仍可保留一份 launchd 作备份：
-      用 automations/investdesk-quote-sync/deploy/install.sh 安装，两端写入幂等，
-      互不冲突。云端稳定运行两周后可卸载本机那份，并把 deploy/ 目录标为历史。
-
-      入口 sync.ts 是薄壳，真正的取价与写库逻辑在
-      automations/investdesk-quote-sync/src/（自包含，不再引用外部能力包；原 MCP 的 sync_prices 工具已随能力包移除），共用同一个
-      函数，避免定时任务和插件各维护一套实现而随时间漂移。
-
-      抓不到价格的标的不写 0，保持原值并单独上报。这条规则来自一次真实事故：早期版本
-      把价格放在文本字段里，公式乘出来恒为 0，表格上显示成「负成本」——看着像亏损，
-      其实是缺数据。
-
-      output.target 为 external-system：目标不在本仓库控制范围内，校验器只能记录
-      这个声明，无法验证外部写入。通过校验不等于写入成功。
-
   ops-audit:
     name: ops-audit
     path: automations/ops-audit

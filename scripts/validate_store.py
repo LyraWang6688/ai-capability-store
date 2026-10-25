@@ -2060,6 +2060,48 @@ def validate_server_timers() -> None:
                       f"{workflow} 不存在于 .github/workflows/ —— 这个定时器到点会 404")
 
 
+def validate_clocks() -> set:
+    """钟：所有定时器集中在一个文件里，任务只引用它的 id。
+
+    为什么集中：一个钟可能被一条编排引用，也可能改时间、换 workflow、停掉 ——
+    这三件事只该在一个地方改。任务目录里放指向本文件的软链，看得见但不复制。
+
+    这里查的正是"三处必须对齐"：clock 的 timer 文件、workflow 文件，以及引用它的
+    任务。名字约定不算对齐 —— 校验器不认约定，只认文件存在。
+    """
+    rel = f"{ORCHESTRATION_DIR}/clocks.yaml"
+    data, ok = load_yaml(rel)
+    if not ok or not isinstance(data, dict):
+        return set()
+    clocks = data.get("clocks") or {}
+    check("clocks is a mapping", isinstance(clocks, dict), type(clocks).__name__)
+    if not isinstance(clocks, dict):
+        return set()
+    ids = set()
+    for clock_id, spec in clocks.items():
+        if not isinstance(spec, dict):
+            check(f"clock {clock_id} is a mapping", False, type(spec).__name__)
+            continue
+        ids.add(clock_id)
+        check(f"clock {clock_id} kebab-case", bool(KEBAB_RE.match(clock_id)), clock_id)
+        for field in ("schedule", "timer"):
+            check(f"clock {clock_id} declares {field}",
+                  isinstance(spec.get(field), str) and bool(spec.get(field)),
+                  f"{field}={spec.get(field)!r}")
+        timer = spec.get("timer")
+        if isinstance(timer, str) and timer:
+            check(f"clock {clock_id} timer exists",
+                  os.path.isfile(os.path.join(ROOT, timer)), timer)
+        workflow = spec.get("workflow")
+        if workflow is None:
+            check(f"clock {clock_id} states why it has no workflow", bool(spec.get("note")),
+                  "workflow 为 null 时必须用 note 说明由谁执行")
+        elif isinstance(workflow, str) and workflow:
+            check(f"clock {clock_id} workflow exists",
+                  os.path.isfile(os.path.join(ROOT, workflow)), workflow)
+    return ids
+
+
 def validate_orchestrations(orc_reg: dict) -> None:
     """编排域：一次任务按什么顺序、用哪些已登记的资产。
 
@@ -2086,6 +2128,8 @@ def validate_orchestrations(orc_reg: dict) -> None:
     known = set()
     capabilities = {}
     for rel, section in (("skills/registry.yaml", "skills"),
+                         ("procedures/registry.yaml", "procedures"),
+                         ("computer-automation/registry.yaml", "surfaces"),
                          ("external-capabilities/registry.yaml", "capabilities"),
                          # 编排可以引用一个 automation：它的第一步就是"敲钟+执行"，
                          # 而那件事整个装在 automation 里。
@@ -2113,6 +2157,7 @@ def validate_orchestrations(orc_reg: dict) -> None:
     if not isinstance(entries, dict):
         return
 
+    clock_ids = validate_clocks()
     declared = set()
     for name, entry in entries.items():
         check(f"orchestration {name} kebab-case", bool(KEBAB_RE.match(name)), name)
@@ -2163,6 +2208,34 @@ def validate_orchestrations(orc_reg: dict) -> None:
             check(f"orchestration {name} trigger legal",
                   trigger in ALLOWED_ORCHESTRATION_TRIGGERS,
                   f"trigger={trigger!r} (expected one of {sorted(ALLOWED_ORCHESTRATION_TRIGGERS)})")
+
+        # 每个任务必须有流程图：一条编排存在的意义就是"顺序"，而顺序最难口述清楚。
+        # 没有图的任务，下一个人要读完全部 steps 才能在脑子里画出它。
+        if isinstance(path, str) and project_shape:
+            flow = os.path.join(ROOT, path, "flow.md")
+            check(f"orchestration {name} has a flow diagram", os.path.isfile(flow),
+                  f"{path}/flow.md 缺失 —— 每条编排必须有一张流程图（mermaid）")
+            if os.path.isfile(flow):
+                body = open(flow, encoding="utf-8").read()
+                check(f"orchestration {name} flow diagram is mermaid",
+                      "```mermaid" in body, "flow.md 里没有 ```mermaid 代码块")
+
+        # 由我们的钟驱动的任务，必须写清用哪个钟、且目录里有指向钟表的软链；
+        # 人发起的任务没有钟，不该被要求指一个。
+        clocked = entry.get("executor") in {"github-actions", "systemd", "launchd"}
+        if clocked:
+            link = os.path.join(ROOT, path, "clock")
+            check(f"orchestration {name} links the shared clocks file",
+                  os.path.islink(link), f"{path}/clock 应当是指向 clocks.yaml 的软链")
+            if os.path.islink(link):
+                check(f"orchestration {name} clock link resolves",
+                      os.path.exists(link), f"{path}/clock 是断链")
+            clock_id = entry.get("clock")
+            check(f"orchestration {name} declares its clock", isinstance(clock_id, str) and bool(clock_id),
+                  f"executor={entry.get('executor')!r} 的编排必须写 clock: <clocks.yaml 里的 id>")
+            if isinstance(clock_id, str) and clock_id:
+                check(f"orchestration {name} clock exists in clocks.yaml", clock_id in clock_ids,
+                      f"clock={clock_id!r} 不在 orchestrations/clocks.yaml 里")
 
         # executor / output：从 Automation Domain 继承的两格。记录迁进来之前它们是
         # 可选的（现有 5 条没有），一旦迁进来就是必填 —— 那是 schema_version 3 的事。

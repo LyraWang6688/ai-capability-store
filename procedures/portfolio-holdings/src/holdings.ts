@@ -17,8 +17,8 @@ import {
   HOLDINGS_TABLE,
   PLATFORMS_TABLE,
   assertFeishuConfigured,
-} from '../config.ts';
-import type { AssetType, PricingRoute, QuoteTarget } from '../quotes/types.ts';
+} from '../../quote-sync/src/config.ts';
+import type { AssetType, PricingRoute, QuoteTarget } from '../../quote-sync/src/quotes/types.ts';
 import type { RawRecord } from './backend.ts';
 import { OpenApiBackend } from './openapi.ts';
 
