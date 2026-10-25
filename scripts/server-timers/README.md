@@ -18,8 +18,12 @@ scripts/server-timers/
 │   ├── github-trending-weekly.service / .timer
 │   ├── investdesk-quote-sync.service / .timer
 │   ├── repo-baseline-audit.service / .timer
-│   └── repo-discoverability.service / .timer
+│   ├── repo-discoverability.service / .timer
+│   └── feishu-digest.service / .timer
 └── deliver/                ← 投递脚本（装到 /srv/dsh-jobs/scripts，dshjobs 身份）
+    ├── inbox-deliver           ← 投递契约的唯一实现（写「任务收件箱」）
+    ├── ops-audit-inbox.py / deepseek-invoice-inbox.py
+    └── feishu-digest.py        ← 每天总结飞书桥上的新对话（见下节）
 ```
 
 ## 规则（2026-10-24 定）
@@ -55,8 +59,49 @@ scripts/server-timers/
 | `investdesk-quote-sync` | 周一至周五 20:00 | 敲 Actions | root | 同上 |
 | `repo-baseline-audit` | 每周一 09:00 | 敲 Actions | root | 同上 |
 | `repo-discoverability` | 每周一 20:00 | 敲 Actions | root | 同上 |
+| `feishu-digest` | 每天 22:00 | 本机脚本（读桥会话库 + dsh headless）| dshjobs | **直接投递**收件箱（无内容则静默）|
 
 > 「未接收件箱」的 8 个任务，下一步按同样模式加 `xxx-inbox.service/.timer` 即可。
+
+## `feishu-digest`：把「我和 AI 的对话」每天总结进收件箱
+
+**为什么在服务器上跑**：定时器如果在桌面机上，关机就白搭。放在服务器上，
+桌面端只是消费端 —— 没开机只意味着「今天面板不弹」，未读记录会一直等着。
+
+```text
+桥会话库（~/.dsh/sessions/--srv-dsh-jobs-work--/session-*/session.v4.jsonl.zstd）
+  │  增量提取：水位 = 每个 session 已处理到哪个事件的 seq
+  ▼
+dsh headless（服务器本机，模型 Key 来自 /srv/dsh-jobs/env/app.env）
+  │  摘要 ≤300 字（收件箱「结果摘要」字段上限）
+  ▼
+inbox-deliver → 飞书「任务收件箱」（结果=成功 / 状态=未读）
+  ▼
+DSH 打开 → 📥 面板自动弹出未读 → 点开标已读
+```
+
+行为约定：
+
+| 情况 | 行为 |
+|---|---|
+| 没有新对话 | 不写表、不发消息，退出码 0（不打扰）|
+| 有新对话 | 写一条 `结果=成功`，摘要为当日总结 |
+| 总结失败 | 写一条 `结果=失败`，**不推进水位**（第二天重试，宁可重复不丢）|
+| 投递失败 | 非零退出（systemd 记为失败，`journalctl -u feishu-digest` 可查），不推进水位 |
+
+手动验证 / 调试（`--dry-run` 不写表、不动水位）：
+
+```bash
+sudo -u dshjobs env HOME=/srv/dsh-jobs \
+  /srv/dsh-jobs/scripts/feishu-digest.py --dry-run --all      # 全部历史对话
+sudo -u dshjobs env HOME=/srv/dsh-jobs \
+  /srv/dsh-jobs/scripts/feishu-digest.py --dry-run            # 只按水位增量
+```
+
+水位文件：`/srv/dsh-jobs/state/feishu-digest.json`；日志：`/srv/dsh-jobs/logs/feishu-digest.log`。
+
+> 摘要源为什么不是桥的审计日志：审计只记用户指令全文，AI 的回答只记字数。
+> 完整对话只在 DSH 会话库里，所以这里解压 `session.v4.jsonl.zstd` 读事件流。
 
 ## 新增一个任务的步骤
 

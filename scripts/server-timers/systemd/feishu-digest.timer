@@ -1,0 +1,13 @@
+[Unit]
+Description=Daily Feishu conversation digest at 22:00
+
+[Timer]
+# 服务器时区是 Asia/Shanghai。每天 22:00 总结「今天我和 AI 在飞书上的新对话」，
+# 写入飞书「任务收件箱」，DSH 打开时 📥 面板显示未读。
+OnCalendar=*-*-* 22:00:00
+Persistent=true
+RandomizedDelaySec=120
+Unit=feishu-digest.service
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,17 @@
+[Unit]
+Description=Summarize the last day of Feishu bridge conversations into the task inbox
+Documentation=file:///srv/dsh-jobs/scripts/feishu-digest.py
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=dshjobs
+Environment=HOME=/srv/dsh-jobs
+Environment=PATH=/srv/dsh-jobs/node/bin:/srv/dsh-jobs/.local/bin:/usr/local/bin:/usr/bin:/bin
+EnvironmentFile=-/srv/dsh-jobs/env/app.env
+ExecStart=/srv/dsh-jobs/scripts/feishu-digest.py
+# 总结一次要启一个 dsh headless（冷启动约 10–20s），给足超时；
+# 脚本内部还对 dsh 单次调用设了 300s 硬超时。
+TimeoutStartSec=600
+Nice=10
