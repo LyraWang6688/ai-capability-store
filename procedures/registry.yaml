@@ -76,3 +76,18 @@ procedures:
       （取数做分析）。按 procedures/README.md 的入域方式①（被复用的实现）够格。
       依赖仍是 automation 的 config（读同样的环境变量）——先把位置放对，参数化留到
       真有第二个部署环境时再做，不为将来的形状提前抽象。
+  quote-sync:
+    name: quote-sync
+    path: procedures/quote-sync
+    status: testing
+    version: 0.3.0
+    updated: "2026-10-25"
+    entrypoint: sync.ts
+    runtime: node
+    commerce: {charge: free}
+    notes: >
+      每交易日把持仓最新价格写回飞书多维表格：Wind 取价 → 写回 → 飞书通知。
+      整块从 automations/investdesk-quote-sync 迁入 —— 它本来就是确定性脚本，
+      叫 automation 只是因为它有一个钟；钟归编排层（orchestrations/investdesk/），
+      这里只管"怎么做"。取数依赖 procedures/portfolio-holdings。
+      deploy/ 暂留本目录：部署物属于执行方式，等编排条目建好后一并迁走。

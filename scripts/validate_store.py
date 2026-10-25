@@ -2086,6 +2086,8 @@ def validate_orchestrations(orc_reg: dict) -> None:
     known = set()
     capabilities = {}
     for rel, section in (("skills/registry.yaml", "skills"),
+                         ("procedures/registry.yaml", "procedures"),
+                         ("computer-automation/registry.yaml", "surfaces"),
                          ("external-capabilities/registry.yaml", "capabilities"),
                          # 编排可以引用一个 automation：它的第一步就是"敲钟+执行"，
                          # 而那件事整个装在 automation 里。

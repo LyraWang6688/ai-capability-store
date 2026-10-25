@@ -7,7 +7,7 @@
  * 原则：抓不到就保持原值，绝不写 0。写入后「最新市值」公式自动重算。
  */
 
-import { listHoldingTargets, updateLatestPrices } from '../../../procedures/portfolio-holdings/src/holdings.ts';
+import { listHoldingTargets, updateLatestPrices } from '../../portfolio-holdings/src/holdings.ts';
 import { fetchQuotes } from './quotes/index.ts';
 import type { Failure } from './quotes/types.ts';
 
