@@ -188,3 +188,30 @@ orchestrations:
             - POST /api/review/today
             - POST /api/review/submit
         produces: 今日题目、判分与状态更新（写回用户的多维表格）
+  quote-sync:
+    name: quote-sync
+    path: orchestrations/investdesk/quote-sync
+    status: testing
+    version: 0.3.0
+    updated: "2026-10-25"
+    trigger: daily
+    executor: github-actions
+    # 钟就在这两处，且都必须在仓库里：timer 决定"什么时候"，
+    # workflow 决定"跑什么"。registry 记录指向它们，不是复制它们的内容。
+    external_trigger: scripts/server-timers/systemd/investdesk-quote-sync.timer
+    workflow: .github/workflows/automation-investdesk-quote-sync.yml
+    goal: 每交易日 20:00 把持仓最新价格写回飞书多维表格
+    steps:
+      - id: sync
+        link: 1-sync
+        use: procedures/quote-sync
+        produces: 飞书「最新持仓」表的价格字段已更新（抓不到的保持原值并单独上报）
+    output:
+      target: external-system
+      destination: "飞书多维表格：持仓价格表"
+    notes: >
+      install.sh / plist / 服务器触发脚本住在 deploy/：它们描述"怎么把这个钟装上"，
+      属于执行方式而不是实现，所以跟编排走、不跟 procedure 走。
+      workflow 里【故意没有 schedule】—— GitHub 的定时器在本仓库实测延迟 4-5 小时，
+      而这条链必须赶在次日 09:00 消费前落地；所以由自建服务器的 systemd timer 准点
+      dispatch，代价是没有兜底。
