@@ -1,0 +1,41 @@
+{
+  "name": "@lyra_wang/dsh-terminal-context",
+  "version": "0.3.0",
+  "type": "module",
+  "description": "把侧边栏终端最近若干行交给 Agent，作为它判断当前处境的上下文。",
+  "exports": {
+    ".": "./index.js",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg",
+    "./client": "./client.js"
+  },
+  "files": [
+    "index.js",
+    "client.js",
+    "cordis.patch.yml",
+    "locale/*.json",
+    "icon.svg"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": []
+    }
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/LyraWang6688/ai-capability-store.git",
+    "directory": "external-capabilities/plugin/dsh/terminal-context"
+  },
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "terminal",
+    "context"
+  ]
+}

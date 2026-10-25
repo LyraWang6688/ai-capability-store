@@ -1,0 +1,1 @@
+{ "meta": { "title": "DSH Terminal Context", "description": "Feeds the DSH sidebar terminal's recent output to the agent so its next step matches what is actually on screen." } }

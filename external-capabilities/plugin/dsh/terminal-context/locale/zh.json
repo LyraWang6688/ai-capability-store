@@ -1,0 +1,1 @@
+{ "meta": { "title": "DSH 终端上下文", "description": "把 DSH 侧边栏终端最近若干行交给 Agent，让它给的下一步依据你当前的真实处境。" } }
