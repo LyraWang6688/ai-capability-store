@@ -68,6 +68,20 @@ class TestFinishedTime(unittest.TestCase):
         self.assertIsNone(c.finished_time_of({}))
 
 
+class TestTopCategory(unittest.TestCase):
+    def test_splits_on_dash(self):
+        self.assertEqual(c.top_category("个人成长-沟通表达"), "个人成长")
+        self.assertEqual(c.top_category("经济理财-财经"), "经济理财")
+        self.assertEqual(c.top_category("漫画-治愈漫画"), "漫画")
+
+    def test_no_dash(self):
+        self.assertEqual(c.top_category("文学"), "文学")
+
+    def test_empty(self):
+        self.assertIsNone(c.top_category(None))
+        self.assertIsNone(c.top_category(""))
+
+
 class TestDates(unittest.TestCase):
     def test_round_trip(self):
         for iso in ("2020-12-10", "2024-08-11", "2026-10-23"):
@@ -84,7 +98,7 @@ class TestRecords(unittest.TestCase):
     def test_finished_record(self):
         rec = c.build_finished_record(self.INFO, c.ms_of_date("2024-08-11") // 1000)
         self.assertEqual(rec["微信读书ID"], "123")
-        self.assertEqual(rec["分类"], ["文学-散文杂著"])
+        self.assertEqual(rec["分类"], ["文学"])          # 只保留一级
         self.assertEqual(len(rec["简介"]), 1500)          # 截断
         self.assertIsInstance(rec["读完时间"], int)       # 毫秒时间戳
 

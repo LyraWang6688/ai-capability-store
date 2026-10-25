@@ -24,6 +24,7 @@ python3 collect.py --mode all --dry-run  # 只统计候选，不写库
 | 读完 | `progress >= 98`（**不要求** `finishTime`） |
 | 读完时间 | 优先 `finishTime`；缺失时退回 `readUpdateTime`（最近阅读） |
 | 阅读链接 | 取 `/book/info` 的 `readerLink`（微信读书里直达该书的链接） |
+| 分类 | **只取一级**：`个人成长-沟通表达` → `个人成长`（二级会让选项膨胀到 50+） |
 | 在读 | 未读完，且 `readUpdateTime` 落在最近 N 天（**默认 60**，`--days` 可调） |
 | 去重键 | 微信读书ID（bookId） |
 
