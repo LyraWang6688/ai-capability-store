@@ -95,6 +95,111 @@ sources:
     note: 桌面版版本与发布日期
 
 # ── 抓取矩阵 ────────────────────────────────────────────────────────────
+  # ── 大模型层：四家官方更新日志 ──────────────────────────────────────
+  # 这一层回答"出了什么新模型、新模型多了什么能力"，与产品层的问题不同：
+  # 产品层问"这个工具能不能装我们的东西"，模型层问"它能干什么、多花多少钱"。
+  deepseek-news:
+    url: "https://api-docs.deepseek.com/news"
+    kind: html
+    verified: null
+    layer: model
+  deepseek-github:
+    url: "https://api.github.com/repos/deepseek-ai/DeepSeek-V3/releases?per_page=10"
+    kind: json
+    verified: null
+    layer: model
+  gemini-changelog:
+    url: "https://ai.google.dev/gemini-api/docs/changelog"
+    kind: html
+    verified: null
+    layer: model
+  gemini-blog:
+    url: "https://blog.google/technology/ai/"
+    kind: html
+    verified: null
+    layer: model
+  openai-changelog:
+    url: "https://platform.openai.com/docs/changelog"
+    kind: html
+    verified: null
+    layer: model
+  claude-api-releases:
+    url: "https://docs.anthropic.com/en/release-notes/api"
+    kind: html
+    verified: null
+    layer: model
+  claude-news:
+    url: "https://www.anthropic.com/news"
+    kind: html
+    verified: null
+    layer: model
+
+  # ── 基础设施层：四个平台 ────────────────────────────────────────────
+  # 这一层回答"系统/浏览器给我们开了什么 AI 接口"。它比产品层变得快：
+  # Chrome 六周一个版本，macOS/iOS 点版本也在加接口，不是一年一变。
+  chrome-release-notes:
+    url: "https://developer.chrome.com/release-notes"
+    kind: html
+    verified: null
+    layer: infrastructure
+  chrome-platform-status:
+    url: "https://chromestatus.com/features"
+    kind: html
+    verified: null
+    layer: infrastructure
+    note: 按 feature 看"哪个版本开始能用了"，比 release notes 更早
+  chrome-built-in-ai:
+    url: "https://developer.chrome.com/docs/ai/built-in"
+    kind: html
+    verified: "2026-10-25"
+    layer: infrastructure
+    note: 实测 Chrome 内置 AI 可用（LanguageModel.availability() → "available"，prompt 约 2-3 秒，支持 responseConstraint 结构化输出）。注意：2026 年 API 已从 window.ai 改名为全局 LanguageModel
+  macos-whats-new:
+    url: "https://developer.apple.com/macos/whats-new/"
+    kind: html
+    verified: null
+    layer: infrastructure
+  macos-release-notes:
+    url: "https://developer.apple.com/documentation/macos-release-notes"
+    kind: html
+    verified: null
+    layer: infrastructure
+  ios-whats-new:
+    url: "https://developer.apple.com/ios/whats-new/"
+    kind: html
+    verified: "2026-10-25"
+    layer: infrastructure
+  ios-release-notes:
+    url: "https://developer.apple.com/documentation/ios-ipados-release-notes"
+    kind: html
+    verified: null
+    layer: infrastructure
+  android-versions:
+    url: "https://developer.android.com/about/versions"
+    kind: html
+    verified: null
+    layer: infrastructure
+  android-gemini-nano:
+    url: "https://developer.android.com/ai/gemini-nano"
+    kind: html
+    verified: null
+    layer: infrastructure
+
+  # ── 豆包：没有官方更新日志，只有模型文档 + 媒体 ────────────────────
+  doubao-model-changelog:
+    url: "https://docs.volcengine.com/docs/ark/latest-model"
+    kind: html
+    verified: null
+    layer: model
+    note: 豆包模型更新的官方登记处（火山方舟文档），可抓
+  doubao-work-news:
+    url: null
+    kind: html
+    verified: null
+    layer: product
+    fetchable: false
+    note: 豆包工作没有官方更新日志页；www.doubao.com 直接跳 /chat/ 的纯 JS 应用，HTML 里无内容；app 包里也没有 changelog（实测 v2.33.7）。只能靠公众号「豆包工作」+ 科技媒体报道（chinaz/ithome/21jingji）
+
 platforms:
   codex:
     product:
