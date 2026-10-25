@@ -11,7 +11,7 @@ export WEREAD_API_KEY=wrk-xxxxxxxx          # 微信读书 Agent API key
 export WEREAD_BASE_TOKEN=<飞书 Base token>   # 目标 Base（不入库，必须外部提供）
 python3 collect.py --mode all            # 两张表都同步
 python3 collect.py --mode finished       # 只同步「已读书籍」
-python3 collect.py --mode reading --days 30   # 只同步「在读书籍」（窗口 30 天）
+python3 collect.py --mode reading --days 60   # 只同步「在读书籍」（窗口默认 60 天）
 python3 collect.py --mode all --dry-run  # 只统计候选，不写库
 ```
 
@@ -22,7 +22,7 @@ python3 collect.py --mode all --dry-run  # 只统计候选，不写库
 | 分类 | 规则 |
 |---|---|
 | 读完 | `progress == 100` **且** `finishTime` 存在 |
-| 在读 | 未读完，且 `readUpdateTime` 落在最近 N 天 |
+| 在读 | 未读完，且 `readUpdateTime` 落在最近 N 天（**默认 60**，`--days` 可调） |
 | 去重键 | 微信读书ID（bookId） |
 
 三个真实反例，写测试时都覆盖了：

@@ -482,7 +482,8 @@ def collect(args) -> dict:
 def main() -> None:
     ap = argparse.ArgumentParser(description="微信读书 → 飞书多维表格确定性同步")
     ap.add_argument("--mode", choices=["finished", "reading", "all"], default="all")
-    ap.add_argument("--days", type=int, default=30, help="在读窗口天数（默认 30）")
+    # 窗口默认 60 天：30 天会把"上个月打开、还没读完"的书漏掉一大半（实测 39 → 82）
+    ap.add_argument("--days", type=int, default=60, help="在读窗口天数（默认 60）")
     ap.add_argument("--dry-run", action="store_true", help="只统计，不写库")
     ap.add_argument("--base-token", default=DEFAULT_BASE)
     ap.add_argument("--finished-table", default=DEFAULT_FINISHED_TABLE)
