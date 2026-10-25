@@ -144,3 +144,20 @@ procedures:
       公司列表写死；未上市公司无官方口径。
       顺带记录一个平台事实：get_company_announcements 的语料是 A 股公告库，
       港股（腾讯/阿里）与未上市公司查不到，只能走新闻通道。
+  investdesk-daily-context:
+    name: investdesk-daily-context
+    path: procedures/investdesk-daily-context
+    status: testing
+    version: 0.1.0
+    updated: "2026-10-26"
+    entrypoint: collect.py
+    runtime: python
+    commerce: {charge: free}
+    notes: >
+      持仓分析的当日上下文：大盘快照（6 个指数）+ 持仓相关新闻（按市值取前 N 只）。
+      直连万得 MCP over HTTP（先 initialize 再 tools/call，响应可能是 SSE），
+      照 procedures/quote-sync 的既有做法，因此不依赖本机安装的万得 skill。
+      只取数不判断：什么算"值得关注的新闻"由 investdesk-portfolio 这个 skill 决定。
+      口径：交易日取万得返回的「最新交易日」而不是系统日期；成交额单位是元，展示转亿；
+      新闻必须带标题+日期+来源链接，缺链接不进结果。
+      成本：1 次大盘 + N 次新闻（默认 15 → 16 次/跑）。
