@@ -21,13 +21,14 @@ python3 collect.py --mode all --dry-run  # 只统计候选，不写库
 
 | 分类 | 规则 |
 |---|---|
-| 读完 | `progress == 100` **且** `finishTime` 存在 |
+| 读完 | `progress >= 98` **且** `finishTime` 存在 |
 | 在读 | 未读完，且 `readUpdateTime` 落在最近 N 天（**默认 60**，`--days` 可调） |
 | 去重键 | 微信读书ID（bookId） |
 
 三个真实反例，写测试时都覆盖了：
 
-- 进度 100% 但无 `finishTime` → **不算读完**（接口判定：只有 100 且有 finishTime 才代表读完）
+- 进度 100% 但无 `finishTime` → **不算读完**（没有读完时间，无法排序）
+- 进度 98~99% 且有 `finishTime` → **算读完**（阈值 2026-10-26 从 100 放宽到 98）
 - 有 `finishTime` 但进度回退到 98% → **不算读完**
 - 最近打开过但进度 0% → **算在读**（这是真实行为，不是 bug）
 
