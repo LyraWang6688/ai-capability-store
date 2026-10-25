@@ -157,6 +157,10 @@ async function checkOne(client, url) {
     }
     if (!v.title) verdict = 'empty'
     else if (/page not found|404|not found|页面不存在/.test(blob)) verdict = 'notfound'
+    // Cloudflare 之类的验证页：标题像正常页面（"Just a moment..."），正文几百字
+    // 全在说"正在检查浏览器"。它长得像可用，但拿不到任何内容 —— 不单独判就会
+    // 一直被当成 OK。claude.ai/directory 就是这种。
+    else if (/just a moment|attention required|checking your browser|verify you are human|enable javascript and cookies/.test(blob)) verdict = 'challenge'
     else if ((v.textLen || 0) < MIN_TEXT) verdict = 'thin'
     return { url, verdict, ms: Date.now() - started, ...v }
   } catch (error) {
