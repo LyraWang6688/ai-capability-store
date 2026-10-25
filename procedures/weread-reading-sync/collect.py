@@ -79,11 +79,22 @@ def ms_of_date(iso: str) -> int:
     return int(dt.timestamp() * 1000)
 
 
+def top_category(raw: str | None) -> str | None:
+    """微信读书的分类是「一级-二级」（如 个人成长-沟通表达）。
+
+    表里只保留一级：用户要的是「个人成长 / 经济理财 / 漫画」这种粒度，
+    二级分类会让一张表出现 50+ 个选项，反而不好按主题聚合。
+    """
+    if not raw:
+        return None
+    return str(raw).split("-")[0].strip() or None
+
+
 def build_finished_record(info: dict, finish_ts: int) -> dict:
     return {
         "中文书名": info.get("title"),
         "作者": info.get("author"),
-        "分类": [info["category"]] if info.get("category") else None,
+        "分类": [top_category(info.get("category"))] if top_category(info.get("category")) else None,
         "简介": (info.get("intro") or "")[:1500],
         "微信读书ID": info["bookId"],
         "阅读链接": info.get("readerLink"),
@@ -95,7 +106,7 @@ def build_reading_record(info: dict, progress: dict) -> dict:
     return {
         "中文书名": info.get("title"),
         "作者": info.get("author"),
-        "分类": [info["category"]] if info.get("category") else None,
+        "分类": [top_category(info.get("category"))] if top_category(info.get("category")) else None,
         "阅读进度": progress.get("progress"),
         "最近阅读时间": progress.get("lastReadTime"),
         "微信读书ID": info["bookId"],
