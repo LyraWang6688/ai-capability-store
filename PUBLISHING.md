@@ -171,6 +171,14 @@ the deployment.
 
 Preconditions 1–5 are checked locally; 6 is checked after the fact:
 
+Precondition 1 has a second half that PR CI now enforces. Every tracked file in a
+package must be either inside the `files` whitelist (it ships) or named in
+`scripts/package-files/allow.yaml` (it deliberately does not ship). Without that,
+"we forgot to add it" and "we decided it is development-only" look identical —
+until a consumer installs a package that is silently missing part of itself.
+`python3 scripts/check_package_files.py` compares `npm pack --dry-run` against
+`git ls-files`; a new file that is neither shipped nor allowlisted fails the build.
+
 ```bash
 npm view <package> version
 # must equal external-capabilities/registry.yaml → capabilities.<package>.version
