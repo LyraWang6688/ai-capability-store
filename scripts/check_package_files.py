@@ -10,7 +10,9 @@ the answer depended on whoever remembered to edit `files`.
 
 This tool asks it. For every tracked `package.json` that declares `files`:
 
-1. `npm pack --dry-run --json` → the real tarball contents (no publish, no network);
+1. `npm pack --dry-run --json` over a script-free copy of the package's tracked
+   files → the tarball npm would produce (no publish, no network, no `prepare`
+   build — the gate must not depend on whether the package currently compiles);
 2. `git ls-files` → the files that exist in the repository for that package;
 3. every tracked file must be either packed, or named in
    `scripts/package-files/allow.yaml` as explicitly *not* shipped.
@@ -106,18 +108,51 @@ def packages(root: pathlib.Path, tracked: list[str]) -> list[tuple[pathlib.PureP
     return sorted(found, key=lambda item: str(item[0]))
 
 
-def packaged(root: pathlib.Path, rel_dir: pathlib.PurePosixPath, npm_cache: str) -> set[str]:
-    """The files npm would actually put in the tarball for this package dir."""
+def packaged(
+    root: pathlib.Path,
+    rel_dir: pathlib.PurePosixPath,
+    tracked: list[str],
+    npm_cache: str,
+) -> set[str]:
+    """The files npm would ship for this package dir — asked in a script-free copy.
+
+    `npm pack` runs `prepare` / `prepack`, and those can invoke a build (`tsc`)
+    against a tree whose dependencies are not installed: CI runs this gate before
+    `npm ci`, so packing the real directory fails for a reason that has nothing to
+    do with the question being asked (it failed exactly that way on the first CI
+    run). The copy below holds exactly the tracked files — which is what this gate
+    reasons about — with `scripts` removed, so npm applies its `files` rules
+    without executing anything.
+    """
+    prefix = f"{rel_dir}/" if str(rel_dir) not in ("", ".") else ""
+    files = [path[len(prefix):] for path in tracked if path.startswith(prefix)]
+
     env = dict(os.environ)
     env["npm_config_cache"] = npm_cache          # hermetic: never touch the user's cache
     env["npm_config_loglevel"] = "error"
     env["npm_config_update_notifier"] = "false"
-    proc = run(
-        ["npm", "pack", "--dry-run", "--json", "--ignore-scripts"],
-        cwd=root / rel_dir, env=env,
-    )
+
+    with tempfile.TemporaryDirectory(prefix="pkg-", dir=npm_cache) as tmp:
+        work = pathlib.Path(tmp)
+        for rel in files:
+            if rel in (".gitignore", ".npmignore"):
+                # npm reads these as ignore rules; a copy must not re-filter itself.
+                continue
+            source, target = root / prefix / rel, work / rel
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(source, target)
+        manifest = work / "package.json"
+        if manifest.exists():
+            meta = json.loads(manifest.read_text(encoding="utf-8"))
+            meta.pop("scripts", None)
+            manifest.write_text(json.dumps(meta, ensure_ascii=False), encoding="utf-8")
+        proc = run(
+            ["npm", "pack", "--dry-run", "--json", "--ignore-scripts"],
+            cwd=work, env=env,
+        )
+
     if proc.returncode != 0:
-        die(f"npm pack failed in {rel_dir}:\n{proc.stderr.strip()}")
+        die(f"npm pack failed for {rel_dir}:\n{proc.stderr.strip()}")
     try:
         data = json.loads(proc.stdout)
         return {entry["path"] for entry in data[0]["files"]}
@@ -202,7 +237,7 @@ def main() -> int:
     try:
         for rel_dir, meta in pkgs:
             name = str(meta.get("name") or rel_dir)
-            packed = packaged(root, rel_dir, npm_cache)
+            packed = packaged(root, rel_dir, tracked, npm_cache)
             files = tracked_in(rel_dir, tracked)
             allowed = list(BUILTIN_GLOBAL) + defaults + per_package.get(name, [])
             unpacked = files - packed

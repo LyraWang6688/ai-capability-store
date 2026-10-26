@@ -49,7 +49,14 @@ def make_repo(tmp):
     repo = os.path.join(tmp, "repo")
     os.makedirs(repo)
     subprocess.run(["git", "init", "-q"], cwd=repo, check=True)
-    write(os.path.join(repo, "pkg", "package.json"), '{"name":"fixture-pkg","version":"1.0.0","files":["index.js"]}\n')
+    # `prepare` fails on purpose: the gate must never execute lifecycle scripts.
+    # Packing the real directory would run it (and in CI it runs against a tree
+    # with no node_modules), which is why the checker copies tracked files first.
+    write(
+        os.path.join(repo, "pkg", "package.json"),
+        '{"name":"fixture-pkg","version":"1.0.0","files":["index.js"],'
+        '"scripts":{"prepare":"echo PREPARE-RAN >&2; exit 9"}}\n',
+    )
     write(os.path.join(repo, "pkg", "index.js"), "// shipped\n")
     write(os.path.join(repo, "pkg", "dev", "preview.html"), "<html></html>\n")
     write(os.path.join(repo, "pkg", ".gitignore"), "node_modules/\n")
@@ -80,6 +87,8 @@ def main():
         check("unlisted unpacked file fails the check", proc.returncode == 1, proc.returncode)
         check("failure names the file", "dev/preview.html" in proc.stdout, proc.stdout)
         check("failure explains both fixes", "allow.yaml" in proc.stdout, proc.stdout)
+        check("lifecycle scripts never run", "PREPARE-RAN" not in proc.stdout + proc.stderr,
+              (proc.stdout + proc.stderr)[-300:])
 
         # 2. `.gitignore` is excluded globally — it must not be reported.
         check("global defaults cover .gitignore", "pkg/.gitignore" not in proc.stdout, proc.stdout)
