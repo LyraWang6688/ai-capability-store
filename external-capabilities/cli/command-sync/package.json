@@ -1,6 +1,6 @@
 {
   "name": "@lyra_wang/command-sync",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "终端命令 + 剪贴板历史面板：Hammerspoon ⌥X 打开，服务器入口 / 最近高频命令 / 剪贴板历史 / 快捷键，选中复制或 ⌘⏎ 粘贴",
   "license": "MIT",
   "type": "module",

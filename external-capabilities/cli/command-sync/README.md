@@ -138,9 +138,10 @@ python3 ~/.command-sync/bin/palette.py  # 同上，直接调脚本
 | Hammerspoon 是否在运行（IPC） | `open -a Hammerspoon` |
 | 辅助功能授权（`hs.accessibilityState()`） | 系统设置 → 隐私与安全性 → 辅助功能 → 勾 Hammerspoon |
 | 面板文件 / init.lua 挂载 | 重跑 `command-sync install` |
-| 终端历史 / 剪贴板历史数据源 | 提示历史文件路径与生成方式 |
+| selection-toolbar 插件（可选） | `dsh plugin add @lyra_wang/dsh-selection-toolbar`（不装只是没有工具条「快捷键」按钮，手写 `shortcuts.md` 照样能用） |
+| 终端历史 / 剪贴板历史数据源 | 提示历史文件路径与生成方式；剪贴板报「去重后 N 条（文件 M 行；上限 X 条）」 |
 
-有任何 ✗ 就以退出码 1 结束，方便脚本判断；全部通过则退出码 0。
+有任何 ✗ 就以退出码 1 结束，方便脚本判断；`⚠`（如历史文件还没生成、没装可选插件）不算失败；全部通过则退出码 0。
 
 ## 边界
 

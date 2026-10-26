@@ -5,7 +5,7 @@
 // 辅助功能得人工勾一次，新用户装完看面板没反应只会以为是坏的。doctor 把
 // 「缺什么 + 去哪儿补」一次说完，别让人去翻 README。
 import { spawnSync } from 'node:child_process';
-import { existsSync, readFileSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 
@@ -14,6 +14,8 @@ const HS_APP = '/Applications/Hammerspoon.app';
 const HS_BIN_CANDIDATES = ['/opt/homebrew/bin/hs', '/usr/local/bin/hs'];
 const BASE = process.env.COMMAND_SYNC_HOME || join(HOME, '.command-sync');
 const HS_DIR = join(HOME, '.hammerspoon');
+const DSH_PROFILES = join(HOME, '.dsh', 'profiles');
+const TOOLBAR_PKG = '@lyra_wang/dsh-selection-toolbar';
 
 const problems = [];
 const notes = [];
@@ -37,6 +39,26 @@ function tryRun(cmd, args, timeout = 5000) {
 
 function expand(p) {
   return p && p.startsWith('~') ? join(HOME, p.slice(1)) : p;
+}
+
+// 哪些 DSH profile 装了 selection-toolbar（工具条上的「快捷键」按钮由它提供）。
+// 不装它不影响面板，只是「选中文字 → 点一下」这条录入路径不存在，得手写 shortcuts.md。
+function profilesWithToolbar() {
+  const hits = [];
+  if (!existsSync(DSH_PROFILES)) return hits;
+  let names = [];
+  try { names = readdirSync(DSH_PROFILES); } catch { return hits; }
+  for (const name of names) {
+    const pkgFile = join(DSH_PROFILES, name, 'package.json');
+    if (!existsSync(pkgFile)) continue;
+    try {
+      const pkg = JSON.parse(readFileSync(pkgFile, 'utf8')) || {};
+      const deps = pkg.dependencies || {};
+      const bundles = ((pkg.dsh || {}).profile || {}).bundles || [];
+      if (deps[TOOLBAR_PKG] || bundles.includes(TOOLBAR_PKG)) hits.push(name);
+    } catch { /* 坏 JSON 就跳过 */ }
+  }
+  return hits;
 }
 
 // ── 1. 运行时依赖 ─────────────────────────────────────────────────────────
@@ -105,6 +127,17 @@ if (existsSync(join(BASE, 'palette.json'))) {
   }
 }
 
+// ── 3.5 可选插件：selection-toolbar（工具条「快捷键」按钮的提供方） ───────
+const toolbarProfiles = profilesWithToolbar();
+if (!existsSync(DSH_PROFILES)) {
+  info('没检测到 DSH：工具条「快捷键」按钮是 DSH 插件；不用 DSH 时直接编辑 shortcuts.md');
+} else if (toolbarProfiles.length > 0) {
+  ok('selection-toolbar 已安装（profile: ' + toolbarProfiles.join(', ') + '）——工具条「快捷键」按钮可用');
+} else {
+  warn('没装 selection-toolbar：工具条上没有「快捷键」按钮（快捷键表仍可手写）',
+    'dsh plugin add ' + TOOLBAR_PKG + '\n或在 DSH 插件页「添加插件」里输入 ' + TOOLBAR_PKG);
+}
+
 // ── 4. 数据源（不 blocking，只是提醒） ────────────────────────────────────
 let historyPath = join(HOME, '.zsh_history');
 let cfg = {};
@@ -126,8 +159,17 @@ if (existsSync(historyPath)) {
 
 const clipFile = join(HS_DIR, 'clipboard-history.jsonl');
 if (existsSync(clipFile)) {
-  const lines = readFileSync(clipFile, 'utf8').split('\n').filter(Boolean).length;
-  ok('剪贴板历史：已记录 ' + lines + ' 条（上限 ' + maxEntries + ' 条）');
+  // 文件是追加式的：同一段文字重复复制、被挤掉的老记录都会留行，所以「行数」≠「条数」。
+  // 面板实际看到的是去重后的条数，这里也报去重后的数字，别吓人。
+  const raw = readFileSync(clipFile, 'utf8').split('\n').filter(Boolean);
+  const uniq = new Set();
+  for (const line of raw) {
+    try {
+      const rec = JSON.parse(line);
+      if (rec && typeof rec.text === 'string' && rec.text !== '') uniq.add(rec.text);
+    } catch { /* 坏行忽略 */ }
+  }
+  ok('剪贴板历史：去重后 ' + uniq.size + ' 条（文件 ' + raw.length + ' 行；上限 ' + maxEntries + ' 条）');
 } else {
   info('剪贴板历史尚未生成（复制任意文本后出现；上限 ' + maxEntries + ' 条）');
 }
