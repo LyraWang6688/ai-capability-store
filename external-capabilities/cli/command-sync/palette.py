@@ -375,11 +375,12 @@ def build_server():
 
 
 def main():
+    # 首次安装（或新机器）可能还没有 ~/.zsh_history：那时不该让面板报错，
+    # 生成一份只有服务器入口 + 快捷键速查的数据即可，等有命令后自然就有了。
     try:
-        text = open(HISTORY, encoding="utf-8", errors="replace").read()
+        open(HISTORY, encoding="utf-8", errors="replace").close()
     except OSError as exc:
-        print("读取历史失败：%s" % exc, file=sys.stderr)
-        return 1
+        print("没有可读的 zsh 历史（%s），按空历史生成面板" % exc, file=sys.stderr)
     paths = sorted(glob.glob(DUMP_GLOB)) + [HISTORY]
     command_sets = []
     seen_sources = []

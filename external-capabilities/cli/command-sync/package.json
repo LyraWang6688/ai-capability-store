@@ -1,17 +1,17 @@
 {
   "name": "@lyra_wang/command-sync",
-  "version": "0.1.7",
-  "description": "终端高频命令面板：Hammerspoon ⌥X 打开，服务器入口 + 最近 7 天高频命令，选中复制",
+  "version": "0.2.0",
+  "description": "终端命令 + 剪贴板历史面板：Hammerspoon ⌥X 打开，服务器入口 / 最近高频命令 / 剪贴板历史 / 快捷键，选中复制或 ⌘⏎ 粘贴",
   "license": "MIT",
   "type": "module",
-  "keywords": ["dsh", "terminal", "zsh-history", "hammerspoon", "palette", "cli"],
+  "keywords": ["dsh", "terminal", "zsh-history", "hammerspoon", "palette", "cli", "clipboard", "clipboard-history"],
   "repository": {
     "type": "git",
     "url": "git+https://github.com/LyraWang6688/ai-capability-store.git",
     "directory": "external-capabilities/cli/command-sync"
   },
   "bin": { "command-sync": "bin/cli.js" },
-  "files": ["palette.py", "install.sh", "hammerspoon/", "bin/", "config.example.json", "README.md", "LICENSE"],
+  "files": ["palette.py", "install.sh", "hammerspoon/", "bin/", "config.example.json", "shortcuts.example.md", "README.md", "LICENSE"],
   "publishConfig": { "access": "public" },
   "engines": { "node": ">=20" }
 }
