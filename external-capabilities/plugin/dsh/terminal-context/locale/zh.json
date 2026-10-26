@@ -1,1 +1,6 @@
-{ "meta": { "title": "DSH 终端上下文", "description": "把 DSH 侧边栏终端最近若干行交给 Agent，让它给的下一步依据你当前的真实处境。" } }
+{
+  "meta": {
+    "title": "DSH 侧边栏上下文",
+    "description": "把 DSH 侧边栏终端当前屏幕的内容交给 Agent，让它依据你眼前真实的东西给下一步。"
+  }
+}
