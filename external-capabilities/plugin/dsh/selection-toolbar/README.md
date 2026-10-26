@@ -8,8 +8,7 @@ DSH（DeepSeek Harness）客户端插件：在对话里用鼠标划选文字后�
 |---|---|
 | 复制 | 把选中文字写入剪贴板 |
 | 追问 | 不直接发送：先浮出引用条（可 ✕ 关闭），回车/点发送时才把 `> 选中文字` 插进草稿一起发出；不弹提示 |
-| 注释 | 把「原文引用 + 注释 + 北京时间」追加到指定飞书文档末尾；同时在本机 localStorage 留一份离线副本 |
-| 收藏 | 把选中原文追加到**同一篇**飞书文档末尾（不带注释、不留本地副本） |
+| 收藏 | 选中文字 → 浮出小面板写一句自己的话（**可留空**）→ 把「原文引用 + 备注 + 北京时间」追加到配置的飞书文档末尾；**不留本地副本**，写失败时面板留在原地可直接重试 |
 | 投递 | 按 `context-submit` 规范结构化后写入飞书「投递箱」Base（见 0.4.0 段） |
 | 收录 | 把选中原文投递给会话里的 agent，由 `repo-collector` 技能写「GitHub 优质项目收录」表（插件自己不写表） |
 | 快捷键 | 把选中文字追加到 `~/.command-sync/shortcuts.md`（command-sync 面板的数据源） |
@@ -19,7 +18,7 @@ DSH（DeepSeek Harness）客户端插件：在对话里用鼠标划选文字后�
 
 - DSH 桌面端（提供 `shell.overlay` 槽位与插件安装能力）
 - 本机已安装并授权 `lark-cli`（用户身份），用于写飞书文档
-- 一个飞书文档（docx）的 token（只用「注释」时需要）
+- 一个飞书文档（docx）的 token（只用「收藏」时需要）
 - 一个模型 API Key（只用「改写」时需要）：环境变量 `DEEPSEEK_API_KEY` 或系统钥匙串同名校验项
 
 ## 安装
@@ -40,26 +39,40 @@ DSH（DeepSeek Harness）客户端插件：在对话里用鼠标划选文字后�
 
 ## 配置（仓库外，勿提交）
 
+**每个使用者配置自己的**，没有任何默认值会指向别人的飞书资源：
+
 ```jsonc
 // ~/.dsh/selection-toolbar.json   (chmod 600)
 {
-  "docToken": "<飞书文档 token>",
-  "larkCli": "/usr/local/bin/lark-cli",   // 可选，默认用 PATH 中的 lark-cli
-  "rewriteModel": "deepseek-flash",       // 可选，「改写」用的模型
-  "rewriteBaseUrl": "https://api.deepseek.com", // 可选，OpenAI 兼容端点
-  "keychainService": "DEEPSEEK_API_KEY"   // 可选，从钥匙串取 key 的条目名
+  // 「收藏」必需：你自己的飞书云文档（docx）token
+  "docToken": "<你自己文档的 token>",
+
+  // 「投递」必需：你自己的「投递箱」多维表格
+  "baseToken": "<Base token>",
+  "tableId": "<table id>",
+
+  // 以下均可选
+  "skillDir": "~/Documents/workplace/ai-capability-store/skills/context-submit", // 投递门禁脚本所在 skill
+  "defaultProject": "DSH 选区投递",          // 投递时来源项目留空则用它
+  "larkCli": "/usr/local/bin/lark-cli",      // 默认用 PATH 里的 lark-cli
+  "rewriteModel": "deepseek-flash",          // 「改写」用的模型
+  "rewriteBaseUrl": "https://api.deepseek.com",
+  "keychainService": "DEEPSEEK_API_KEY"      // 从钥匙串取改写 key 的条目名
 }
 ```
 
 可用环境变量 `DSH_SELECTION_TOOLBAR_CONFIG` 指向别的配置文件路径。
 
-> 文档 token 与 CLI 路径**不放进代码仓库**；插件每次写入时读取该配置文件。
+> **包里不带任何个人资源**：docToken / baseToken / tableId 全部来自这份仓库外配置。
+> 只装插件、不建配置时：「收藏」会提示「未配置飞书文档：请在 … 写入 {"docToken":…}」，
+> 「投递」会提示「未配置投递箱」——**不会**写到作者的表或文档里。
+> 另外需要使用者本机自己的 `lark-cli` 登录态（用户身份），它只对使用者有权限的资源生效。
 
 ## 验证
 
 - 重启 DSH，划选文字 → 应出现工具条；
 - 点「复制」→ 出现「已复制」；
-- 点「注释」→ 写备注 → 保存 → 出现「已写入飞书文档」，目标文档末尾多一条；
+- 点「收藏」→ 写备注（可留空）→ 保存 → 出现「已收藏到飞书文档」，目标文档末尾多一条；
 - 点「改写」→ 选风格或写要求 → 出现改写结果 → 「复制结果 / 插入输入框」。
 
 开发者自检：`GET /plugins/selection-toolbar/note` 与 `GET /plugins/selection-toolbar/rewrite` 都应返回 `405`（路由已加载，非 POST 被拒绝）。
@@ -146,3 +159,16 @@ MIT
 1. **「追问」不再弹「已插入输入框」** —— 引用条本身就是反馈，再弹一句是噪音。行为不变：仍不自动发送，回车/点发送时才把 `> 选中文字` 插进草稿。
 2. **「收藏」只写飞书文档，不写本地 localStorage** —— 代码原本就是这样（本地副本只有「注释」才有，作为飞书写失败时的兜底）。本次把 README 能力表补全，并写明**收藏与注释写的是同一篇飞书文档**（同一个 `docToken`，收藏的 `note` 为空）。
 3. README 能力表补上 **收藏 / 投递 / 收录 / 快捷键** 四行，此前只列了复制/追问/注释/改写。
+
+## 0.10.0：收藏 = 带备注的收藏（合并了「注释」）
+
+上一版之后暴露的真问题：**「注释」面板写了但没入口**（0.4.0 起旧的收藏改成不带备注，注释的 action 被摘掉，面板成了孤儿），而「收藏」又不让人写自己的话。
+
+现在合成一个动作：
+
+1. 点 **☆ 收藏** → 浮出小面板，写一句自己的话（**可留空**，留空就等于只存原文引用）；
+2. 保存 → 「原文引用 + **备注** + 北京时间」追加到配置的飞书文档末尾；
+3. **不再留 localStorage 副本**（0.9.7 的兜底逻辑删掉）：写失败时面板不关、直接提示原因，原地重试；
+4. 独立的「注释」入口与旧的「不带备注的收藏」一并移除。
+
+> token / 表格都是**使用者自己的**：`docToken` 写自己的文档、`baseToken`+`tableId` 写自己的投递箱，全部在仓库外的 `~/.dsh/selection-toolbar.json`。包内不含任何个人飞书资源，未配置时接口会明确报错，不会写到作者的表或文档里。
