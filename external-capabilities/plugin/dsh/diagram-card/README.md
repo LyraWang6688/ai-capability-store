@@ -150,6 +150,21 @@ budget  = floor(min(visible * 0.8, visible - 24))   // 80% 是给输入框/顶�
 **边界**：对任意滚动位置都"整卡可见"不可能（可能只滚出一小截）。承诺的是"滚到合适位置时整卡在可见区里完整"；
 极窄/极矮窗口里连卡片外壳都放不下时，退化为内部滚动 + 展开入口。
 
+## 主题检测（0.1.4）
+
+宿主浅色模式下 **`body` 的背景仍是深色**（实测 `rgb(48,48,48)`），所以 0.1.3 之前按 `body` 亮度判定会把深色
+token 套到浅色页面上：卡片内部碰巧还能读，但卡外的标题和层名是近白色（`rgb(249,251,252)`）画在浅色背景
+（`rgb(236,231,224)`）上，几乎看不见。
+
+0.1.4 的判定顺序：
+
+1. 宿主显式标记：`data-ds-dark-theme` / `data-ds-light-theme` / `data-theme` / `data-color-mode` / `data-mode`；
+2. `color-scheme` 计算值；
+3. **卡片背后最近的不透明背景**（消息容器，而不是 `body`）的亮度；
+4. 最后才回退到 `body` / 根元素的背景与文字颜色。
+
+主题切换由 `MutationObserver`（根/`body` 属性）+ 每轮 scan 兜底同步，切换后卡片 class 双向可逆。
+
 ## 边界与已知限制（如实）
 
 | 项 | 状态 | 说明 |
@@ -178,7 +193,7 @@ budget  = floor(min(visible * 0.8, visible - 24))   // 80% 是给输入框/顶�
 | 代码块没变成卡片 | DevTools Console 看是否 `@lyra_wang/dsh-diagram-card` 已加载；确认 JSON 合法 |
 | 整个 App 起不来 | 检查 `package.json` 的 `dsh.client.inject` 是否只包含已安装包（本插件只声明 `@deepseek-ai/dsh-client-ui-layout`，与既有插件一致）|
 | 卡片闪一下就消失 | 宿主重绘；观察 2s 内是否自动恢复，未恢复请记录 DOM 结构 |
-| 深浅色不跟随 | 宿主主题检测依赖 `body` 背景亮度，若为空会退回 `data-theme` 属性 |
+| 深浅色不跟随 | 0.1.4 起按「宿主标记 → color-scheme → 卡片背后背景」判定；若仍不对，记录消息容器与 body 的 computed background 发我 |
 
 ## 与 Store 的关系
 
