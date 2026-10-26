@@ -1,6 +1,6 @@
 {
   "name": "@lyra_wang/dsh-image-ocr",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Composer + button: OCR the clipboard image locally (macOS Vision) and insert the text into the DSH input box.",
   "license": "MIT",
   "type": "module",

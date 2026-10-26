@@ -1,6 +1,6 @@
 {
   "name": "feishu-cli-mcp-server",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A modular MCP server that exposes controlled Feishu/Lark operations through the official lark-cli.",
   "type": "module",
   "main": "dist/server.js",

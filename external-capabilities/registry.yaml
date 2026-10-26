@@ -115,13 +115,13 @@ capabilities:
     type: mcp
     status: limited
     provider_path: external-capabilities/providers/lyrawang/README.md
-    version: 0.2.0
+    version: 0.2.1
     implementation_path: external-capabilities/mcp/teaming-mcp
     auth: "两层，均只记录元数据。(1) 宿主 → MCP：stdio，无认证，进程由宿主在本机以 command+args 拉起；(2) MCP → teaming-bot 服务器：Bearer 宿主凭证，由 `teaming setup --code <接入码>` 兑换，服务端只存 SHA-256 且可单独吊销。**0.2.0 起不再需要本机大模型凭证**——分析由服务器完成，MCP 只上传逐字稿、拿回分析结果。**取飞书数据不经 MCP**——由宿主自己的飞书能力完成，所以主路径下 MCP 不需要飞书授权"
     capabilities: "对一场会议做团队动力分析并交付报告：接收【调用方提供的】逐字稿，产出四部分报告（团队状态定位／互动概览／未完成的对话与非共识／给领导者的建议），自动上传服务器换取带图表的网页报告页；另有列出可分析会议、读取已有报告、推送飞书交互卡片、运行诊断、查询任务状态等。共 8 个 MCP 工具"
     permissions: "已验证：分析并上传报告需 teaming-bot 签发的宿主凭证。**本机大模型凭证已不再需要**（0.2.0 起分析改由服务器完成）。飞书权限**非必需**：主路径下逐字稿由宿主取（豆包工作实测走其内置飞书应用），MCP 不接触飞书；仅 teaming_list_meetings / teaming_analyze_meeting / teaming_push_report 这几个走本机 lark-cli 的工具需要已授权的 profile，涉及妙记读取与消息发送"
     commerce: {charge: free}
-    notes: "自研、Store-managed。**同步模式：以 Store 为唯一准据（canonical）。本目录是唯一副本。**独立源仓库 `~/Documents/workplace/teaming-mcp` 已于 2026-10-18 退休删除（删除前已把 HANDOFF.md 备份到 `~/Desktop/teaming-mcp-HANDOFF-备份.md`）。历史沿革（2026-10-18 逐提交核对得出，勿再凭印象推断）：0.1.0 用 `git subtree add` 从独立源仓库导入，锚点 650fb40；0.1.1 / 0.1.2 / 0.1.3 继续用 `git subtree pull`——远程是本机绝对路径，所以只在那台机器上可用——这三次的提交在 Store 历史里**可达**；只有 0.2.0 那次改成手工复制文件，因此 0.2.0 的改动提交（1bce754）没有进入 Store 历史，锚点停在 0.1.0。★ 一个曾经写错、现已证伪的说法：`git subtree pull` **不会**冲突——2026-10-18 在本机路径上实测零冲突合并成功（合进来的正是 4 个 tests 文件）。所以当初改用「以 Store 为准」不是因为在冲突，而是因为上游只是本机一个文件夹、换台机器就断；现在源仓库已删除，subtree 更无上游可用。安装：npm i -g teaming-mcp 后执行 teaming setup --code <接入码>。0.2.0 起不再 vendored 分析引擎、也没有构建步骤：装上即可运行，分析由 teaming-bot 服务器完成（POST /api/host/v1/analyze）。共 8 个 MCP 工具。Skill 已独立为 Store 的 skills/teaming-meeting-analysis，不再随本包分发。⚠️ 已知快照缺陷：tag `teaming-mcp-v0.2.0` 指向的提交里，`tests/cli-entry.test.mjs`、`tests/config.test.mjs`、`tests/packaging.test.mjs` 三个文件仍是 0.1.x 版本（该次镜像同步漏了它们），该快照内 `npm test` 会红。内容已在后续提交修正；按 VERSIONING.md §6，tag 指向的提交不可改写，故不重打 tag。需要可复现构建时请取 npm 上的 0.2.0，或用修正之后的 main。"
+    notes: "自研、Store-managed。**同步模式：以 Store 为唯一准据（canonical）。本目录是唯一副本。**独立源仓库 `~/Documents/workplace/teaming-mcp` 已于 2026-10-18 退休删除（删除前已把 HANDOFF.md 备份到 `~/Desktop/teaming-mcp-HANDOFF-备份.md`）。历史沿革（2026-10-18 逐提交核对得出，勿再凭印象推断）：0.1.0 用 `git subtree add` 从独立源仓库导入，锚点 650fb40；0.1.1 / 0.1.2 / 0.1.3 继续用 `git subtree pull`——远程是本机绝对路径，所以只在那台机器上可用——这三次的提交在 Store 历史里**可达**；只有 0.2.0 那次改成手工复制文件，因此 0.2.0 的改动提交（1bce754）没有进入 Store 历史，锚点停在 0.1.0。★ 一个曾经写错、现已证伪的说法：`git subtree pull` **不会**冲突——2026-10-18 在本机路径上实测零冲突合并成功（合进来的正是 4 个 tests 文件）。所以当初改用「以 Store 为准」不是因为在冲突，而是因为上游只是本机一个文件夹、换台机器就断；现在源仓库已删除，subtree 更无上游可用。安装：npm i -g teaming-mcp 后执行 teaming setup --code <接入码>。0.2.0 起不再 vendored 分析引擎、也没有构建步骤：装上即可运行，分析由 teaming-bot 服务器完成（POST /api/host/v1/analyze）。共 8 个 MCP 工具。Skill 已独立为 Store 的 skills/teaming-meeting-analysis，不再随本包分发。⚠️ 已知快照缺陷：tag `teaming-mcp-v0.2.0` 指向的提交里，`tests/cli-entry.test.mjs`、`tests/config.test.mjs`、`tests/packaging.test.mjs` 三个文件仍是 0.1.x 版本（该次镜像同步漏了它们），该快照内 `npm test` 会红。内容已在后续提交修正；按 VERSIONING.md §6，tag 指向的提交不可改写，故不重打 tag。需要可复现构建时请取 npm 上的 0.2.0，或用修正之后的 main。0.2.1 只改 LICENSE 版权行：统一为 Copyright (c) 2026 Lyra Wang（与仓库根 LICENSE、npm 维护者账号一致）；无代码改动。"
 
   feishu-cli-mcp-server:
     name: feishu-cli-mcp-server
@@ -130,13 +130,13 @@ capabilities:
     type: mcp
     status: limited
     provider_path: external-capabilities/providers/feishu/README.md
-    version: 0.1.0
+    version: 0.1.1
     implementation_path: external-capabilities/mcp/feishu-cli-mcp-server
     auth: "两层认证。(1) 客户端到 MCP 服务：Auth0 签发的 RS256 access token（OAuth 2.1），scope 为 docs:read / docs:write / base:read / base:write，服务端按工具二次校验；(2) MCP 服务到飞书：复用部署机上已认证的 lark-cli profile，凭据存放在 lark-cli 自己的凭据库里，从不通过 MCP 参数传入或返回"
     capabilities: "把飞书云文档与多维表格的受控操作暴露为 MCP 工具：文档读取 / 创建 / 更新，Base 创建 / 建字段 / 解析链接 / 列 block / 列记录 / 批量建记录 / 批量改记录"
     permissions: "飞书侧需要 docs 与 base 两个资源域的读写授权（以 lark-cli profile 实际授权为准）；MCP 侧按工具分别要求 docs:read、docs:write、base:read、base:write。写操作另需 confirm=true"
     commerce: {charge: free}
-    notes: "自研、Store-managed。来源仓库为独立 git 仓库，已通过 git subtree 导入并保留完整提交历史。status 取 limited：需要 lark-cli 1.0.93+ 与一个已认证的 profile，远端模式还需 Auth0 + HTTPS，并非装上即用。包内 .agents/skills/feishu-mcp-tool-extension/ 为开发资料，不在 Store Skill 域登记。不经 npm 分发：它是自托管 HTTP 服务（nginx + pm2 + OAuth），没有 bin，deploy/ 含生产基础设施标识 —— 见 PUBLISHING.md §D"
+    notes: "自研、Store-managed。来源仓库为独立 git 仓库，已通过 git subtree 导入并保留完整提交历史。status 取 limited：需要 lark-cli 1.0.93+ 与一个已认证的 profile，远端模式还需 Auth0 + HTTPS，并非装上即用。包内 .agents/skills/feishu-mcp-tool-extension/ 为开发资料，不在 Store Skill 域登记。不经 npm 分发：它是自托管 HTTP 服务（nginx + pm2 + OAuth），没有 bin，deploy/ 含生产基础设施标识 —— 见 PUBLISHING.md §D0.1.1 只改 LICENSE 版权行：统一为 Copyright (c) 2026 Lyra Wang（与仓库根 LICENSE、npm 维护者账号一致）；无代码改动。"
 
   image-ocr:
     name: image-ocr
@@ -145,13 +145,13 @@ capabilities:
     type: plugin
     status: limited
     provider_path: external-capabilities/providers/lyrawang/README.md
-    version: 0.3.0
+    version: 0.3.1
     implementation_path: external-capabilities/plugin/dsh/image-ocr
     auth: "无凭据入仓，不需要任何账号或 API Key。OCR 完全本地（macOS Vision），图片不出本机"
     capabilities: "DSH 输入框左侧「＋ 识图」按钮：读取剪贴板里的截图，用本地 Vision 引擎识别中英文字，把文字插入草稿（可撤销、不自动发送）。宿主侧注册同源只读路由 `/plugins/image-ocr/ocr`，并带一份 Swift 源码在首次使用时编译缓存"
     permissions: "需要 macOS 13+ 与 Xcode Command Line Tools（xcrun swiftc）。宿主进程读取剪贴板图片；不读屏幕、不联网"
     commerce: {charge: free}
-    notes: "自研、Store-managed。0.1.0 首次登记：client 注册在 `conversation.input.left`（order=3，紧邻 feishu-ref 的「＋ 引用」）；插入走 `inputActions.captureInsertion()` + `insertText()`。OCR 引擎编译缓存在仓库外（~/Library/Application Support/dsh-image-ocr/ocr），首次点击可能等 30–60s，apply 时会后台预热。实测：整屏截图 53 行，冷启动 31s（编译+模型初始化），热启动 0.66s；中文长句识别良好，UI 图标会带来少量短符号噪声"
+    notes: "自研、Store-managed。0.1.0 首次登记：client 注册在 `conversation.input.left`（order=3，紧邻 feishu-ref 的「＋ 引用」）；插入走 `inputActions.captureInsertion()` + `insertText()`。OCR 引擎编译缓存在仓库外（~/Library/Application Support/dsh-image-ocr/ocr），首次点击可能等 30–60s，apply 时会后台预热。实测：整屏截图 53 行，冷启动 31s（编译+模型初始化），热启动 0.66s；中文长句识别良好，UI 图标会带来少量短符号噪声0.3.1 只改 LICENSE 版权行：统一为 Copyright (c) 2026 Lyra Wang（与仓库根 LICENSE、npm 维护者账号一致）；无代码改动。"
   feishu-ref:
     name: feishu-ref
     hosting: store-managed
@@ -159,13 +159,13 @@ capabilities:
     type: plugin
     status: limited
     provider_path: external-capabilities/providers/lyrawang/README.md
-    version: 0.5.1
+    version: 0.5.2
     implementation_path: external-capabilities/plugin/dsh/feishu-ref
     auth: "无凭据入仓。复用操作者本机已认证的 lark-cli（用户身份）做只读搜索；插件不接收、不保存任何 token 或账号信息"
     capabilities: "DSH 输入框左侧新增「＋ 引用」按钮：点击弹出一个两栏面板——**左栏文档**（飞书文档 / 多维表格 / 表格 / 知识库 / 幻灯片，留空看最近 30 天编辑）、**右栏群聊**（按关键词搜可见群，含群描述与「外部群」标记）；两条 `lark-cli` 搜索在宿主侧并行发出、各自兜底。选中任一栏的结果后把 Markdown 链接插入草稿（可撤销、不自动发送）；群链接为 AppLink（`openChatId=<chat_id>`），agent 可据此直接读群消息。宿主侧只注册一个同源只读路由 `/plugins/feishu-ref/search`（POST），分别转发给 `lark-cli drive +search` 与 `lark-cli im +chat-search`"
     permissions: "需要操作者本机安装并登录 lark-cli（用户身份，具备文档可见权限）；按钮与链接插入本身不需要额外权限。宿主侧不开放外部网络监听"
     commerce: {charge: free}
-    notes: "自研、Store-managed。0.1.0 首次登记：client 注册在 `conversation.input.left` 槽位（compact controls at the left of the composer tool row），order=2；插入走 `inputActions.captureInsertion()` + `insertText()`，属普通可撤销文本编辑。与 selection-toolbar 共用 DSH 的同源鉴权方式（`connection.requestRejection`）。搜索上限 30 字符（飞书 Search v2 限制），面板最多展示 12 条。理由说明：为什么不用系统「＋」菜单——菜单项是命令（host command），无法直接往输入框写文本，需要额外命令↔UI 桥接；自建按钮路径最短且失败可降级为复制链接。0.5.0（minor，新增能力）：面板改为**两栏并列**——左栏文档、右栏群聊，搜索并行；群聊经 `lark-cli im +chat-search --search-types private,external,public_joined` 获取（排除未加入的公开群；群搜索必须有关键词，故留空时右栏提示「输入关键词可搜群聊」），返回 `chat_id` / `name` / `description` / `external` / `chat_status`，已解散群（`chat_status != normal`）过滤掉；链接按飞书文档给的已加入会话 AppLink 格式构造 `https://applink.feishu.cn/client/chat/open?openChatId=<chat_id>`，**不用 `im chats link`**（那条返回 `add_by_link` 拉人入群邀请链接且会过期）。键盘：↑/↓ 线性（最近使用 → 文档 → 群聊），←/→ 在两栏间跳转。0.5.0 同时修两个面板定位缺陷（隔离 profile 实测发现）：面板高度改为按「按钮上方可用空间」夹取，避免矮窗口里顶部被裁掉；水平方向按视口右边界夹取，避免右栏整列跑出屏幕。2026-10-26 隔离 probe profile 实测（DSH 0.2.1-rc.2，独立 `DSH_HOME` + 独立端口 19556，验完删除）：按钮渲染、`<style>` 注入、搜「多维表格」左栏 12 条 / 右栏 8 条、点群聊插入 `[群名](https://applink.feishu.cn/client/chat/open?openChatId=oc_e4f923202387eb7dccdd74764b7cbc30)` 且写入最近使用、←/→+Enter 键盘插入、文档条目仍插入 Base 链接、面板 1200×615 视口下 top=7/right=1188 不被裁。未覆盖：真实发送后的 agent 读群链路（属 lark-cli 侧，已由 `im +chat-messages-list` 单独验证）、其它窗口尺寸。截图见 `docs/feishu-ref-0.5.0-two-column.png`（gitignored 本地资料）。0.5.1（patch，界面压缩）：用户实拍面板占满整屏——原因是 0.5.0 的 `maxHeight` 只取 `rect.top - 16`（按钮上方可用空间），窗口越高面板越大。现改为 `Math.min(460, Math.max(220, rect.top - 16))`，固定上限 460px；同时留空时「最近编辑的文档」只列 3 条（此前 10 条把面板继续撑高），搜索结果仍在栏内独立滚动。2026-10-26 隔离 probe profile 实测（1200×615 视口）：留空时面板高 242px、左栏 3 条；搜「多维表格」时高 364px（≤460），左栏 12 条 client 286 / scroll 638、右栏 8 条 client 286 / scroll 427，两栏均可滚动"
+    notes: "自研、Store-managed。0.1.0 首次登记：client 注册在 `conversation.input.left` 槽位（compact controls at the left of the composer tool row），order=2；插入走 `inputActions.captureInsertion()` + `insertText()`，属普通可撤销文本编辑。与 selection-toolbar 共用 DSH 的同源鉴权方式（`connection.requestRejection`）。搜索上限 30 字符（飞书 Search v2 限制），面板最多展示 12 条。理由说明：为什么不用系统「＋」菜单——菜单项是命令（host command），无法直接往输入框写文本，需要额外命令↔UI 桥接；自建按钮路径最短且失败可降级为复制链接。0.5.0（minor，新增能力）：面板改为**两栏并列**——左栏文档、右栏群聊，搜索并行；群聊经 `lark-cli im +chat-search --search-types private,external,public_joined` 获取（排除未加入的公开群；群搜索必须有关键词，故留空时右栏提示「输入关键词可搜群聊」），返回 `chat_id` / `name` / `description` / `external` / `chat_status`，已解散群（`chat_status != normal`）过滤掉；链接按飞书文档给的已加入会话 AppLink 格式构造 `https://applink.feishu.cn/client/chat/open?openChatId=<chat_id>`，**不用 `im chats link`**（那条返回 `add_by_link` 拉人入群邀请链接且会过期）。键盘：↑/↓ 线性（最近使用 → 文档 → 群聊），←/→ 在两栏间跳转。0.5.0 同时修两个面板定位缺陷（隔离 profile 实测发现）：面板高度改为按「按钮上方可用空间」夹取，避免矮窗口里顶部被裁掉；水平方向按视口右边界夹取，避免右栏整列跑出屏幕。2026-10-26 隔离 probe profile 实测（DSH 0.2.1-rc.2，独立 `DSH_HOME` + 独立端口 19556，验完删除）：按钮渲染、`<style>` 注入、搜「多维表格」左栏 12 条 / 右栏 8 条、点群聊插入 `[群名](https://applink.feishu.cn/client/chat/open?openChatId=oc_e4f923202387eb7dccdd74764b7cbc30)` 且写入最近使用、←/→+Enter 键盘插入、文档条目仍插入 Base 链接、面板 1200×615 视口下 top=7/right=1188 不被裁。未覆盖：真实发送后的 agent 读群链路（属 lark-cli 侧，已由 `im +chat-messages-list` 单独验证）、其它窗口尺寸。截图见 `docs/feishu-ref-0.5.0-two-column.png`（gitignored 本地资料）。0.5.1（patch，界面压缩）：用户实拍面板占满整屏——原因是 0.5.0 的 `maxHeight` 只取 `rect.top - 16`（按钮上方可用空间），窗口越高面板越大。现改为 `Math.min(460, Math.max(220, rect.top - 16))`，固定上限 460px；同时留空时「最近编辑的文档」只列 3 条（此前 10 条把面板继续撑高），搜索结果仍在栏内独立滚动。2026-10-26 隔离 probe profile 实测（1200×615 视口）：留空时面板高 242px、左栏 3 条；搜「多维表格」时高 364px（≤460），左栏 12 条 client 286 / scroll 638、右栏 8 条 client 286 / scroll 427，两栏均可滚动0.5.2 只改 LICENSE 版权行：统一为 Copyright (c) 2026 Lyra Wang（与仓库根 LICENSE、npm 维护者账号一致）；无代码改动。"
   selection-toolbar:
     name: selection-toolbar
     hosting: store-managed
@@ -173,13 +173,13 @@ capabilities:
     type: plugin
     status: limited
     provider_path: external-capabilities/providers/lyrawang/README.md
-    version: 0.9.3
+    version: 0.9.4
     implementation_path: external-capabilities/plugin/dsh/selection-toolbar
     auth: "无凭据入仓。写飞书文档复用操作者本机已认证的 lark-cli profile（用户身份）；目标文档 token 与 lark-cli 路径存放在仓库外的 `~/.dsh/selection-toolbar.json`（600 权限），可用环境变量 `DSH_SELECTION_TOOLBAR_CONFIG` 覆盖配置路径。插件自身不接收、不保存、不记录任何凭据值"
     capabilities: "DSH 对话内的选区工具条：鼠标划选文字后浮出 复制 / 追问 / 注释 三个动作。复制=写入剪贴板；追问=把选中文字插入 DSH 输入框（不自动发送）；注释=把「原文引用 + 注释 + 北京时间」追加到配置指定的飞书文档末尾，并在本机 localStorage 留一份离线副本"
     permissions: "需要操作者本机安装并授权 lark-cli（用户身份，具备目标文档的编辑权限）以完成飞书写入；复制与追问不需要任何额外权限。宿主侧仅注册一个同源本地接口 `/plugins/selection-toolbar/note`（POST），不开放外部网络监听"
     commerce: {charge: free}
-    notes: "自研、Store-managed。首次登记：全新资产，从未进过版本控制，首次提交即其第一份历史（按 first-publish §0 ② 直接复制）。依赖 DSH 桌面端（提供 `shell.overlay` 槽位与插件安装与管理器）与 lark-cli 1.0.x；未配置 docToken 时注释只写本地并在界面回显原因。status 取 limited：不是装上即用，需按 README 创建一次操作者配置并重启 DSH。0.2.0 起可经 npm 分发：公开包名 `@lyra_wang/dsh-selection-toolbar`（0.2.0 与注册表版本一致），消费者在 DSH 插件页输入包名即可安装；npm 上的 `dsh-selection-toolbar`（无 scope）已被第三方占用，故使用作者 scope。0.2.0 同时把包名从开发期 `@local/selection-toolbar` 改为公开包名，并同步 client loader id（改名属破坏性变更，故 minor +1）。2026-10-19 实测证据：宿主路由 `GET /plugins/selection-toolbar/note` 返回 405（已加载）；飞书文档 revision 5 → 6 → 7 各追加一条；时间戳由 `<sub>` 改为纯文本北京时间后显示为 `时间：2026/10/19 02:11`。0.2.1（补丁）：把 `client.js` 的 locale 命名空间常量从遗留的 `@local/selection-toolbar` 统一为公开包名（此前 register/bind 用同一个值所以功能一直正常，属改名未清干净的痕迹；locale 注册只在进程内存在，修改不丢任何数据）；并在插件目录新增 `.gitignore`（`selection-toolbar.json` / `*.local.json` / `.env*` / `node_modules/`），防止任何人把含文档 token 的测试配置误提交——配置文件本身仍在仓库外的 `~/.dsh/selection-toolbar.json`。0.2.2（补丁）：`locale/zh.json` 与 `locale/en.json` 的 meta 描述仍写着已删除的「朗读 / read aloud」，插件页因此显示「复制 / 朗读 / 追问 / 注释」；本次改为「复制 / 追问 / 注释」，并同步修正英文描述。0.3.0（minor）：新增第 4 个动作「改写」——选中一段文字后可指定要求（润色 / 更简洁 / 小红书风 / 公众号风 / 自定义），宿主侧新增 `POST /plugins/selection-toolbar/rewrite`，用配置的模型（默认 deepseek-flash，OpenAI 兼容端点）只重写该段，结果可复制或插入输入框；API Key 从环境变量或系统钥匙串读取，不随包分发。为避免与「注释」冲突，改写结果第一版不直接替换只读消息的 DOM（留作后续）。0.3.1（补丁）：修复改写面板点击即消失——「点击面板外关闭」的判定只认工具条与注释面板，漏掉了改写面板的类名，导致点「小红书风」等按钮被当成点击外部而关闭面板；现补上 `-rw` 类名。0.9.3（补丁）：修两处实测问题——(1) 引用条此前只在挂载时算一次位置，输入框变高后会停住压住正文，改为 ResizeObserver + 滚动/resize 监听 + 400ms 轮询重算，实测输入框 36→52px 时引用条同步上移且不重叠；(2) `shell.overlay` 不传 sessionId，导致「切会话清引用」的 effect 永不触发、引用跨会话残留，改为用「输入框节点是否仍连接」判定会话切换，实测切换后引用条自动消失。"
+    notes: "自研、Store-managed。首次登记：全新资产，从未进过版本控制，首次提交即其第一份历史（按 first-publish §0 ② 直接复制）。依赖 DSH 桌面端（提供 `shell.overlay` 槽位与插件安装与管理器）与 lark-cli 1.0.x；未配置 docToken 时注释只写本地并在界面回显原因。status 取 limited：不是装上即用，需按 README 创建一次操作者配置并重启 DSH。0.2.0 起可经 npm 分发：公开包名 `@lyra_wang/dsh-selection-toolbar`（0.2.0 与注册表版本一致），消费者在 DSH 插件页输入包名即可安装；npm 上的 `dsh-selection-toolbar`（无 scope）已被第三方占用，故使用作者 scope。0.2.0 同时把包名从开发期 `@local/selection-toolbar` 改为公开包名，并同步 client loader id（改名属破坏性变更，故 minor +1）。2026-10-19 实测证据：宿主路由 `GET /plugins/selection-toolbar/note` 返回 405（已加载）；飞书文档 revision 5 → 6 → 7 各追加一条；时间戳由 `<sub>` 改为纯文本北京时间后显示为 `时间：2026/10/19 02:11`。0.2.1（补丁）：把 `client.js` 的 locale 命名空间常量从遗留的 `@local/selection-toolbar` 统一为公开包名（此前 register/bind 用同一个值所以功能一直正常，属改名未清干净的痕迹；locale 注册只在进程内存在，修改不丢任何数据）；并在插件目录新增 `.gitignore`（`selection-toolbar.json` / `*.local.json` / `.env*` / `node_modules/`），防止任何人把含文档 token 的测试配置误提交——配置文件本身仍在仓库外的 `~/.dsh/selection-toolbar.json`。0.2.2（补丁）：`locale/zh.json` 与 `locale/en.json` 的 meta 描述仍写着已删除的「朗读 / read aloud」，插件页因此显示「复制 / 朗读 / 追问 / 注释」；本次改为「复制 / 追问 / 注释」，并同步修正英文描述。0.3.0（minor）：新增第 4 个动作「改写」——选中一段文字后可指定要求（润色 / 更简洁 / 小红书风 / 公众号风 / 自定义），宿主侧新增 `POST /plugins/selection-toolbar/rewrite`，用配置的模型（默认 deepseek-flash，OpenAI 兼容端点）只重写该段，结果可复制或插入输入框；API Key 从环境变量或系统钥匙串读取，不随包分发。为避免与「注释」冲突，改写结果第一版不直接替换只读消息的 DOM（留作后续）。0.3.1（补丁）：修复改写面板点击即消失——「点击面板外关闭」的判定只认工具条与注释面板，漏掉了改写面板的类名，导致点「小红书风」等按钮被当成点击外部而关闭面板；现补上 `-rw` 类名。0.9.3（补丁）：修两处实测问题——(1) 引用条此前只在挂载时算一次位置，输入框变高后会停住压住正文，改为 ResizeObserver + 滚动/resize 监听 + 400ms 轮询重算，实测输入框 36→52px 时引用条同步上移且不重叠；(2) `shell.overlay` 不传 sessionId，导致「切会话清引用」的 effect 永不触发、引用跨会话残留，改为用「输入框节点是否仍连接」判定会话切换，实测切换后引用条自动消失。0.9.4 只改 LICENSE 版权行：统一为 Copyright (c) 2026 Lyra Wang（与仓库根 LICENSE、npm 维护者账号一致）；无代码改动。"
 
   terminal-context:
     name: terminal-context
@@ -202,13 +202,13 @@ capabilities:
     type: cli
     status: limited
     provider_path: external-capabilities/providers/lyrawang/README.md
-    version: 0.2.2
+    version: 0.2.3
     implementation_path: external-capabilities/cli/command-sync
     auth: "无凭据入仓。配置放 `~/.command-sync/config.json`（600）：history 路径、sshHost/sshUser、serverPaths；运行数据（历史快照、文档、报告）也都在 `~/.command-sync/`。仓库内只有 config.example.json 模板"
     capabilities: "把终端里手动输入的命令 + 剪贴板历史做成快捷键面板：Hammerspoon 绑定 ⌥X → 三栏（① 服务器入口 3 条 + 最近 7 天用得最多的 5 条本地命令；② 剪贴板历史最近 30 条，本机 JSONL 最多留 100 条；③ 快捷键速查）→ 选中复制，或 ⌘⏎ 直接粘回原 App。只读 zsh 历史与系统粘贴板，不执行任何命令"
     permissions: "需要 Python3（系统自带）与 Hammerspoon（免费开源、Apple 公证签名）作为面板宿主；Hammerspoon 需要一次性「辅助功能」授权。面板只读本机 zsh 历史与粘贴板；服务器入口只是生成 ssh 命令文本，不主动连接"
     commerce: {charge: free}
-    notes: "自研、Store-managed。从 `~/command-sync` 迁入 Store 并参数化：脚本装到 `~/.command-sync/bin/`，数据与配置留在 `~/.command-sync/`，仓库不含任何个人主机/路径。面板只复制不执行（npm publish/ssh 等需人工确认）。数据源只含用户手动输入的命令，不含 AI 执行的命令。历史准确性依赖 zsh 的 INC_APPEND_HISTORY + EXTENDED_HISTORY（README 有说明）。0.1.3：移除月度巡检脚本（scan.py/run-check.sh）——巡检由另一个项目负责，本资产只做命令面板。0.2.0：面板改三栏，新增剪贴板历史（hs.pasteboard.watcher → `~/.hammerspoon/clipboard-history.jsonl`；去重提到最前、100 条上限、单条 20k 字节截断、400 行压缩重写；带 ConcealedType 标记的粘贴板不记录）；面板改为 nonactivating + allowTextEntry，修好「打开后收不到键盘、点面板外不关闭」；⌘⏎ 复制并粘回；palette.py 缺 `~/.zsh_history` 时不再失败（首次安装可用）；补 `shortcuts.example.md` 进 npm files（0.1.7 漏了它，npm 用户右栏是空的）；install.sh 的 `\\u2713` 转义修正。另有 `command-sync doctor` 自检子命令：检查 Python3 / Hammerspoon 是否安装与运行 / 辅助功能授权（hs.accessibilityState）/ 面板文件与 init.lua 挂载 / 终端历史与剪贴板历史数据源，缺步骤时给出可执行提示，有 ✗ 时退出码 1。0.2.1：剪贴板保留条数改为可配置——`~/.command-sync/config.json` 的 `clipboardHistory.maxEntries`（默认 100，clamp 3–500；文件行数上限随之取「条数 × 4」，最少 20），改完 hs.reload 生效；README / config.example.json / install.sh 生成的默认配置同步补充该字段。0.2.2：doctor 两处修正——① 剪贴板历史改为报「去重后 N 条（文件 M 行；上限 X 条）」，因为文件是追加式、行数≠条数；② 新增可选插件检查：扫描 `~/.dsh/profiles/*/package.json` 是否装了 `@lyra_wang/dsh-selection-toolbar`（工具条「快捷键」按钮的提供方），没装给安装命令提示，自己没装 DSH 则只提示「手写 shortcuts.md 即可」。"
+    notes: "自研、Store-managed。从 `~/command-sync` 迁入 Store 并参数化：脚本装到 `~/.command-sync/bin/`，数据与配置留在 `~/.command-sync/`，仓库不含任何个人主机/路径。面板只复制不执行（npm publish/ssh 等需人工确认）。数据源只含用户手动输入的命令，不含 AI 执行的命令。历史准确性依赖 zsh 的 INC_APPEND_HISTORY + EXTENDED_HISTORY（README 有说明）。0.1.3：移除月度巡检脚本（scan.py/run-check.sh）——巡检由另一个项目负责，本资产只做命令面板。0.2.0：面板改三栏，新增剪贴板历史（hs.pasteboard.watcher → `~/.hammerspoon/clipboard-history.jsonl`；去重提到最前、100 条上限、单条 20k 字节截断、400 行压缩重写；带 ConcealedType 标记的粘贴板不记录）；面板改为 nonactivating + allowTextEntry，修好「打开后收不到键盘、点面板外不关闭」；⌘⏎ 复制并粘回；palette.py 缺 `~/.zsh_history` 时不再失败（首次安装可用）；补 `shortcuts.example.md` 进 npm files（0.1.7 漏了它，npm 用户右栏是空的）；install.sh 的 `\\u2713` 转义修正。另有 `command-sync doctor` 自检子命令：检查 Python3 / Hammerspoon 是否安装与运行 / 辅助功能授权（hs.accessibilityState）/ 面板文件与 init.lua 挂载 / 终端历史与剪贴板历史数据源，缺步骤时给出可执行提示，有 ✗ 时退出码 1。0.2.1：剪贴板保留条数改为可配置——`~/.command-sync/config.json` 的 `clipboardHistory.maxEntries`（默认 100，clamp 3–500；文件行数上限随之取「条数 × 4」，最少 20），改完 hs.reload 生效；README / config.example.json / install.sh 生成的默认配置同步补充该字段。0.2.2：doctor 两处修正——① 剪贴板历史改为报「去重后 N 条（文件 M 行；上限 X 条）」，因为文件是追加式、行数≠条数；② 新增可选插件检查：扫描 `~/.dsh/profiles/*/package.json` 是否装了 `@lyra_wang/dsh-selection-toolbar`（工具条「快捷键」按钮的提供方），没装给安装命令提示，自己没装 DSH 则只提示「手写 shortcuts.md 即可」。0.2.3 只改 LICENSE 版权行：统一为 Copyright (c) 2026 Lyra Wang（与仓库根 LICENSE、npm 维护者账号一致）；无代码改动。"
   chrome-frequent-pages:
     name: chrome-frequent-pages
     hosting: store-managed
@@ -216,13 +216,13 @@ capabilities:
     type: cli
     status: limited
     provider_path: external-capabilities/providers/lyrawang/README.md
-    version: 0.5.2
+    version: 0.5.3
     implementation_path: external-capabilities/cli/chrome-frequent-pages
     auth: "无凭据入仓。配置放 `~/.config/chrome-frequent-pages/config.json`（Chrome profile 路径、统计窗口、目标飞书表坐标）；飞书写入复用本机已认证的 lark-cli（用户身份）"
     capabilities: "读 Chrome History（复制到临时目录避免锁），按「域名 + 路径」归一化聚合访问次数，过滤登录页/搜索页/本地地址，把高频页面写进飞书「常用网页」表（URL 去重、已存在则更新次数），并可导出可导入 Chrome 的书签 HTML。实测 90 天窗口 60 条：飞书 Base 顶置表 4601 次、爱壹帆 264 次、飞书开放平台开发者后台 244 次"
     permissions: "读取本机 Chrome profile 目录（History 只读副本）；写飞书表需要 lark-cli 用户身份且有该 Base 编辑权限。不访问外网、不改 Chrome 书签文件"
     commerce: {charge: free}
-    notes: "自研、Store-managed。0.1.0 首次登记。设计取舍：不做「直接改 Bookmarks JSON」——Chrome 运行时会覆盖，写坏会丢全部书签；改为生成 Netscape 书签 HTML 由用户手动导入，并提供备份命令。归一化按飞书 `/base/<token>`、`/wiki/<token>` 聚合，避免同一张表因 query 不同被拆成十几条（实测发生过）。可选 install.sh 注册每周一 09:30 launchd 任务。"
+    notes: "自研、Store-managed。0.1.0 首次登记。设计取舍：不做「直接改 Bookmarks JSON」——Chrome 运行时会覆盖，写坏会丢全部书签；改为生成 Netscape 书签 HTML 由用户手动导入，并提供备份命令。归一化按飞书 `/base/<token>`、`/wiki/<token>` 聚合，避免同一张表因 query 不同被拆成十几条（实测发生过）。可选 install.sh 注册每周一 09:30 launchd 任务。0.5.3 只改 LICENSE 版权行：统一为 Copyright (c) 2026 Lyra Wang（与仓库根 LICENSE、npm 维护者账号一致）；无代码改动。"
   ai-quote-clip:
     name: ai-quote-clip
     hosting: store-managed
@@ -230,13 +230,13 @@ capabilities:
     type: cli
     status: limited
     provider_path: external-capabilities/providers/lyrawang/README.md
-    version: 0.2.1
+    version: 0.2.2
     implementation_path: external-capabilities/cli/ai-quote-clip
     auth: "无凭据入仓。飞书写入复用操作者本机 lark-cli 的 user 令牌（凭据在 lark-cli 自己的凭据库）；目标文档 token 存在 `~/.ai-quote-clip/config.json`（600），快捷方式配置 `hotkey.json` 只记录 node 与 CLI 路径。包内不含任何密钥"
     capabilities: "把任意 App 里选中的文字（尤其 AI 对话里值得留的表达）一键追加到指定飞书文档：CLI 支持 stdin/参数/剪贴板三种输入；macOS 全局快捷键 ⌃⌥S 自动复制选区并写入。`init` 引导选择文档并校验可读，`doc set` 可切换目标，格式为「引用块 + 收录时间 + 可选来源 + 分隔线」"
     permissions: "需要本机 lark-cli 已授权（docs 域）且对目标文档有编辑权限；macOS 快捷键需要「辅助功能」权限（模拟 ⌘C 读取选区），可随时在系统设置撤销。CLI 本身跨平台，只有快捷键安装限 macOS"
     commerce: {charge: free}
-    notes: "自研、Store-managed。全新资产，首次提交即其第一份历史。产品定位：AI 金句/素材收录器——现有剪藏工具只覆盖网页，收不了 ChatGPT/Codex/豆包工作这类对话；本工具跨 App 通用。快捷键实现随包分发 Swift 源码、由 `hotkey install` 在本机用 swiftc 编译并按 LaunchAgent 常驻，避免分发预编译 App 的签名问题。0.1.0 仅收录（原文 + 时间 + 来源）；改写（公众号风/小红书风）、按日期分节、MCP 形态（供 Codex/豆包工作 agent 调用）为后续版本。0.1.1：快捷键字母可配置（`hotkey install --key <a-z>`，默认 ⌃⌥Z），热键码由配置文件读取，换字母不用改代码。0.1.2：抓取选区改为三级兜底——AXSelectedText → 模拟 ⌘C（带重试）→ 手动复制的内容；二进制按源码哈希缓存，源码没变不再重编译（避免重新编译导致 macOS 辅助功能授权失效）；未授权时只提示一次并打开设置页；调 lark-cli 时补全 PATH、init 时把 larkCli 解析成绝对路径（launchd 窄 PATH 下也能用）。0.1.3：加 --capture-once 无界面抓取模式与 logs/capture.log 日志（记录前台应用、AX 读取结果、复制重试），用于定位个别应用抓不到选区的问题。0.2.0：快捷键默认改由 Hammerspoon（免费开源、Apple 公证签名）实现——写入 ~/.hammerspoon/ai-quote-clip.lua 并在 init.lua 中引用，避免自研 app 因未签名导致辅助功能授权反复作废；自研 App 保留为 --mode app 备用；只绑一个快捷键（默认 ⌃⌥Z），读取选区前先清空剪贴板、事后还原，不会收录旧剪贴板内容。实测 DSH / Codex / 豆包工作三处均可用。0.2.1：status 命令显示 Hammerspoon/自研 App 两种模式与当前快捷键，便于排查。"
+    notes: "自研、Store-managed。全新资产，首次提交即其第一份历史。产品定位：AI 金句/素材收录器——现有剪藏工具只覆盖网页，收不了 ChatGPT/Codex/豆包工作这类对话；本工具跨 App 通用。快捷键实现随包分发 Swift 源码、由 `hotkey install` 在本机用 swiftc 编译并按 LaunchAgent 常驻，避免分发预编译 App 的签名问题。0.1.0 仅收录（原文 + 时间 + 来源）；改写（公众号风/小红书风）、按日期分节、MCP 形态（供 Codex/豆包工作 agent 调用）为后续版本。0.1.1：快捷键字母可配置（`hotkey install --key <a-z>`，默认 ⌃⌥Z），热键码由配置文件读取，换字母不用改代码。0.1.2：抓取选区改为三级兜底——AXSelectedText → 模拟 ⌘C（带重试）→ 手动复制的内容；二进制按源码哈希缓存，源码没变不再重编译（避免重新编译导致 macOS 辅助功能授权失效）；未授权时只提示一次并打开设置页；调 lark-cli 时补全 PATH、init 时把 larkCli 解析成绝对路径（launchd 窄 PATH 下也能用）。0.1.3：加 --capture-once 无界面抓取模式与 logs/capture.log 日志（记录前台应用、AX 读取结果、复制重试），用于定位个别应用抓不到选区的问题。0.2.0：快捷键默认改由 Hammerspoon（免费开源、Apple 公证签名）实现——写入 ~/.hammerspoon/ai-quote-clip.lua 并在 init.lua 中引用，避免自研 app 因未签名导致辅助功能授权反复作废；自研 App 保留为 --mode app 备用；只绑一个快捷键（默认 ⌃⌥Z），读取选区前先清空剪贴板、事后还原，不会收录旧剪贴板内容。实测 DSH / Codex / 豆包工作三处均可用。0.2.1：status 命令显示 Hammerspoon/自研 App 两种模式与当前快捷键，便于排查。0.2.2 只改 LICENSE 版权行：统一为 Copyright (c) 2026 Lyra Wang（与仓库根 LICENSE、npm 维护者账号一致）；无代码改动。"
   dsh-feishu-remote:
     name: dsh-feishu-remote
     hosting: store-managed
@@ -244,13 +244,13 @@ capabilities:
     type: cli
     status: limited
     provider_path: external-capabilities/providers/lyrawang/README.md
-    version: 0.5.1
+    version: 0.5.2
     implementation_path: external-capabilities/cli/dsh-feishu-remote
     auth: "无凭据入仓。飞书侧复用操作者本机 lark-cli 的凭据库：自建应用的 App ID/Secret 由 `lark-cli profile add` 管理，用户授权走 `lark-cli auth login`（设备码），二者都不经过本包；模型 Key 由环境变量或系统钥匙串提供（默认 DEEPSEEK_API_KEY），配置与审计文件在 `~/.dsh-feishu-remote/`（600），仓库内零 token"
     capabilities: "把飞书私聊任务转发到执行后端运行：白名单 open_id 校验、仅 p2p、高风险词先确认（回复「确认」才执行）、串行队列、超时中止（SIGTERM→SIGKILL）、结果以飞书 Card 2.0 卡片回传（发送失败自动降级为文本；高风险确认支持卡片按钮回调）、逐任务审计 JSONL；另提供 doctor 环境体检与开机自启（macOS launchd + caffeinate 防休眠 / Linux systemd user unit）。执行后端可配置：默认 `dsh headless <任务>`，可替换为任意命令"
     permissions: "需要：本机 lark-cli 已授权（im 域：读私聊消息、以机器人发消息）；一个已开启 `im.message.receive_v1` 长连接事件订阅的自建应用机器人；执行后端命令可运行（默认需要 DSH CLI 与模型 Key）。服务以操作者本人身份运行，可读写配置的 workdir"
     commerce: {charge: free}
-    notes: "自研、Store-managed。全新资产，从未进过版本控制，首次提交即其第一份历史（按 first-publish §0 ② 直接复制）。status 取 limited：需先建飞书自建应用、配事件订阅与权限、绑 lark-cli 并授权，不是装上即用。0.1.0 分发形态为 npm CLI：`npx @lyra_wang/dsh-feishu-remote init`（npm 上的 `dsh-feishu-remote` 无 scope 名已被第三方 shixiangyu2 占用，且那是 DSH 插件形态的同类项目；本项目是独立常驻 CLI、执行后端可替换、内置高风险确认与审计，两者无关）。macOS 用 launchd 常驻；其他平台用 systemd/PM2 运行 `dsh-feishu-remote run`。2026-10-19 本机实测：doctor 全绿（lark-cli 1.0.97、事件订阅就绪、DSH 内置 CLI、DEEPSEEK_API_KEY 钥匙串就绪）；同一套逻辑先用 launchd 版验证了「列出桌面文件（9.3s 完成）」与「删除类指令先确认、取消零执行」。 0.3.1（patch）：修 0.3.0 的 Linux 落地缺陷——`init` 的安装门槛写死 `isMac()`，Linux 上会打印「非 macOS / Linux」然后跳过 systemd 安装，与 README 声明矛盾；Linux 启动脚本里的 PATH 被硬编码，导致 DSH 的 `#!/usr/bin/env node` 解析到系统老版本 node 时**静默退出码 0、零输出**（`import.meta.main` 需 Node 24+），现改为优先使用配置 `extraEnv.PATH`；`loginctl enable-linger` 改为尽力而为（普通用户无权限时提示而不是中断安装）；`install-service` / `uninstall-service` 在 Linux 下不再打印 `undefined`。补 6 个单测钉住渲染出的服务脚本与 systemd unit，并接入 PR 门禁。README 增加「部署前必须对齐的三件事」（node 版本 / keychainService 置空 / 同一飞书应用只能有一处长连接）。 0.3.2（patch）：只有 bot 身份的机器（典型是 Linux 服务器，用户登录是设备码流程）此前无法完成初始化——`init` 依赖 user 身份读白名单、`doctor` 把 user 身份缺失判成失败。实际收发消息全程 `--as bot`，user 身份不是必需：`init` 新增 `--open-id ou_xxx`，`doctor` 增加「飞书机器人身份」检查（bot ready 即通过），读不到用户身份时白名单降级为提示核对。补 5 个 feishu 单测。 0.3.3（patch）：README「常见问题」补一条「飞书授权到期了怎么办？」——token 正常每 6 小时自动滚动续期，真失效时在飞书回复「重新授权」会收到卡片，点按钮即可续期。 0.4.0（minor）：回传给用户的**所有消息改为飞书 Card 2.0 卡片**（任务完成/失败/执行中/高风险确认/帮助/状态），不再发裸文本；卡片正文截断仍受 `maxReplyChars` 控制，发送失败自动降级为文本。新增 `src/cards.mjs` 纯函数构建器与 6 个卡片单测。 0.5.0（minor）：高风险确认改为**卡片按钮**——确认卡带「确认执行 / 取消」两个 callback 按钮（`action_value` 携带 `{action, taskId}`），桥新增 `card.action.trigger` 事件消费者（配置 `cardActions`，默认关；需在开放平台订阅回调），按钮与文字「确认/取消」两条路都保留；消费者改为按事件键分别启动并各自重连。 0.5.1（patch）：`doctor` 的执行后端检查从「文件存在」升级为「命令真的产出输出」——跑 `dsh --version`（10s 超时，带 extraEnv），退出码 0 但 stdout 为空即判失败并提示 Node <24 的静默坑；新增 `doctor --full` 真跑一句任务验证模型。补 4 个探针判定单测。"
+    notes: "自研、Store-managed。全新资产，从未进过版本控制，首次提交即其第一份历史（按 first-publish §0 ② 直接复制）。status 取 limited：需先建飞书自建应用、配事件订阅与权限、绑 lark-cli 并授权，不是装上即用。0.1.0 分发形态为 npm CLI：`npx @lyra_wang/dsh-feishu-remote init`（npm 上的 `dsh-feishu-remote` 无 scope 名已被第三方 shixiangyu2 占用，且那是 DSH 插件形态的同类项目；本项目是独立常驻 CLI、执行后端可替换、内置高风险确认与审计，两者无关）。macOS 用 launchd 常驻；其他平台用 systemd/PM2 运行 `dsh-feishu-remote run`。2026-10-19 本机实测：doctor 全绿（lark-cli 1.0.97、事件订阅就绪、DSH 内置 CLI、DEEPSEEK_API_KEY 钥匙串就绪）；同一套逻辑先用 launchd 版验证了「列出桌面文件（9.3s 完成）」与「删除类指令先确认、取消零执行」。 0.3.1（patch）：修 0.3.0 的 Linux 落地缺陷——`init` 的安装门槛写死 `isMac()`，Linux 上会打印「非 macOS / Linux」然后跳过 systemd 安装，与 README 声明矛盾；Linux 启动脚本里的 PATH 被硬编码，导致 DSH 的 `#!/usr/bin/env node` 解析到系统老版本 node 时**静默退出码 0、零输出**（`import.meta.main` 需 Node 24+），现改为优先使用配置 `extraEnv.PATH`；`loginctl enable-linger` 改为尽力而为（普通用户无权限时提示而不是中断安装）；`install-service` / `uninstall-service` 在 Linux 下不再打印 `undefined`。补 6 个单测钉住渲染出的服务脚本与 systemd unit，并接入 PR 门禁。README 增加「部署前必须对齐的三件事」（node 版本 / keychainService 置空 / 同一飞书应用只能有一处长连接）。 0.3.2（patch）：只有 bot 身份的机器（典型是 Linux 服务器，用户登录是设备码流程）此前无法完成初始化——`init` 依赖 user 身份读白名单、`doctor` 把 user 身份缺失判成失败。实际收发消息全程 `--as bot`，user 身份不是必需：`init` 新增 `--open-id ou_xxx`，`doctor` 增加「飞书机器人身份」检查（bot ready 即通过），读不到用户身份时白名单降级为提示核对。补 5 个 feishu 单测。 0.3.3（patch）：README「常见问题」补一条「飞书授权到期了怎么办？」——token 正常每 6 小时自动滚动续期，真失效时在飞书回复「重新授权」会收到卡片，点按钮即可续期。 0.4.0（minor）：回传给用户的**所有消息改为飞书 Card 2.0 卡片**（任务完成/失败/执行中/高风险确认/帮助/状态），不再发裸文本；卡片正文截断仍受 `maxReplyChars` 控制，发送失败自动降级为文本。新增 `src/cards.mjs` 纯函数构建器与 6 个卡片单测。 0.5.0（minor）：高风险确认改为**卡片按钮**——确认卡带「确认执行 / 取消」两个 callback 按钮（`action_value` 携带 `{action, taskId}`），桥新增 `card.action.trigger` 事件消费者（配置 `cardActions`，默认关；需在开放平台订阅回调），按钮与文字「确认/取消」两条路都保留；消费者改为按事件键分别启动并各自重连。 0.5.1（patch）：`doctor` 的执行后端检查从「文件存在」升级为「命令真的产出输出」——跑 `dsh --version`（10s 超时，带 extraEnv），退出码 0 但 stdout 为空即判失败并提示 Node <24 的静默坑；新增 `doctor --full` 真跑一句任务验证模型。补 4 个探针判定单测。0.5.2 只改 LICENSE 版权行：统一为 Copyright (c) 2026 Lyra Wang（与仓库根 LICENSE、npm 维护者账号一致）；无代码改动。"
   mac-cleanup:
     name: mac-cleanup
     hosting: store-managed
@@ -258,13 +258,13 @@ capabilities:
     type: cli
     status: limited
     provider_path: external-capabilities/providers/lyrawang/README.md
-    version: 0.2.3
+    version: 0.2.4
     implementation_path: external-capabilities/cli/mac-cleanup
     auth: "无凭据入仓。本机状态全部在仓库外的 `~/.mac-cleanup/`（可用 MC_STATE_DIR 覆盖）：config.local.sh / whitelist.reference / expect-absent.list / critical.list / watch.list，均由 `--init` 生成；报告写在 ~/Library/Logs/mac-cleanup/。仓库内零密钥、零个人路径"
     capabilities: "季度性 macOS 清理：六阶段（白名单体检 → dry-run 存档 → 非交互清理 → 日志核对 → 关键资产体检 → 出报告）。三道护栏专治 Mole 的三种静默失败：白名单是替换语义（少一条即静默失去保护）、汇总数字虚报/漏报（实测一次少报 3.4 倍、一次虚报 2275MB 而文件并未删除）、删掉未被识别的运行时依赖（曾差点删掉 164 个符号链接指向的运行时目录）。不 sudo、不删 REVIEW 项、无自研删除逻辑。`--init` 扫描本机生成基准与清单；安装季度定时任务（1/4/7/10 月 1 日 10:00，睡眠后补跑）"
     permissions: "需要 Homebrew 安装的 Mole（brew install mole）。读 ~/Library 与 ~/.config/mole 用本用户权限即可，部分受保护路径可能需要「完全磁盘访问权限」；不需要 sudo、不需要网络、不需要任何凭据。只删 Mole 白名单之外的缓存与日志，系统级缓存（需 sudo）明确不处理"
     commerce: {charge: free}
-    notes: "自研、Store-managed。从 ~/Documents/workplace/mac-cleanup 迁入本 Store（`git subtree add` 保留历史；0.1.0 起本目录即唯一源码）。已参数化：仓库内不含任何个人路径、主机名或 npx 哈希 —— `--init` 从 ~/.dsh/profiles/node_modules 的符号链接反查 DSH 运行时目录，从 mo 的真实路径反推 Mole 源码位置，覆盖 Apple Silicon 与 Intel 两种 Homebrew 前缀。不含 SKILL.md：这是可安装的 CLI 工具，不是 Agent 跟随的流程。status 取 limited：需先装 Mole 并跑一次 `--init`，不是装上即用。0.1.0 首次收录。0.2.0：npm 分发（`npx @lyra_wang/mac-cleanup`，bin 为 bin/mac-cleanup.js 包装层）——为此做两处结构调整：① 状态文件从包目录迁到 `~/.mac-cleanup/`，因为 npx 把包装在 `~/.npm/_npx/<hash>/` 缓存目录，随时被回收且是只读语义；② 入口脚本解析自身符号链接（npm 的 bin 是 symlink，否则找不到 lib/）。`--install` 会先把包复制到 `~/.mac-cleanup/app` 再生成 LaunchAgent，避免 plist 指向会被回收的 npx 缓存。npm 上的 `mac-cleanup` 无 scope 名已被第三方占用，故用 `@lyra_wang` scope"
+    notes: "自研、Store-managed。从 ~/Documents/workplace/mac-cleanup 迁入本 Store（`git subtree add` 保留历史；0.1.0 起本目录即唯一源码）。已参数化：仓库内不含任何个人路径、主机名或 npx 哈希 —— `--init` 从 ~/.dsh/profiles/node_modules 的符号链接反查 DSH 运行时目录，从 mo 的真实路径反推 Mole 源码位置，覆盖 Apple Silicon 与 Intel 两种 Homebrew 前缀。不含 SKILL.md：这是可安装的 CLI 工具，不是 Agent 跟随的流程。status 取 limited：需先装 Mole 并跑一次 `--init`，不是装上即用。0.1.0 首次收录。0.2.0：npm 分发（`npx @lyra_wang/mac-cleanup`，bin 为 bin/mac-cleanup.js 包装层）——为此做两处结构调整：① 状态文件从包目录迁到 `~/.mac-cleanup/`，因为 npx 把包装在 `~/.npm/_npx/<hash>/` 缓存目录，随时被回收且是只读语义；② 入口脚本解析自身符号链接（npm 的 bin 是 symlink，否则找不到 lib/）。`--install` 会先把包复制到 `~/.mac-cleanup/app` 再生成 LaunchAgent，避免 plist 指向会被回收的 npx 缓存。npm 上的 `mac-cleanup` 无 scope 名已被第三方占用，故用 `@lyra_wang` scope0.2.4 只改 LICENSE 版权行：统一为 Copyright (c) 2026 Lyra Wang（与仓库根 LICENSE、npm 维护者账号一致）；无代码改动。"
 
   dsh-inbox:
     name: dsh-inbox
