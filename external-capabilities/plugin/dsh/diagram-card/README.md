@@ -195,6 +195,18 @@ token 套到浅色页面上：卡片内部碰巧还能读，但卡外的标题�
 | 卡片闪一下就消失 | 宿主重绘；观察 2s 内是否自动恢复，未恢复请记录 DOM 结构 |
 | 深浅色不跟随 | 0.1.4 起按「宿主标记 → color-scheme → 卡片背后背景」判定；若仍不对，记录消息容器与 body 的 computed background 发我 |
 
+## 开发自测（不依赖 DSH）
+
+改 `client.js` 后先在这里看渲染结果，再装进 profile：
+
+- 在 `external-capabilities/plugin/dsh/diagram-card/` 起静态服务（`python3 -m http.server 8791`），
+  浏览器打开 `http://127.0.0.1:8791/dev/preview.html`；
+- 页面注入两个示例 `dsh-diagram` 代码块（分层图 + 流程），底部打印
+  `css / scan / rendered / hidden pre / apply` 五项诊断；
+- 它加载的是真实的 `../client.js`（页面只提供最小宿主桩），渲染层一改，这里立刻能看出来。
+
+`dev/` **不随 npm 包发布**（`package.json` 的 `files` 不含它），只有读仓库的人用得上。
+
 ## 与 Store 的关系
 
 - 实例根：`external-capabilities/plugin/dsh/diagram-card/`
