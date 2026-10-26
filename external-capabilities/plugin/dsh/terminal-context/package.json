@@ -1,6 +1,6 @@
 {
   "name": "@lyra_wang/dsh-terminal-context",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "type": "module",
   "description": "把侧边栏终端最近若干行交给 Agent，作为它判断当前处境的上下文。",
   "exports": {
