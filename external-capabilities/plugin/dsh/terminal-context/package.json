@@ -1,8 +1,8 @@
 {
   "name": "@lyra_wang/dsh-terminal-context",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "type": "module",
-  "description": "把侧边栏终端最近若干行交给 Agent，作为它判断当前处境的上下文。",
+  "description": "把 DSH 侧边栏终端当前屏幕的内容交给 Agent，作为它判断当前处境的上下文。右侧浏览器 tab 不在覆盖范围（结构限制，见 README）。",
   "exports": {
     ".": "./index.js",
     "./locale/*.json": "./locale/*.json",
