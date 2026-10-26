@@ -7,7 +7,9 @@ name: source-check
 on:
   workflow_dispatch:
   push:
-    branches: [main, feat/platform-intel-sources]
+    # 只在 main 上跑。`feat/platform-intel-sources` 曾用于开发期校验，PR #365
+    # 合并后该分支已删除；留着只会让人以为还有一条活跃的开发分支。
+    branches: [main]
     paths:
       - 'procedures/source-check/**'
       - 'procedures/platform-intel/sources.yaml'
