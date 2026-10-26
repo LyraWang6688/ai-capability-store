@@ -1,10 +1,14 @@
--- command-sync 命令面板：⌥X 打开，两栏
---   左栏：服务器入口 + 最近高频命令
+-- command-sync 命令面板：⌥X 打开，三栏
+--   左栏：服务器入口 + 最近高频命令（palette.py 生成）
+--   中栏：📋 剪贴板历史（clip-history.lua 记录，最新 30 条）
 --   右栏：快捷键（含 ⚠️ 未登记）
 --
 -- 为什么用 hs.webview 而不是 hs.chooser：chooser 是系统原生的【单列】选择器，
 -- API 里没有 column / layout 任何一项 —— 单列是它的物理形态，不是配置问题。
 -- webview 里就是 HTML，想要几栏就几栏。
+--
+-- 为什么剪贴板历史不走 palette.py：写它的是 Hammerspoon 自己（每 0.25s 就可能
+-- 多一条），没必要让 python 每次打开面板重算一遍；这里直接 require 注入即可。
 --
 -- 代价（先说在前面）：
 --   1. 键盘焦点不如 chooser 稳。chooser 是系统控件，打字一定进得去；
@@ -18,10 +22,15 @@ local TEMPLATE = BASE .. "/palette.html"
 local SCRIPT = BASE .. "/bin/palette.py"
 local PY = "/usr/bin/python3"
 
+-- 模块缺失（老版本安装）时面板仍要能用，只是没有剪贴板栏
+local clipOk, clip = pcall(require, "clip-history")
+if not clipOk then clip = nil end
+
 local panel
 
 local function closePanel()
   if panel then panel:delete(); panel = nil end
+  _G.commandPalette = nil
 end
 
 local function readFile(path)
@@ -32,22 +41,45 @@ local function readFile(path)
   return body
 end
 
+-- 剪贴板文本会原样进 HTML，必须把 "</" 换成 JSON 合法的 "<\/"，
+-- 否则一条含 "</script>" 的记录会让整页 JS 挂掉、面板空白。
+local function safeJson(s)
+  return (s:gsub("</", "<\\/"))
+end
+
 local function show()
   local tpl = readFile(TEMPLATE)
   local json = readFile(PALETTE)
   if not tpl then hs.alert.show("缺少 palette.html，重跑 install.sh") return end
   if not json then hs.alert.show("缺少 palette.json，先跑 palette.py") return end
 
+  local clips = "[]"
+  if clip then
+    local ok, encoded = pcall(hs.json.encode, clip.recent(30))
+    if ok and type(encoded) == "string" then clips = safeJson(encoded) end
+  end
+
   -- 注入 JSON。用函数式替换，避免 gsub 把 % 当转义（JSON 里可能有 %）。
-  local html = tpl:gsub("__PALETTE_JSON__", function() return json end)
+  local html = tpl
+    :gsub("__PALETTE_JSON__", function() return json end)
+    :gsub("__CLIPBOARD_JSON__", function() return clips end)
 
   local ucc = hs.webview.usercontent.new("dsh")
   ucc:setCallback(function(msg)
-    if msg.body == "close" then closePanel() end
+    if msg.body == "close" then
+      closePanel()
+    elseif msg.body == "paste" then
+      -- 复制已经由页面里的 execCommand 写进剪贴板；这里只负责关窗 + 替用户按 ⌘V，
+      -- 否则还得手动 ⌘V 一次，「从历史里捞回来」就不算完成。
+      closePanel()
+      hs.timer.doAfter(0.15, function()
+        hs.eventtap.keyStroke({"cmd"}, "v", 0)
+      end)
+    end
   end)
 
   local screen = hs.screen.mainScreen():frame()
-  local w, h = 760, 440
+  local w, h = 980, 470
   local rect = hs.geometry.rect(
     screen.x + (screen.w - w) / 2,
     screen.y + (screen.h - h) / 2 - 80,
@@ -55,8 +87,12 @@ local function show()
   )
 
   panel = hs.webview.new(rect, {}, ucc)
-  -- 必须带 titled：纯 borderless 的 webview 在 1.1.1 上不是 key window，收不到键盘
-  panel:windowStyle({"titled", "closable"})
+  -- 必须带 titled：纯 borderless 的 webview 在 1.1.1 上不是 key window，收不到键盘。
+  -- 再加 nonactivating（NSPanel 的非激活面板掩码）：窗口能成为 key、能收键盘，
+  -- 但不会把 Hammerspoon 拉成前台 —— 否则搜索完一关窗，原来那个 App 的焦点就丢了。
+  panel:windowStyle({"titled", "closable", "nonactivating"})
+  -- webview 默认不接收键盘输入，必须显式开（hsdocs 自己的搜索页也是这么写的）
+  panel:allowTextEntry(true)
   panel:windowTitle("⌥X")
   -- hs.webview:level() 要数字，不是 "floating" 这种字符串（那是 hs.window 的写法）。
   -- 3 = 浮动层。传字符串会抛 "incorrect type 'string' for argument 2"，
@@ -66,6 +102,8 @@ local function show()
   panel:html(html)
   panel:show()
   panel:bringToFront(true)
+  -- 调试/自测钩子：hs -c 'commandPalette:evaluateJavaScript(...)' 可以读页面状态
+  _G.commandPalette = panel
 end
 
 local function refreshAndShow()

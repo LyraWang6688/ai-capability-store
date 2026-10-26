@@ -3,6 +3,7 @@
 **把你在终端里手动输入的命令，变成一个快捷键面板：⌥X → 搜索 → 回车复制。**
 
 只做一件事：收集你自己在终端里敲过的命令，按「服务器入口 + 最近 7 天高频」展示，选中复制到剪贴板。
+外加一栏**剪贴板历史** —— macOS 的剪贴板只有一格，被下一次复制覆盖就没了，这一栏把它补回来。
 
 ## 面板结构
 
@@ -11,16 +12,34 @@
 ├─ 🌐 服务器入口（3 条）
 │    ssh 登录服务器
 │    进入服务器项目 <path>（来自 config.serverPaths）
-├─ ⌨️ 快捷键速查（来自 shortcuts.json + 自动扫 Hammerspoon）
-│    显示/隐藏 隐藏文件  ·  Finder          ⌘⇧.
-│    打开命令面板  ·  全局                  ⌥X
-│    ⚠️ 未登记：capture                     ⌃⌥Z
-└─ 🕘 最近 7 天用得最多的 5 条本地命令
-     （不足 5 条时用最近记录补齐，标记「旧记录」）
+├─ 📋 剪贴板历史（最近 30 条，新 → 旧）
+│   你刚才剪切的那段话…            刚刚 · 42 字
+│   https://xxx.feishu.cn/docx/…    3 分钟前 · 58 字
+├─ 🕘 最近 7 天用得最多的 5 条本地命令
+│     （不足 5 条时用最近记录补齐，标记「旧记录」）
+└─ ⌨️ 快捷键速查（来自 shortcuts.md + 自动扫 Hammerspoon）
+     显示/隐藏 隐藏文件  ·  Finder          ⌘⇧.
+     打开命令面板  ·  全局                  ⌥X
+     ⚠️ 未登记：capture                     ⌃⌥Z
 ```
 
 - 选中 = **复制到剪贴板**，不会自动执行；
+- 在条目上按 **⌘⏎** = 复制并直接粘回刚才那个 App（省一次 ⌘V）；
 - 每次打开面板都会重新读取历史并生成数据（毫秒级）。
+
+## 剪贴板历史（本机记录，不上传）
+
+- 记录器是 `hammerspoon/clip-history.lua`，用 `hs.pasteboard.watcher` 监听变化
+  （Hammerspoon 1.1.1 没有 `hs.clipboard` 模块），数据落盘在
+  `~/.hammerspoon/clipboard-history.jsonl`，一行一条 `{"t":epoch,"text":"…"}`；
+- 只存**文本**：图片、文件不记录；
+- 最多 100 条、单条超 20k 字节截断，文件超 400 行自动压缩重写；
+- 同一内容重复出现时**提到最前**，不会留两份；
+- **不记录密码**：带 `org.nspasteboard.ConcealedType` / `TransientType` 标记的粘贴板
+  （1Password 等密码管理器复制时会打这个标记）一律跳过 —— 但不是所有 App 都会打，
+  所以别把它当密码保险箱；
+- 面板只显示最近 30 条，更早的留在文件里（可手动 `require("clip-history").clear()` 清空）。
+
 
 ## 数据来源（只读）
 
@@ -95,14 +114,31 @@ fc -l -3000 > ~/.command-sync/history-dump-$(date +%H%M%S).txt
 - `sshHost` / `sshUser`：面板里"ssh 登录服务器"用的地址；
 - `serverPaths`：面板里"进入服务器项目"的列表。
 
-## 手动命令
+## 自检 / 手动命令
 
 ```bash
-python3 ~/.command-sync/bin/palette.py   # 重新生成面板数据
+command-sync doctor                     # 自检：装没装好、缺哪一步
+command-sync install                    # 重装（升级后跑一次，重新软链 palette.py）
+command-sync palette                    # 重新生成面板数据
+python3 ~/.command-sync/bin/palette.py  # 同上，直接调脚本
 ```
+
+`doctor` 逐项检查并给出「去哪儿补」：
+
+| 检查项 | 不通过时提示 |
+|---|---|
+| Python 3 | `xcode-select --install` |
+| Hammerspoon 是否安装 | `brew install --cask hammerspoon` |
+| Hammerspoon 是否在运行（IPC） | `open -a Hammerspoon` |
+| 辅助功能授权（`hs.accessibilityState()`） | 系统设置 → 隐私与安全性 → 辅助功能 → 勾 Hammerspoon |
+| 面板文件 / init.lua 挂载 | 重跑 `command-sync install` |
+| 终端历史 / 剪贴板历史数据源 | 提示历史文件路径与生成方式 |
+
+有任何 ✗ 就以退出码 1 结束，方便脚本判断；全部通过则退出码 0。
 
 ## 边界
 
 - 只复制、不执行命令；
 - 不收集 AI 执行的命令；
+- 剪贴板历史只存文本、只在本机；图片/文件、密码管理器标记的内容不记录；
 - 不做月度巡检（巡检由另一个项目负责）。

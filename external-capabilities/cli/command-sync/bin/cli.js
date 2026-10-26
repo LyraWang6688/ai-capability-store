@@ -20,9 +20,12 @@ if (command === 'install') {
   run('/bin/bash', [join(root, 'install.sh')]);
 } else if (command === 'palette') {
   run('/usr/bin/python3', [join(root, 'palette.py')]);
+} else if (command === 'doctor') {
+  run(process.execPath, [join(here, 'doctor.js')]);
 } else {
   console.log('用法:');
   console.log('  command-sync install   # 安装到 ~/.command-sync（Hammerspoon ⌥X 面板）');
+  console.log('  command-sync doctor    # 自检：Python / Hammerspoon / 辅助功能 / 数据源');
   console.log('  command-sync palette   # 重新生成面板数据');
   process.exit(command === 'help' ? 0 : 2);
 }
