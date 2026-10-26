@@ -436,13 +436,19 @@ export function apply(ctx) {
     handler,
   }));
 
-  // 「收录」：把选中的 owner/repo 交给 repo-collector 的 collect_one.py。
+  // 「收录」：把用户选中的原文原样交给 repo-collector。
+  //
+  // 这里刻意不再要求选中内容是 owner/repo。多数时候用户是在读文章，选中的是一段话
+  // （「mobile-mcp（mobile-next 出品）」这种），仓库名和 owner 分开出现，甚至只出现
+  // 仓库名。插件不做解析、也不猜：原文一字不改地送进会话，由 agent 判断是哪个仓库
+  // （它能 web_fetch / 搜 GitHub），判断不唯一时可以停下来问人。
+  // 插件只保证两件事：内容真的送到会话里；没有活着的会话时明确报错（一个点了没反应
+  // 的按钮比没有按钮更糟）。
   //
   // 脚本路径不在包里 —— skill 装在哪由操作者决定（默认 ~/.agents/skills/）。
-  // 找不到就明确报错，而不是静默失败：一个点了没反应的按钮比没有按钮更糟。
 
   /** Queue a full "collect this repo" task into the most recently active ordinary Session. */
-  const enqueueRepoCollect = async (project) => {
+  const enqueueRepoCollect = async (selection) => {
     const controller = typeof ctx.get === 'function' ? ctx.get('sessionController') : undefined;
     if (!controller || typeof controller.list !== 'function' || typeof controller.prompt !== 'function') {
       return { queued: false, reason: 'sessionController unavailable' };
@@ -458,17 +464,22 @@ export function apply(ctx) {
     if (ordinary.length === 0) return { queued: false, reason: 'no ordinary session' };
     const target = ordinary.find((item) => item.running) || ordinary[0];
     const text = [
-      '【收录任务】用户在划词面板点了「收录」，选中的仓库是 ' + project + '。',
+      '【收录任务】用户在划词面板点了「收录」。他选中的原文如下（原样，插件没有做任何解析）：',
+      '',
+      '<<<',
+      selection,
+      '>>>',
       '',
       '请按 repo-collector 技能完整执行：',
-      '1. 查重：scripts/check_duplicate.py ' + project + '（退出码 10 = 已收录，停下来告诉我，不要插新行）',
-      '2. 拉事实：scripts/repo_meta.py ' + project + '（stars/owner/描述/homepage，禁止凭记忆填）',
+      '0. 先从上面这段内容里判断要收录的是哪个 GitHub 仓库（owner/repo）。它可能是文章段落，仓库名和 owner 分开出现，也可能只有仓库名；必要时用 web_fetch / GitHub 搜索确认。判断不出来、或可能指多个仓库，就停下来直接问我，不要猜。',
+      '1. 查重：scripts/check_duplicate.py <owner/repo>（退出码 10 = 已收录，停下来告诉我，不要插新行）',
+      '2. 拉事实：scripts/repo_meta.py <owner/repo>（stars/owner/描述/homepage，禁止凭记忆填）',
       '3. 读仓库 README（必要时 web_fetch），写中文「项目简介」「核心亮点」「参考价值」；「主题标签」「项目类型」按技能的表契约选，跟进状态默认「待深入」',
       '4. 门禁：scripts/validate_record.py，不通过就按报错改，不许绕过',
       '5. 用 lark-cli base +record-batch-create 写入「GitHub 优质项目收录」',
       '6. 回读那一行，确认字段真的落库',
       '',
-      '完成后用一句话汇报：仓库名 + 类型 + 亮点摘要；失败就直说哪一步失败、为什么。不要向我确认，直接做。',
+      '完成后用一句话汇报：仓库名 + 类型 + 亮点摘要；失败就直说哪一步失败、为什么。除第 0 步判断不出来之外，不要向我确认，直接做。',
     ].join('\n');
     try {
       // prompt(request, signal)：第二个参数是 AbortSignal，缺了会在内部 throwIfAborted 处崩。
@@ -498,12 +509,15 @@ export function apply(ctx) {
     try {
       const body = await readJsonBody(req);
       const raw = String(body.text ?? '').trim();
-      const project = raw.split(/\s+/)[0];
-      if (!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(project)) {
-        sendJson(res, 400, { ok: false, message: '请选中 owner/repo 形式的仓库名（例如 vercel/next.js）' });
+      if (raw === '') {
+        sendJson(res, 400, { ok: false, message: '没有选中内容：先在页面上选中要收录的文字，再点收录' });
         return;
       }
-      const result = await enqueueRepoCollect(project);
+      if (raw.length > 2000) {
+        sendJson(res, 400, { ok: false, message: '选中的内容太长（上限 2000 字符），缩小选区再试' });
+        return;
+      }
+      const result = await enqueueRepoCollect(raw);
       if (result.queued !== true) {
         const reason = String(result.reason || 'unknown');
         const message = reason.includes('no ordinary session')
@@ -515,9 +529,9 @@ export function apply(ctx) {
       sendJson(res, 200, {
         ok: true,
         queued: true,
-        project,
+        chars: raw.length,
         sessionId: result.sessionId,
-        message: '已交给 AI 收录 ' + project,
+        message: '已交给 AI 收录（带上了你选中的 ' + raw.length + ' 个字）',
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
