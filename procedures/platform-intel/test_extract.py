@@ -5,8 +5,8 @@ import os
 import pathlib
 import unittest
 
-MODULE = pathlib.Path(__file__).with_name("watch.py")
-spec = importlib.util.spec_from_file_location("watch", MODULE)
+MODULE = pathlib.Path(__file__).with_name("extract.py")
+spec = importlib.util.spec_from_file_location("extract", MODULE)
 watch = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(watch)
 

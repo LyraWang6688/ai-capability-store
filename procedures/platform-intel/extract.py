@@ -1,3 +1,17 @@
+"""frontier-watch 的抓取与提取，搬进 platform-intel。
+
+不重写，逐字搬 —— 这套逻辑是踩出来的，不是想出来的：
+  · parse_rss      订阅源的通用解析
+  · doubao_news    Google News / Bing News 的 RSS 搜索兜底。豆包工作没有 changelog、
+                   公众号也抓不了，只剩这一条路；两个源互为备份，一个失败即跳过。
+                   只搬"能搜到"的正常路径会把这份经验丢掉。
+  · ask_model      调模型把发布说明提取成结构化条目
+  · append_records 用飞书应用身份写 Base，按功能名去重
+
+契约不变（仍读 FRONTIER_CONFIG_JSON），所以 workflow 只需换调用路径，行为等价。
+来源：automations/frontier-watch/watch.py（2026-10-25 迁入，迁完即下线原目录）。
+"""
+
 #!/usr/bin/env python3
 """frontier-watch — 每周抓取 Codex / Claude 的新功能，写入飞书 Base。
 
