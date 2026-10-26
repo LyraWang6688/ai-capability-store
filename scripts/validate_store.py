@@ -216,9 +216,9 @@ CAPABILITY_SHELVES = {"mcp", "connectors", "cli", "api", "plugin"}
 # 名字是封闭集合，理由和 CAPABILITY_SHELVES 一样 —— 新增一个生态是一次分类决策，
 # 不该由某人随手建个目录来引入。
 #
-# 为什么是可选而不是必选：现在只有 plugin/ 下的三个 DSH 插件需要分组，
-# 其它货架暂时平的。强制所有货架都加一层会让 8 个不需要分类的资产凭空多一级。
-CAPABILITY_ECOSYSTEMS = {"dsh"}
+# 为什么是可选而不是必选：现在 plugin/ 下分了两组（dsh 宿主插件、chrome 浏览器扩展），
+# 其它货架暂时平的。强制所有货架都加一层会让不需要分类的资产凭空多一级。
+CAPABILITY_ECOSYSTEMS = {"dsh", "chrome"}
 
 # ---- Commerce Domain (store-wide policy: COMMERCE.md) ----
 #
