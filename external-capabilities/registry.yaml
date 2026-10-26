@@ -173,13 +173,13 @@ capabilities:
     type: plugin
     status: limited
     provider_path: external-capabilities/providers/lyrawang/README.md
-    version: 0.3.0
+    version: 0.3.1
     implementation_path: external-capabilities/plugin/dsh/terminal-context
     auth: "无凭据。无外部网络请求，只 POST 回本机 Host 路由 /plugins/terminal-context/push；不写文件"
     capabilities: "把 DSH 侧边栏终端当前屏幕的可见文字交给 Agent：Host 半边提供一个只读工具 read_terminal_context（返回最近若干行 + 更新时间 + 新鲜度），界面半边每 2 秒读一次 .xterm-rows 渲染出的行，内容变了才推。目的是让 Agent 的下一步依据终端真实状态（在哪个目录、上一条命令成败、报错内容），并在用户跑完后接着结果往下做"
     permissions: "无需任何外部权限或凭据。界面半边只读取终端渲染出的文本，不注入输入、不修改终端状态；缓存只在 Host 内存里（最多 200 行），不落盘"
     commerce: {charge: free}
-    notes: "自研、Store-managed。走的是「看屏幕」而不是接口：三条接口路线实测全不通——terminals.read 的服务在当前 profile 未注册；terminalController.retain 只返回一个 {type:'retained'} 控制帧、不含内容；terminalController.attach 报 'Terminal attachment requires a Remote invocation'，Host 插件无权调用。界面侧 ctx 上只有 fiber，服务不是属性访问，服务名也拿不到，所以最终读 xterm 渲染出的 DOM 文本。代价：只有当前可见一屏（≤60 行），滚动缓冲读不到；依赖 .xterm-rows 类名，xterm 大改版会失效，失效表现是「没数据」而不是报错。inject 刻意留空：0.1.0 声明了 inject:['terminalController'] 而客户端没有该服务名，入口永久 pending 导致 web boot 失败、整个 DSH 起不来；不声明依赖后最坏情况只是插件无反应。0.3.0 已在作者本机实测：读取到终端 ls 输出与提示符；已发布 npm @lyra_wang/dsh-terminal-context@0.3.0（public）。未覆盖：其它 profile / 其它机器、xterm 升级后的类名变化、长会话压力，故取 limited"
+    notes: "自研、Store-managed。走的是「看屏幕」而不是接口：三条接口路线实测全不通——terminals.read 的服务在当前 profile 未注册；terminalController.retain 只返回一个 {type:'retained'} 控制帧、不含内容；terminalController.attach 报 'Terminal attachment requires a Remote invocation'，Host 插件无权调用。界面侧 ctx 上只有 fiber，服务不是属性访问，服务名也拿不到，所以最终读 xterm 渲染出的 DOM 文本。代价：只有当前可见一屏（≤60 行），滚动缓冲读不到；依赖 .xterm-rows 类名，xterm 大改版会失效，失效表现是「没数据」而不是报错。inject 刻意留空：0.1.0 声明了 inject:['terminalController'] 而客户端没有该服务名，入口永久 pending 导致 web boot 失败、整个 DSH 起不来；不声明依赖后最坏情况只是插件无反应。0.3.0 已在作者本机实测：读取到终端 ls 输出与提示符；已发布 npm @lyra_wang/dsh-terminal-context@0.3.0（public）。未覆盖：其它 profile / 其它机器、xterm 升级后的类名变化、长会话压力，故取 limited。0.3.1 补记一条结构限制：右侧「浏览器 tab」的正文读不到——它由 @deepseek-ai/dsh-client-ui-sidebar-browser 渲染成 iframe(Web) / Electron webview(Desktop)，是独立浏览上下文且官方不向内容注入任何能力，父页面既 querySelectorAll 不进去也收不到 selectionchange；0.4.0 诊断实测全页面只命中左栏会话列表 PIRFFq_sidebarCol、浏览器正文 0 命中。能拿到的只有 tab 的 URL 与标题，正文需由 Agent 自取（web_fetch / 浏览器 MCP）或另建同源代理"
   command-sync:
     name: command-sync
     hosting: store-managed

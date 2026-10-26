@@ -35,6 +35,7 @@
 | 往 `conversation.input.dock` 塞引用条 | 注册成功但长期 `active:false`，界面不渲染 | 第三节 3.1 |
 | 富文本多行插入 | 换行被吞，`> a\n> b` 会变成一行 | 第三节 3.2 |
 | **没有"发送前"钩子** | 引用/改写只能在发送前 hack 写入草稿：捕获阶段监听 Enter 与发送按钮（依赖 DOM 结构，覆盖不全）| 上游 [feature request #10791](https://github.com/deepseek-ai/deepseek-harness/discussions/10791) |
+| **读右侧「浏览器 tab」里的网页内容** | 结构上不可能：那是 iframe / `<webview>` 独立浏览上下文，父页面既 `querySelectorAll` 不进去、也收不到里面的 `selectionchange` | 第四节 4.2（含 0.4.0 诊断实测：全页面只命中左栏会话列表）|
 
 > 跟踪 issue：[feishu-ref：自动在右侧浏览器打开引用文档（阻塞中）](https://github.com/LyraWang6688/ai-capability-store/issues/268)
 > 上游：[feature request #10592](https://github.com/deepseek-ai/deepseek-harness/discussions/10592)
@@ -248,7 +249,45 @@ Markdown 库，**不是** DSH 的扩展点。
     linkOpening: sidebar   # 点对话里的链接 → 右侧内置浏览器；new-tab = 系统浏览器
 ```
 
-### 4.2 其它坑
+### 4.2 读不到右侧「浏览器 tab」里的网页内容（结构限制）
+
+右侧浏览器 tab 由官方包 `@deepseek-ai/dsh-client-ui-sidebar-browser` 渲染。
+它的 README 写得很明确：
+
+> **Web 使用 iframe** 和应用维护的 history；**Desktop 使用 Electron `<webview>`**、原生导航 history 和保活页面。
+> 本包**不会向被访问内容注入 Electron 或 Node 能力**。
+
+于是它和侧边栏终端是两种东西：
+
+| 面板 | 结构 | 父页面能读 DOM / 收选中吗 |
+|---|---|---|
+| 侧边栏终端 | 同一 document 里的 xterm DOM（`.xterm-rows`） | ✅ 能 |
+| 浏览器 tab | iframe（Web）/ `<webview>`（Desktop），**独立浏览上下文** | ❌ `querySelectorAll` 进不去；`selectionchange` 收不到 |
+
+**实测证据（terminal-context 0.4.0 诊断，2026-10-26）**：全页面按
+`sidebar` / `rightbar` / `panel` / `terminal` / `browser` 扫容器，只命中 **1 个** —
+
+```json
+{ "cls": "PIRFFq_sidebarCol", "chars": 326,
+  "sample": "新会话 / 插件 / 自动化任务 / 更多 / 工作区 / workplace / …" }
+```
+
+那是**左栏会话列表**（class 名带哈希，`sidebar` 命中而已），浏览器 tab 正文 **0 命中**。
+
+结论：
+
+- **可拿到**：tab 的 **URL 与标题**（面板自己保留，重启还能恢复）
+- **拿不到**：正文、选中文字、滚动位置
+
+需要正文时的三条替代路径（按代价排序）：
+
+1. **只把 URL 交给 Agent**，由它自行抓：公开页走 `web_fetch`，需要用户登录态走浏览器 MCP
+2. **自建同源代理**（Host 路由取回 HTML 再渲染给 iframe）→ 同源才可能读 DOM；代价是相对链接重写、CSP、登录态
+3. **在用户自己的浏览器里用扩展 / userscript** 主动把选中内容推给 Host 路由
+
+> 换句话说：终端那条"读屏幕"的路，在浏览器 tab 上从根上就不成立，不要在 `querySelectorAll` 上加选择器试图修。
+
+### 4.3 其它坑
 
 | 坑 | 现象 | 规避 |
 |---|---|---|
