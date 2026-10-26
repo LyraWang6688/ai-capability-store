@@ -26,6 +26,19 @@
 
 **只读**：不改终端、不发输入、不落盘（终端里可能有 token，进程结束就没了）。
 
+## 安装
+
+需要 **DSH 桌面端**。
+
+```bash
+dsh plugin --profile <profile> add @lyra_wang/dsh-terminal-context
+```
+
+也可以在 DSH 的「设置 → 插件」里按包名安装。装完**重启 DSH** 生效；
+侧边栏打开过终端之后，Agent 就能读到当前屏幕（工具名 `read_terminal_context`）。
+
+> 刚 `npm publish` 之后 registry 有几分钟 staging 窗口，此时安装会 404，等一下再试。
+
 ## 不覆盖：右侧「浏览器 tab」（结构上做不到）
 
 **本插件只读侧边栏终端，不读右侧浏览器 tab。** 这不是没做，是这条路从根上不成立。

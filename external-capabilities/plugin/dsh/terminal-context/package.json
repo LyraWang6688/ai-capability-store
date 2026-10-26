@@ -1,6 +1,6 @@
 {
   "name": "@lyra_wang/dsh-terminal-context",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "type": "module",
   "description": "把 DSH 侧边栏终端当前屏幕的内容交给 Agent，作为它判断当前处境的上下文。右侧浏览器 tab 不在覆盖范围（结构限制，见 README）。",
   "exports": {
@@ -14,8 +14,15 @@
     "client.js",
     "cordis.patch.yml",
     "locale/*.json",
-    "icon.svg"
+    "icon.svg",
+    "LICENSE"
   ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=20"
+  },
   "dsh": {
     "bundle": {
       "patch": "./cordis.patch.yml"
