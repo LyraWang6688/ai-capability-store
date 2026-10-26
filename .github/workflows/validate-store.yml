@@ -103,6 +103,15 @@ jobs:
       # "Is this file tracked?" is a git question and belongs in its own tool.
       - name: Nothing generated is tracked
         run: python3 scripts/check_tracked_hygiene.py
+      # `files` 是 npm 的发布白名单：新加的文件不写进去，仓库里一切正常、装到用户
+      # 机器上却少一个文件，而且不报错 —— 只表现为某个功能静默失效。这条门禁要求
+      # 每个 tracked 文件要么出现在 `npm pack` 的真实清单里，要么在
+      # scripts/package-files/allow.yaml 里被显式声明「不发布」。夹具用一个人为
+      # 破坏的包证明它在该红的时候会红，而不是永远绿。
+      - name: Package files are shipped or explicitly excluded
+        run: python3 scripts/check_package_files.py
+      - name: Package-files gate fixtures
+        run: python3 scripts/package-files/test_check_package_files.py
       # The registry says what version an asset is; the artifact a consumer
       # actually installs declares its own version in its own package.json.
       # Nothing compared them. `selection-toolbar` was registered at 0.1.0 while
