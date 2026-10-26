@@ -32,6 +32,11 @@ DOMAIN_ENTRY_KEYS = {
     # 只是它没有实现代码，所以没有 package.json，--package 会跳过它。
     # 但 --missing 要管它 —— 登记了版本就必须有 tag。
     "orchestrations": "orchestrations",
+    # computer-automation 是 2026-10-25 退役的模块域（db19bf7 删除）。它的
+    # registry 文件与路由已不在 main 上，但历史提交 / 历史 tag 的 registry.yaml
+    # 仍然路由着它 —— 只认当前域的话，任何早于退役日的版本都无法 check/tag，
+    # 本工具的 --audit 也会在扫到旧 tag 时直接崩掉。映射到它当年的条目键。
+    "computer_automation": "surfaces",
 }
 
 # Routed in registry.yaml, but holds relationships between assets rather than
