@@ -304,7 +304,7 @@ Markdown 库，**不是** DSH 的扩展点。
 
 | 插件 | Host 接口 | Client 接口 |
 |---|---|---|
-| [`feishu-ref`](./feishu-ref/) | `POST /plugins/feishu-ref/search`（调 lark-cli）；连接鉴权 | `conversation.input.left` 按钮 + 自绘面板；`inputActions.insertText` 插入链接 |
+| [`feishu-ref`](./feishu-ref/) | `POST /plugins/feishu-ref/search`（并行调 lark-cli `drive +search` 与 `im +chat-search`）；连接鉴权 | `conversation.input.left` 按钮 + 两栏自绘面板（左文档 / 右群聊）；`inputActions.insertText` 插入链接 |
 | [`image-ocr`](./image-ocr/) | `POST /plugins/image-ocr/ocr`（本地 Vision OCR）| `conversation.input.left` 按钮 + 粘贴面板；`inputActions.insertText` |
 | [`selection-toolbar`](./selection-toolbar/) | 收藏/投递/收录/改写/快捷键路由 | `shell.overlay` 划词工具条；`window.getSelection()` 取选区；`document.execCommand('insertText')` 写入草稿 |
 | [`inbox`](./inbox/) | `/plugins/inbox/list|read|deliver`（读写飞书 Base）| `conversation.input.left` 按钮 + `shell.overlay` 面板；30 分钟轮询 |

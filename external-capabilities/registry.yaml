@@ -144,13 +144,13 @@ capabilities:
     type: plugin
     status: limited
     provider_path: external-capabilities/providers/lyrawang/README.md
-    version: 0.4.1
+    version: 0.5.0
     implementation_path: external-capabilities/plugin/dsh/feishu-ref
     auth: "无凭据入仓。复用操作者本机已认证的 lark-cli（用户身份）做只读搜索；插件不接收、不保存任何 token 或账号信息"
-    capabilities: "DSH 输入框左侧新增「＋ 引用」按钮：点击弹出面板，搜索飞书文档 / 多维表格 / 表格 / 知识库（留空看最近 30 天编辑），选中后把 Markdown 链接插入草稿（可撤销、不自动发送）。宿主侧只注册一个同源只读路由 `/plugins/feishu-ref/search`（POST），转发给 `lark-cli drive +search`"
+    capabilities: "DSH 输入框左侧新增「＋ 引用」按钮：点击弹出一个两栏面板——**左栏文档**（飞书文档 / 多维表格 / 表格 / 知识库 / 幻灯片，留空看最近 30 天编辑）、**右栏群聊**（按关键词搜可见群，含群描述与「外部群」标记）；两条 `lark-cli` 搜索在宿主侧并行发出、各自兜底。选中任一栏的结果后把 Markdown 链接插入草稿（可撤销、不自动发送）；群链接为 AppLink（`openChatId=<chat_id>`），agent 可据此直接读群消息。宿主侧只注册一个同源只读路由 `/plugins/feishu-ref/search`（POST），分别转发给 `lark-cli drive +search` 与 `lark-cli im +chat-search`"
     permissions: "需要操作者本机安装并登录 lark-cli（用户身份，具备文档可见权限）；按钮与链接插入本身不需要额外权限。宿主侧不开放外部网络监听"
     commerce: {charge: free}
-    notes: "自研、Store-managed。0.1.0 首次登记：client 注册在 `conversation.input.left` 槽位（compact controls at the left of the composer tool row），order=2；插入走 `inputActions.captureInsertion()` + `insertText()`，属普通可撤销文本编辑。与 selection-toolbar 共用 DSH 的同源鉴权方式（`connection.requestRejection`）。搜索上限 30 字符（飞书 Search v2 限制），面板最多展示 12 条。理由说明：为什么不用系统「＋」菜单——菜单项是命令（host command），无法直接往输入框写文本，需要额外命令↔UI 桥接；自建按钮路径最短且失败可降级为复制链接"
+    notes: "自研、Store-managed。0.1.0 首次登记：client 注册在 `conversation.input.left` 槽位（compact controls at the left of the composer tool row），order=2；插入走 `inputActions.captureInsertion()` + `insertText()`，属普通可撤销文本编辑。与 selection-toolbar 共用 DSH 的同源鉴权方式（`connection.requestRejection`）。搜索上限 30 字符（飞书 Search v2 限制），面板最多展示 12 条。理由说明：为什么不用系统「＋」菜单——菜单项是命令（host command），无法直接往输入框写文本，需要额外命令↔UI 桥接；自建按钮路径最短且失败可降级为复制链接。0.5.0（minor，新增能力）：面板改为**两栏并列**——左栏文档、右栏群聊，搜索并行；群聊经 `lark-cli im +chat-search --search-types private,external,public_joined` 获取（排除未加入的公开群；群搜索必须有关键词，故留空时右栏提示「输入关键词可搜群聊」），返回 `chat_id` / `name` / `description` / `external` / `chat_status`，已解散群（`chat_status != normal`）过滤掉；链接按飞书文档给的已加入会话 AppLink 格式构造 `https://applink.feishu.cn/client/chat/open?openChatId=<chat_id>`，**不用 `im chats link`**（那条返回 `add_by_link` 拉人入群邀请链接且会过期）。键盘：↑/↓ 线性（最近使用 → 文档 → 群聊），←/→ 在两栏间跳转。0.5.0 同时修两个面板定位缺陷（隔离 profile 实测发现）：面板高度改为按「按钮上方可用空间」夹取，避免矮窗口里顶部被裁掉；水平方向按视口右边界夹取，避免右栏整列跑出屏幕。2026-10-26 隔离 probe profile 实测（DSH 0.2.1-rc.2，独立 `DSH_HOME` + 独立端口 19556，验完删除）：按钮渲染、`<style>` 注入、搜「多维表格」左栏 12 条 / 右栏 8 条、点群聊插入 `[群名](https://applink.feishu.cn/client/chat/open?openChatId=oc_e4f923202387eb7dccdd74764b7cbc30)` 且写入最近使用、←/→+Enter 键盘插入、文档条目仍插入 Base 链接、面板 1200×615 视口下 top=7/right=1188 不被裁。未覆盖：真实发送后的 agent 读群链路（属 lark-cli 侧，已由 `im +chat-messages-list` 单独验证）、其它窗口尺寸。截图见 `docs/feishu-ref-0.5.0-two-column.png`（gitignored 本地资料）"
   selection-toolbar:
     name: selection-toolbar
     hosting: store-managed
