@@ -337,7 +337,6 @@ window.__ModuleLoader__.load({
                 }
               } catch (error) { /* 聚焦失败不影响引用 */ }
             }
-            say(t('inserted'));
           },
         },
         {
