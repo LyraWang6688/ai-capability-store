@@ -1,7 +1,7 @@
 {
   "name": "@lyra_wang/dsh-diagram-card",
-  "version": "0.1.3",
-  "description": "Render ```dsh-diagram code blocks in the DSH conversation as structured card diagrams. Fits the transcript's visible area (budget + compact + scroll fallback), with correct light/dark theme detection.",
+  "version": "0.1.4",
+  "description": "Render ```dsh-diagram code blocks in the DSH conversation as structured card diagrams. Fits the transcript's visible area (budget + compact + scroll fallback), with theme detected from the surface behind the card.",
   "license": "MIT",
   "type": "module",
   "keywords": [

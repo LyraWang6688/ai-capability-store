@@ -173,34 +173,67 @@ window.__ModuleLoader__.load({
       return box;
     }
 
-    function isDarkTheme() {
+    function colorLuma(value) {
+      const m = String(value || '').match(/\d+(\.\d+)?/g);
+      if (!m || m.length < 3) return null;
+      const alpha = m.length > 3 ? Number(m[3]) : 1;
+      if (alpha === 0) return null; // fully transparent is not a surface colour
+      const [r, g, b] = m.map(Number);
+      return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    }
+
+    // Theme detection. Host light mode does NOT flip body's background (measured
+    // in DSH 0.2.1-rc.3: body stayed dark while the chat surface was light), so
+    // reading body painted dark tokens onto a light page — card titles and group
+    // labels became nearly invisible (rgb(249,251,252) on rgb(236,231,224)).
+    // Resolve from the nearest opaque surface *behind the card* instead, after
+    // honouring any explicit host marker.
+    function isDarkTheme(anchor) {
       try {
-        // DSH marks dark mode with `data-ds-dark-theme`; it is NOT `data-theme`.
         const root = document.documentElement;
-        if (root.hasAttribute('data-ds-dark-theme')) return true;
-        if (document.body && document.body.hasAttribute('data-ds-dark-theme')) return true;
-        if (root.getAttribute('data-theme') === 'light') return false;
-        const luma = (value) => {
-          const m = String(value || '').match(/\d+(\.\d+)?/g);
-          if (!m || m.length < 3) return null;
-          const [r, g, b] = m.map(Number);
-          return 0.2126 * r + 0.7152 * g + 0.0722 * b;
-        };
-        // Fallback 1: first opaque background on the page.
-        for (const el of [document.body, root]) {
-          if (!el) continue;
-          const value = luma(getComputedStyle(el).backgroundColor);
-          if (value !== null) return value < 140;
+        const body = document.body;
+        const marked = [root, body].filter(Boolean);
+        for (const el of marked) {
+          if (el.hasAttribute('data-ds-dark-theme')) return true;
+          if (el.hasAttribute('data-ds-light-theme')) return false;
+          const mode = el.getAttribute('data-theme') || el.getAttribute('data-color-mode') || el.getAttribute('data-mode');
+          if (mode === 'light') return false;
+          if (mode === 'dark') return true;
         }
-        // Fallback 2: text colour is the other half of the same signal.
-        // Light text on an unreadable background means a dark theme.
-        for (const el of [document.body, root]) {
-          if (!el) continue;
-          const value = luma(getComputedStyle(el).color);
-          if (value !== null) return value > 140;
+        for (const el of marked) {
+          const scheme = String(getComputedStyle(el).colorScheme || '').trim();
+          if (scheme === 'light') return false;
+          if (scheme === 'dark') return true;
+        }
+        // Nearest opaque surface behind the card: the transcript, not the body.
+        let node = anchor || null;
+        while (node) {
+          const luma = colorLuma(getComputedStyle(node).backgroundColor);
+          if (luma !== null) return luma < 140;
+          node = node.parentElement;
+        }
+        for (const el of marked) {
+          const luma = colorLuma(getComputedStyle(el).backgroundColor);
+          if (luma !== null) return luma < 140;
+        }
+        for (const el of marked) {
+          const luma = colorLuma(getComputedStyle(el).color);
+          if (luma !== null) return luma > 140;
         }
       } catch (_) { /* fall through */ }
       return true; // DSH ships dark by default
+    }
+
+    function applyTheme(card) {
+      const anchor = card.parentElement || card;
+      card.classList.toggle('dshdg-light', !isDarkTheme(anchor));
+    }
+
+    function applyThemes() {
+      for (const card of Array.from(cards)) {
+        if (!card.isConnected) continue;
+        try { applyTheme(card); } catch (_) { /* ignore */ }
+      }
     }
 
     function hashText(text) {
@@ -287,9 +320,9 @@ window.__ModuleLoader__.load({
       if (child) root.appendChild(child);
     }
 
-    function render(spec) {
+    function render(spec, anchor) {
       if (!spec || typeof spec !== 'object') return null;
-      const root = el('div', ROOT + (isDarkTheme() ? '' : ' dshdg-light'));
+      const root = el('div', ROOT + (isDarkTheme(anchor) ? '' : ' dshdg-light'));
       if (spec.title) root.appendChild(el('p', 'dshdg-title', spec.title));
       const body = el('div', 'dshdg-body');
       const config = Object.assign({}, spec, { __root: body });
@@ -443,7 +476,10 @@ window.__ModuleLoader__.load({
 
         let card = null;
         try {
-          card = render(spec);
+          // The pre is hidden and the card is inserted next to it, so the card's
+          // real surface is the pre's parent message container — theme-detect
+          // against that, not against the code block's own background.
+          card = render(spec, pre.parentElement || pre);
         } catch (_) {
           continue;
         }
@@ -453,6 +489,9 @@ window.__ModuleLoader__.load({
         registerCard(card);
         pre.style.display = 'none';
       }
+      // Theme can flip without any resize (host toggles a shell class); sync on
+      // every scan pass so a switch is picked up within the 2s interval.
+      try { applyThemes(); } catch (_) { /* ignore */ }
     }
 
     let scheduled = null;
@@ -478,12 +517,20 @@ window.__ModuleLoader__.load({
         }, SCAN_INTERVAL_MS);
         const onResize = () => { try { refitAll(); } catch (_) { /* ignore */ } };
         window.addEventListener('resize', onResize);
+        // Theme flips are attribute changes on the host shell, not resizes.
+        const themeObserver = new MutationObserver(() => { try { applyThemes(); } catch (_) { /* ignore */ } });
+        const themeAttrs = ['class', 'style', 'data-theme', 'data-ds-dark-theme', 'data-ds-light-theme', 'data-color-mode', 'data-mode'];
+        try {
+          themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: themeAttrs });
+          if (document.body) themeObserver.observe(document.body, { attributes: true, attributeFilter: themeAttrs });
+        } catch (_) { /* ignore */ }
         if (document.fonts && document.fonts.ready) {
           document.fonts.ready.then(() => { try { refitAll(); } catch (_) { /* ignore */ } }).catch(() => {});
         }
         try { scan(); } catch (_) { /* ignore */ }
         return () => {
           observer.disconnect();
+          themeObserver.disconnect();
           clearInterval(interval);
           window.removeEventListener('resize', onResize);
           booted = false;
@@ -499,7 +546,7 @@ window.__ModuleLoader__.load({
     try {
       window.__dshdg = {
         render: render, scan: scan, hash: hashText, css: CSS,
-        fitAll: refitAll, fitCard: fitCard, version: '0.1.3',
+        fitAll: refitAll, fitCard: fitCard, applyThemes: applyThemes, version: '0.1.4',
       };
     } catch (_) { /* non-browser context */ }
 
