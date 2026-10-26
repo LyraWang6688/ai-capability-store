@@ -33,7 +33,9 @@
   （Hammerspoon 1.1.1 没有 `hs.clipboard` 模块），数据落盘在
   `~/.hammerspoon/clipboard-history.jsonl`，一行一条 `{"t":epoch,"text":"…"}`；
 - 只存**文本**：图片、文件不记录；
-- 最多 100 条、单条超 20k 字节截断，文件超 400 行自动压缩重写；
+- **保留条数可配**：`~/.command-sync/config.json` 的 `clipboardHistory.maxEntries`（默认 100，
+  最少 3 条）；单条超 20k 字节截断；文件行数超过「上限 × 4」时压缩重写一次；
+- 清理**没有定时器**：只有「剪贴板真的变了」那一刻才检查——超过上限就把最老的一条挤掉；
 - 同一内容重复出现时**提到最前**，不会留两份；
 - **不记录密码**：带 `org.nspasteboard.ConcealedType` / `TransientType` 标记的粘贴板
   （1Password 等密码管理器复制时会打这个标记）一律跳过 —— 但不是所有 App 都会打，
@@ -107,12 +109,16 @@ fc -l -3000 > ~/.command-sync/history-dump-$(date +%H%M%S).txt
   "history": "~/.zsh_history",
   "sshHost": "your.server.ip",
   "sshUser": "ubuntu",
-  "serverPaths": ["/home/ubuntu/project-a", "/opt/project-b"]
+  "serverPaths": ["/home/ubuntu/project-a", "/opt/project-b"],
+  "clipboardHistory": { "maxEntries": 100 }
 }
 ```
 
 - `sshHost` / `sshUser`：面板里"ssh 登录服务器"用的地址；
-- `serverPaths`：面板里"进入服务器项目"的列表。
+- `serverPaths`：面板里"进入服务器项目"的列表；
+- `clipboardHistory.maxEntries`：剪贴板历史保留多少条（默认 100，范围 3–500）。
+  改完要 `hs -c 'hs.reload()'` 或重开面板才生效（模块加载时读一次配置）。
+  例如只想留最近 6 条：`"maxEntries": 6` → 复制第 7 条时，最老的那条被挤掉。
 
 ## 自检 / 手动命令
 

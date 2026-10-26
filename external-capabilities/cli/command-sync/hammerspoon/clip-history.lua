@@ -18,17 +18,46 @@
 --   1Password 这类密码管理器复制密码时会给粘贴板打
 --   org.nspasteboard.ConcealedType 标记 —— 带这个标记（含 TransientType）的一律不记录。
 --   但不是所有 App 都会打，剪贴板历史不等于密码保险箱。
---   单条超 20k 字节截断；最多留 100 条；文件超过 400 行压缩重写一次。
+--   单条超 20k 字节截断；保留多少条由 config 的 clipboardHistory.maxEntries 决定
+--   （默认 100），文件行数超过「上限 × 4」时压缩重写一次。
 
 local M = {}
 
 local HOME = os.getenv("HOME") or ""
 local DIR = hs.configdir or (HOME .. "/.hammerspoon")
 local FILE = DIR .. "/clipboard-history.jsonl"
+local CONFIG_FILE = (os.getenv("COMMAND_SYNC_HOME") or (HOME .. "/.command-sync")) .. "/config.json"
 
-local MAX_ENTRIES = 100
+local DEFAULT_MAX_ENTRIES = 100
 local MAX_TEXT_BYTES = 20000
-local MAX_FILE_LINES = 400
+
+-- 条数上限读 ~/.command-sync/config.json（没有就默认 100）：
+--   { "clipboardHistory": { "maxEntries": 6 } }
+-- 为什么放配置而不是写死：留几条是「个人口味」，不是功能正确性。
+-- 改完要 hs.reload() 或重开面板才生效（模块在加载时读一次）。
+local function read_config()
+  local f = io.open(CONFIG_FILE, "r")
+  if not f then return {} end
+  local body = f:read("*a")
+  f:close()
+  local ok, cfg = pcall(hs.json.decode, body)
+  if not ok or type(cfg) ~= "table" then return {} end
+  return cfg
+end
+
+local function max_entries_from_config()
+  local cfg = read_config()
+  local clip = type(cfg.clipboardHistory) == "table" and cfg.clipboardHistory or {}
+  local n = tonumber(clip.maxEntries)
+  if not n then return DEFAULT_MAX_ENTRIES end
+  n = math.floor(n)
+  if n < 3 then n = 3 end          -- 少于 3 条就不像「历史」了，兜底
+  if n > 500 then n = 500 end      -- 上限保护，避免把文件撑太大
+  return n
+end
+
+local MAX_ENTRIES = max_entries_from_config()
+local MAX_FILE_LINES = math.max(20, MAX_ENTRIES * 4)
 
 local CONCEALED = {
   ["org.nspasteboard.ConcealedType"] = true,
@@ -135,6 +164,9 @@ end
 -- ── 对外 API ─────────────────────────────────────────────────────────────
 
 function M.file() return FILE end
+
+--- 当前生效的条数上限（来自 config，默认 100）
+function M.maxEntries() return MAX_ENTRIES end
 
 function M.count()
   if not entries then load() end

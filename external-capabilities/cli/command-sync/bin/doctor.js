@@ -107,10 +107,14 @@ if (existsSync(join(BASE, 'palette.json'))) {
 
 // ── 4. 数据源（不 blocking，只是提醒） ────────────────────────────────────
 let historyPath = join(HOME, '.zsh_history');
+let cfg = {};
 try {
-  const cfg = JSON.parse(readFileSync(join(BASE, 'config.json'), 'utf8'));
-  if (cfg.history) historyPath = expand(cfg.history);
+  cfg = JSON.parse(readFileSync(join(BASE, 'config.json'), 'utf8')) || {};
 } catch { /* 没有配置就用默认 */ }
+if (cfg.history) historyPath = expand(cfg.history);
+
+const rawMax = cfg.clipboardHistory && Number(cfg.clipboardHistory.maxEntries);
+const maxEntries = Number.isFinite(rawMax) && rawMax >= 3 ? Math.min(Math.floor(rawMax), 500) : 100;
 
 if (existsSync(historyPath)) {
   const mtime = statSync(historyPath).mtime.toISOString().replace('T', ' ').slice(0, 16);
@@ -123,9 +127,9 @@ if (existsSync(historyPath)) {
 const clipFile = join(HS_DIR, 'clipboard-history.jsonl');
 if (existsSync(clipFile)) {
   const lines = readFileSync(clipFile, 'utf8').split('\n').filter(Boolean).length;
-  ok('剪贴板历史：已记录 ' + lines + ' 条');
+  ok('剪贴板历史：已记录 ' + lines + ' 条（上限 ' + maxEntries + ' 条）');
 } else {
-  info('剪贴板历史尚未生成（复制任意文本后出现）');
+  info('剪贴板历史尚未生成（复制任意文本后出现；上限 ' + maxEntries + ' 条）');
 }
 
 // ── 5. 结论 ──────────────────────────────────────────────────────────────
