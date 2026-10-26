@@ -1,6 +1,6 @@
 {
   "name": "@lyra_wang/chrome-frequent-pages",
-  "version": "0.5.2",
+  "version": "0.5.3",
   "description": "Chrome 高频网页 → 飞书「常用网页」表 + 按分类导出 Chrome 书签（根域名 / 10 天 / >5 次）",
   "license": "MIT",
   "type": "module",
