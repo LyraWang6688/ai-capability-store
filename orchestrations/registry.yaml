@@ -163,8 +163,8 @@ orchestrations:
     name: readloop-daily-self-api
     path: orchestrations/readloop/readloop-daily-self-api
     status: testing
-    version: 0.1.1
-    updated: "2026-10-24"
+    version: 0.1.2
+    updated: "2026-10-27"
     trigger: host-schedule
     goal: 宿主定时叫醒，按记忆曲线每天出题、判分、把状态写回用户自己的表
     execution:
@@ -187,7 +187,15 @@ orchestrations:
             - POST /api/setup/app/pair
             - POST /api/review/today
             - POST /api/review/submit
-        produces: 今日题目、判分与状态更新（写回用户的多维表格）
+            # 周度复盘（可选，每周一次）：宿主传最近 28 天答题记录，服务算保持率/完成率
+            - POST /api/review/metrics
+        produces: 今日题目、判分与状态更新（写回用户的多维表格）；周度复盘指标
+    notes: >
+      资产边界：插件（readloop-extension）是采集入口、由用户装进浏览器；
+      服务端实现与部署在独立仓库（readloop-service 只登记端点与契约）；Store 只持有
+      skill / 插件 / 确定性 procedures（打包、回放、发码）/ 本编排。
+      0.1.2 补：插件入口、procedures 工具链、/api/review/metrics 周度指标
+      （today 可选 performance 由宿主从 practice_events 最近 20 条算出）。
   quote-sync:
     name: quote-sync
     path: orchestrations/investdesk/quote-sync

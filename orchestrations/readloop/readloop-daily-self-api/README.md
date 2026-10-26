@@ -42,3 +42,34 @@
 - 不自己出题、不自己判分、不自己算间隔
 - 不自己建表 / 改表结构
 - 不把用户数据存到服务端（也不该在别处备份）
+
+---
+
+## 资产地图（2026-10-27）
+
+| 资产 | 角色 | 在哪 |
+|---|---|---|
+| `skills/readloop` | 每日陪练 SOP | Store |
+| `readloop-service`（external） | 规则引擎：选题 / 判分 / 间隔 / 指标 | 独立服务仓库，Store 只登记端点与契约 |
+| `readloop-extension`（plugin） | 采集入口：划词 → 写用户自己的表 | Store（`external-capabilities/plugin/chrome/`） |
+| `procedures/readloop-extension-pack` | 打插件 zip（本地执行） | Store |
+| `procedures/readloop-replay-eval` | SM-2 vs FSRS 回放评估（本地执行） | Store |
+| `procedures/readloop-license-issue` | 本地生成授权码（本地执行） | Store |
+| 本编排 | 何时、按什么顺序、谁来触发 | Store |
+
+**服务端实现与部署不在 Store**：Dockerfile / deploy-server.sh / `.env` 跟随服务仓库，
+所以 Store 发版不会触发服务器部署。
+
+## 周度复盘（可选，每周一次）
+
+日常只取当天题；周度可以多调一次指标接口，回答「规则有没有效果」：
+
+```
+宿主读 practice_events（最近 28 天，含复习间隔）
+→ POST /api/review/metrics
+→ 展示：间隔分档保持率 / 目标区间 70–85% / leech 占比 / 每日完成率 / 每题用时
+```
+
+- `today` 可选传 `performance { attempts, correct }`（最近 20 题）→ 返回 `difficulty`，宿主用 `reason` 向用户解释
+- 指标由服务端算，宿主**不要自己重算**；建议列表可以原样转述
+- 数据仍然只在用户自己的飞书表里，服务算完即忘

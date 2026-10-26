@@ -181,3 +181,32 @@ procedures:
       校验 manifest（v3 / X.Y.Z / 运行时文件齐全）→ 生成 zip（排除 tools/、.DS_Store）→
       校验包内版本与文件清单 → 打印大小与 sha256。
       一条命令同时服务发布（GitHub Release）与本地验收；Chrome Web Store 上传仍需人工。
+
+  readloop-replay-eval:
+    name: readloop-replay-eval
+    path: procedures/readloop-replay-eval
+    status: testing
+    version: 0.1.0
+    updated: "2026-10-27"
+    entrypoint: run.mjs
+    runtime: node
+    commerce: {charge: free}
+    notes: >
+      本地入口：取一份 ReadLoop 服务仓库（--repo 或 git clone --depth 1），
+      用 npx tsx 跑 scripts/replay-compare.ts，把参数原样透传（--practice 可回放真实日志）。
+      评估依赖服务仓库的 src/lib，**不在 Store 复制第二份算法**；跑完删除临时目录（--keep 保留）。
+      --self-test 覆盖参数解析与透传。
+
+  readloop-license-issue:
+    name: readloop-license-issue
+    path: procedures/readloop-license-issue
+    status: testing
+    version: 0.1.0
+    updated: "2026-10-27"
+    entrypoint: run.mjs
+    runtime: node
+    commerce: {charge: free}
+    notes: >
+      本地生成 ReadLoop 授权码：只读环境变量 LICENSE_SECRET，取服务仓库跑
+      scripts/license-gen.ts，不联网写入、不存密钥、不碰服务器。
+      输出是真实授权码，文档明示不可公开；--self-test 覆盖参数与数量校验。
