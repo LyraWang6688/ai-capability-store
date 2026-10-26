@@ -18,6 +18,10 @@ window.__ModuleLoader__.load({
     const RECENT_KEY = NS + ':recent';
     const RECENT_LIMIT = 3;
     const RECENT_KEEP = 8;
+    // Empty-query left column is a quick pick, not a browse list: three rows.
+    // Anything longer is what the height cap is fighting; search results still
+    // scroll inside the column.
+    const RECENT_DOCS_LIMIT = 3;
 
     function loadRecent() {
       try {
@@ -144,10 +148,12 @@ window.__ModuleLoader__.load({
             // right side of a narrow window, which hides the whole chat column.
             left: Math.max(12, Math.min(rect.left, window.innerWidth - panelWidth - 12)),
             bottom: Math.max(12, window.innerHeight - rect.top + 8),
-            // The panel is anchored above the button, so its ceiling is the space
-            // above the button. Without this a 460px panel in a short window gets
-            // clipped at the top, cutting off its own header and first rows.
-            maxHeight: Math.max(220, Math.floor(rect.top - 16)),
+            // The panel is anchored above the button, so its ceiling is the fork of
+            // (a) the space above the button — otherwise a tall panel in a short
+            // window gets clipped at the top and loses its own header — and
+            // (b) a hard 460px cap. Without (b) `rect.top` alone makes the panel
+            // grow with the window, and in a tall window it covers the whole screen.
+            maxHeight: Math.min(460, Math.max(220, Math.floor(rect.top - 16))),
           });
         }
         setOpen(true);
@@ -207,7 +213,8 @@ window.__ModuleLoader__.load({
       // right. The search itself is parallel (host side), so neither column waits
       // for the other; keyboard order follows the visual left-to-right reading
       // order (recent → documents → chats), with ←/→ hopping between columns.
-      const docRows = items.filter(notRecent);
+      const docRowsAll = items.filter(notRecent);
+      const docRows = showRecent ? docRowsAll.slice(0, RECENT_DOCS_LIMIT) : docRowsAll;
       const chatRows = chats.filter(notRecent);
       const docOffset = recentRows.length;
       const chatOffset = recentRows.length + docRows.length;
