@@ -16,6 +16,7 @@ readloop/
 ├── references/
 │   ├── schema.md                   多维表格结构规范（建表依据）
 │   ├── api.md                      接口契约
+│   ├── chrome-extension.md         Chrome 插件契约（安装/配对/权限）
 │   └── doubao-checklist.md         豆包工作冒烟测试（5 步）
 └── README.md（本文件）
 ```
@@ -53,7 +54,7 @@ lark-cli auth login
 1. **首次激活** —— 粘贴授权码，换成本机凭证（有效期一年，到期前会提醒续费）
 2. **选模型** —— 用你自己的模型 API（默认推荐 DeepSeek），需要 `base_url` / 模型名 / `api_key`
 3. **建多维表格** —— 给表链接，没有就给你模板复制一份
-4. **装 Chrome 插件** —— 采集入口，没有插件就没有新知识点
+4. **装 Chrome 插件** —— 采集入口，没有插件就没有新知识点；安装包见 [Store Release](https://github.com/LyraWang6688/ai-capability-store/releases/tag/readloop-extension-v0.3.2)（契约见 `references/chrome-extension.md`）
 5. **建定时任务** —— 选每天还是每周、几点提醒（如 09:00 / 21:00），助手会直接用宿主的定时任务能力创建
 
 五样齐了配置完成，之后直接说「今天练什么」。
