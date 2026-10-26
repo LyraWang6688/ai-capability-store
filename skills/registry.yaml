@@ -120,13 +120,16 @@ skills:
     path: skills/readloop
     scope: shared
     status: testing
-    version: 0.2.4
-    updated: "2026-10-23"
+    version: 0.2.5
+    updated: "2026-10-27"
     commerce:
       charge: paid
       model: subscription
       value: "授权码按年计费：选题、判分、间隔调度的规则在店外服务端，用户付的是规则随平台变化持续更新 + 不用自己实现调度算法"
     notes: >
+      0.2.5 (patch): 新增 references/chrome-extension.md（插件契约：安装/配对/权限/数据边界/版本约定）；
+      Chrome 扩展源码迁入 Store 的 external-capabilities/plugin/readloop-extension，
+      打包改用 procedures/readloop-extension-pack；技能与资产边界不变。
       Daily English review loop built on real reading. The host reads and writes
       the user's own Feishu Bitable with its native Feishu ability (Doubao Work
       native, or lark-cli on Codex / Work Buddy), sends candidate knowledge
