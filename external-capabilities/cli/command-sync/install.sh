@@ -22,7 +22,8 @@ if [ ! -f "$BASE/config.json" ]; then
   "history": "~/.zsh_history",
   "sshHost": "${SSH_HOST:-}",
   "sshUser": "${SSH_USER:-ubuntu}",
-  "serverPaths": []
+  "serverPaths": [],
+  "clipboardHistory": { "maxEntries": 100 }
 }
 EOF
     echo "✓ 已生成 $BASE/config.json（可手工补充 serverPaths）"
