@@ -474,7 +474,7 @@ export function apply(ctx) {
       '0. 先从上面这段内容里判断要收录的是哪个 GitHub 仓库（owner/repo）。它可能是文章段落，仓库名和 owner 分开出现，也可能只有仓库名；必要时用 web_fetch / GitHub 搜索确认。判断不出来、或可能指多个仓库，就停下来直接问我，不要猜。',
       '1. 查重：scripts/check_duplicate.py <owner/repo>（退出码 10 = 已收录，停下来告诉我，不要插新行）',
       '2. 拉事实：scripts/repo_meta.py <owner/repo>（stars/owner/描述/homepage，禁止凭记忆填）',
-      '3. 读仓库 README（必要时 web_fetch），写中文「项目简介」「核心亮点」「参考价值」；「主题标签」「项目类型」按技能的表契约选，跟进状态默认「待深入」',
+      '3. 读仓库 README（必要时 web_fetch），写中文「项目简介」「核心亮点」「参考价值」；「主题标签」「项目类型」按技能的表契约选，字段以技能里的 scripts/target.json 为准（当前 11 个字段，无「跟进状态」）',
       '4. 门禁：scripts/validate_record.py，不通过就按报错改，不许绕过',
       '5. 用 lark-cli base +record-batch-create 写入「GitHub 优质项目收录」',
       '6. 回读那一行，确认字段真的落库',
