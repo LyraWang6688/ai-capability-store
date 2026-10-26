@@ -3,7 +3,7 @@
  *
  * Registers one `shell.overlay` entry: a frame-wide floating layer that shows
  * a small toolbar above the text the user has just selected in the
- * conversation, with copy / follow-up / annotate actions.
+ * conversation, with copy / follow-up / collect / deliver / repo-collect / shortcut / rewrite actions.
  */
 window.__ModuleLoader__.load({
   id: '@lyra_wang/dsh-selection-toolbar',
@@ -359,8 +359,8 @@ window.__ModuleLoader__.load({
           key: 'collect',
           icon: '☆',
           label: t('collect'),
-          run: (text) => {
-            void saveCollect(text);
+          run: () => {
+            openNote();
           },
         },
         {
@@ -381,28 +381,14 @@ window.__ModuleLoader__.load({
         },
       ];
 
+      // 收藏 = 打开小面板写一句自己的话（可留空），把「原文 + 备注 + 时间」追加到飞书文档。
+      // 不留本地副本：写失败就把面板留在原地并提示原因，直接重试即可。
       const saveNote = async () => {
-        const value = noteValue.trim();
-        if (value === '' || selection === null) {
+        if (selection === null) {
           closeNote();
           return;
         }
-        const entry = { text: selection.text, note: value, at: new Date().toISOString() };
-        const key = 'dsh-selection-notes';
-        let list = [];
-        try {
-          list = JSON.parse(window.localStorage.getItem(key) || '[]');
-          if (!Array.isArray(list)) list = [];
-        } catch (error) {
-          list = [];
-        }
-        list.push(entry);
-        try {
-          window.localStorage.setItem(key, JSON.stringify(list));
-        } catch (error) {
-          // storage may be unavailable; still try the Feishu write
-        }
-        closeNote();
+        const entry = { text: selection.text, note: noteValue.trim(), at: new Date().toISOString() };
         say(t('savingFeishu'));
         try {
           const response = await fetch('/plugins/selection-toolbar/note', {
@@ -412,14 +398,15 @@ window.__ModuleLoader__.load({
           });
           const payload = await response.json().catch(() => ({}));
           if (response.ok && payload && payload.ok === true) {
-            say(t('savedFeishu'));
+            closeNote();
+            say(t('collected'));
           } else {
             const reason = payload && payload.message ? String(payload.message) : 'HTTP ' + response.status;
-            say(t('savedLocalOnly') + '：' + reason);
+            say(t('collectFailed') + '：' + reason);
           }
         } catch (error) {
           const reason = error && error.message ? error.message : String(error);
-          say(t('savedLocalOnly') + '：' + reason);
+          say(t('collectFailed') + '：' + reason);
         }
       };
 
@@ -471,27 +458,6 @@ window.__ModuleLoader__.load({
           }
         } catch (error) {
           say(t('shortcutFailed'));
-        }
-      };
-
-      const saveCollect = async (text) => {
-        if (text === '') return;
-        say(t('collecting'));
-        try {
-          const response = await fetch('/plugins/selection-toolbar/note', {
-            method: 'POST',
-            headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({ text, note: '', at: new Date().toISOString() }),
-          });
-          const payload = await response.json().catch(() => ({}));
-          if (response.ok && payload && payload.ok === true) {
-            say(t('collected'));
-          } else {
-            const reason = payload && payload.message ? String(payload.message) : 'HTTP ' + response.status;
-            say(t('collectFailed') + '：' + reason);
-          }
-        } catch (error) {
-          say(t('collectFailed') + '：' + (error && error.message ? error.message : String(error)));
         }
       };
 
@@ -765,10 +731,8 @@ window.__ModuleLoader__.load({
           copy: '复制',
           speak: '朗读',
           ask: '追问',
-          annotate: '注释',
           collect: '收藏',
           deliver: '投递',
-          collecting: '正在收藏…',
           collected: '已收藏到飞书文档',
           collectFailed: '收藏失败',
           delivering: '正在投递到投递箱…',
@@ -779,11 +743,8 @@ window.__ModuleLoader__.load({
           speakFailed: '朗读失败（可能缺中文语音包）',
           inserted: '已插入输入框',
           pasteHint: '已复制，⌘V 粘贴后提问',
-          noteSaved: '已保存第 {n} 条注释（本地）',
-          savingFeishu: '正在写入飞书文档…',
-          savedFeishu: '已写入飞书文档',
-          savedLocalOnly: '仅保存到本地（飞书写入失败）',
-          notePlaceholder: '给这段文字加注释…',
+          savingFeishu: '正在收藏到飞书文档…',
+          notePlaceholder: '写点自己的话（可留空）…',
           rewrite: '改写',
           rewriteTitle: '改写选中的文字',
           rewritePlaceholder: '改写要求（留空=润色）',
@@ -812,10 +773,8 @@ window.__ModuleLoader__.load({
           copy: 'Copy',
           speak: 'Read aloud',
           ask: 'Follow up',
-          annotate: 'Annotate',
           collect: 'Collect',
           deliver: 'Deliver',
-          collecting: 'Collecting…',
           collected: 'Collected to the Feishu doc',
           collectFailed: 'Collect failed',
           delivering: 'Delivering to the inbox…',
@@ -826,11 +785,8 @@ window.__ModuleLoader__.load({
           speakFailed: 'Read aloud failed (no Chinese voice?)',
           inserted: 'Inserted into the composer',
           pasteHint: 'Copied — paste with ⌘V to ask',
-          noteSaved: 'Saved note #{n} (local)',
-          savingFeishu: 'Writing to the Feishu document…',
-          savedFeishu: 'Written to the Feishu document',
-          savedLocalOnly: 'Saved locally only (Feishu write failed)',
-          notePlaceholder: 'Add a note to this text…',
+          savingFeishu: 'Collecting to the Feishu document…',
+          notePlaceholder: 'Add your own note (optional)…',
           rewrite: 'Rewrite',
           rewriteTitle: 'Rewrite the selected text',
           rewritePlaceholder: 'How should it change? (empty = polish)',
