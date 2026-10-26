@@ -287,8 +287,8 @@ orchestrations:
     name: wechat-tencent-invoice
     path: orchestrations/computer-automation/wechat-tencent-invoice
     status: testing
-    version: 0.1.0
-    updated: "2026-10-25"
+    version: 0.1.4
+    updated: "2026-10-26"
     trigger: human
     executor: human
     goal: 人在微信桌面版里开腾讯充值发票
