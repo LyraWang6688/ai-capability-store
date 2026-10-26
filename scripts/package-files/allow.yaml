@@ -1,0 +1,42 @@
+# 这个文件回答一个问题：这个文件为什么不在 npm 包里？
+#
+# `check_package_files.py` 要求：包目录里的每个 tracked 文件，要么出现在
+# package.json 的 `files` 白名单里（= 会发布），要么在这里被显式声明（= 故意不发布）。
+# 两边都没有 → CI 失败。所以新增文件时只有两个选择，「忘了」不再是一个选项。
+#
+# 写法：
+#   global    适用于所有包（路径相对包目录）
+#   packages  按 package.json 的 name 分组
+#   *  不跨目录分隔符；**  跨目录（可匹配零层）
+#
+# 加一条之前先问自己：这个文件装到用户机器上有用吗？
+#   有用 → 加进 package.json 的 files（顺便确认 src/ 之类是否真的该发布）
+#   没用 → 加在这里，并写清为什么（注释说明比配置本身更重要）
+
+global:
+  # .gitignore / .npmignore / package-lock.json 是 npm 永远不打包的文件，
+  # 脚本里已内置，不必在这里重复；这里只放「本仓库约定不发布」的东西。
+  - pnpm-lock.yaml
+
+packages:
+  # 渲染自测页：浏览器打开即可验 client.js 渲染层，不需要 DSH。
+  # 只在仓库里对开发者有用，装了插件的人不需要它。
+  "@lyra_wang/dsh-diagram-card":
+    - dev/**
+
+  # 插件测试用 node --test 跑，不随包发布
+  "@lyra_wang/dsh-feishu-remote":
+    - tests/**
+
+  # 同上：MCP 的测试与夹具只在仓库里跑
+  teaming-mcp:
+    - tests/**
+
+  # 只发布编译产物 dist/，TS 源码、构建配置、开发文档都不进包
+  wechat-draft-mcp:
+    - src/**
+    - tests/**
+    - docs/**
+    - tsconfig.json
+    - tsconfig.test.json
+    - .env.example
