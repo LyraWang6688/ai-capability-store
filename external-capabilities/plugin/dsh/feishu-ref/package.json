@@ -1,7 +1,7 @@
 {
   "name": "@lyra_wang/dsh-feishu-ref",
-  "version": "0.4.1",
-  "description": "Composer + button: search your Feishu docs / bitables and insert the link into the DSH input box.",
+  "version": "0.5.0",
+  "description": "Composer + button: search your Feishu group chats / docs / bitables and insert the link into the DSH input box.",
   "license": "MIT",
   "type": "module",
   "keywords": [
@@ -11,7 +11,8 @@
     "cordis",
     "client-plugin",
     "feishu",
-    "reference"
+    "reference",
+    "group-chat"
   ],
   "repository": {
     "type": "git",
