@@ -60,12 +60,29 @@ window.__ModuleLoader__.load({
           .then((body) => {
             if (!body || !body.previewUrl) return
             previewSeed = body.previewUrl
-            if (body.autoOpen) {
-              actions = props.inputActions || null
-              sessionId = sid
-              setOpen(true)
-            }
           }).catch(() => {})
+      }, [props.sessionId])
+
+      React.useEffect(() => {
+        const sid = String(props.sessionId || '')
+        if (!sid) return
+        let seen = 0
+        let cancelled = false
+        const tick = async () => {
+          if (cancelled || open) return
+          try {
+            const response = await fetch(`/plugins/html-annotate/pending?since=${seen}`)
+            const body = await response.json()
+            if (!body || !body.open || !body.at) return
+            seen = body.at
+            await fetch('/plugins/html-annotate/pending/ack', { method: 'POST' }).catch(() => {})
+            actions = props.inputActions || null
+            sessionId = sid
+            setOpen(true)
+          } catch { /* ignore */ }
+        }
+        const timer = setInterval(tick, 1200)
+        return () => { cancelled = true; clearInterval(timer) }
       }, [props.sessionId])
       return h('button', {
         type: 'button',

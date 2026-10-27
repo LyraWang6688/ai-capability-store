@@ -18,7 +18,7 @@ const CONFIG_FILE = path.join(os.homedir(), '.dsh', 'html-annotate.json')
 const ROUTE = '/plugins/html-annotate'
 const DEFAULT_ROOT = path.join(os.homedir(), 'Documents', 'workplace', 'feishu-retail-ops', 'docs', 'prototypes')
 
-export const inject = ['webServer', 'subprocess']
+export const inject = ['webServer', 'subprocess', 'tools']
 
 function json(res, status, payload) {
   if (res && typeof res.writeHead === 'function') {
@@ -171,6 +171,7 @@ async function readPreviewConfig(sessionId) {
 
 const previewProcesses = new Map()
 const previewTokens = new Map()
+let pendingOpenAt = 0
 
 async function pageReady(url, timeoutMs = 800) {
   try {
@@ -326,6 +327,25 @@ export function apply(ctx) {
 
   ctx.effect(() => ctx.webServer.register({
     kind: 'exact',
+    path: `${ROUTE}/pending`,
+    handler: async (req, res) => {
+      const url = new URL(req.url || '/', 'http://127.0.0.1')
+      const since = Number(url.searchParams.get('since') || 0)
+      return json(res, 200, { ok: true, open: pendingOpenAt > since, at: pendingOpenAt })
+    },
+  }), 'html-annotate: pending')
+
+  ctx.effect(() => ctx.webServer.register({
+    kind: 'exact',
+    path: `${ROUTE}/pending/ack`,
+    handler: async (_req, res) => {
+      pendingOpenAt = 0
+      return json(res, 200, { ok: true })
+    },
+  }), 'html-annotate: pending ack')
+
+  ctx.effect(() => ctx.webServer.register({
+    kind: 'exact',
     path: `${ROUTE}/annotation.js`,
     handler: async (_req, res) => send(res, 200, await fs.readFile(SCRIPT_FILE, 'utf8'), 'application/javascript; charset=utf-8'),
   }), 'html-annotate: script')
@@ -412,6 +432,20 @@ export function apply(ctx) {
       }
     },
   }), 'html-annotate: submit')
+
+  ctx.effect(() => ctx.tools.register({
+    name: 'open_html_annotate',
+    description: 'Open the HTML annotation panel for the current project preview. Call this when the user asks to view or annotate a local preview page.',
+    parameters: { type: 'object', properties: {}, additionalProperties: false },
+    output: {
+      schema: { type: 'object', additionalProperties: true },
+      render: (_args, value) => [{ type: 'text', text: JSON.stringify(value) }],
+    },
+    async execute() {
+      pendingOpenAt = Date.now()
+      return { ok: true, message: 'HTML annotation panel requested' }
+    },
+  }), 'html-annotate: open tool')
 
   ctx.effect(() => () => {
     for (const entry of previewProcesses.values()) {
