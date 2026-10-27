@@ -7,7 +7,7 @@
 >
 > 目标：服务器执行的定时任务，结果自动出现在 DSH 面板的「待读」里。
 > 输出段落在编排层的定义见 [`README.md`](./README.md)；实现见
-> [`external-capabilities/plugin/dsh/inbox/`](../../../external-capabilities/plugin/dsh/inbox/README.md)。
+> [`external-capabilities/plugin/dsh/inbox/`](../../external-capabilities/plugin/dsh/inbox/README.md)。
 
 ---
 ## 一、谁负责什么

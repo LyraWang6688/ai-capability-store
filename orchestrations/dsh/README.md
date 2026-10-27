@@ -29,5 +29,5 @@ automated/dsh/
 
 ## 相关
 
-- 收件箱插件：[`external-capabilities/plugin/dsh/inbox/`](../../../external-capabilities/plugin/dsh/inbox/README.md)
+- 收件箱插件：[`external-capabilities/plugin/dsh/inbox/`](../../external-capabilities/plugin/dsh/inbox/README.md)
 - 跟踪 issue：#295

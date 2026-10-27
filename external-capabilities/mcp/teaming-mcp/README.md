@@ -221,8 +221,8 @@ npm run build     # 编译分析引擎到 dist/engine/
 npm test          # 协议层 + 逐字稿转换测试（不联网）
 ```
 
-> 引擎源码在 `src/engine-src/`，是从 [teaming-bot](../teaming-bot) 同步过来的。
-> 上游改了分析逻辑，要重新同步——见 [HANDOFF.md](./HANDOFF.md) 的同步约定。
+> 引擎源码在 `src/engine-src/`，是从 teaming-bot 同步过来的（独立仓库，不在 Store 内）。
+> 上游改了分析逻辑要重新同步时，同步约定见 `external-capabilities/registry.yaml` 的 `teaming-mcp` 记录。
 
 ---
 

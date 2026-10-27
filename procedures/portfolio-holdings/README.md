@@ -17,7 +17,7 @@ node dump.ts        # 打印 { count, platforms, holdings } 的 JSON
 ```
 
 环境变量（与 automation 共用同一套，见
-[config.ts](../../automations/investdesk-quote-sync/src/config.ts)）：
+[config.ts](../../procedures/quote-sync/src/config.ts)）：
 
 ```
 INVESTDESK_BASE_TOKEN · INVESTDESK_HOLDINGS_TABLE · INVESTDESK_PLATFORMS_TABLE
