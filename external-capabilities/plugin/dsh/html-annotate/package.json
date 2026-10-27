@@ -1,6 +1,6 @@
 {
   "name": "@lyra_wang/dsh-html-annotate",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "type": "module",
   "description": "在 DSH 中打开本地 HTML 原型，点元素写批注，提交后把批注作为消息发给当前会话，由 Agent 修改源码。",
   "exports": {
