@@ -9,6 +9,7 @@ import path from 'node:path'
 import os from 'node:os'
 import { fileURLToPath } from 'node:url'
 import { readFileSync, readdirSync, existsSync } from 'node:fs'
+import { createHash } from 'node:crypto'
 import { zstdDecompressSync } from 'node:zlib'
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
@@ -104,6 +105,45 @@ async function listFiles(sessionId) {
   return { files: out, root: workspace.root, source: workspace.source, project: workspace.project }
 }
 
+function isLocalPreviewUrl(value) {
+  try {
+    const url = new URL(String(value || ''))
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') return false
+    return url.hostname === '127.0.0.1' || url.hostname === 'localhost' || url.hostname === '::1'
+  } catch {
+    return false
+  }
+}
+
+function isUrlKey(value) {
+  return /^https?:\/\//i.test(String(value || ''))
+}
+
+function urlAnnotationFile(url) {
+  const hash = createHash('sha256').update(String(url)).digest('hex').slice(0, 32)
+  return path.join(os.homedir(), '.dsh', 'html-annotate', 'annotations', `${hash}.json`)
+}
+
+async function annotationTarget(file, sessionId) {
+  if (isUrlKey(file)) {
+    if (!isLocalPreviewUrl(file)) throw new Error('bad_preview_url')
+    return { base: String(file), target: urlAnnotationFile(file), url: true }
+  }
+  const { base, full } = await safePath(file, sessionId)
+  return { base, target: `${full}.annotations.json`, url: false }
+}
+
+async function injectPreview(html, pageUrl, sessionId, dshOrigin) {
+  const cleaned = html.replace(/<script[^>]+annotation\.js[^>]*><\/script>/gi, '')
+  const baseHref = new URL('.', pageUrl).href
+  const tag = `<script src="${dshOrigin}${ROUTE}/annotation.js" data-file="${pageUrl}" data-session="${sessionId}" data-api="${dshOrigin}${ROUTE}"></script>`
+  let out = cleaned
+  if (/<head[^>]*>/i.test(out)) out = out.replace(/<head[^>]*>/i, (m) => `${m}\n<base href="${baseHref}">`)
+  else out = `<base href="${baseHref}">\n${out}`
+  if (/<\/body>/i.test(out)) return out.replace(/<\/body>/i, `${tag}\n</body>`)
+  return `${out}\n${tag}`
+}
+
 function injectScript(html, file, sessionId) {
   // 去掉旧的本地 annotation 脚本，避免双注入（脚本自身有 guard，先加载的会赢）。
   const cleaned = html.replace(/<script[^>]+annotation\.js[^>]*><\/script>/gi, '')
@@ -139,6 +179,27 @@ export function apply(ctx) {
 
   ctx.effect(() => ctx.webServer.register({
     kind: 'exact',
+    path: `${ROUTE}/preview`,
+    handler: async (req, res) => {
+      try {
+        const url = new URL(req.url || '/', 'http://127.0.0.1')
+        const pageUrl = String(url.searchParams.get('url') || '')
+        if (!isLocalPreviewUrl(pageUrl)) return send(res, 400, 'html-annotate: preview url must be localhost/127.0.0.1')
+        const response = await fetch(pageUrl)
+        if (!response.ok) return send(res, 502, `html-annotate: preview ${response.status}`)
+        const type = response.headers.get('content-type') || ''
+        if (!/text\/html/i.test(type)) return send(res, 415, 'html-annotate: preview is not html')
+        const html = await response.text()
+        const dshOrigin = `${req.headers['x-forwarded-proto'] || 'http'}://${req.headers.host || `127.0.0.1:${process.env.PORT || ''}`}`
+        return send(res, 200, injectPreview(html, pageUrl, url.searchParams.get('sessionId'), dshOrigin), 'text/html; charset=utf-8')
+      } catch (error) {
+        return send(res, 500, `html-annotate: ${error.message}`)
+      }
+    },
+  }), 'html-annotate: local preview')
+
+  ctx.effect(() => ctx.webServer.register({
+    kind: 'exact',
     path: `${ROUTE}/annotation.js`,
     handler: async (_req, res) => send(res, 200, await fs.readFile(SCRIPT_FILE, 'utf8'), 'application/javascript; charset=utf-8'),
   }), 'html-annotate: script')
@@ -165,17 +226,17 @@ export function apply(ctx) {
       try {
         const url = new URL(req.url || '/', 'http://127.0.0.1')
         if (req.method === 'GET') {
-          const { base, full } = await safePath(url.searchParams.get('file'), url.searchParams.get('sessionId'))
+          const key = url.searchParams.get('file')
+          const { base, target } = await annotationTarget(key, url.searchParams.get('sessionId'))
           try {
-            return json(res, 200, { ok: true, file: base, annotations: JSON.parse(await fs.readFile(`${full}.annotations.json`, 'utf8')) })
+            return json(res, 200, { ok: true, file: base, annotations: JSON.parse(await fs.readFile(target, 'utf8')) })
           } catch {
             return json(res, 200, { ok: true, file: base, annotations: [] })
           }
         }
         if (req.method === 'POST') {
           const body = JSON.parse((await readBody(req)) || '{}')
-          const { base, full } = await safePath(body.file, body.sessionId)
-          const target = `${full}.annotations.json`
+          const { base, target } = await annotationTarget(body.file, body.sessionId)
           let annotations = []
           try { annotations = JSON.parse(await fs.readFile(target, 'utf8')) } catch { /* new */ }
           const record = {
@@ -189,6 +250,7 @@ export function apply(ctx) {
             createdAt: new Date().toISOString(),
           }
           annotations.push(record)
+          await fs.mkdir(path.dirname(target), { recursive: true })
           await fs.writeFile(target, `${JSON.stringify(annotations, null, 2)}\n`, 'utf8')
           return json(res, 200, { ok: true, file: base, count: annotations.length, annotation: record })
         }
@@ -205,8 +267,7 @@ export function apply(ctx) {
     handler: async (req, res) => {
       try {
         const body = JSON.parse((await readBody(req)) || '{}')
-        const { base, full } = await safePath(body.file, body.sessionId)
-        const target = `${full}.annotations.json`
+        const { base, target } = await annotationTarget(body.file, body.sessionId)
         let annotations = []
         try { annotations = JSON.parse(await fs.readFile(target, 'utf8')) } catch { /* none */ }
         const now = new Date().toISOString()
@@ -217,6 +278,7 @@ export function apply(ctx) {
           submitted.push(markedItem)
           return markedItem
         })
+        await fs.mkdir(path.dirname(target), { recursive: true })
         await fs.writeFile(target, `${JSON.stringify(annotations, null, 2)}\n`, 'utf8')
         return json(res, 200, { ok: true, file: base, count: annotations.length, marked: submitted.length, submitted })
       } catch (error) {

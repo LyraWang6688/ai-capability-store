@@ -28,6 +28,9 @@ window.__ModuleLoader__.load({
         background:var(--dsw-alias-bg-layer-2,#2f2f34);border:1px solid var(--dsw-alias-border-l1,#3a3a40);color:inherit;max-width:360px}
       .${ROOT}-close{all:unset;cursor:pointer;width:30px;height:30px;border-radius:7px;text-align:center;line-height:30px;font-size:18px;color:var(--dsw-alias-label-secondary,#9aa0aa)}
       .${ROOT}-close:hover{background:var(--dsw-alias-bg-layer-2,#2f2f34)}
+      .${ROOT}-urlrow{display:flex;gap:8px;padding:8px 14px;border-bottom:1px solid var(--dsw-alias-border-l1,#3a3a40)}
+      .${ROOT}-urlinput{all:unset;box-sizing:border-box;flex:1;height:30px;padding:0 9px;border-radius:7px;font-size:12px;
+        background:var(--dsw-alias-bg-layer-2,#2f2f34);border:1px solid var(--dsw-alias-border-l1,#3a3a40);color:inherit}
       .${ROOT}-frame{flex:1;width:100%;border:0;background:#fff}
       .${ROOT}-hint{padding:7px 14px;border-top:1px solid var(--dsw-alias-border-l1,#3a3a40);font-size:12px;color:var(--dsw-alias-label-secondary,#9aa0aa)}
     `
@@ -64,6 +67,7 @@ window.__ModuleLoader__.load({
       const visible = useOpen()
       const [files, setFiles] = React.useState([])
       const [file, setFile] = React.useState('')
+      const [previewUrl, setPreviewUrl] = React.useState('')
       const [root, setRoot] = React.useState('')
       const [status, setStatus] = React.useState('')
       const frameRef = React.useRef(null)
@@ -71,6 +75,8 @@ window.__ModuleLoader__.load({
       React.useEffect(() => {
         if (!visible) return
         const key = `dsh-html-annotate:file:${sessionId}`
+        const urlKey = `dsh-html-annotate:url:${sessionId}`
+        try { setPreviewUrl(localStorage.getItem(urlKey) || '') } catch { /* ignore */ }
         fetch(`/plugins/html-annotate/files?sessionId=${encodeURIComponent(sessionId)}`)
           .then((r) => r.json()).then((body) => {
             const list = Array.isArray(body.files) ? body.files : []
@@ -125,13 +131,27 @@ window.__ModuleLoader__.load({
             }, files.map((name) => h('option', { key: name, value: name }, name))),
             h('button', { type: 'button', className: `${ROOT}-close`, onClick: () => setOpen(false) }, '×'),
           ),
-          file ? h('iframe', {
+          h('div', { className: `${ROOT}-urlrow` },
+            h('input', {
+              className: `${ROOT}-urlinput`,
+              placeholder: '本地预览 URL，例如 http://127.0.0.1:5054/workbench',
+              value: previewUrl,
+              onChange: (event) => {
+                const next = event.target.value
+                setPreviewUrl(next)
+                try { localStorage.setItem(`dsh-html-annotate:url:${sessionId}`, next) } catch { /* ignore */ }
+              },
+            }),
+          ),
+          (previewUrl || file) ? h('iframe', {
             ref: frameRef,
             className: `${ROOT}-frame`,
             title: 'HTML 批注预览',
-            src: `/plugins/html-annotate/page?file=${encodeURIComponent(file)}&sessionId=${encodeURIComponent(sessionId)}`,
+            src: previewUrl
+              ? `/plugins/html-annotate/preview?url=${encodeURIComponent(previewUrl)}&sessionId=${encodeURIComponent(sessionId)}`
+              : `/plugins/html-annotate/page?file=${encodeURIComponent(file)}&sessionId=${encodeURIComponent(sessionId)}`,
           }) : h('div', { className: `${ROOT}-hint` }, '没有可批注的本地 HTML 文件。'),
-          h('div', { className: `${ROOT}-hint` }, status || `工作区：${root || '读取中'} · 点页面里的「批注」→ 点元素写意见 → 保存并提交。`),
+          h('div', { className: `${ROOT}-hint` }, status || (previewUrl ? `本地预览：${previewUrl}` : `工作区：${root || '读取中'} · 点页面里的「批注」→ 点元素写意见 → 保存并提交。`)),
         ),
       )
     }

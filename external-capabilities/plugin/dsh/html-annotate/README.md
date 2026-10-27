@@ -32,6 +32,32 @@
 <原 HTML>.annotations.json
 ```
 
+## 本地预览 URL
+
+工作台这类需要本地服务/登录态的页面，用文件模式会卡在登录检查。
+
+在面板顶部的输入框填本地预览地址：
+
+```text
+http://127.0.0.1:5054/workbench
+```
+
+插件会：
+
+```text
+Host 代理本地页面
+→ 注入批注脚本
+→ 页面里的 root-relative 资源/接口按本地服务器解析
+```
+
+本地服务建议无鉴权启动：
+
+```bash
+PORT=5054 LARK_WEB_AUTH_ENABLED=false ENABLE_CORS=true node src/app.js
+```
+
+批注仍然只改本地源码；部署是单独动作。
+
 ## 自动扫描当前会话工作区
 
 插件按当前 DSH 会话记录的工作目录自动扫描 HTML：
