@@ -11,18 +11,23 @@ window.__ModuleLoader__.load({
     const h = React.createElement
 
     const ROOT = 'dsh-html-annotate'
-    const CSS = `      .${ROOT}-backdrop{position:fixed;inset:0;z-index:2147483000;background:rgba(0,0,0,.45);
-        display:flex;align-items:center;justify-content:center;padding:24px;box-sizing:border-box}
+    const CSS = `      .${ROOT}-backdrop{position:fixed;inset:0;z-index:2147483000;background:transparent;
+        display:flex;align-items:center;justify-content:center;padding:24px;box-sizing:border-box;pointer-events:none}
       .${ROOT}-panel{width:min(920px,96vw);height:min(780px,90vh);background:var(--dsw-alias-bg-layer-1,#1f1f23);
         border:1px solid var(--dsw-alias-border-l1,#3a3a40);border-radius:14px;overflow:hidden;
         box-shadow:0 18px 60px rgba(0,0,0,.45);display:flex;flex-direction:column;
-        font:13px/1.5 -apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif;color:var(--dsw-alias-label-primary,#e6e6e9)}
+        font:13px/1.5 -apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif;color:var(--dsw-alias-label-primary,#e6e6e9);pointer-events:auto}
       .${ROOT}-head{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--dsw-alias-border-l1,#3a3a40)}
       .${ROOT}-title{font-weight:600;font-size:14px;flex:1;min-width:0}
       .${ROOT}-select{all:unset;box-sizing:border-box;height:30px;padding:0 8px;border-radius:7px;font-size:12px;
         background:var(--dsw-alias-bg-layer-2,#2f2f34);border:1px solid var(--dsw-alias-border-l1,#3a3a40);color:inherit;max-width:360px}
       .${ROOT}-close{all:unset;cursor:pointer;width:30px;height:30px;border-radius:7px;text-align:center;line-height:30px;font-size:18px;color:var(--dsw-alias-label-secondary,#9aa0aa)}
       .${ROOT}-close:hover{background:var(--dsw-alias-bg-layer-2,#2f2f34)}
+      .${ROOT}-min{all:unset;cursor:pointer;width:30px;height:30px;border-radius:7px;text-align:center;line-height:30px;font-size:16px;color:var(--dsw-alias-label-secondary,#9aa0aa)}
+      .${ROOT}-min:hover{background:var(--dsw-alias-bg-layer-2,#2f2f34)}
+      .${ROOT}-restore{position:fixed;right:22px;bottom:92px;z-index:2147483001;border:1px solid var(--dsw-alias-border-l1,#3a3a40);border-radius:999px;
+        background:var(--dsw-alias-bg-layer-1,#1f1f23);color:var(--dsw-alias-label-primary,#e6e6e9);padding:9px 14px;
+        font:600 13px/1.2 -apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif;box-shadow:0 8px 24px rgba(0,0,0,.35);cursor:pointer}
       .${ROOT}-urlrow{display:flex;gap:8px;padding:8px 14px;border-bottom:1px solid var(--dsw-alias-border-l1,#3a3a40)}
       .${ROOT}-urlinput{all:unset;box-sizing:border-box;flex:1;height:30px;padding:0 9px;border-radius:7px;font-size:12px;
         background:var(--dsw-alias-bg-layer-2,#2f2f34);border:1px solid var(--dsw-alias-border-l1,#3a3a40);color:inherit}
@@ -87,7 +92,10 @@ window.__ModuleLoader__.load({
       const [previewUrl, setPreviewUrl] = React.useState(previewSeed)
       const [previewToken, setPreviewToken] = React.useState('')
       const [status, setStatus] = React.useState('')
+      const [minimized, setMinimized] = React.useState(false)
       const frameRef = React.useRef(null)
+
+      React.useEffect(() => { if (visible) setMinimized(false) }, [visible])
 
       React.useEffect(() => {
         if (!visible) return
@@ -173,10 +181,12 @@ window.__ModuleLoader__.load({
       }, [visible])
 
       if (!visible) return null
-      return h('div', { className: `${ROOT}-backdrop`, onClick: (event) => { if (event.target === event.currentTarget) setOpen(false) } },
+      return h(React.Fragment, null,
+        h('div', { className: `${ROOT}-backdrop`, style: minimized ? { display: 'none' } : undefined },
         h('div', { className: `${ROOT}-panel` },
           h('div', { className: `${ROOT}-head` },
             h('div', { className: `${ROOT}-title` }, 'HTML 批注'),
+            h('button', { type: 'button', className: `${ROOT}-min`, title: '最小化，继续对话', onClick: () => setMinimized(true) }, '—'),
             h('button', { type: 'button', className: `${ROOT}-close`, onClick: () => setOpen(false) }, '×'),
           ),
           h('div', { className: `${ROOT}-urlrow` },
@@ -199,6 +209,8 @@ window.__ModuleLoader__.load({
           }) : h('div', { className: `${ROOT}-hint` }, previewUrl ? '正在启动本地预览…' : '请先填写本地预览 URL。'),
           h('div', { className: `${ROOT}-hint` }, status || (previewUrl ? `本地预览：${previewUrl}` : '填写本地预览 URL 后加载页面。')),
         ),
+        ),
+        minimized ? h('button', { type: 'button', className: `${ROOT}-restore`, onClick: () => setMinimized(false) }, '继续批注') : null,
       )
     }
 
