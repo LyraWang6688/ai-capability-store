@@ -172,6 +172,7 @@ async function readPreviewConfig(sessionId) {
 const previewProcesses = new Map()
 const previewTokens = new Map()
 let pendingOpenAt = 0
+const pendingBySession = new Map()
 
 async function pageReady(url, timeoutMs = 800) {
   try {
@@ -331,15 +332,22 @@ export function apply(ctx) {
     handler: async (req, res) => {
       const url = new URL(req.url || '/', 'http://127.0.0.1')
       const since = Number(url.searchParams.get('since') || 0)
-      return json(res, 200, { ok: true, open: pendingOpenAt > since, at: pendingOpenAt })
+      const sessionId = String(url.searchParams.get('sessionId') || '')
+      const at = (sessionId && pendingBySession.get(sessionId)) || pendingOpenAt
+      return json(res, 200, { ok: true, open: at > since, at })
     },
   }), 'html-annotate: pending')
 
   ctx.effect(() => ctx.webServer.register({
     kind: 'exact',
     path: `${ROUTE}/pending/ack`,
-    handler: async (_req, res) => {
-      pendingOpenAt = 0
+    handler: async (req, res) => {
+      try {
+        const body = JSON.parse((await readBody(req)) || '{}')
+        const sessionId = String(body.sessionId || '')
+        if (sessionId) pendingBySession.delete(sessionId)
+        else pendingOpenAt = 0
+      } catch { pendingOpenAt = 0 }
       return json(res, 200, { ok: true })
     },
   }), 'html-annotate: pending ack')
@@ -436,14 +444,22 @@ export function apply(ctx) {
   ctx.effect(() => ctx.tools.register({
     name: 'open_html_annotate',
     description: 'Open the HTML annotation panel for the current project preview. Call this when the user asks to view or annotate a local preview page.',
-    parameters: { type: 'object', properties: {}, additionalProperties: false },
+    parameters: {
+      type: 'object',
+      properties: {
+        sessionId: { type: 'string', description: 'Target DSH session id. Pass the current session id when known.' },
+      },
+      additionalProperties: false,
+    },
     output: {
       schema: { type: 'object', additionalProperties: true },
       render: (_args, value) => [{ type: 'text', text: JSON.stringify(value) }],
     },
-    async execute() {
-      pendingOpenAt = Date.now()
-      return { ok: true, message: 'HTML annotation panel requested' }
+    async execute(args) {
+      const sessionId = String(args && args.sessionId || '')
+      if (sessionId) pendingBySession.set(sessionId, Date.now())
+      else pendingOpenAt = Date.now()
+      return { ok: true, message: 'HTML annotation panel requested', sessionId }
     },
   }), 'html-annotate: open tool')
 

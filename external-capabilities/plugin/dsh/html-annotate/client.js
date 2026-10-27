@@ -66,11 +66,11 @@ window.__ModuleLoader__.load({
         const tick = async () => {
           if (cancelled || open) return
           try {
-            const response = await fetch(`/plugins/html-annotate/pending?since=${seen}`)
+            const response = await fetch(`/plugins/html-annotate/pending?since=${seen}&sessionId=${encodeURIComponent(sid)}`)
             const body = await response.json()
             if (!body || !body.open || !body.at) return
             seen = body.at
-            await fetch('/plugins/html-annotate/pending/ack', { method: 'POST' }).catch(() => {})
+            await fetch('/plugins/html-annotate/pending/ack', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sessionId: sid }) }).catch(() => {})
             actions = props.inputActions || null
             sessionId = sid
             setOpen(true)
