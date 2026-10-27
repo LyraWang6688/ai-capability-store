@@ -116,25 +116,57 @@ window.__ModuleLoader__.load({
 
       React.useEffect(() => {
         if (!visible) return
-        const onMessage = (event) => {
-          const data = event.data
-          if (!data || data.type !== 'html-annotate:submitted') return
-          const annotations = Array.isArray(data.annotations) ? data.annotations : []
+        const notifySession = (file, annotations) => {
           if (!annotations.length) return
           const lines = annotations.map((item, index) => `${index + 1}. ${item.selector}：${item.comment}`)
-          const message = [
-            `请按 HTML 批注修改源码：${data.file}`,
-            ...lines,
-            '',
-            '批注 JSON 已写入同目录 sidecar 文件。',
-          ].join('\n')
-          try {
-            if (actions && typeof actions.setDraft === 'function') actions.setDraft(message)
-            if (actions && typeof actions.submit === 'function') actions.submit()
-            setStatus(`已提交 ${annotations.length} 条批注，已发送到当前会话`)
-          } catch (error) {
-            setStatus('发送失败：' + error.message)
+          const message = [`请按 HTML 批注修改源码：${file}`, ...lines, '', '批注 JSON 已写入 sidecar 文件。'].join('\n')
+          if (actions && typeof actions.setDraft === 'function') actions.setDraft(message)
+          if (actions && typeof actions.submit === 'function') actions.submit()
+          setStatus(`已提交 ${annotations.length} 条批注，已发送到当前会话`)
+        }
+        const reply = (event, ok, message) => {
+          try { event.source?.postMessage({ type: 'html-annotate:saved', ok, message }, '*') } catch { /* ignore */ }
+        }
+        const submitAndNotify = (event, data) => {
+          fetch('/plugins/html-annotate/annotations/submit', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ file: data.file, sessionId: data.sessionId || sessionId }),
+          }).then((r) => r.json()).then((body) => {
+            if (!body.ok) throw new Error(body.error || 'submit_failed')
+            const submitted = Array.isArray(body.submitted) ? body.submitted : []
+            notifySession(data.file, submitted)
+            reply(event, true, `已提交 ${submitted.length || body.marked || 0} 条批注`)
+          }).catch((error) => reply(event, false, error.message))
+        }
+        const onMessage = (event) => {
+          const data = event.data
+          if (!data) return
+          if (data.type === 'html-annotate:save') {
+            const annotation = { ...(data.annotation || {}), file: data.file, sessionId: data.sessionId || sessionId }
+            fetch('/plugins/html-annotate/annotations', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(annotation),
+            }).then((r) => r.json()).then((body) => {
+              if (!body.ok) throw new Error(body.error || 'save_failed')
+              return fetch('/plugins/html-annotate/annotations/submit', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ file: data.file, sessionId: data.sessionId || sessionId }),
+              })
+            }).then((r) => r.json()).then((body) => {
+              if (!body.ok) throw new Error(body.error || 'submit_failed')
+              const submitted = Array.isArray(body.submitted) ? body.submitted : []
+              notifySession(data.file, submitted)
+              reply(event, true, `已提交 ${submitted.length || body.marked || 0} 条批注`)
+            }).catch((error) => reply(event, false, error.message))
+            return
           }
+          if (data.type === 'html-annotate:submit') return submitAndNotify(event, data)
+          if (data.type !== 'html-annotate:submitted') return
+          const annotations = Array.isArray(data.annotations) ? data.annotations : []
+          notifySession(data.file, annotations)
         }
         window.addEventListener('message', onMessage)
         return () => window.removeEventListener('message', onMessage)

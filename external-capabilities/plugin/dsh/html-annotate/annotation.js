@@ -94,6 +94,20 @@
       if (!comment) { textarea.focus(); return; }
       var save = panel.querySelector('.pa-save');
       save.disabled = true;
+      var payload = {
+        file: file,
+        sessionId: sessionId,
+        selector: selectorOf(target),
+        snippet: (target.outerHTML || '').slice(0, 3000),
+        text: text,
+        comment: comment,
+        url: location.href,
+      };
+      if (window.parent && window.parent !== window) {
+        pendingSave = save;
+        window.parent.postMessage({ type: 'html-annotate:save', file: file, sessionId: sessionId, annotation: payload }, '*');
+        return;
+      }
       fetch(apiBase + '/annotations', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -130,6 +144,23 @@
         .catch(function (err) { save.disabled = false; toast('保存失败：' + err.message); });
     };
   }
+
+  var pendingSave = null;
+  var pendingSubmit = null;
+  window.addEventListener('message', function (event) {
+    var data = event.data;
+    if (!data || data.type !== 'html-annotate:saved') return;
+    if (pendingSave) { pendingSave.disabled = false; pendingSave = null; }
+    if (pendingSubmit) { pendingSubmit.disabled = false; pendingSubmit = null; }
+    if (data.ok) {
+      toast(data.message || '批注已提交');
+      closeBox();
+      loadCount();
+      setMode(false);
+    } else {
+      toast('保存失败：' + String(data.message || 'unknown'));
+    }
+  });
 
   var lastHover = null;
   function annotationTarget(event) {
@@ -187,6 +218,11 @@
     submit.addEventListener('click', function (e) {
       e.stopPropagation();
       submit.disabled = true;
+      if (window.parent && window.parent !== window) {
+        pendingSubmit = submit;
+        window.parent.postMessage({ type: 'html-annotate:submit', file: file, sessionId: sessionId }, '*');
+        return;
+      }
       fetch(apiBase + '/annotations/submit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
