@@ -69,7 +69,7 @@ async function workspaceOf(sessionId) {
   return { root: await rootDir(), source: 'config', project: path.basename(await rootDir()) }
 }
 
-const SKIP_DIRS = new Set(['node_modules', '.git', 'dist', 'build', 'coverage', '.next', '.nuxt', 'out', '.cache', 'vendor'])
+const SKIP_DIRS = new Set(['node_modules', '.git', 'coverage', '.next', '.nuxt', '.cache', 'vendor'])
 
 async function safePath(value, sessionId) {
   const workspace = await workspaceOf(sessionId)

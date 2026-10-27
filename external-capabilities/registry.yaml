@@ -188,13 +188,13 @@ capabilities:
     type: plugin
     status: limited
     provider_path: external-capabilities/providers/lyrawang/README.md
-    version: 0.1.0
+    version: 0.1.1
     implementation_path: external-capabilities/plugin/dsh/html-annotate
     auth: "无凭据。只读写本机配置根目录下的 HTML 与 sidecar JSON；不上传外部网络"
     capabilities: "在 DSH 输入框旁打开当前会话工作区的 HTML 批注面板：按会话 cwd 自动扫描 *.html（忽略 node_modules/.git/dist/build 等），运行时注入批注脚本（不改源码），点元素写意见并保存到同目录 .annotations.json；提交时只把本批新增批注作为消息发给当前会话，由 Agent 修改源码"
     permissions: "读取配置根目录下的 *.html 与写同目录 .annotations.json；Host 注册本机 DSH 路由；界面使用 shell.overlay 与 conversation.input.left 槽位"
     commerce: {charge: free}
-    notes: "自研、Store-managed。2026-10-27 首个验证版本：在隔离 DSH web profile 实测注入、批注保存、postMessage、提交后写入会话消息均通过。已知结构限制：第三方插件拿不到 sidebarRight，因此使用 overlay 面板而不是右侧栏替换；后续可接只读 HTML 预览。安装使用本地路径仅为开发验证，正式分发需按 Store 规则发布 npm。"
+    notes: "自研、Store-managed。2026-10-27 首个验证版本：在隔离 DSH web profile 实测注入、批注保存、postMessage、提交后写入会话消息均通过。已知结构限制：第三方插件拿不到 sidebarRight，因此使用 overlay 面板而不是右侧栏替换；后续可接只读 HTML 预览。0.1.1（补丁）：不再跳过 `dist` / `build` / `out` 里的 HTML——Astro 等项目的可批注页面只存在于构建产物中；仍跳过 node_modules/.git/coverage/.next/.nuxt/.cache/vendor。"
   terminal-context:
     name: terminal-context
     hosting: store-managed

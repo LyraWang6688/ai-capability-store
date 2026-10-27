@@ -40,7 +40,7 @@
 <session cwd>/**/*.html
 ```
 
-自动忽略 `node_modules`、`.git`、`dist`、`build`、`coverage` 等目录。每个会话记住上次选择的页面。
+自动忽略 `node_modules`、`.git`、`coverage` 等依赖/缓存目录；`dist` / `build` 里的 HTML 会保留（Astro 等项目的页面产物就在这里）。每个会话记住上次选择的页面。
 
 不需要手动配置页面；切换会话到另一个项目时，插件会读那个项目的工作区。
 
