@@ -1,0 +1,46 @@
+{
+  "name": "@lyra_wang/dsh-html-annotate",
+  "version": "0.1.9",
+  "type": "module",
+  "description": "在 DSH 中打开本地 HTML 原型，点元素写批注，提交后把批注作为消息发给当前会话，由 Agent 修改源码。",
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "index.js",
+    "client.js",
+    "annotation.js",
+    "cordis.patch.yml",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": []
+    }
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/LyraWang6688/ai-capability-store.git",
+    "directory": "external-capabilities/plugin/dsh/html-annotate"
+  },
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "html",
+    "annotation"
+  ]
+}

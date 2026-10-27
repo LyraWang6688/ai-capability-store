@@ -1,0 +1,3 @@
+- insert:
+    - id: dsh-html-annotate
+      name: '@lyra_wang/dsh-html-annotate'
