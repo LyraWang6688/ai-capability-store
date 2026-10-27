@@ -4,7 +4,15 @@
   window.__prototypeAnnotationLoaded = true;
   var script = document.currentScript;
   var file = (script && (script.getAttribute('data-file') || script.getAttribute('data-annotation-file'))) || '';
-  var apiBase = (script && script.getAttribute('data-api')) || '/plugins/html-annotate';
+  var apiBase = '/plugins/html-annotate';
+  try {
+    if (script && script.src) {
+      var scriptUrl = new URL(script.src);
+      apiBase = scriptUrl.origin + scriptUrl.pathname.replace(/\/annotation\.js$/, '');
+    } else if (script && script.getAttribute('data-api')) {
+      apiBase = script.getAttribute('data-api');
+    }
+  } catch (error) { /* fallback */ }
   var sessionId = (script && script.getAttribute('data-session')) || '';
   if (!file) {
     file = (location.pathname.split('/').pop() || '').split('?')[0];
