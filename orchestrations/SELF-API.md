@@ -18,8 +18,8 @@
 | **② 调用** | 谁算、谁判 | `curl` 打店外服务；Bearer host token；幂等键由宿主给 |
 | **③ 落回** | 用户在哪看到 | 写回用户自己的表 / 报告链接 / 卡片 / 对话 |
 
-`manual/` 和 `automated/` 里都可能有调自建 API 的任务；判断它属于哪边看 `trigger`，
-判断它是否调自建 API 看目录名和 `calls`。
+`manual` 和 `automated` 两种触发方式里都可能有调自建 API 的任务；判断它属于哪种看
+`trigger`，判断它是否调自建 API 看任务目录名和 `calls`。
 
 ---
 

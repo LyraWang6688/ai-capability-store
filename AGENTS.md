@@ -29,7 +29,7 @@ addresses, Feishu base/table tokens, deployment paths, session ids. None of that
 credential, but listing "which machine runs what" in a public repo hands out a map.
 
 A handoff lives **next to the work it describes**, gitignored, and stays on the machine:
-`orchestrations/automated/HANDOFF.md` is the shape, not a tracked file.
+`orchestrations/<project>/<task>/HANDOFF.md` is the shape, not a tracked file.
 
 AGENTS.md is the Control Plane / Router. It does NOT duplicate policy.
 Domain-specific policy lives in the Domain directories.
@@ -56,10 +56,11 @@ There are **three module Domains** and **one composition layer**.
 A module Domain is a unit of *identity*: it has its own registry, lifecycle, version and
 tag. The composition layer has none of those for itself — it only references.
 
-`automations/` is being absorbed into `orchestrations/automated/` because a job is
+`automations/` is being absorbed into `orchestrations/<project>/<task>/` because a job is
 "trigger + an ordered set of modules + output", which is exactly what an orchestration
-records. It stays registered during the migration; see `orchestrations/registry.yaml`
-schema_version 2.
+records. It stays registered during the migration; the layout rule is
+`orchestrations/README.md` § 布局：两层, and whether a job is started by a clock or by a
+human is the record's `trigger` field, not a directory level.
 
 What separates them is the question each one answers:
 
