@@ -10,7 +10,7 @@
 | 平台 | 无（自研自托管：底层服务由本人自建，不存在第三方平台） |
 | 官方开放接口 | 不适用 |
 | 官方 CLI | 不适用 |
-| 本 Store 下的能力 | [`teaming-mcp`](../../mcp/teaming-mcp/) · [`selection-toolbar`](../../plugin/selection-toolbar/) · [`dsh-feishu-remote`](../../cli/dsh-feishu-remote/) · [`ai-quote-clip`](../../cli/ai-quote-clip/) · [`command-sync`](../../cli/command-sync/) · [`mac-cleanup`](../../cli/mac-cleanup/) |
+| 本 Store 下的能力 | [`teaming-mcp`](../../mcp/teaming-mcp/) · [`selection-toolbar`](../../plugin/dsh/selection-toolbar/) · [`dsh-feishu-remote`](../../cli/dsh-feishu-remote/) · [`ai-quote-clip`](../../cli/ai-quote-clip/) · [`command-sync`](../../cli/command-sync/) · [`mac-cleanup`](../../cli/mac-cleanup/) |
 
 ## 为什么自研能力挂 lyrawang
 

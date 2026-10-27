@@ -10,7 +10,7 @@
 > ```
 >
 > 服务器上所有项目的钟现在集中在一个目录里（`ls /etc/ai-capability-store/timers/`），
-> 安装与运维见 [`scripts/server-timers/README.md`](../../../scripts/server-timers/README.md)。
+> 安装与运维见 [`scripts/server-timers/README.md`](../../README.md)。
 >
 > **下面这份文档保留下来，是因为它解释了"为什么不能用 GitHub 的 schedule"、
 > "为什么服务器只需要一个只读令牌"、"为什么命令不能直接写进 crontab"——

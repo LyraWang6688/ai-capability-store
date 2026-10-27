@@ -6,9 +6,9 @@
 
 | 文件 | 回答什么 |
 |---|---|
-| [`scripts/server-timers/systemd/investdesk-quote-sync.timer`](../../../../scripts/server-timers/systemd/investdesk-quote-sync.timer) | **什么时候** —— `OnCalendar=Mon..Fri *-*-* 20:00:00`，`Persistent=true`（关机错过会补跑） |
-| [`scripts/server-timers/systemd/investdesk-quote-sync.service`](../../../../scripts/server-timers/systemd/investdesk-quote-sync.service) | 由服务器 dispatch 哪个 workflow |
-| [`.github/workflows/automation-investdesk-quote-sync.yml`](../../../../.github/workflows/automation-investdesk-quote-sync.yml) | **跑什么** —— `node procedures/quote-sync/sync.ts` |
+| [`scripts/server-timers/systemd/investdesk-quote-sync.timer`](../../../scripts/server-timers/systemd/investdesk-quote-sync.timer) | **什么时候** —— `OnCalendar=Mon..Fri *-*-* 20:00:00`，`Persistent=true`（关机错过会补跑） |
+| [`scripts/server-timers/systemd/investdesk-quote-sync.service`](../../../scripts/server-timers/systemd/investdesk-quote-sync.service) | 由服务器 dispatch 哪个 workflow |
+| [`.github/workflows/automation-investdesk-quote-sync.yml`](../../../.github/workflows/automation-investdesk-quote-sync.yml) | **跑什么** —— `node procedures/quote-sync/sync.ts` |
 
 workflow 里**故意没有 `schedule`**：GitHub 的定时器在本仓库实测延迟 4-5 小时，
 而这条链必须赶在次日 09:00 消费前落地。代价是没有兜底。
