@@ -90,7 +90,10 @@ function renderPane(el, kinds, q, emptyMsg){
       d.dataset.key = it.id;
       const t = document.createElement("div"); t.className = "t"; t.textContent = it.title;
       const s = document.createElement("div"); s.className = "s"; s.textContent = it.command || "";
-      d.appendChild(t); d.appendChild(s);
+      d.appendChild(t);
+      // 快捷键条目的 title 和 command 都是整行文字（palette.py 原样塞进来），
+      // 副标题只在真的不一样时才画 —— 否则每条快捷键都要重复显示两遍。
+      if(s.textContent && s.textContent !== t.textContent) d.appendChild(s);
       d.addEventListener("click", () => { copy(it); flash("已复制"); setTimeout(close, 160); });
       el.appendChild(d);
     }
