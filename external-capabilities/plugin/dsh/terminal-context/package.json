@@ -1,8 +1,8 @@
 {
   "name": "@lyra_wang/dsh-terminal-context",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "type": "module",
-  "description": "把 DSH 右侧边栏终端共享给 Agent：用户点「共享终端」后，每一步都在上下文里，并在报错 / 等待输入 / 交互式程序 / 卡住时主动提醒。默认不共享，关掉彻底静默。",
+  "description": "把 DSH 右侧边栏终端共享给 Agent：用户点「共享终端」后，每一步都在上下文里（只带紧凑状态，不把屏幕内容灌进会话），并在报错 / 等待输入 / 交互式程序时主动提醒。默认不共享，关掉彻底静默。",
   "exports": {
     ".": "./index.js",
     "./locale/*.json": "./locale/*.json",

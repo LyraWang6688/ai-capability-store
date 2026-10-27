@@ -39,18 +39,31 @@
 - 关掉 = 彻底静默：不读屏、不推送、Host 清空该会话的屏幕、取消所有计时器；`read_terminal_context` 返回 `sharing switched off`
 - 对齐「共享」的直觉：我点共享它才看，我点停止它立刻不看
 
-### ① 每一步都在上下文里（对应"第一条指令要适配当前状态"）
+### ① 每一步都在上下文里 —— 但只带"紧凑状态"
 
 （仅在共享开启后生效）
 
-Host 半边注册一个动态运行时上下文（`systemPrompt.context`），**每个模型 step 组装 prompt 时重新求值**：
+Host 半边注册一个动态运行时上下文（`systemPrompt.context`），每个模型 step 组装 prompt 时重新求值。**注入的文本只有三行，且不含输出正文、不含年龄**：
 
-- 内容：终端最后 20 行 + 多少秒前更新
-- 会话对齐：界面侧从输入框 slot 的 props 拿到 `sessionId` 一起推上来，Host 按会话分桶；拿不到 `sessionId` 时退化为"用最近一次推送"
-- 过期不注入：超过 45 秒没新推送就整段消失（旧屏幕比没有更危险）
-- 内容没变不重复：DSH 会对运行时上下文做 diff，不变的快照不会重复消耗 token
+```
+DSH right-sidebar terminal (shared by the user). Compact state only; call read_terminal_context for the full screen.
+Last prompt line: wangying@192 ai-capability-store %
+Last completed command: wangying@192 ai-capability-store % npm publish --access public
+Its output (last 3 lines):
+npm notice Publishing to https://registry.npmjs.org/ with tag latest and public access
+npm notice Your package is being processed and may take a few minutes to become available.
++ @lyra_wang/dsh-html-annotate@0.3.0
+State: success — prompt returned
+```
 
-效果：Agent 在给第一条命令前，就能看到你**当前在哪个目录、是在本地还是远端、上一条命令的结果**，不用你复述。
+**成功也要看得见**：Agent 需要"上一条命令到底成没成、输出末尾说了什么"才能决定下一步（例如发布成功才能继续）。所以上下文带**上一条已完成命令 + 它的输出末尾 8 行**；但**命令运行期间不更新**（没有提示符就沿用上一条完成态），所以刷屏不会产生新快照。
+
+为什么这么设计（0.5.2）：DSH 每逢运行时上下文文本变化就追加一条 durable 快照，在聊天里表现为一个 context 节点。0.5.1 的文本含整屏 20 行 +「N 秒前更新」，于是终端一边输出、会话一边被写入，噪音很大。现在**屏幕刷屏时文本完全不变**，只有「提示符行变了」或「状态从 idle 变成 error / awaiting-input / interactive」才更新。
+
+- 需要完整一屏时：Agent 调 `read_terminal_context`（工具，不写会话）
+- 真正需要正文时（报错上报）：那条消息仍然带完整一屏，但每条命令最多一次
+- 过期不注入：超过 45 秒没新推送 → 整段消失
+- 会话对齐：按 `sessionId` 分桶，严格不跨会话
 
 ### ⓪ 终端没打开时：停下，让人去开（契约）
 
@@ -71,7 +84,7 @@ Host 半边注册一个动态运行时上下文（`systemPrompt.context`），**
   "reason": "sharing is on, but no terminal panel is open; ask the user to open the right sidebar terminal" }
 ```
 
-### ② 三种会唤醒的信号，各自的文案和"该做什么"
+### ② 四种会唤醒的信号，各自的文案和"该做什么"
 
 屏幕静默 1.2 秒后分类，每种信号的上报文案与要求都不同：
 
@@ -81,9 +94,9 @@ Host 半边注册一个动态运行时上下文（`systemPrompt.context`），**
 | `awaiting-input` | 末行像 `(y/n)` / `Password:` / `Are you sure?` / `Press any key` | 告诉用户该填什么，能直接粘贴的单独给出来 | ✅ |
 | `interactive` | 末行不是提示符，且屏幕上有 `vim` / `less` / `ssh` / `python` / `REPL` 特征 | 别按普通 shell 给命令，告诉用户怎么退出或怎么在这程序里操作 | ✅ |
 | ~~`stuck`~~ | ~~30 秒无变化，且提示符没回来~~ | **已停用**：真机上「长输出结束后的静默」和「打开面板时的空屏」都会被误判成卡住，误报比价值大 | ❌ |
-| `success` | 提示符返回且无报错 | 确认结果、给下一步；不要重复已完成的步骤 | ❌ **只更新上下文** |
+| `success` | 提示符返回且无报错 | 一句话确认结果，然后给下一步；若是用户自己的零散命令就别改计划 | ✅（8 秒冷却） |
 
-`success` 刻意不唤醒：批量执行顺利时保持安静——这是"理想情况别打断我"的底线。
+`success` 也唤醒（0.5.2 起）：人的目标是"报错也好、成功也好，都不用复述给 AI"——AI 自己看到结果并继续推进。为了不轰屏：按命令行去重、8 秒冷却，且报文只有末尾 8 行。
 
 唤醒时：
 
