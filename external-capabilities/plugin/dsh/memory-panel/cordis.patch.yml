@@ -1,0 +1,8 @@
+# 记忆面板：Host 路由（项目列表 / MCP 转发 / 坐标解析）+ Client 浮层面板。
+# ai-memory 的服务地址与数据目录可在下方 config 覆盖。
+- insert:
+    - id: dsh-memory-panel
+      name: "@lyra_wang/dsh-memory-panel"
+      config:
+        serverUrl: "http://127.0.0.1:49374"
+        dataDir: "/Users/wangying/Library/Application Support/ai-memory"

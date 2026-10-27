@@ -1,0 +1,21 @@
+{
+  "name": "@lyra_wang/dsh-memory-panel",
+  "version": "0.1.0",
+  "description": "DSH 记忆面板：浏览 ai-memory 的 wiki 页，并把当前解析到的 workspace/project 摆在最上面，错桶一眼可见。",
+  "license": "MIT",
+  "type": "module",
+  "keywords": ["dsh", "dsh-plugin", "client-plugin", "ai-memory", "memory"],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/LyraWang6688/ai-capability-store.git",
+    "directory": "external-capabilities/plugin/dsh/memory-panel"
+  },
+  "exports": { ".": "./index.js", "./client": "./client.js" },
+  "files": ["index.js", "client.js", "cordis.patch.yml", "README.md", "LICENSE"],
+  "publishConfig": { "access": "public" },
+  "engines": { "node": ">=20" },
+  "dsh": {
+    "bundle": { "patch": "./cordis.patch.yml" },
+    "client": { "platform": "web", "immediately": true, "inject": ["@deepseek-ai/dsh-client-ui-layout"] }
+  }
+}
