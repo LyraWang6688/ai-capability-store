@@ -38,6 +38,7 @@ window.__ModuleLoader__.load({
     let open = false
     let actions = null
     let sessionId = ''
+    let previewSeed = ''
     const listeners = new Set()
     const emit = () => { for (const fn of listeners) fn() }
     const setOpen = (value) => { open = value; emit() }
@@ -51,6 +52,21 @@ window.__ModuleLoader__.load({
     }
 
     function InputButton(props) {
+      React.useEffect(() => {
+        const sid = String(props.sessionId || '')
+        if (!sid) return
+        fetch(`/plugins/html-annotate/config?sessionId=${encodeURIComponent(sid)}`)
+          .then((r) => r.json())
+          .then((body) => {
+            if (!body || !body.previewUrl) return
+            previewSeed = body.previewUrl
+            if (body.autoOpen) {
+              actions = props.inputActions || null
+              sessionId = sid
+              setOpen(true)
+            }
+          }).catch(() => {})
+      }, [props.sessionId])
       return h('button', {
         type: 'button',
         className: `${ROOT}-btn`,
@@ -65,13 +81,14 @@ window.__ModuleLoader__.load({
 
     function Overlay() {
       const visible = useOpen()
-      const [previewUrl, setPreviewUrl] = React.useState('')
+      const [previewUrl, setPreviewUrl] = React.useState(previewSeed)
       const [status, setStatus] = React.useState('')
       const frameRef = React.useRef(null)
 
       React.useEffect(() => {
         if (!visible) return
         const urlKey = `dsh-html-annotate:url:${sessionId}`
+        if (previewSeed) { setPreviewUrl(previewSeed); return }
         try { setPreviewUrl(localStorage.getItem(urlKey) || '') } catch { /* ignore */ }
       }, [visible])
 

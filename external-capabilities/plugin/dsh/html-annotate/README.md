@@ -76,7 +76,24 @@ Host 会代理这个本地页面、注入批注脚本。
 PORT=5054 LARK_WEB_AUTH_ENABLED=false ENABLE_CORS=true node src/app.js
 ```
 
-每个会话记住自己的 URL。批注只改本地源码，部署是单独动作。
+## 项目预览配置（自动打开）
+
+项目根目录放：
+
+```text
+.dsh/html-annotate.json
+```
+
+```json
+{
+  "previewUrl": "http://127.0.0.1:5055/replenish-board-2026-10-27.html",
+  "autoOpen": true
+}
+```
+
+插件会读取当前会话 cwd 下的这份配置；`autoOpen: true` 时自动弹出并加载页面，不需要手填 URL。
+
+每个会话仍会用 localStorage 记住 URL。批注只改本地源码，部署是单独动作。
 
 ## 安全边界
 

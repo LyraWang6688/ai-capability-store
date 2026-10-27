@@ -144,6 +144,25 @@ async function injectPreview(html, pageUrl, sessionId, dshOrigin) {
   return `${out}\n${tag}`
 }
 
+async function readPreviewConfig(sessionId) {
+  const candidates = []
+  try {
+    const workspace = await workspaceOf(sessionId)
+    candidates.push(path.join(workspace.root, '.dsh', 'html-annotate.json'))
+  } catch { /* ignore */ }
+  candidates.push(path.join(os.homedir(), '.dsh', 'html-annotate.json'))
+  for (const file of candidates) {
+    try {
+      const data = JSON.parse(await fs.readFile(file, 'utf8'))
+      const previewUrl = String(data.previewUrl || data.url || '')
+      if (previewUrl && isLocalPreviewUrl(previewUrl)) {
+        return { ok: true, previewUrl, autoOpen: data.autoOpen === true, source: file }
+      }
+    } catch { /* next */ }
+  }
+  return { ok: true, previewUrl: '', autoOpen: false }
+}
+
 function injectScript(html, file, sessionId) {
   // 去掉旧的本地 annotation 脚本，避免双注入（脚本自身有 guard，先加载的会赢）。
   const cleaned = html.replace(/<script[^>]+annotation\.js[^>]*><\/script>/gi, '')
@@ -176,6 +195,19 @@ export function apply(ctx) {
       return json(res, 200, { ok: true, ...(await listFiles(url.searchParams.get('sessionId'))) })
     },
   }), 'html-annotate: files')
+
+  ctx.effect(() => ctx.webServer.register({
+    kind: 'exact',
+    path: `${ROUTE}/config`,
+    handler: async (req, res) => {
+      try {
+        const url = new URL(req.url || '/', 'http://127.0.0.1')
+        return json(res, 200, await readPreviewConfig(url.searchParams.get('sessionId')))
+      } catch (error) {
+        return json(res, 500, { ok: false, error: String(error?.message || error) })
+      }
+    },
+  }), 'html-annotate: config')
 
   ctx.effect(() => ctx.webServer.register({
     kind: 'exact',
