@@ -26,9 +26,11 @@
 const PUSH_PATH = '/plugins/terminal-context/push'
 const MAX_LINES = 200
 const MAX_PROMPT_LINES = 20
+const TAIL_LINES = 8
 const STALE_AFTER_MS = 45_000
 const QUIESCE_MS = 1_200
 const WAKE_COOLDOWN_MS = 20_000
+const SUCCESS_COOLDOWN_MS = 8_000
 
 const PROMPT_END = /(?:[%$#❯➜»])\s*$/
 const ERROR_PATTERNS = [
@@ -168,7 +170,17 @@ function detectSignal(lines) {
   return undefined
 }
 
-/** Text injected into the prompt every step. Empty when there is nothing safe to say. */
+/**
+ * Prompt text for the current screen.
+ *
+ * Deliberately built from COARSE state only — the last prompt line and the
+ * classified signal — never from the streaming lines themselves and never from
+ * an age counter. DSH re-sends a runtime-context snapshot whenever its text
+ * changes, and every snapshot becomes a durable chat node, so including the
+ * output lines (or "3s old") made a busy terminal spam the transcript with
+ * content the user does not need. Streaming output now changes nothing here;
+ * the full screen stays available through the tool.
+ */
 function promptTextFor(sessionId) {
   const own = screens.get(sessionId)
   if (own !== undefined && own.share === true && own.panelOpen === false) {
@@ -183,19 +195,65 @@ function promptTextFor(sessionId) {
   const snapshot = screenOf(sessionId)
   if (snapshot === undefined || !snapshot.updatedAt) return ''
   if (Date.now() - snapshot.updatedAt > STALE_AFTER_MS) return ''
-  const lines = visibleLines(snapshot, MAX_PROMPT_LINES)
+  const lines = visibleLines(snapshot, MAX_LINES)
   if (lines.length === 0) return ''
+  const completed = snapshot.completed
+  // While a command is running derive everything from the LAST COMPLETED state:
+  // re-reading the live lines here would make the text change on every push.
+  const prompt = completed === undefined ? lastPromptLine(lines) : completed.prompt
+  const parts = [
+    'DSH right-sidebar terminal (shared by the user). Compact state only; call read_terminal_context for the full screen.',
+    prompt === '' ? 'Last screen line: (no shell prompt visible)' : `Last prompt line: ${prompt}`,
+  ]
+  if (completed !== undefined) {
+    parts.push(`Last completed command: ${completed.command === '' ? '(unknown)' : completed.command}`)
+    if (completed.tail.length > 0) {
+      parts.push(`Its output (last ${completed.tail.length} lines):`)
+      parts.push(...completed.tail)
+    }
+    parts.push(`State: ${completed.state}`)
+  } else {
+    parts.push('State: a command is still running (no prompt returned yet)')
+  }
+  parts.push('Use the prompt line to infer the working directory and whether the shell is local or remote, and adapt the next command to it. The user types these commands; do not assume a command ran unless this output shows it.')
+  return parts.join('\n')
+}
+
+/**
+ * The last COMPLETED command on screen: the command line, its output tail, and
+ * how the screen ended. Returns undefined while a command is still running
+ * (the screen does not end with a prompt), which is what keeps the injected
+ * text stable during streaming output.
+ */
+function deriveCompleted(lines) {
+  const end = lastNonEmpty(lines)
+  if (end < 0) return undefined
+  if (!PROMPT_END.test(lines[end])) return undefined
+  let commandIndex = -1
+  for (let index = end - 1; index >= 0; index -= 1) {
+    const line = lines[index]
+    if (line && /(?:[%$#❯➜»])\s+\S/.test(line)) { commandIndex = index; break }
+  }
+  const command = commandIndex >= 0 ? lines[commandIndex].trim().slice(0, 160) : ''
+  const output = commandIndex >= 0 ? lines.slice(commandIndex + 1, end) : lines.slice(0, end)
+  const tail = output.map((line) => line.trimEnd()).filter((line, index, list) => line !== '' || index < list.length - 1).slice(-TAIL_LINES)
   const signal = detectSignal(lines)
-  return [
-    `DSH right-sidebar terminal — what the user is looking at right now (${ageSeconds(snapshot)}s old, shared by the user).`,
-    'Before proposing a command, adapt it to this state: the working directory in the prompt, whether the shell is local or on a remote host, and what the last command did.',
-    'The user types these commands; do not assume a command ran unless this screen shows it did.',
-    signal === undefined ? '' : `Detected state: ${signal.kind} (${signal.evidence}).`,
-    '',
-    '```',
-    ...lines,
-    '```',
-  ].filter((part) => part !== '').join('\n')
+  return {
+    command,
+    prompt: lastPromptLine(lines),
+    tail,
+    state: signal === undefined ? 'success — prompt returned, no error on screen' : `${signal.kind} — ${signal.evidence}`,
+  }
+}
+
+/** The most recent shell prompt line, used as a coarse cwd/host hint. */
+function lastPromptLine(lines) {
+  for (let index = lines.length - 1; index >= 0; index -= 1) {
+    const line = lines[index]
+    if (!line || !line.trim()) continue
+    if (PROMPT_END.test(line)) return line.trim().slice(0, 120)
+  }
+  return ''
 }
 
 const REPORTS = {
@@ -228,14 +286,16 @@ const REPORTS = {
     title: '命令已完成',
     detail: () => '提示符已返回，且没有命中报错。',
     ask: [
-      '这一步看起来执行完了。确认结果符合预期后，给下一步指令；不要重复已经完成的步骤。',
+      '用户不需要再复述结果——它就在下面。',
+      '- 如果这是你给的多步计划里的一步：用一句话确认结果，然后给出下一步（不要重复已完成的步骤）。',
+      '- 如果只是用户自己的零散命令（cd / ls / cat 之类）：一句话确认即可，不要改变原计划，也不要重复整段输出。',
     ],
   },
 }
 
 function reportText(snapshot, kind, signal) {
   const report = REPORTS[kind]
-  const lines = visibleLines(snapshot, MAX_PROMPT_LINES)
+  const lines = visibleLines(snapshot, kind === 'success' ? 8 : MAX_PROMPT_LINES)
   return [
     `【终端自动上报 · 不是用户输入 · ${report.title}】用户没有手动粘贴任何内容，这是插件观察到终端状态后自动触发的。`,
     report.detail(snapshot, signal),
@@ -280,7 +340,7 @@ export function apply(ctx) {
   }
 
   /** One report per command: `kind|commandLine|evidence` is the dedupe key. */
-  const report = (sessionId, kind, signal) => {
+  const report = (sessionId, kind, signal, cooldownMs = WAKE_COOLDOWN_MS) => {
     const snapshot = screens.get(sessionId)
     if (snapshot === undefined || snapshot.share !== true) return false
     const agent = agents?.get?.(sessionId)
@@ -288,12 +348,15 @@ export function apply(ctx) {
     const commandLine = commandLineOf(snapshot.lines)
     const key = `${kind}|${commandLine}|${signal?.evidence ?? ''}`
     if (key === snapshot.lastSignal) return false
-    if (Date.now() - snapshot.lastWakeAt < WAKE_COOLDOWN_MS) return false
+    const isSuccess = kind === 'success'
+    const last = isSuccess ? snapshot.lastSuccessAt : snapshot.lastActionAt
+    if (Date.now() - (last ?? 0) < cooldownMs) return false
     try {
       const mode = enqueue(agent, reportText(snapshot, kind, signal))
       snapshot.lastSignal = key
       snapshot.lastCommandLine = commandLine
-      snapshot.lastWakeAt = Date.now()
+      if (isSuccess) snapshot.lastSuccessAt = Date.now()
+      else snapshot.lastActionAt = Date.now()
       ctx.logger?.info?.(`terminal-context: ${kind} report (${mode}) for ${sessionId}`)
       return true
     } catch (error) {
@@ -312,10 +375,16 @@ export function apply(ctx) {
       return
     }
     if (signal.kind === 'success') {
-      // Success updates the context (next step sees it) but does not speak:
-      // the whole point of the batch flow is to stay quiet while it goes well.
-      snapshot.lastCommandLine = commandLineOf(snapshot.lines)
-      snapshot.lastSignal = `success|${commandLineOf(snapshot.lines)}`
+      // Requirement: the human should never have to retype a successful result
+      // either — the agent picks it up and continues. Deduped per command line
+      // and throttled, so a burst of manual commands cannot machine-gun the chat.
+      const completed = snapshot.completed
+      // An idle bare prompt is not a result: nothing ran, nothing to confirm.
+      if (completed === undefined || (completed.command === '' && completed.tail.length === 0)) {
+        snapshot.lastSignal = `success|idle`
+        return
+      }
+      report(sessionId, 'success', signal, SUCCESS_COOLDOWN_MS)
       return
     }
     report(sessionId, signal.kind, signal)
@@ -335,7 +404,7 @@ export function apply(ctx) {
           // Switch off: drop the screen so nothing stale can be injected later.
           screens.set(sessionId, {
             diag: null, lines: [], share: false, panelOpen: false, updatedAt: Date.now(), truncated: false,
-            lastWakeAt: 0, lastCommandLine: '', lastSignal: undefined,
+            lastWakeAt: 0, lastActionAt: 0, lastSuccessAt: 0, lastCommandLine: '', lastSignal: undefined,
           })
           const quiesce = quiesceTimers.get(sessionId)
           if (quiesce !== undefined) { clearTimeout(quiesce); quiesceTimers.delete(sessionId) }
@@ -344,6 +413,7 @@ export function apply(ctx) {
         // First shared push: an error already on screen predates this watch, so
         // mark it as handled instead of reporting a stale traceback.
         const baseline = previous === undefined || previous.share !== true ? detectSignal(lines) : undefined
+        const nextCompleted = deriveCompleted(lines)
         screens.set(sessionId, {
           diag: body.diag || null,
           lines,
@@ -353,8 +423,11 @@ export function apply(ctx) {
           updatedAt: Date.now(),
           truncated: Boolean(body.truncated),
           lastWakeAt: previous?.lastWakeAt ?? 0,
+          lastActionAt: previous?.lastActionAt ?? 0,
+          lastSuccessAt: previous?.lastSuccessAt ?? 0,
           lastCommandLine: previous?.lastCommandLine ?? '',
           lastSignal: baseline === undefined ? previous?.lastSignal : `baseline|${baseline.kind}|${baseline.evidence}`,
+          completed: nextCompleted === undefined ? previous?.completed : nextCompleted,
         })
         const previousQuiesce = quiesceTimers.get(sessionId)
         if (previousQuiesce !== undefined) clearTimeout(previousQuiesce)
