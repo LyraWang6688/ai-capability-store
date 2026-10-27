@@ -17,7 +17,8 @@
   if (!file) {
     file = (location.pathname.split('/').pop() || '').split('?')[0];
   }
-  if (!file || !/\.html$/.test(file)) return;
+  if (!file) return;
+  if (!/^https?:\/\//.test(file) && !/\.html$/.test(file)) return;
   var annotationMode = false;
   var currentTarget = null;
   var panel = null;
