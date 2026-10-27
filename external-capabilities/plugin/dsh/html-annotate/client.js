@@ -11,12 +11,7 @@ window.__ModuleLoader__.load({
     const h = React.createElement
 
     const ROOT = 'dsh-html-annotate'
-    const CSS = `
-      .${ROOT}-btn{all:unset;box-sizing:border-box;cursor:pointer;display:flex;align-items:center;gap:5px;
-        height:28px;padding:0 9px;border-radius:8px;color:var(--dsw-alias-label-secondary,#9aa0aa);
-        font:12px/1.4 -apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif;white-space:nowrap}
-      .${ROOT}-btn:hover{background:var(--dsw-alias-bg-layer-2,#2f2f34);color:var(--dsw-alias-label-primary,#e6e6e9)}
-      .${ROOT}-backdrop{position:fixed;inset:0;z-index:2147483000;background:rgba(0,0,0,.45);
+    const CSS = `      .${ROOT}-backdrop{position:fixed;inset:0;z-index:2147483000;background:rgba(0,0,0,.45);
         display:flex;align-items:center;justify-content:center;padding:24px;box-sizing:border-box}
       .${ROOT}-panel{width:min(920px,96vw);height:min(780px,90vh);background:var(--dsw-alias-bg-layer-1,#1f1f23);
         border:1px solid var(--dsw-alias-border-l1,#3a3a40);border-radius:14px;overflow:hidden;
@@ -84,16 +79,7 @@ window.__ModuleLoader__.load({
         const timer = setInterval(tick, 1200)
         return () => { cancelled = true; clearInterval(timer) }
       }, [props.sessionId])
-      return h('button', {
-        type: 'button',
-        className: `${ROOT}-btn`,
-        title: '打开本地 HTML 批注',
-        onClick: () => {
-          actions = props.inputActions || null
-          sessionId = String(props.sessionId || '')
-          setOpen(true)
-        },
-      }, h('span', null, '📝'), h('span', null, 'HTML 批注'))
+      return null
     }
 
     function Overlay() {
