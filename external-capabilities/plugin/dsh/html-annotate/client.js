@@ -68,7 +68,10 @@ window.__ModuleLoader__.load({
       React.useEffect(() => {
         const sid = String(props.sessionId || '')
         if (!sid) return
+        // ⭐ 每个会话记住自己已经处理到哪个 pending 时间戳；切走再回来不重复弹。
+        const seenKey = `dsh-html-annotate:seen:${sid}`
         let seen = 0
+        try { seen = Number(localStorage.getItem(seenKey)) || 0 } catch { /* ignore */ }
         let cancelled = false
         const tick = async () => {
           if (cancelled || open) return
@@ -76,8 +79,13 @@ window.__ModuleLoader__.load({
             const response = await fetch(`/plugins/html-annotate/pending?since=${seen}&sessionId=${encodeURIComponent(sid)}`)
             const body = await response.json()
             if (!body || !body.open || !body.at) return
+            // ⭐ 先让服务端确认消费成功，再弹面板；ack 失败就不弹，下一轮重试。
+            const ack = await fetch('/plugins/html-annotate/pending/ack', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sessionId: sid }) })
+            if (!ack.ok) return
+            const ackBody = await ack.json().catch(() => ({}))
+            if (!ackBody || ackBody.ok !== true) return
             seen = body.at
-            await fetch('/plugins/html-annotate/pending/ack', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sessionId: sid }) }).catch(() => {})
+            try { localStorage.setItem(seenKey, String(seen)) } catch { /* ignore */ }
             actions = props.inputActions || null
             sessionId = sid
             setOpen(true)

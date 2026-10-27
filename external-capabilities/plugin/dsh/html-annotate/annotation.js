@@ -246,6 +246,27 @@
     loadCount();
   }
 
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mount);
+  
+// When this script is served by the same-origin preview proxy, keep page links
+// inside the proxy so annotation.js is re-injected on every navigation.
+function proxyPreviewLinks() {
+  if (location.pathname !== '/plugins/html-annotate/preview') return;
+  const base = (() => { try { return new URL(document.baseURI); } catch { return null; } })();
+  if (!base) return;
+  document.addEventListener('click', (event) => {
+    const link = event.target && event.target.closest ? event.target.closest('a[href]') : null;
+    if (!link || link.target === '_blank' || link.hasAttribute('download')) return;
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    let target;
+    try { target = new URL(link.getAttribute('href'), document.baseURI); } catch { return; }
+    if (target.origin !== base.origin) return;
+    event.preventDefault();
+    const proxy = new URL(location.href);
+    proxy.searchParams.set('path', target.pathname + target.search + target.hash);
+    location.href = proxy.href;
+  }, true);
+}
+
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mount);
   else mount();
 })();
