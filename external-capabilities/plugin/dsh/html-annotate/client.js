@@ -82,15 +82,34 @@ window.__ModuleLoader__.load({
     function Overlay() {
       const visible = useOpen()
       const [previewUrl, setPreviewUrl] = React.useState(previewSeed)
+      const [previewToken, setPreviewToken] = React.useState('')
       const [status, setStatus] = React.useState('')
       const frameRef = React.useRef(null)
 
       React.useEffect(() => {
         if (!visible) return
         const urlKey = `dsh-html-annotate:url:${sessionId}`
-        if (previewSeed) { setPreviewUrl(previewSeed); return }
-        try { setPreviewUrl(localStorage.getItem(urlKey) || '') } catch { /* ignore */ }
+        if (previewSeed) setPreviewUrl(previewSeed)
+        else { try { setPreviewUrl(localStorage.getItem(urlKey) || '') } catch { /* ignore */ } }
       }, [visible])
+
+      React.useEffect(() => {
+        if (!visible || !previewUrl) { setPreviewToken(''); return }
+        let cancelled = false
+        setPreviewToken('')
+        setStatus('正在启动本地预览…')
+        fetch('/plugins/html-annotate/preview/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: previewUrl, sessionId }),
+        }).then((r) => r.json()).then((body) => {
+          if (cancelled) return
+          if (!body.ok) throw new Error(body.error || 'register_failed')
+          setPreviewToken(body.token)
+          setStatus('')
+        }).catch((error) => { if (!cancelled) setStatus('预览启动失败：' + error.message) })
+        return () => { cancelled = true }
+      }, [visible, previewUrl])
 
       React.useEffect(() => {
         if (!visible) return
@@ -137,12 +156,12 @@ window.__ModuleLoader__.load({
               },
             }),
           ),
-          previewUrl ? h('iframe', {
+          previewToken ? h('iframe', {
             ref: frameRef,
             className: `${ROOT}-frame`,
             title: 'HTML 批注预览',
-            src: `/plugins/html-annotate/preview?url=${encodeURIComponent(previewUrl)}&sessionId=${encodeURIComponent(sessionId)}`,
-          }) : h('div', { className: `${ROOT}-hint` }, '请先填写本地预览 URL。'),
+            src: `/plugins/html-annotate/preview?pid=${encodeURIComponent(previewToken)}`,
+          }) : h('div', { className: `${ROOT}-hint` }, previewUrl ? '正在启动本地预览…' : '请先填写本地预览 URL。'),
           h('div', { className: `${ROOT}-hint` }, status || (previewUrl ? `本地预览：${previewUrl}` : '填写本地预览 URL 后加载页面。')),
         ),
       )

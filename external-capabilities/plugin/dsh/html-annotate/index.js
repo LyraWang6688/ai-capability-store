@@ -170,6 +170,7 @@ async function readPreviewConfig(sessionId) {
 }
 
 const previewProcesses = new Map()
+const previewTokens = new Map()
 
 async function pageReady(url, timeoutMs = 800) {
   try {
@@ -275,13 +276,39 @@ export function apply(ctx) {
 
   ctx.effect(() => ctx.webServer.register({
     kind: 'exact',
+    path: `${ROUTE}/preview/register`,
+    handler: async (req, res) => {
+      try {
+        const body = JSON.parse((await readBody(req)) || '{}')
+        const pageUrl = String(body.url || '')
+        const sessionId = String(body.sessionId || '')
+        if (!isLocalPreviewUrl(pageUrl)) return json(res, 400, { ok: false, error: 'bad_preview_url' })
+        const config = await readPreviewConfig(sessionId)
+        await ensurePreview(ctx, sessionId, pageUrl, config)
+        const token = Math.random().toString(36).slice(2) + Date.now().toString(36)
+        previewTokens.set(token, { pageUrl, sessionId, createdAt: Date.now() })
+        if (previewTokens.size > 100) {
+          const oldest = [...previewTokens.entries()].sort((a, b) => a[1].createdAt - b[1].createdAt)[0]
+          if (oldest) previewTokens.delete(oldest[0])
+        }
+        return json(res, 200, { ok: true, token })
+      } catch (error) {
+        return json(res, 500, { ok: false, error: String(error?.message || error) })
+      }
+    },
+  }), 'html-annotate: preview register')
+
+  ctx.effect(() => ctx.webServer.register({
+    kind: 'exact',
     path: `${ROUTE}/preview`,
     handler: async (req, res) => {
       try {
         const url = new URL(req.url || '/', 'http://127.0.0.1')
-        const pageUrl = String(url.searchParams.get('url') || '')
-        const sessionId = url.searchParams.get('sessionId')
-        if (!isLocalPreviewUrl(pageUrl)) return send(res, 400, 'html-annotate: preview url must be localhost/127.0.0.1')
+        const token = String(url.searchParams.get('pid') || '')
+        const entry = previewTokens.get(token)
+        if (!entry) return send(res, 400, 'html-annotate: preview not registered')
+        const pageUrl = entry.pageUrl
+        const sessionId = entry.sessionId
         const config = await readPreviewConfig(sessionId)
         await ensurePreview(ctx, sessionId, pageUrl, config)
         const response = await fetch(pageUrl)
@@ -290,7 +317,7 @@ export function apply(ctx) {
         if (!/text\/html/i.test(type)) return send(res, 415, 'html-annotate: preview is not html')
         const html = await response.text()
         const dshOrigin = `${req.headers['x-forwarded-proto'] || 'http'}://${req.headers.host || `127.0.0.1:${process.env.PORT || ''}`}`
-        return send(res, 200, injectPreview(html, pageUrl, url.searchParams.get('sessionId'), dshOrigin), 'text/html; charset=utf-8')
+        return send(res, 200, await injectPreview(html, pageUrl, sessionId, dshOrigin), 'text/html; charset=utf-8')
       } catch (error) {
         return send(res, 500, `html-annotate: ${error.message}`)
       }
@@ -391,5 +418,6 @@ export function apply(ctx) {
       try { entry.handle.terminate() } catch { /* ignore */ }
     }
     previewProcesses.clear()
+    previewTokens.clear()
   }, 'html-annotate: preview processes')
 }
