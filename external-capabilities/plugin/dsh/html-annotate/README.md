@@ -87,11 +87,16 @@ PORT=5054 LARK_WEB_AUTH_ENABLED=false ENABLE_CORS=true node src/app.js
 ```json
 {
   "previewUrl": "http://127.0.0.1:5055/replenish-board-2026-10-27.html",
-  "autoOpen": true
+  "autoOpen": true,
+  "previewCommand": {
+    "cwd": "docs/prototypes",
+    "command": ["/usr/bin/python3", "-m", "http.server", "5055", "--bind", "127.0.0.1"],
+    "readyTimeoutMs": 15000
+  }
 }
 ```
 
-插件会读取当前会话 cwd 下的这份配置；`autoOpen: true` 时自动弹出并加载页面，不需要手填 URL。
+插件会读取当前会话 cwd 下的这份配置；`autoOpen: true` 时自动弹出并加载页面。若本地服务未运行，配置里有 `previewCommand` 时插件会自己启动它并等待就绪。
 
 每个会话仍会用 localStorage 记住 URL。批注只改本地源码，部署是单独动作。
 

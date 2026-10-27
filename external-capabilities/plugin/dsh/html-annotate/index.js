@@ -18,7 +18,7 @@ const CONFIG_FILE = path.join(os.homedir(), '.dsh', 'html-annotate.json')
 const ROUTE = '/plugins/html-annotate'
 const DEFAULT_ROOT = path.join(os.homedir(), 'Documents', 'workplace', 'feishu-retail-ops', 'docs', 'prototypes')
 
-export const inject = ['webServer']
+export const inject = ['webServer', 'subprocess']
 
 function json(res, status, payload) {
   if (res && typeof res.writeHead === 'function') {
@@ -156,11 +156,75 @@ async function readPreviewConfig(sessionId) {
       const data = JSON.parse(await fs.readFile(file, 'utf8'))
       const previewUrl = String(data.previewUrl || data.url || '')
       if (previewUrl && isLocalPreviewUrl(previewUrl)) {
-        return { ok: true, previewUrl, autoOpen: data.autoOpen === true, source: file }
+        return {
+          ok: true,
+          previewUrl,
+          autoOpen: data.autoOpen === true,
+          previewCommand: data.previewCommand && typeof data.previewCommand === 'object' ? data.previewCommand : null,
+          source: file,
+        }
       }
     } catch { /* next */ }
   }
   return { ok: true, previewUrl: '', autoOpen: false }
+}
+
+const previewProcesses = new Map()
+
+async function pageReady(url, timeoutMs = 800) {
+  try {
+    const response = await fetch(url, { signal: AbortSignal.timeout(timeoutMs) })
+    return response.ok
+  } catch {
+    return false
+  }
+}
+
+async function waitReady(url, timeoutMs = 30000) {
+  const deadline = Date.now() + timeoutMs
+  while (Date.now() < deadline) {
+    if (await pageReady(url)) return true
+    await new Promise((resolve) => setTimeout(resolve, 500))
+  }
+  return false
+}
+
+async function ensurePreview(ctx, sessionId, pageUrl, config) {
+  if (await pageReady(pageUrl)) return { started: false }
+  const commandConfig = config && config.previewCommand
+  if (!commandConfig || !Array.isArray(commandConfig.command) || commandConfig.command.length === 0) {
+    throw new Error('preview_not_running')
+  }
+  const existing = previewProcesses.get(sessionId)
+  if (existing && !existing.handle.done.settled) {
+    if (await waitReady(pageUrl, Number(commandConfig.readyTimeoutMs) || 30000)) return { started: true, reused: true }
+    throw new Error('preview_start_timeout')
+  }
+  const workspace = await workspaceOf(sessionId)
+  const cwd = path.resolve(workspace.root, String(commandConfig.cwd || '.'))
+  if (!cwd.startsWith(workspace.root + path.sep) && cwd !== workspace.root) throw new Error('preview_cwd_outside_workspace')
+  const env = {}
+  if (commandConfig.env && typeof commandConfig.env === 'object') {
+    for (const [key, value] of Object.entries(commandConfig.env)) {
+      if (typeof value === 'string' || typeof value === 'number') env[String(key)] = String(value)
+    }
+  }
+  const argv = commandConfig.command.map((item) => String(item))
+  const handle = ctx.subprocess.spawn({
+    argv,
+    cwd,
+    ...(Object.keys(env).length ? { env } : {}),
+    stdio: { stdout: { maxBytes: 256 * 1024 }, stderr: { maxBytes: 256 * 1024 } },
+    graceMs: 5000,
+  })
+  previewProcesses.set(sessionId, { handle, pageUrl, startedAt: Date.now() })
+  handle.done.catch(() => {}).finally(() => previewProcesses.delete(sessionId))
+  const timeoutMs = Math.max(1000, Number(commandConfig.readyTimeoutMs) || 30000)
+  if (!(await waitReady(pageUrl, timeoutMs))) {
+    try { handle.terminate() } catch { /* ignore */ }
+    throw new Error('preview_start_timeout')
+  }
+  return { started: true }
 }
 
 function injectScript(html, file, sessionId) {
@@ -216,7 +280,10 @@ export function apply(ctx) {
       try {
         const url = new URL(req.url || '/', 'http://127.0.0.1')
         const pageUrl = String(url.searchParams.get('url') || '')
+        const sessionId = url.searchParams.get('sessionId')
         if (!isLocalPreviewUrl(pageUrl)) return send(res, 400, 'html-annotate: preview url must be localhost/127.0.0.1')
+        const config = await readPreviewConfig(sessionId)
+        await ensurePreview(ctx, sessionId, pageUrl, config)
         const response = await fetch(pageUrl)
         if (!response.ok) return send(res, 502, `html-annotate: preview ${response.status}`)
         const type = response.headers.get('content-type') || ''
@@ -318,4 +385,11 @@ export function apply(ctx) {
       }
     },
   }), 'html-annotate: submit')
+
+  ctx.effect(() => () => {
+    for (const entry of previewProcesses.values()) {
+      try { entry.handle.terminate() } catch { /* ignore */ }
+    }
+    previewProcesses.clear()
+  }, 'html-annotate: preview processes')
 }
