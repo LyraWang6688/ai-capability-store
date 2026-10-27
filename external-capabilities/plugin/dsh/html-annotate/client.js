@@ -65,28 +65,14 @@ window.__ModuleLoader__.load({
 
     function Overlay() {
       const visible = useOpen()
-      const [files, setFiles] = React.useState([])
-      const [file, setFile] = React.useState('')
       const [previewUrl, setPreviewUrl] = React.useState('')
-      const [root, setRoot] = React.useState('')
       const [status, setStatus] = React.useState('')
       const frameRef = React.useRef(null)
 
       React.useEffect(() => {
         if (!visible) return
-        const key = `dsh-html-annotate:file:${sessionId}`
         const urlKey = `dsh-html-annotate:url:${sessionId}`
         try { setPreviewUrl(localStorage.getItem(urlKey) || '') } catch { /* ignore */ }
-        fetch(`/plugins/html-annotate/files?sessionId=${encodeURIComponent(sessionId)}`)
-          .then((r) => r.json()).then((body) => {
-            const list = Array.isArray(body.files) ? body.files : []
-            const remembered = (() => { try { return localStorage.getItem(key) || '' } catch { return '' } })()
-            setFiles(list)
-            setRoot(body.root || '')
-            const next = list.includes(remembered) ? remembered : (list[0] || '')
-            setFile(next)
-            if (next) { try { localStorage.setItem(key, next) } catch { /* ignore */ } }
-          }).catch((error) => setStatus('读取文件列表失败：' + error.message))
       }, [visible])
 
       React.useEffect(() => {
@@ -120,15 +106,6 @@ window.__ModuleLoader__.load({
         h('div', { className: `${ROOT}-panel` },
           h('div', { className: `${ROOT}-head` },
             h('div', { className: `${ROOT}-title` }, 'HTML 批注'),
-            h('select', {
-              className: `${ROOT}-select`,
-              value: file,
-              onChange: (event) => {
-                const next = event.target.value
-                setFile(next)
-                try { localStorage.setItem(`dsh-html-annotate:file:${sessionId}`, next) } catch { /* ignore */ }
-              },
-            }, files.map((name) => h('option', { key: name, value: name }, name))),
             h('button', { type: 'button', className: `${ROOT}-close`, onClick: () => setOpen(false) }, '×'),
           ),
           h('div', { className: `${ROOT}-urlrow` },
@@ -143,15 +120,13 @@ window.__ModuleLoader__.load({
               },
             }),
           ),
-          (previewUrl || file) ? h('iframe', {
+          previewUrl ? h('iframe', {
             ref: frameRef,
             className: `${ROOT}-frame`,
             title: 'HTML 批注预览',
-            src: previewUrl
-              ? `/plugins/html-annotate/preview?url=${encodeURIComponent(previewUrl)}&sessionId=${encodeURIComponent(sessionId)}`
-              : `/plugins/html-annotate/page?file=${encodeURIComponent(file)}&sessionId=${encodeURIComponent(sessionId)}`,
-          }) : h('div', { className: `${ROOT}-hint` }, '没有可批注的本地 HTML 文件。'),
-          h('div', { className: `${ROOT}-hint` }, status || (previewUrl ? `本地预览：${previewUrl}` : `工作区：${root || '读取中'} · 点页面里的「批注」→ 点元素写意见 → 保存并提交。`)),
+            src: `/plugins/html-annotate/preview?url=${encodeURIComponent(previewUrl)}&sessionId=${encodeURIComponent(sessionId)}`,
+          }) : h('div', { className: `${ROOT}-hint` }, '请先填写本地预览 URL。'),
+          h('div', { className: `${ROOT}-hint` }, status || (previewUrl ? `本地预览：${previewUrl}` : '填写本地预览 URL 后加载页面。')),
         ),
       )
     }

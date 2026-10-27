@@ -58,19 +58,25 @@ PORT=5054 LARK_WEB_AUTH_ENABLED=false ENABLE_CORS=true node src/app.js
 
 批注仍然只改本地源码；部署是单独动作。
 
-## 自动扫描当前会话工作区
+## 只支持本地预览 URL
 
-插件按当前 DSH 会话记录的工作目录自动扫描 HTML：
+插件不选择文件、不扫描目录；批注对象是**本地运行中的页面**。
+
+在面板顶部填写：
 
 ```text
-<session cwd>/**/*.html
+http://127.0.0.1:5054/workbench
 ```
 
-自动忽略 `node_modules`、`.git`、`coverage` 等依赖/缓存目录；`dist` / `build` 里的 HTML 会保留（Astro 等项目的页面产物就在这里）。每个会话记住上次选择的页面。
+Host 会代理这个本地页面、注入批注脚本。
 
-不需要手动配置页面；切换会话到另一个项目时，插件会读那个项目的工作区。
+本地服务建议无鉴权启动：
 
-如果会话日志里没有 cwd，才回退到 `~/.dsh/html-annotate.json` 的 `root` 或环境变量 `HTML_ANNOTATE_ROOT`。
+```bash
+PORT=5054 LARK_WEB_AUTH_ENABLED=false ENABLE_CORS=true node src/app.js
+```
+
+每个会话记住自己的 URL。批注只改本地源码，部署是单独动作。
 
 ## 安全边界
 
