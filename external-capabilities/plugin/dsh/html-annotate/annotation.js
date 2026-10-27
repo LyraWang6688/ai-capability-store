@@ -4,7 +4,8 @@
   window.__prototypeAnnotationLoaded = true;
   var script = document.currentScript;
   var file = (script && (script.getAttribute('data-file') || script.getAttribute('data-annotation-file'))) || '';
-  var apiBase = (script && script.getAttribute('data-api')) || 'http://127.0.0.1:5053';
+  var apiBase = (script && script.getAttribute('data-api')) || '/plugins/html-annotate';
+  var sessionId = (script && script.getAttribute('data-session')) || '';
   if (!file) {
     file = (location.pathname.split('/').pop() || '').split('?')[0];
   }
@@ -90,6 +91,7 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           file: file,
+          sessionId: sessionId,
           selector: selectorOf(target),
           snippet: (target.outerHTML || '').slice(0, 3000),
           text: text,
@@ -102,7 +104,7 @@
           return fetch(apiBase + '/annotations/submit', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ file: file }),
+            body: JSON.stringify({ file: file, sessionId: sessionId }),
           });
         })
         .then(function (r) { return r.json(); })
@@ -159,7 +161,7 @@
   }
 
   function loadCount() {
-    fetch(apiBase + '/annotations?file=' + encodeURIComponent(file))
+    fetch(apiBase + '/annotations?file=' + encodeURIComponent(file) + '&sessionId=' + encodeURIComponent(sessionId))
       .then(function (r) { return r.json(); })
       .then(function (body) {
         var n = body && body.ok && Array.isArray(body.annotations) ? body.annotations.length : 0;
@@ -180,7 +182,7 @@
       fetch(apiBase + '/annotations/submit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ file: file }),
+        body: JSON.stringify({ file: file, sessionId: sessionId }),
       }).then(function (r) { return r.json(); }).then(function (body) {
         if (!body.ok) throw new Error(body.error || 'submit_failed');
         var submitted = (body && body.submitted) || [];

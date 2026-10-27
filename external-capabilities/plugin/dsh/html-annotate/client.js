@@ -34,6 +34,7 @@ window.__ModuleLoader__.load({
 
     let open = false
     let actions = null
+    let sessionId = ''
     const listeners = new Set()
     const emit = () => { for (const fn of listeners) fn() }
     const setOpen = (value) => { open = value; emit() }
@@ -51,7 +52,11 @@ window.__ModuleLoader__.load({
         type: 'button',
         className: `${ROOT}-btn`,
         title: '打开本地 HTML 批注',
-        onClick: () => { actions = props.inputActions || null; setOpen(true) },
+        onClick: () => {
+          actions = props.inputActions || null
+          sessionId = String(props.sessionId || '')
+          setOpen(true)
+        },
       }, h('span', null, '📝'), h('span', null, 'HTML 批注'))
     }
 
@@ -59,16 +64,23 @@ window.__ModuleLoader__.load({
       const visible = useOpen()
       const [files, setFiles] = React.useState([])
       const [file, setFile] = React.useState('')
+      const [root, setRoot] = React.useState('')
       const [status, setStatus] = React.useState('')
       const frameRef = React.useRef(null)
 
       React.useEffect(() => {
         if (!visible) return
-        fetch('/plugins/html-annotate/files').then((r) => r.json()).then((body) => {
-          const list = Array.isArray(body.files) ? body.files : []
-          setFiles(list)
-          setFile((current) => current || list[0] || '')
-        }).catch((error) => setStatus('读取文件列表失败：' + error.message))
+        const key = `dsh-html-annotate:file:${sessionId}`
+        fetch(`/plugins/html-annotate/files?sessionId=${encodeURIComponent(sessionId)}`)
+          .then((r) => r.json()).then((body) => {
+            const list = Array.isArray(body.files) ? body.files : []
+            const remembered = (() => { try { return localStorage.getItem(key) || '' } catch { return '' } })()
+            setFiles(list)
+            setRoot(body.root || '')
+            const next = list.includes(remembered) ? remembered : (list[0] || '')
+            setFile(next)
+            if (next) { try { localStorage.setItem(key, next) } catch { /* ignore */ } }
+          }).catch((error) => setStatus('读取文件列表失败：' + error.message))
       }, [visible])
 
       React.useEffect(() => {
@@ -105,7 +117,11 @@ window.__ModuleLoader__.load({
             h('select', {
               className: `${ROOT}-select`,
               value: file,
-              onChange: (event) => setFile(event.target.value),
+              onChange: (event) => {
+                const next = event.target.value
+                setFile(next)
+                try { localStorage.setItem(`dsh-html-annotate:file:${sessionId}`, next) } catch { /* ignore */ }
+              },
             }, files.map((name) => h('option', { key: name, value: name }, name))),
             h('button', { type: 'button', className: `${ROOT}-close`, onClick: () => setOpen(false) }, '×'),
           ),
@@ -113,9 +129,9 @@ window.__ModuleLoader__.load({
             ref: frameRef,
             className: `${ROOT}-frame`,
             title: 'HTML 批注预览',
-            src: `/plugins/html-annotate/page?file=${encodeURIComponent(file)}`,
+            src: `/plugins/html-annotate/page?file=${encodeURIComponent(file)}&sessionId=${encodeURIComponent(sessionId)}`,
           }) : h('div', { className: `${ROOT}-hint` }, '没有可批注的本地 HTML 文件。'),
-          h('div', { className: `${ROOT}-hint` }, status || '点页面里的「批注」→ 点元素写意见 → 保存并提交。'),
+          h('div', { className: `${ROOT}-hint` }, status || `工作区：${root || '读取中'} · 点页面里的「批注」→ 点元素写意见 → 保存并提交。`),
         ),
       )
     }

@@ -32,23 +32,19 @@
 <原 HTML>.annotations.json
 ```
 
-## 配置
+## 自动扫描当前会话工作区
 
-默认读取：
+插件按当前 DSH 会话记录的工作目录自动扫描 HTML：
 
 ```text
-~/Documents/workplace/feishu-retail-ops/docs/prototypes
+<session cwd>/**/*.html
 ```
 
-可以在 `~/.dsh/html-annotate.json` 覆盖：
+自动忽略 `node_modules`、`.git`、`dist`、`build`、`coverage` 等目录。每个会话记住上次选择的页面。
 
-```json
-{
-  "root": "/absolute/path/to/html/directory"
-}
-```
+不需要手动配置页面；切换会话到另一个项目时，插件会读那个项目的工作区。
 
-也可以用环境变量 `HTML_ANNOTATE_ROOT`。
+如果会话日志里没有 cwd，才回退到 `~/.dsh/html-annotate.json` 的 `root` 或环境变量 `HTML_ANNOTATE_ROOT`。
 
 ## 安全边界
 

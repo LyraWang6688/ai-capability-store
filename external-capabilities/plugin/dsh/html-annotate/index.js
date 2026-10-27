@@ -8,6 +8,8 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 import os from 'node:os'
 import { fileURLToPath } from 'node:url'
+import { readFileSync, readdirSync, existsSync } from 'node:fs'
+import { zstdDecompressSync } from 'node:zlib'
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 const SCRIPT_FILE = path.join(HERE, 'annotation.js')
@@ -44,32 +46,68 @@ async function rootDir() {
   return path.resolve(process.env.HTML_ANNOTATE_ROOT || DEFAULT_ROOT)
 }
 
-async function safeFile(name) {
-  const base = path.basename(String(name || '').trim())
-  if (!base || base !== String(name || '').trim() || !/^[A-Za-z0-9._-]+\.html$/.test(base)) throw new Error('bad_file')
-  const root = await rootDir()
-  const full = path.join(root, base)
-  if (!full.startsWith(root + path.sep)) throw new Error('bad_file')
-  return { base, full, root }
-}
-
-async function listFiles() {
-  const root = await rootDir()
+function cwdFromSession(sessionId, sessionsRoot = path.join(os.homedir(), '.dsh', 'sessions')) {
+  const norm = String(sessionId || '').replace(/^session-/, '').trim()
+  if (!norm) return ''
   try {
-    const entries = await fs.readdir(root, { withFileTypes: true })
-    return entries
-      .filter((entry) => entry.isFile() && /\.html$/i.test(entry.name))
-      .map((entry) => entry.name)
-      .sort()
+    for (const group of readdirSync(sessionsRoot)) {
+      const file = path.join(sessionsRoot, group, `session-${norm}`, 'session.v4.jsonl.zstd')
+      if (!existsSync(file)) continue
+      const head = zstdDecompressSync(readFileSync(file)).toString('utf8').split('\n')[0]
+      const record = JSON.parse(head)
+      return typeof record.cwd === 'string' ? record.cwd : ''
+    }
   } catch {
-    return []
+    return ''
   }
+  return ''
 }
 
-function injectScript(html, file) {
+async function workspaceOf(sessionId) {
+  const cwd = cwdFromSession(sessionId)
+  if (cwd) return { root: path.resolve(cwd), source: 'session', project: path.basename(cwd) }
+  return { root: await rootDir(), source: 'config', project: path.basename(await rootDir()) }
+}
+
+const SKIP_DIRS = new Set(['node_modules', '.git', 'dist', 'build', 'coverage', '.next', '.nuxt', 'out', '.cache', 'vendor'])
+
+async function safePath(value, sessionId) {
+  const workspace = await workspaceOf(sessionId)
+  const raw = String(value || '').trim()
+  if (!raw || !/\.html?$/i.test(raw)) throw new Error('bad_file')
+  const full = path.isAbsolute(raw) ? path.resolve(raw) : path.resolve(workspace.root, raw)
+  if (!full.startsWith(workspace.root + path.sep)) throw new Error('outside_workspace')
+  const rel = path.relative(workspace.root, full).split(path.sep).join('/')
+  return { base: rel, full, root: workspace.root, workspace }
+}
+
+async function listFiles(sessionId) {
+  const workspace = await workspaceOf(sessionId)
+  const out = []
+  const walk = async (dir, depth) => {
+    if (depth > 8 || out.length >= 300) return
+    let entries = []
+    try { entries = await fs.readdir(dir, { withFileTypes: true }) } catch { return }
+    for (const entry of entries) {
+      if (out.length >= 300) return
+      const full = path.join(dir, entry.name)
+      if (entry.isDirectory()) {
+        if (SKIP_DIRS.has(entry.name) || entry.name.startsWith('.')) continue
+        await walk(full, depth + 1)
+      } else if (entry.isFile() && /\.html?$/i.test(entry.name)) {
+        out.push(path.relative(workspace.root, full).split(path.sep).join('/'))
+      }
+    }
+  }
+  await walk(workspace.root, 0)
+  out.sort()
+  return { files: out, root: workspace.root, source: workspace.source, project: workspace.project }
+}
+
+function injectScript(html, file, sessionId) {
   // 去掉旧的本地 annotation 脚本，避免双注入（脚本自身有 guard，先加载的会赢）。
   const cleaned = html.replace(/<script[^>]+annotation\.js[^>]*><\/script>/gi, '')
-  const tag = `<script src="${ROUTE}/annotation.js" data-file="${file}" data-api="${ROUTE}"></script>`
+  const tag = `<script src="${ROUTE}/annotation.js" data-file="${file}" data-session="${sessionId}" data-api="${ROUTE}"></script>`
   if (/<\/body>/i.test(cleaned)) return cleaned.replace(/<\/body>/i, `${tag}\n</body>`)
   return `${cleaned}\n${tag}`
 }
@@ -93,7 +131,10 @@ export function apply(ctx) {
   ctx.effect(() => ctx.webServer.register({
     kind: 'exact',
     path: `${ROUTE}/files`,
-    handler: async (_req, res) => json(res, 200, { ok: true, files: await listFiles(), root: await rootDir() }),
+    handler: async (req, res) => {
+      const url = new URL(req.url || '/', 'http://127.0.0.1')
+      return json(res, 200, { ok: true, ...(await listFiles(url.searchParams.get('sessionId'))) })
+    },
   }), 'html-annotate: files')
 
   ctx.effect(() => ctx.webServer.register({
@@ -108,8 +149,9 @@ export function apply(ctx) {
     handler: async (req, res) => {
       try {
         const url = new URL(req.url || '/', 'http://127.0.0.1')
-        const { base, full } = await safeFile(url.searchParams.get('file'))
-        return send(res, 200, injectScript(await fs.readFile(full, 'utf8'), base), 'text/html; charset=utf-8')
+        const sessionId = url.searchParams.get('sessionId')
+        const { base, full } = await safePath(url.searchParams.get('file'), sessionId)
+        return send(res, 200, injectScript(await fs.readFile(full, 'utf8'), base, sessionId), 'text/html; charset=utf-8')
       } catch (error) {
         return send(res, 404, `html-annotate: ${error.message}`)
       }
@@ -123,7 +165,7 @@ export function apply(ctx) {
       try {
         const url = new URL(req.url || '/', 'http://127.0.0.1')
         if (req.method === 'GET') {
-          const { base, full } = await safeFile(url.searchParams.get('file'))
+          const { base, full } = await safePath(url.searchParams.get('file'), url.searchParams.get('sessionId'))
           try {
             return json(res, 200, { ok: true, file: base, annotations: JSON.parse(await fs.readFile(`${full}.annotations.json`, 'utf8')) })
           } catch {
@@ -132,7 +174,7 @@ export function apply(ctx) {
         }
         if (req.method === 'POST') {
           const body = JSON.parse((await readBody(req)) || '{}')
-          const { base, full } = await safeFile(body.file)
+          const { base, full } = await safePath(body.file, body.sessionId)
           const target = `${full}.annotations.json`
           let annotations = []
           try { annotations = JSON.parse(await fs.readFile(target, 'utf8')) } catch { /* new */ }
@@ -163,7 +205,7 @@ export function apply(ctx) {
     handler: async (req, res) => {
       try {
         const body = JSON.parse((await readBody(req)) || '{}')
-        const { base, full } = await safeFile(body.file)
+        const { base, full } = await safePath(body.file, body.sessionId)
         const target = `${full}.annotations.json`
         let annotations = []
         try { annotations = JSON.parse(await fs.readFile(target, 'utf8')) } catch { /* none */ }
