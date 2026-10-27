@@ -192,6 +192,13 @@ async function waitReady(url, timeoutMs = 30000) {
   return false
 }
 
+async function pageVersion(url) {
+  const response = await fetch(url)
+  if (!response.ok) throw new Error('preview_version_failed')
+  const text = await response.text()
+  return createHash('sha1').update(text).digest('hex')
+}
+
 async function ensurePreview(ctx, sessionId, pageUrl, config) {
   if (await pageReady(pageUrl)) return { started: false }
   const commandConfig = config && config.previewCommand
@@ -351,6 +358,21 @@ export function apply(ctx) {
       return json(res, 200, { ok: true })
     },
   }), 'html-annotate: pending ack')
+
+  ctx.effect(() => ctx.webServer.register({
+    kind: 'exact',
+    path: `${ROUTE}/preview/version`,
+    handler: async (req, res) => {
+      try {
+        const url = new URL(req.url || '/', 'http://127.0.0.1')
+        const entry = previewTokens.get(String(url.searchParams.get('pid') || ''))
+        if (!entry) return json(res, 400, { ok: false, error: 'preview_not_registered' })
+        return json(res, 200, { ok: true, version: await pageVersion(entry.pageUrl) })
+      } catch (error) {
+        return json(res, 500, { ok: false, error: String(error?.message || error) })
+      }
+    },
+  }), 'html-annotate: preview version')
 
   ctx.effect(() => ctx.webServer.register({
     kind: 'exact',
