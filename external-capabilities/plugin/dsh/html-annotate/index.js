@@ -172,7 +172,6 @@ async function readPreviewConfig(sessionId) {
 
 const previewProcesses = new Map()
 const previewTokens = new Map()
-let pendingOpenAt = 0
 const pendingBySession = new Map()
 
 async function pageReady(url, timeoutMs = 800) {
@@ -321,13 +320,21 @@ export function apply(ctx) {
         const sessionId = entry.sessionId
         const config = await readPreviewConfig(sessionId)
         await ensurePreview(ctx, sessionId, pageUrl, config)
-        const response = await fetch(pageUrl)
+        const navPath = String(url.searchParams.get('path') || '')
+        let targetUrl = pageUrl
+        if (navPath) {
+          const target = new URL(navPath, pageUrl)
+          if (target.origin !== new URL(pageUrl).origin) return send(res, 400, 'html-annotate: cross-origin preview navigation')
+          if (target.protocol !== 'http:' && target.protocol !== 'https:') return send(res, 400, 'html-annotate: bad preview navigation')
+          targetUrl = target.href
+        }
+        const response = await fetch(targetUrl)
         if (!response.ok) return send(res, 502, `html-annotate: preview ${response.status}`)
         const type = response.headers.get('content-type') || ''
         if (!/text\/html/i.test(type)) return send(res, 415, 'html-annotate: preview is not html')
         const html = await response.text()
         const dshOrigin = `${req.headers['x-forwarded-proto'] || 'http'}://${req.headers.host || `127.0.0.1:${process.env.PORT || ''}`}`
-        return send(res, 200, await injectPreview(html, pageUrl, sessionId, dshOrigin), 'text/html; charset=utf-8')
+        return send(res, 200, await injectPreview(html, targetUrl, sessionId, dshOrigin), 'text/html; charset=utf-8')
       } catch (error) {
         return send(res, 500, `html-annotate: ${error.message}`)
       }
@@ -341,7 +348,7 @@ export function apply(ctx) {
       const url = new URL(req.url || '/', 'http://127.0.0.1')
       const since = Number(url.searchParams.get('since') || 0)
       const sessionId = String(url.searchParams.get('sessionId') || '')
-      const at = (sessionId && pendingBySession.get(sessionId)) || pendingOpenAt
+      const at = sessionId ? (pendingBySession.get(sessionId) || 0) : 0
       return json(res, 200, { ok: true, open: at > since, at })
     },
   }), 'html-annotate: pending')
@@ -354,8 +361,7 @@ export function apply(ctx) {
         const body = JSON.parse((await readBody(req)) || '{}')
         const sessionId = String(body.sessionId || '')
         if (sessionId) pendingBySession.delete(sessionId)
-        else pendingOpenAt = 0
-      } catch { pendingOpenAt = 0 }
+      } catch { /* ignore malformed ack */ }
       return json(res, 200, { ok: true })
     },
   }), 'html-annotate: pending ack')
@@ -470,7 +476,7 @@ export function apply(ctx) {
     parameters: {
       type: 'object',
       properties: {
-        sessionId: { type: 'string', description: 'Target DSH session id. Pass the current session id when known.' },
+        sessionId: { type: 'string', description: 'Optional target DSH session id. Defaults to the current session from the tool context.' },
       },
       additionalProperties: false,
     },
@@ -478,10 +484,10 @@ export function apply(ctx) {
       schema: { type: 'object', additionalProperties: true },
       render: (_args, value) => [{ type: 'text', text: JSON.stringify(value) }],
     },
-    async execute(args) {
-      const sessionId = String(args && args.sessionId || '')
-      if (sessionId) pendingBySession.set(sessionId, Date.now())
-      else pendingOpenAt = Date.now()
+    async execute(args, exec) {
+      const sessionId = String((args && args.sessionId) || exec?.agent?.id || '').trim()
+      if (!sessionId) throw new Error('open_html_annotate requires a session id (tool context had none)')
+      pendingBySession.set(sessionId, Date.now())
       return { ok: true, message: 'HTML annotation panel requested', sessionId }
     },
   }), 'html-annotate: open tool')

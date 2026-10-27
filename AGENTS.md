@@ -34,6 +34,10 @@ A handoff lives **next to the work it describes**, gitignored, and stays on the 
 AGENTS.md is the Control Plane / Router. It does NOT duplicate policy.
 Domain-specific policy lives in the Domain directories.
 
+## 待观察事项
+
+- `dsh-html-annotate` 的 `direct: true` 预览：iframe 直接加载目标站，跨域无法在整页跳转后重新注入批注脚本；换页按钮消失。非 direct 代理模式已修复。详见 `external-capabilities/plugin/dsh/html-annotate/README.md` § 已知限制 → direct: true 的换页边界。待观察后再决定是否在预览服务侧加反向代理注入。
+
 ## Domain Routing
 
 | Intent | Route |
