@@ -18,6 +18,7 @@ window.__ModuleLoader__.load({
         font:13px/1.5 -apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif;color:var(--dsw-alias-label-primary,#e6e6e9);pointer-events:auto;
         resize:both;min-width:360px;min-height:260px;max-width:98vw;max-height:96vh}
       .${ROOT}-head{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--dsw-alias-border-l1,#3a3a40);cursor:move;user-select:none}
+      .${ROOT}-grip{cursor:grab;color:var(--dsw-alias-label-secondary,#9aa0aa);font-size:16px;letter-spacing:-2px;padding:0 2px;user-select:none}
       .${ROOT}-title{font-weight:600;font-size:14px;flex:1;min-width:0}
       .${ROOT}-select{all:unset;box-sizing:border-box;height:30px;padding:0 8px;border-radius:7px;font-size:12px;
         background:var(--dsw-alias-bg-layer-2,#2f2f34);border:1px solid var(--dsw-alias-border-l1,#3a3a40);color:inherit;max-width:360px}
@@ -92,6 +93,7 @@ window.__ModuleLoader__.load({
       const visible = useOpen()
       const [previewUrl, setPreviewUrl] = React.useState(previewSeed)
       const [previewToken, setPreviewToken] = React.useState('')
+      const [direct, setDirect] = React.useState(false)
       const [status, setStatus] = React.useState('')
       const [box, setBox] = React.useState(() => {
         const width = Math.min(920, Math.floor(window.innerWidth * 0.62))
@@ -126,13 +128,27 @@ window.__ModuleLoader__.load({
 
       React.useEffect(() => {
         if (!visible) return
+        let cancelled = false
+        fetch(`/plugins/html-annotate/config?sessionId=${encodeURIComponent(sessionId)}`)
+          .then((r) => r.json())
+          .then((body) => {
+            if (cancelled || !body || !body.previewUrl) return
+            setPreviewUrl(body.previewUrl)
+            setDirect(body.direct === true)
+            setPreviewToken('')
+          }).catch(() => {})
+        return () => { cancelled = true }
+      }, [visible])
+
+      React.useEffect(() => {
+        if (!visible) return
         const urlKey = `dsh-html-annotate:url:${sessionId}`
         if (previewSeed) setPreviewUrl(previewSeed)
         else { try { setPreviewUrl(localStorage.getItem(urlKey) || '') } catch { /* ignore */ } }
       }, [visible])
 
       React.useEffect(() => {
-        if (!visible || !previewUrl) { setPreviewToken(''); return }
+        if (!visible || !previewUrl || direct) { setPreviewToken(''); return }
         let cancelled = false
         setPreviewToken('')
         setStatus('正在启动本地预览…')
@@ -147,7 +163,7 @@ window.__ModuleLoader__.load({
           setStatus('')
         }).catch((error) => { if (!cancelled) setStatus('预览启动失败：' + error.message) })
         return () => { cancelled = true }
-      }, [visible, previewUrl])
+      }, [visible, previewUrl, direct])
 
       React.useEffect(() => {
         if (!visible) return
@@ -222,6 +238,7 @@ window.__ModuleLoader__.load({
             window.addEventListener('mousemove', move)
             window.addEventListener('mouseup', up)
           } },
+            h('span', { className: `${ROOT}-grip`, title: '拖动移动面板' }, '⠿'),
             h('div', { className: `${ROOT}-title` }, 'HTML 批注'),
             h('button', { type: 'button', className: `${ROOT}-refresh`, title: '放到右半屏', onClick: (event) => { event.stopPropagation(); const half = Math.floor(window.innerWidth / 2); setBox({ left: half, top: 8, width: Math.max(360, half - 12), height: window.innerHeight - 16 }) } }, '右半屏'),
             h('button', { type: 'button', className: `${ROOT}-refresh`, title: '刷新页面', onClick: () => { setReloadNonce((value) => value + 1); setStatus('已刷新页面') } }, '刷新'),
@@ -240,7 +257,13 @@ window.__ModuleLoader__.load({
               },
             }),
           ),
-          previewToken ? h('iframe', {
+          direct && previewUrl ? h('iframe', {
+            key: reloadNonce,
+            ref: frameRef,
+            className: `${ROOT}-frame`,
+            title: 'HTML 批注预览',
+            src: (() => { try { const target = new URL(previewUrl); target.searchParams.set('dshSession', sessionId); target.searchParams.set('dshApi', location.origin + '/plugins/html-annotate'); return target.href } catch { return previewUrl } })(),
+          }) : previewToken ? h('iframe', {
             key: reloadNonce,
             ref: frameRef,
             className: `${ROOT}-frame`,

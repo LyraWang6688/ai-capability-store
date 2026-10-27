@@ -161,6 +161,7 @@ async function readPreviewConfig(sessionId) {
           previewUrl,
           autoOpen: data.autoOpen === true,
           previewCommand: data.previewCommand && typeof data.previewCommand === 'object' ? data.previewCommand : null,
+          direct: data.direct === true,
           source: file,
         }
       }
