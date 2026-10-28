@@ -84,7 +84,7 @@
     panel = document.createElement('div');
     panel.className = 'pa-box';
     var text = (target.innerText || target.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 80);
-    panel.innerHTML = '<h3>对这个位置批注</h3><p></p><textarea placeholder="例如：这里预订数量不能改，预订几双就补几双"></textarea><div class="pa-actions"><button type="button" class="pa-cancel">取消</button><button type="button" class="pa-save">保存并提交</button></div>';
+    panel.innerHTML = '<h3>对这个位置批注</h3><p></p><textarea placeholder="例如：这里预订数量不能改，预订几双就补几双"></textarea><div class="pa-actions"><button type="button" class="pa-cancel">取消</button><button type="button" class="pa-save">保存批注</button></div>';
     panel.querySelector('p').textContent = selectorOf(target) + (text ? ' · ' + text : '');
     document.body.appendChild(panel);
     var textarea = panel.querySelector('textarea');
@@ -95,20 +95,7 @@
       if (!comment) { textarea.focus(); return; }
       var save = panel.querySelector('.pa-save');
       save.disabled = true;
-      var payload = {
-        file: file,
-        sessionId: sessionId,
-        selector: selectorOf(target),
-        snippet: (target.outerHTML || '').slice(0, 3000),
-        text: text,
-        comment: comment,
-        url: location.href,
-      };
-      if (window.parent && window.parent !== window) {
-        pendingSave = save;
-        window.parent.postMessage({ type: 'html-annotate:save', file: file, sessionId: sessionId, annotation: payload }, '*');
-        return;
-      }
+      // 保存只落 sidecar，不提交；可以连续标注多条，最后点「提交批注」一起发。
       fetch(apiBase + '/annotations', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -124,23 +111,9 @@
       }).then(function (res) { return res.json().then(function (body) { return { res: res, body: body }; }); })
         .then(function (r) {
           if (!r.res.ok || !r.body.ok) throw new Error(r.body && r.body.error || 'save_failed');
-          return fetch(apiBase + '/annotations/submit', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ file: file, sessionId: sessionId }),
-          });
-        })
-        .then(function (r) { return r.json(); })
-        .then(function (body) {
-          if (!body.ok) throw new Error(body.error || 'submit_failed');
-          var submitted = (body && body.submitted) || [];
-          if (window.parent && window.parent !== window) {
-            window.parent.postMessage({ type: 'html-annotate:submitted', file: file, annotations: submitted }, '*');
-          }
-          toast('批注已提交：' + body.count + ' 条');
           closeBox();
           loadCount();
-          setMode(false);
+          toast('已保存，当前共 ' + (r.body.count || 0) + ' 条；继续标注或点「提交批注」');
         })
         .catch(function (err) { save.disabled = false; toast('保存失败：' + err.message); });
     };
@@ -227,7 +200,7 @@
       fetch(apiBase + '/annotations/submit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ file: file, sessionId: sessionId }),
+        body: JSON.stringify({ file: file, sessionId: sessionId, source: (window.parent && window.parent !== window) ? 'panel' : 'chrome' }),
       }).then(function (r) { return r.json(); }).then(function (body) {
         if (!body.ok) throw new Error(body.error || 'submit_failed');
         var submitted = (body && body.submitted) || [];

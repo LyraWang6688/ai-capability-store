@@ -68,6 +68,32 @@ window.__ModuleLoader__.load({
       React.useEffect(() => {
         const sid = String(props.sessionId || '')
         if (!sid) return
+        let cancelled = false
+        const sendChromeAnnotations = async () => {
+          const actions = props.inputActions
+          if (!actions || typeof actions.setDraft !== 'function' || typeof actions.submit !== 'function') return
+          try {
+            const response = await fetch(`/plugins/html-annotate/pending-annotations?sessionId=${encodeURIComponent(sid)}`)
+            const body = await response.json()
+            const annotations = Array.isArray(body.annotations) ? body.annotations : []
+            if (!annotations.length) return
+            const file = annotations[0].file || '原型页面'
+            const lines = annotations.map((item, index) => `${index + 1}. ${item.selector}：${item.comment}`)
+            actions.setDraft([`请按 HTML 批注修改源码：${file}`, ...lines, '', '批注 JSON 已写入 sidecar 文件。'].join('\n'))
+            await new Promise((resolve) => setTimeout(resolve, 150))
+            actions.submit()
+            await fetch('/plugins/html-annotate/pending-annotations/ack', {
+              method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sessionId: sid }),
+            }).catch(() => {})
+          } catch { /* 下一轮重试 */ }
+        }
+        const timer = setInterval(sendChromeAnnotations, 1000)
+        return () => { cancelled = true; clearInterval(timer) }
+      }, [props.sessionId, props.inputActions])
+
+      React.useEffect(() => {
+        const sid = String(props.sessionId || '')
+        if (!sid) return
         // ⭐ 每个会话记住自己已经处理到哪个 pending 时间戳；切走再回来不重复弹。
         const seenKey = `dsh-html-annotate:seen:${sid}`
         let seen = 0

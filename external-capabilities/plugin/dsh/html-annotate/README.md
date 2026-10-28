@@ -25,8 +25,8 @@
 用户对 Agent 说“看一下这个页面”后，Agent 调用 `open_html_annotate` 工具；插件优先从工具上下文取当前会话，只有该会话会弹出，不再使用全局广播。收到请求后启动/连接本地预览并弹出批注面板。随后：
 
 1. 点页面里的「批注」
-2. 点要改的元素，写意见，点「保存并提交」
-3. 插件把这一批批注发给当前会话
+2. 点要改的元素，写意见，点「保存批注」；可连续保存多条
+3. 全部标完后点「提交批注」，插件把这一批批注一次性发给当前会话
 
 批注文件：
 
@@ -135,3 +135,29 @@ dsh plugin --profile <profile> add /absolute/path/to/html-annotate
 非 `direct` 模式已通过 `/plugins/html-annotate/preview` 代理并拦截同源链接，换页后会重新注入。
 `direct: true` 页面若要支持整页跳转，需要在预览服务侧做反向代理注入，或让页面自行引入
 `annotation.js`。当前作为待观察事项记录，未在 0.4.1 中自动修复。
+
+## Chrome 模式（0.5.0）
+
+项目配置 `.dsh/html-annotate.json` 增加：
+
+```json
+{
+  "previewUrl": "http://127.0.0.1:3000/workbench/sales-delivery.html",
+  "chrome": true,
+  "split": true
+}
+```
+
+`open_html_annotate` 会：
+
+1. 注册本地预览 token；
+2. 用 Google Chrome 打开 `/plugins/html-annotate/preview?pid=...`；
+3. 若配置 `split: true`，尝试调用本机 Hammerspoon `_G.splitDSHChrome()` 做左 DSH / 右 Chrome 五五分屏；
+4. Chrome 顶层提交的批注会进入服务器 pending 队列，由 DSH 客户端轮询后注入当前会话（不再依赖父窗口 postMessage）。
+
+边界：
+
+- macOS + Google Chrome；分屏依赖本机 Hammerspoon 模块（没有则只打开 Chrome，不报错）；
+- `chrome: false` 或 `browser: "panel"` 保留原 DSH 面板模式；
+- Chrome 提交必须走插件预览页（`/plugins/html-annotate/preview?...`），不能直接打开原始 HTML；
+- 最终会话注入仍依赖 DSH 客户端轮询；客户端需在 0.5.0 重新加载。
