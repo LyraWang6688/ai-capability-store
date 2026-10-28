@@ -165,3 +165,24 @@ dsh plugin --profile <profile> add /absolute/path/to/html-annotate
 ## 0.6.0：Chrome only
 
 面板模式已删除，不再有 `browser: "panel"` 兜底。DSH 客户端只保留一个零 UI 的 pending 轮询器，把 Chrome 提交的批注注入当前会话。
+
+## 环境依赖（0.6.0）
+
+必须：
+
+- **Google Chrome**：插件用 `open -na "Google Chrome"` 打开标注页；没有 Chrome 时工具直接报错。
+- **macOS**：当前 `open` 调起逻辑只适用于 macOS。
+- **DSH 0.2+**：插件宿主和 `conversation.input.left` slot；安装后刷新/重载 DSH。
+
+可选分屏：
+
+- **Hammerspoon**：配置 `"split": true` 时，插件调用：
+  `hs -c '_G.splitDSHChrome()'`
+- Hammerspoon 里必须已加载 `dsh-chrome-split.lua`，且存在 `_G.splitDSHChrome()`；
+- 没有 Hammerspoon 或没有这个函数时：**只打开 Chrome，不会自动分屏，也不会报错中断标注**。
+
+不依赖：
+
+- 不需要 DSH 内置批注面板（0.6.0 已删除）；
+- 不需要把标注页放进 Chrome 扩展；
+- 不需要写业务 Base / 业务接口。
