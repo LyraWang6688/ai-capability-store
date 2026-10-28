@@ -1,7 +1,7 @@
 {
   "name": "@lyra_wang/dsh-feishu-ref",
-  "version": "0.5.2",
-  "description": "Composer + button: search your Feishu group chats / docs / bitables and insert the link into the DSH input box.",
+  "version": "0.6.0",
+  "description": "Composer + button: search your Feishu docs / group chats, picker grows out of the composer with a bottom search field, inserts the link into the DSH input box.",
   "license": "MIT",
   "type": "module",
   "keywords": [

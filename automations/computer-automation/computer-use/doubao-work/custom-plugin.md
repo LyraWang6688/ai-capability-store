@@ -1,15 +1,15 @@
 # 在豆包工作里自定义插件（连接器与技能）
 
-> 环境：macOS / DoubaoWork.app 2.33.5（Chromium 147 内核）/ 辅助功能未授权 / 已登录账号
-> 实测日期：2026-10-24
+> 环境：macOS / DoubaoWork.app 2.34.1（Chromium 147 内核；初测为 2.33.5）/ 辅助功能未授权 / 已登录账号
+> 实测日期：2026-10-28
 > 验证方式：CDP 读 `/json/version` 与页面 target + DOM 断言（菜单项、分类计数、`img.naturalWidth`）+ 自建 MCP 服务端日志 + 截图
-> 结论：已验证 —— 连接器能接本机 MCP 并调用；技能入口与三条来源已确认（上传格式未实测）；工具返回的图片**不渲染**
+> 结论：已验证 —— 连接器能接本机 MCP 并调用；技能入口与三条来源已确认（上传格式未实测）；工具返回的图片**不渲染**。2026-10-28 在 2.34.1 上复跑 §A 接管步骤，结论与初测一致
 
 ## 权限前提
 
 | 权限 | 本机状态 | 缺了会怎样 |
 |---|---|---|
-| 辅助功能 | **未授权**（`-10004`） | AppleScript / CGEvent 全废；本方案改用 CDP，不依赖它 |
+| 辅助功能 | **未授权**（`-10004`） | AppleScript / CGEvent 全废；本方案改用 CDP，不依赖它。注意 `tell application … to quit` 同样被拒，只能 `killall` |
 | 屏幕录制 | 可用 | 仅影响截图兜底证据 |
 | 应用自身数据目录可写 | 必须 | 带调试端口启动时打印 `SingletonLock` 并**自保护退出** |
 | 已登录 App 账号 | 必须 | 插件 / 技能 / 连接器列表都跟账号走 |
@@ -35,11 +35,14 @@
 
 1. **确认内核**：看 App 框架目录有没有带版本号的 Chromium 框架（实测 147）。
    *观察*：能找到 `*Browser Framework.framework/Versions/<版本>`；不是 Chromium 就停。
-2. **正常退出 App**（别硬杀），再带调试端口启动，避开 `9222`：
+2. **退出 App 后带调试端口启动**，避开 `9222`：
 
    ```bash
    "/Applications/<App>.app/Contents/MacOS/<App>" --remote-debugging-port=9333 &
    ```
+
+   退出优先走 App 自己的退出；AppleScript 被 `-10004` 拒时只能 `killall -q <App>`（硬杀，先确认没有未发送草稿）。
+   **别用 `open -a <App> --args …`**：参数不会进 Chromium 命令行，端口起不来。
 
    *观察*：`curl -s http://127.0.0.1:9333/json/version` 返回浏览器版本。
 3. **列出页面 target**，挑 `type == "page"`：
@@ -118,6 +121,8 @@
 | 端口连不上，但 App 在运行 | 端口被占（`9222` 常被 Chrome 调试端口占着） | 换空闲端口，不是 App 不支持调试 |
 | 报 `System Events ... -10004` | 辅助功能未授权 | 不走 AppleScript，改 CDP |
 | 重启后调试失效 | 调试参数只对那一次进程有效 | 每次接管都重新带参启动 |
+| `open -n -a <App> --args --remote-debugging-port=9333` 起来后端口不通 | `open --args` 的参数不会传给 Chromium | 直接执行 `Contents/MacOS/<App> --remote-debugging-port=9333` |
+| `tell application "<App>" to quit` 报 `-10004` | 自动化权限未授予，Apple 事件被拒 | `killall -q <App>`；随后 `open -a <App>` 恢复普通启动 |
 | 点击没反应 | 坐标对不上元素 | 改成 DOM 定位 + `.click()` |
 | 表单填了但保存后是空的 | 直接赋值没触发受控组件更新 | 原生 setter + `dispatchEvent(new Event('input'))` |
 | 装上了，对话里看不到这个工具 | 安装只写依赖，**启用是另一步** | 补启用，再重启宿主 |
