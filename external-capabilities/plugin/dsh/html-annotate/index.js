@@ -696,10 +696,17 @@ export function apply(ctx) {
         const entry = previewTokens.get(token)
         if (!entry) return json(res, 400, { ok: false, error: 'preview_not_registered' })
         const state = previewStateOf(entry.sessionId)
-        if (state.state !== 'running' && await pageReady(entry.pageUrl)) {
+        const ready = await pageReady(entry.pageUrl)
+        if (state.state === 'running' && !ready) {
+          state.state = 'stopped'
+          state.reason = 'page_down'
+          state.lastError = 'preview_page_not_responding'
+          state.endedAt = Date.now()
+        } else if (state.state !== 'running' && ready) {
           state.state = 'running'
           state.reason = ''
           state.lastError = ''
+          state.endedAt = null
         }
         return json(res, 200, { ok: true, ...previewSnapshot(entry.sessionId, entry.pageUrl) })
       } catch (error) {
