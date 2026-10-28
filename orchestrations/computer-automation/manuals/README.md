@@ -1,9 +1,9 @@
-# automations/computer-automation/ — 电脑自动化文档区
+# 界面操作手册区（manuals/）— 系统没给 API/CLI 时怎么驱动它
 
-> **位于 `automations/` 域内的文档区**：不是第五个资产域，也不是自动化作业。
-> 不登记 `registry.yaml`、不参与 Store 的资产口径，只收「怎么操作浏览器 / 怎么操作电脑」的
-> 交接文档。同域的作业（能按钟无人运行的那些）在上一级目录，用 registry 管；这里收的是
-> 「系统没给 API/CLI 时怎么驱动它」的手册。可复用的流程成熟后再升级成 Skill（见文末）。
+> **位于 `orchestrations/computer-automation/` 项目下的手册区**：不是编排任务，也不是第五个资产域。
+> 不登记 `orchestrations/registry.yaml`、不参与 Store 的资产口径，只收「怎么操作浏览器 / 怎么操作电脑」
+> 的手册。同项目的作业（`deepseek-invoice/`、`wechat-tencent-invoice/` 这类）在上一级目录，用 registry 管；
+> 这里收的是它们**执行时依赖的、可复用的操作知识**。可复用的流程成熟后再升级成 Skill（见文末）。
 
 ## 怎么用（读的人先看这段）
 
@@ -42,16 +42,25 @@
 ## 结构
 
 ```text
-automations/computer-automation/
-├── README.md              # 本文件
-├── browser-use/           # 浏览器操作
-│   ├── README.md          # 索引
-│   ├── <topic>.md         # 不属于任何软件的通用主题
-│   └── <app>/             # 一个软件一个文件夹
-│       ├── README.md      # 索引：已写的功能 + 待建的功能
-│       └── <功能>.md
-└── computer-use/          # 桌面操作（同上结构）
+orchestrations/computer-automation/
+├── README.md              # 项目：这个项目有哪些任务、手册在这里
+├── registry.yaml（上一级）  # 只登记任务，不登记 manuals/
+├── manuals/               # 本文件
+│   ├── README.md
+│   ├── browser-use/       # 浏览器操作
+│   │   ├── README.md      # 索引
+│   │   ├── <topic>.md     # 不属于任何软件的通用主题
+│   │   └── <app>/         # 一个软件一个文件夹
+│   │       ├── README.md  # 索引：已写的功能 + 待建的功能
+│   │       └── <功能>.md
+│   └── computer-use/      # 桌面操作（同上结构）
+├── deepseek-invoice/      # 任务（registry 管）
+└── wechat-tencent-invoice/
 ```
+
+**为什么手册不单独做一个域**：手册的内容是「怎么操作界面」，它服务的正是这个项目里的任务——
+把手册和任务放在同一个项目下，读者找"这个项目怎么跑"时不会漏掉前置的手册。校验器按名字放行
+`manuals/`（`ORCHESTRATION_DOC_DIRS`），它是项目下**唯一允许的非任务目录**。
 
 **文件夹 = 软件，文件名 = 功能。** 同一个软件今天加一个功能、明天加一个，
 文档会一篇篇多起来，所以用文件夹收录；**文件名是 Agent 的检索键**，
@@ -62,7 +71,7 @@ automations/computer-automation/
 ## 写的时候
 
 ```bash
-# 生成骨架并登记索引
+# 生成骨架并登记索引（脚本自己找 Store 根目录）
 python3 skills/computer-automation-log/scripts/new_doc.py \
   --kind computer --slug <功能名> --title "<标题>"
 
@@ -72,7 +81,7 @@ python3 skills/computer-automation-log/scripts/check_doc.py <doc.md>
 
 必须给三样东西：**工具清单**（用了什么）、**可复现步骤**（走通的路）、
 **踩坑实录**（没走通的教训）。只写结论的文档只完成了一半。
-规则细节见 [`doc-contract.md`](../../skills/computer-automation-log/references/doc-contract.md)。
+规则细节见 [`doc-contract.md`](../../../skills/computer-automation-log/references/doc-contract.md)。
 
 ## 不收什么
 

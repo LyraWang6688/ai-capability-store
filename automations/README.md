@@ -13,7 +13,8 @@ before `launchd` existed, and it was already untrue the moment a job ran on a la
 | Belongs here | Does NOT belong here |
 |---|---|
 | A recurring job that runs on a schedule and produces data | A procedure an Agent follows (→ `skills/`) |
-| A **manual** for driving a system that has no API/CLI (→ `computer-automation/`) | Docs about an app's internals (→ `docs/`) |
+| — | A **manual** for driving a system that has no API/CLI (→ `orchestrations/computer-automation/manuals/`) |
+| — | Docs about an app's internals (→ `docs/`) |
 | A job whose schedule and output contract must be reviewable | A callable capability/MCP/CLI (→ `external-capabilities/`) |
 | A job that can run unattended in CI | Anything that needs human judgement to execute |
 
@@ -36,17 +37,19 @@ GUI clicks   no page either — screenshots + mouse/keyboard; depends on window
 MCP is not a layer: it is a protocol for packaging a capability (usually over an
 API or CLI) for an Agent. Prefer an existing MCP server; write one only if needed.
 
-So this Domain holds both ends of that order:
+So this Domain holds the layer that can run unattended; the manual for the
+Playwright / GUI layers lives with the tasks that need it
+(`orchestrations/computer-automation/manuals/`):
 
 | Layer | What lives here | Governed by |
 |---|---|---|
 | API / CLI | the scheduled jobs in this directory | `registry.yaml`, version, tag, CI |
-| Playwright / GUI | `computer-automation/` — manuals for driving a system that offers neither | its own README + `skills/computer-automation-log` gate |
+| Playwright / GUI | the jobs only — their **manual** moved to `orchestrations/computer-automation/manuals/` (2026-10-28) | `skills/computer-automation-log` gate |
 
 **The rule that decides placement: can it run unattended on a clock?**
-Yes → a job (registry entry). No, it is knowledge about *how* to operate something
-→ `computer-automation/`. A job that drives a GUI is still a job and belongs in this
-directory; its manual belongs in `computer-automation/`.
+Yes → a job (registry entry), here. No, it is knowledge about *how* to operate
+something → the project's manual shelf, `orchestrations/computer-automation/manuals/`.
+A job that drives a GUI is still a job and belongs in this directory; its manual does not.
 
 ## Layout
 
@@ -62,14 +65,14 @@ automations/
 │   ├── README.md      ← why these members live together (required)
 │   ├── <shared file>  ← contract / data every member uses
 │   └── <member>/      ← one automation; registry key is `<family>-<member>`
-└── computer-automation/   ← docs only: how to drive systems that have no API/CLI
-    └── README.md          ← its own rules; not a registry entry, not a job
 ```
 
-Exactly two *automation* shapes are legal: `automations/<name>/` and
-`automations/<family>/<member>/`. The only other directory allowed is
-`computer-automation/` — documentation, exempted by name in
-`scripts/validate_store.py` (`AUTOMATION_DOC_DIRS`).
+Exactly two shapes are legal here: `automations/<name>/` and
+`automations/<family>/<member>/`. **No documentation shelf**: the
+`computer-automation/` manuals were moved into their project on 2026-10-28 —
+knowledge about driving an interface now lives next to the tasks that use it
+(`orchestrations/computer-automation/manuals/`), and a shelf that no job needs
+does not belong in this Domain.
 
 ## Families — one level, shared files only
 

@@ -127,7 +127,7 @@ def build_store(root: pathlib.Path) -> pathlib.Path:
     (store / "skills" / "registry.yaml").write_text("skills: {}\n", encoding="utf-8")
     for sub, title in (("browser-use", "browser-use/ — 浏览器操作文档"),
                        ("computer-use", "computer-use/ — 电脑操作文档")):
-        d = store / "automations" / "computer-automation" / sub
+        d = store / "orchestrations" / "computer-automation" / "manuals" / sub
         d.mkdir(parents=True)
         (d / "README.md").write_text(INDEX_README.format(title=title), encoding="utf-8")
     return store
@@ -142,8 +142,14 @@ def main() -> int:
         res = r.run(str(NEW_DOC), "--store", str(store), "--kind", "browser",
                     "--slug", "demo-topic", "--title", "Demo Topic")
         r.expect("new_doc 正常路径", res.returncode, 0, res.stdout + res.stderr)
-        doc = store / "automations" / "computer-automation" / "browser-use" / "demo-topic.md"
+        doc = store / "orchestrations" / "computer-automation" / "manuals" / "browser-use" / "demo-topic.md"
         r.expect("骨架文件已创建", 0 if doc.is_file() else 1, 0)
+        skeleton = doc.read_text(encoding="utf-8")
+        missing = [name for name in
+                   ("入口", "浏览器会话", "工具清单", "可复现步骤", "踩坑实录", "何时别用")
+                   if f"## {name}" not in skeleton]
+        r.expect("骨架小节与门禁一致", 0 if not missing else 1, 0, f"缺少：{missing}")
+
         index = (doc.parent / "README.md").read_text(encoding="utf-8")
         r.expect("索引行已写入", 0 if "](./demo-topic.md)" in index else 1, 0)
         r.expect("索引占位行已替换", 0 if "_待填充_" not in index else 1, 0)
@@ -188,7 +194,7 @@ def main() -> int:
         res = r.run(str(NEW_DOC), "--store", str(store), "--kind", "computer",
                     "--slug", "demo-desktop", "--title", "Demo Desktop Topic")
         r.expect("computer 类生成", res.returncode, 0, res.stdout + res.stderr)
-        desk = store / "automations" / "computer-automation" / "computer-use" / "demo-desktop.md"
+        desk = store / "orchestrations" / "computer-automation" / "manuals" / "computer-use" / "demo-desktop.md"
         desk.write_text(COMPUTER_BODY.format(today=TODAY), encoding="utf-8")
         res = r.run(str(CHECK_DOC), str(desk))
         r.expect("computer 类合格文档通过", res.returncode, 0, res.stdout)

@@ -236,13 +236,13 @@ skills:
     path: skills/computer-automation-log
     scope: shared
     status: testing
-    version: 0.1.7
-    updated: "2026-10-24"
+    version: 0.1.8
+    updated: "2026-10-28"
     commerce: {charge: free}
     notes: >
-      automations/computer-automation/ 文档区的唯一写入口：agent 用操作者的真实浏览器或桌面做
+      orchestrations/computer-automation/manuals/ 手册区的唯一写入口：agent 用操作者的真实浏览器或桌面做
       Computer Use / Browser Use 时触发 —— 先查已有文档复用，操作后按
-      automations/computer-automation/README.md 的约定生成或更新文档，再用 check_doc.py 过门禁
+      orchestrations/computer-automation/manuals/README.md 的约定生成或更新文档，再用 check_doc.py 过门禁
       （抬头四条 / 必答小节 / 凭据 / 本机绝对路径 / 索引行）。
       0.1.1：文档区支持「一个 App 多篇」的文件夹形态 —— check_doc.py 接受 <kind>/<app>/<topic>.md 一层子目录（深度 >2 拒绝），并要求子目录 README 登记内部文档、上级 README 登记该子目录；README.md 本身不跑门禁。doc-contract.md 补上该形态的规则。扁平 <kind>/<topic>.md 不受影响（回归验证：填好内容的扁平文档 33 checks 全过）。 0.1.2：把「一个 App 一个文件夹」定为默认形态 —— computer-use/ 下 codex-desktop / wechat / macos 全部从单篇 .md 迁成 <app>/README.md + basic-operation.md；规则改为「即便只有一篇也先建文件夹」，只有不属于任何 App 的通用主题才单篇放域目录。骨架文档仍为未验证（待填写），门禁按预期失败。 0.1.3：把「文件夹 = 一个软件，里面按功能各一篇」写进契约 —— 文件夹的存在理由是同一软件的功能会持续增加、需要收录；文件名是 Agent 的检索键，禁止 `basic-operation`/`misc`/`notes` 这类无信息名；尚未实测的功能不建空文档，只在文件夹 README 的「待建功能」表里列出。据此删掉三个空骨架，codex-desktop / wechat / macos 改为只保留索引 + 待建功能清单。 0.1.4：文档必须能"被下一个 Agent 照着做一遍" —— 新增两个必答小节：`## 可复现步骤`（工具 / 命令 / 顺序 / 每步的观察点）与 `## 踩坑实录`（症状→原因→修法），门禁强制检查；契约里写明理由：只写结论只能避免错误判断，不能让人少走弯路。doubao-work 四篇已全部补齐（38 checks / 0 failures）。 0.1.5：文档区 README 改成以「目标」开头 —— 读者是下一个要重做同一件事的 Agent，一篇必须给出三样东西：可复现步骤、没走通的教训、用了哪些工具。新增必答小节 `## 工具清单`（工具/类型/用途/前置），门禁强制；doubao-work 四篇补齐（40 checks / 0 failures），测试夹具同步。 0.1.6：文档瘦身到「五节以内」—— 删掉与三样核心重复的小节：`操作手段` 并入「可复现步骤」第 1 步、`如何验证` 并入每步的观察点、`回退` 并入最后一步。门禁改为 权限前提 / 工具清单 / 可复现步骤 / 踩坑实录 / 何时别用 五节；doubao-work 四篇从 108-120 行压到 64-75 行，内容无删减（34 checks / 0 failures）。new_doc.py 只做确定性动作（骨架 + 索引表），正文由模型写；test_scripts.py 是
       离线自测（14 例，临时目录，不碰真实文档），当前 14/14 通过。
@@ -252,7 +252,14 @@ skills:
       都未登记为 External Capability，故 dependencies/capability-map.yaml 未声明依赖
       （与 repo-collector 一致：不制造虚假依赖记录）。
       文档规则本身不在本 skill 里：收什么、怎么命名、何时升级成 Skill 由
-      automations/computer-automation/README.md 定义，改规则改那里。
+      orchestrations/computer-automation/manuals/README.md 定义，改规则改那里。
+      0.1.8（patch）：文档区从 `automations/computer-automation/` 迁到 `orchestrations/computer-automation/manuals/`
+      —— 跟着项目走：手册服务的正是这个项目里的界面任务，而手册没有 trigger / output，不该进 registry。
+      同时改：check_doc.py 按 kind 目录名定位（不再数层级，并强制路径里有 `manuals/`）；new_doc.py 的
+      DOC_ROOT 与骨架小节（补上 0.1.6 起门禁要求的 `工具清单`/`可复现步骤`/`踩坑实录` —— 骨架与门禁漂移过一次）；
+      test_scripts.py 夹具与「骨架小节与门禁一致」防漂移用例（15 例全绿）；validate_store.py 的
+      `AUTOMATION_DOC_DIRS` 换成项目级的 `ORCHESTRATION_DOC_DIRS = {"manuals"}`。
+      搬迁后 doubao-work 两篇 35 checks / 0 failures。
   wechat-tencent-invoice:
     name: wechat-tencent-invoice
     path: skills/wechat-tencent-invoice

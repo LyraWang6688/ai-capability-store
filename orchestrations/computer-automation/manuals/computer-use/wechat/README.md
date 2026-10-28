@@ -1,4 +1,4 @@
-# Codex 桌面版（ChatGPT.app 内的 Codex） — 文件夹索引
+# 微信（WeChat.app） — 文件夹索引
 
 ## 这个文件夹是干什么的
 
@@ -12,18 +12,19 @@
 
 | 功能文档 | 用途 | 状态 |
 |---|---|---|
-| `cdp-takeover.md` | 用调试端口接管界面，读 DOM 判断状态 | 待建 |
-| `permissions.md` | 需要的系统权限，缺哪个会静默失败 | 待建 |
+| `window-capture.md` | 窗口截图取证（屏幕录制权限） | 待建 |
+| `ax-tree.md` | 用辅助功能树读会话列表与消息 | 待建 |
+| `send-message.md` | 输入与发送（辅助功能 / 快捷键） | 待建 |
 
 ## 建新文档时
 
 1. 文件名 = 功能（`window-capture` / `ax-tree`），不要 `basic-operation` / `misc` 这类说了等于没说的名字。
-2. 走 [`new_doc.py`](../../../../skills/computer-automation-log/scripts/new_doc.py) 生成骨架，
-   写完过 [`check_doc.py`](../../../../skills/computer-automation-log/scripts/check_doc.py) 门禁。
+2. 走 [`new_doc.py`](../../../../../skills/computer-automation-log/scripts/new_doc.py) 生成骨架，
+   写完过 [`check_doc.py`](../../../../../skills/computer-automation-log/scripts/check_doc.py) 门禁。
 3. 建好后回到这里，把上表那一行改成链接。
 
 ## 参考
 
 - 已完成的样板：[doubao-work/](../doubao-work/README.md)
-- 文档规则：[`../../../../README.md`](../../../../README.md) 与
-  [`doc-contract.md`](../../../../skills/computer-automation-log/references/doc-contract.md)
+- 文档规则：[`../../README.md`](../../README.md) 与
+  [`doc-contract.md`](../../../../../skills/computer-automation-log/references/doc-contract.md)

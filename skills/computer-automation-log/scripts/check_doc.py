@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """computer-automation 文档门禁。
 
-按 computer-automation/README.md 与 references/doc-contract.md 检查一篇文档：
+按 orchestrations/computer-automation/manuals/README.md 与 references/doc-contract.md 检查一篇文档：
 抬头四条、必答小节、凭据泄漏、本机绝对路径、索引表登记。
 
 用法：
@@ -86,19 +86,28 @@ def main(argv: list[str]) -> int:
     if not rep.check(path.suffix == ".md", "文档必须是 .md", path.suffix):
         return finish(rep)
     parts = path.parts
+    where = "文档必须位于 <store>/orchestrations/computer-automation/manuals/{browser-use,computer-use}/ 下"
     if "computer-automation" not in parts:
-        rep.check(False, "文档必须位于 computer-automation/{browser-use,computer-use}/ 下", str(path.parent))
+        rep.check(False, where, str(path.parent))
         return finish(rep)
     ca = len(parts) - 1 - parts[::-1].index("computer-automation")
-    kind = parts[ca + 1] if len(parts) > ca + 1 else ""
-    # 1 = 扁平：<kind>/<topic>.md；2 = 文件夹：<kind>/<app>/<topic>.md
-    depth = len(parts) - (ca + 2)
+    # 手册区固定是 <项目>/manuals/；贴着项目根放文档说明放错了地方
     if not rep.check(
-        kind in REQUIRED_SECTIONS,
-        "文档必须位于 computer-automation/{browser-use,computer-use}/ 下",
+        len(parts) > ca + 1 and parts[ca + 1] == "manuals",
+        where,
         str(path.parent),
     ):
         return finish(rep)
+    # kind 目录（browser-use / computer-use）按名字定位，不按固定层数：
+    # 手册区这一层是后加的，位置变了不该要求改门禁的算术
+    kind_idx = next(
+        (i for i in range(ca + 2, len(parts)) if parts[i] in REQUIRED_SECTIONS), None
+    )
+    if not rep.check(kind_idx is not None, where, str(path.parent)):
+        return finish(rep)
+    kind = parts[kind_idx]
+    # 1 = 扁平：<kind>/<topic>.md；2 = 文件夹：<kind>/<app>/<topic>.md
+    depth = len(parts) - kind_idx - 1
     if not rep.check(depth in (1, 2), "文档层级过深：最多一层 App 子目录", str(path.parent)):
         return finish(rep)
     if not rep.check(path.name != "README.md", "README.md 不是文档，不要对它跑门禁"):
