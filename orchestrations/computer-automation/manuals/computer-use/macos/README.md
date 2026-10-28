@@ -19,12 +19,12 @@
 ## 建新文档时
 
 1. 文件名 = 功能（`window-capture` / `ax-tree`），不要 `basic-operation` / `misc` 这类说了等于没说的名字。
-2. 走 [`new_doc.py`](../../../../skills/computer-automation-log/scripts/new_doc.py) 生成骨架，
-   写完过 [`check_doc.py`](../../../../skills/computer-automation-log/scripts/check_doc.py) 门禁。
+2. 走 [`new_doc.py`](../../../../../skills/computer-automation-log/scripts/new_doc.py) 生成骨架，
+   写完过 [`check_doc.py`](../../../../../skills/computer-automation-log/scripts/check_doc.py) 门禁。
 3. 建好后回到这里，把上表那一行改成链接。
 
 ## 参考
 
 - 已完成的样板：[doubao-work/](../doubao-work/README.md)
-- 文档规则：[`../../../../README.md`](../../../../README.md) 与
-  [`doc-contract.md`](../../../../skills/computer-automation-log/references/doc-contract.md)
+- 文档规则：[`../../README.md`](../../README.md) 与
+  [`doc-contract.md`](../../../../../skills/computer-automation-log/references/doc-contract.md)

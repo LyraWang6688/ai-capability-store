@@ -47,6 +47,7 @@ Domain-specific policy lives in the Domain directories.
 | Add / change an Orchestration (in what order several things run, for one task) | `orchestrations/` |
 | Add / change an External Capability (plugin / MCP / connector / CLI / API / integration) | `external-capabilities/` |
 | Add / change an Automation (scheduled or event-driven job) | `automations/` |
+| Add / change a manual for driving a GUI (how to click through an app, no API/CLI) | `orchestrations/computer-automation/manuals/` |
 | Record a Skill ↔ External Capability dependency | `dependencies/capability-map.yaml` |
 | Change store-wide policy | top-level policy files |
 
@@ -65,6 +66,12 @@ tag. The composition layer has none of those for itself — it only references.
 records. It stays registered during the migration; the layout rule is
 `orchestrations/README.md` § 布局：两层, and whether a job is started by a clock or by a
 human is the record's `trigger` field, not a directory level.
+
+The one non-job thing that used to live in `automations/` — the computer-automation
+manuals — has already moved (2026-10-28) to `orchestrations/computer-automation/manuals/`,
+because a manual has no `trigger` and no `output`: it is knowledge the project's tasks
+consume, not a job. `manuals/` is the only directory a project may hold besides its
+tasks (validator: `ORCHESTRATION_DOC_DIRS`).
 
 What separates them is the question each one answers:
 
