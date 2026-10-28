@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""按 computer-automation/ 的约定生成一篇新文档，并补上对应子目录的索引表。
+"""按 manuals/ 的约定生成一篇新文档，并补上对应子目录的索引表。
 
-规则来自 computer-automation/README.md。本脚本只做确定性动作：
+规则来自 orchestrations/computer-automation/manuals/README.md。本脚本只做确定性动作：
 建文件、写抬头与小节骨架、往索引表加一行。正文由执行者填写。
 
 用法：
@@ -23,24 +23,26 @@ import re
 import sys
 
 KIND_DIRS = {"browser": "browser-use", "computer": "computer-use"}
-# 文档区位于 Automation 域内：automations/computer-automation/<kind>/
-DOC_ROOT = pathlib.Path("automations") / "computer-automation"
+# 文档区挂在 computer-automation 项目下：<store>/orchestrations/computer-automation/manuals/<kind>/
+DOC_ROOT = pathlib.Path("orchestrations") / "computer-automation" / "manuals"
 SLUG_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 INDEX_HEADING = "## 文档索引"
 
+# 必须和 check_doc.py 的 REQUIRED_SECTIONS 一致：骨架少一节，填完也过不了门禁。
 SECTIONS = {
     "browser": [
         ("入口", "MCP server / CLI / 直接 CDP？宿主怎么接上（命令、参数、端口）。"),
         ("浏览器会话", "独立实例，还是复用操作者已登录的 Chrome？会不会碰到真实账号数据？"),
-        ("如何验证", "拿什么证据证明这一步真的生效（页面快照 / DOM 断言 / 截图）。"),
+        ("工具清单", "工具 / 类型 / 用来做什么 / 前置条件（表格）。"),
+        ("可复现步骤", "顺序 + 每步的观察点；最后一步是收尾（回退写在这里）。"),
+        ("踩坑实录", "症状 → 原因 → 修法（表格）；没踩到就写「暂无」。"),
         ("何时别用", "反例：什么情况下这条路不合适，该走哪条替代路径。"),
-        ("已知坑", "实际踩到的触发条件；没踩到就写「暂无」。"),
     ],
     "computer": [
-        ("权限前提", "辅助功能 / 屏幕录制 / 自动化，缺哪个会静默失败。"),
-        ("操作手段", "screencapture / AX API / CGEvent / AppleScript，以及为什么选它。"),
-        ("如何验证", "证明操作真的发生：截图、AX 属性、剪贴板内容。"),
-        ("回退", "做坏了怎么撤（撤销键、备份、重开窗口）。"),
+        ("权限前提", "辅助功能 / 屏幕录制 / 自动化，缺哪个会静默失败（表格）。"),
+        ("工具清单", "工具 / 类型 / 用来做什么 / 前置条件（表格）。"),
+        ("可复现步骤", "顺序 + 每步的观察点；最后一步是收尾（回退写在这里）。"),
+        ("踩坑实录", "症状 → 原因 → 修法（表格）；没踩到就写「暂无」。"),
         ("何时别用", "有 CLI / API 时的优先路径；GUI 是最后手段。"),
     ],
 }
@@ -68,7 +70,7 @@ def find_store(arg: str | None) -> pathlib.Path:
         if not looks_like_store(root):
             fail(
                 f"--store 指向的不是 Store 根目录：{root}\n"
-                "需要同时存在 automations/computer-automation/ 与 skills/registry.yaml。"
+                "需要同时存在 orchestrations/computer-automation/manuals/ 与 skills/registry.yaml。"
             )
         return root
 
@@ -78,7 +80,7 @@ def find_store(arg: str | None) -> pathlib.Path:
         if not looks_like_store(root):
             fail(
                 f"$AI_CAPABILITY_STORE 指向的不是 Store 根目录：{root}\n"
-                "需要同时存在 automations/computer-automation/ 与 skills/registry.yaml。"
+                "需要同时存在 orchestrations/computer-automation/manuals/ 与 skills/registry.yaml。"
             )
         return root
 
@@ -160,7 +162,7 @@ def main() -> int:
     doc = subdir / f"{args.slug}.md"
     readme = subdir / "README.md"
     if not subdir.is_dir():
-        fail(f"缺少目录 {subdir} —— 先确认 automations/computer-automation 文档区存在。")
+        fail(f"缺少目录 {subdir} —— 先确认 orchestrations/computer-automation/manuals 手册区存在。")
     if not readme.is_file():
         fail(f"缺少索引文件 {readme}。")
     if doc.exists():
