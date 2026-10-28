@@ -24,7 +24,7 @@
 
 用户对 Agent 说“看一下这个页面”后，Agent 调用 `open_html_annotate` 工具；插件优先从工具上下文取当前会话，只有该会话会弹出，不再使用全局广播。收到请求后启动/连接本地预览并弹出批注面板。随后：
 
-1. 点页面里的「批注」
+1. 点页面里的「批注」（按钮可拖动，位置会按页面记住）
 2. 点要改的元素，写意见，点「保存批注」；可连续保存多条
 3. 全部标完后点「提交批注」，插件把这一批批注一次性发给当前会话
 
@@ -48,9 +48,11 @@ http://127.0.0.1:5054/workbench
 
 ```text
 Host 代理本地页面
-→ 注入批注脚本
-→ 页面里的 root-relative 资源/接口按本地服务器解析
+→ 注入 <base> + 批注脚本
+→ 常见 root-relative 资源/接口补本地目标 origin
 ```
+
+⚠️ 这是兼容层，不是完整透明代理：ESM、WebSocket、Service Worker 以及目标服务自身的 CORS 仍需页面/服务支持。
 
 本地服务建议无鉴权启动：
 
@@ -98,9 +100,28 @@ PORT=5054 LARK_WEB_AUTH_ENABLED=false ENABLE_CORS=true node src/app.js
 }
 ```
 
-插件会读取当前会话 cwd 下的这份配置。默认**启动时不自动弹窗**；只有用户说“看一下页面”时，Agent 调用 `open_html_annotate` 工具，插件才弹出并加载页面。若本地服务未运行，配置里有 `previewCommand` 时插件会自己启动它并等待就绪。
+插件按下面的顺序查找配置：
+
+```text
+HTML_ANNOTATE_CONFIG（显式文件）
+→ 会话 cwd 向上最近的 .dsh/html-annotate.json
+→ HTML_ANNOTATE_PROJECT_ROOT/.dsh/html-annotate.json
+→ 当前 workspace 的 .dsh/html-annotate.json
+→ ~/.dsh/html-annotate.json
+```
+
+`/plugins/html-annotate/config` 会返回命中的 `source`、`configPath` 和尝试过的 `triedPaths`，启动失败时也会带这些诊断信息。默认**启动时不自动弹窗**；只有用户说“看一下页面”时，Agent 调用 `open_html_annotate` 工具，插件才打开 Chrome 并加载页面。若本地服务未运行，配置里有 `previewCommand` 时插件会自己启动它；`/preview` 会先显示启动页，然后轮询 `/preview/status`，不会只抛一个 `preview_not_running`。
 
 每个会话仍会用 localStorage 记住 URL。批注只改本地源码，部署是单独动作。
+
+## 配置诊断与预览状态（本轮开发版）
+
+- 配置查找顺序和 `triedPaths` 见上面的「项目预览配置」；
+- `/plugins/html-annotate/preview/status?pid=...` 返回 `state`、`command`、`cwd`、`startedAt`、`lastError`、`stderrTail` 等；
+- 预览启动失败时，Chrome 会显示诊断页（尝试路径、命令、cwd、stderr），而不是白屏；
+- DSH 的 subprocess handle 当前不暴露 child pid，所以 `pid` 字段为 `null`，`pidSupported: false`。
+- 页面资源/接口使用兼容层：改写初始 HTML 的 root-absolute `src`/`href`/`action`，并注入对 `fetch`/`XMLHttpRequest`/`EventSource`/`sendBeacon` 的 origin 补全。
+- 需要登录态、ESM、WebSocket 或特殊 CSP 的页面，仍建议使用本地无鉴权预览服务 + CORS；插件不承诺任意页面零改动。
 
 ## 安全边界
 
