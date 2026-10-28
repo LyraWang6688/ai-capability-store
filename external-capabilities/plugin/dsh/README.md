@@ -357,6 +357,11 @@ dsh plugin --profile desktop add "https://registry.npmjs.org/@scope/<plugin>/-/<
 > 起因：`diagram-card` 开发完，要在**装进日常 profile 之前**证明它能挂载、能渲染。
 > 本机没有安装 `dsh` 命令，但可以用 Electron 的 node 模式跑 `app.asar` 里的 CLI，
 > 因此能起一个**完全隔离的测试 profile**——不动桌面端，也不重启正在用的 App。
+>
+> > `diagram-card` 已于 2026-10-28 退役（能力由 `skills/structured-diagram` 承接，见该
+> > Skill 的 registry notes）。§九 留下的是**方法**和那次实测记录，下面出现的包名、
+> > `window.__dshdg`、`language-dsh-diagram` 都只对当时那个资产成立——换一个插件照着做时，
+> > 把它们换成自己的标识即可，判据本身通用。
 
 ### 9.1 为什么不能用 headless
 
@@ -427,7 +432,7 @@ rm -rf ~/.dsh/profiles/probe
 
 Host 半的路由、子进程、凭据，仍只能按 §二 的方式在真实环境里验。
 
-### 9.7 一次实测记录（照抄即可复现）
+### 9.7 一次实测记录（2026-10-24，`diagram-card`；该资产已于 2026-10-28 退役，记录保留）
 
 ```text
 ① 建 probe（web 模板）                     → ✅

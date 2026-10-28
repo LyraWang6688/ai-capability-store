@@ -19,11 +19,6 @@ global:
   - pnpm-lock.yaml
 
 packages:
-  # 渲染自测页：浏览器打开即可验 client.js 渲染层，不需要 DSH。
-  # 只在仓库里对开发者有用，装了插件的人不需要它。
-  "@lyra_wang/dsh-diagram-card":
-    - dev/**
-
   # 插件测试用 node --test 跑，不随包发布
   "@lyra_wang/dsh-feishu-remote":
     - tests/**
