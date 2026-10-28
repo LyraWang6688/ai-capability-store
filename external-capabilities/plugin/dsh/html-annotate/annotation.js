@@ -139,7 +139,7 @@
   var lastHover = null;
   function annotationTarget(event) {
     var target = document.elementFromPoint(event.clientX, event.clientY);
-    if (!target || target.closest('.pa-btn,.pa-box,.pa-count,.pa-toast')) return null;
+    if (!target || target.closest('.pa-btn,.pa-box,.pa-count,.pa-submit,.pa-toast')) return null;
     if (target === document.documentElement || target === document.body) return null;
     return target;
   }
