@@ -114,7 +114,7 @@ HTML_ANNOTATE_CONFIG（显式文件）
 
 每个会话仍会用 localStorage 记住 URL。批注只改本地源码，部署是单独动作。
 
-## 配置诊断与预览状态（本轮开发版）
+## 配置诊断与预览状态（0.6.2）
 
 - 配置查找顺序和 `triedPaths` 见上面的「项目预览配置」；
 - `/plugins/html-annotate/preview/status?pid=...` 返回 `state`、`command`、`cwd`、`startedAt`、`lastError`、`stderrTail` 等；
