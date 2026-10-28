@@ -26,10 +26,11 @@
 
   var style = document.createElement('style');
   style.textContent = `
-    .pa-btn{position:fixed;left:16px;bottom:110px;z-index:2147483000;min-height:44px;border:0;border-radius:999px;padding:0 16px;background:#185abd;color:#fff;font:600 14px/44px -apple-system,BlinkMacSystemFont,'PingFang SC',sans-serif;box-shadow:0 4px 14px rgba(23,32,51,.22);cursor:pointer}
+    .pa-btn{position:fixed;left:16px;bottom:110px;z-index:2147483000;min-height:44px;border:0;border-radius:999px;padding:0 16px;background:#185abd;color:#fff;font:600 14px/44px -apple-system,BlinkMacSystemFont,'PingFang SC',sans-serif;box-shadow:0 4px 14px rgba(23,32,51,.22);cursor:grab;touch-action:none;user-select:none}
+    .pa-btn.pa-dragging,.pa-submit.pa-dragging{cursor:grabbing;opacity:.88}
     .pa-btn[data-active="1"]{background:#b3261e}
-    .pa-submit{position:fixed;left:16px;bottom:164px;z-index:2147483000;min-height:40px;border:1px solid #185abd;border-radius:999px;padding:0 14px;background:#fff;color:#185abd;font:600 13px/40px -apple-system,BlinkMacSystemFont,'PingFang SC',sans-serif;box-shadow:0 2px 8px rgba(23,32,51,.12);cursor:pointer}
-    .pa-count{position:fixed;left:112px;bottom:120px;z-index:2147483000;min-width:20px;height:20px;border-radius:10px;background:#172033;color:#fff;font:600 11px/20px -apple-system,BlinkMacSystemFont,sans-serif;text-align:center;padding:0 5px}
+    .pa-submit{position:fixed;left:16px;bottom:164px;z-index:2147483000;min-height:40px;border:1px solid #185abd;border-radius:999px;padding:0 14px;background:#fff;color:#185abd;font:600 13px/40px -apple-system,BlinkMacSystemFont,'PingFang SC',sans-serif;box-shadow:0 2px 8px rgba(23,32,51,.12);cursor:grab;touch-action:none;user-select:none}
+    .pa-count{position:absolute;right:-8px;top:-8px;min-width:20px;height:20px;border-radius:10px;background:#172033;color:#fff;font:600 11px/20px -apple-system,BlinkMacSystemFont,sans-serif;text-align:center;padding:0 5px;pointer-events:none}
     body.pa-mode *{cursor:crosshair !important}
     .pa-hover{outline:3px solid #185abd !important;outline-offset:2px !important;cursor:crosshair !important}
     .pa-box{position:fixed;left:16px;right:16px;bottom:16px;z-index:2147483001;background:#fff;border-radius:16px;box-shadow:0 12px 36px rgba(23,32,51,.24);padding:14px;font:14px/1.5 -apple-system,BlinkMacSystemFont,'PingFang SC',sans-serif;color:#172033;max-width:480px;margin:0 auto}
@@ -159,7 +160,8 @@
     annotationMode = on;
     var btn = document.querySelector('.pa-btn');
     btn.dataset.active = on ? '1' : '0';
-    btn.textContent = on ? '退出批注' : '批注';
+    var label = btn.querySelector('.pa-label');
+    if (label) label.textContent = on ? '退出批注' : '批注';
     if (on) {
       document.body.classList.add('pa-mode');
       document.addEventListener('click', annotationClick, true);
@@ -182,9 +184,92 @@
       }).catch(function () {});
   }
 
+  function storageKeyOf(part) {
+    return 'html-annotate:pos:' + part + ':' + file;
+  }
+
+  function readStoredPosition(part) {
+    try {
+      var raw = localStorage.getItem(storageKeyOf(part));
+      var value = raw ? JSON.parse(raw) : null;
+      if (!value || typeof value.left !== 'number' || typeof value.top !== 'number') return null;
+      return value;
+    } catch (_) { return null; }
+  }
+
+  function clampPosition(left, top, el) {
+    var width = el.offsetWidth || 48;
+    var height = el.offsetHeight || 44;
+    return {
+      left: Math.max(8, Math.min(Math.max(8, window.innerWidth - width - 8), left)),
+      top: Math.max(8, Math.min(Math.max(8, window.innerHeight - height - 8), top)),
+    };
+  }
+
+  function applyPosition(el, pos) {
+    if (!pos) return;
+    var next = clampPosition(pos.left, pos.top, el);
+    el.style.left = next.left + 'px';
+    el.style.top = next.top + 'px';
+    el.style.bottom = 'auto';
+  }
+
+  function makeMovable(el, part) {
+    var saved = readStoredPosition(part);
+    if (saved) requestAnimationFrame(function () { applyPosition(el, saved); });
+    var drag = null;
+    var moved = false;
+    var suppressClick = false;
+    el.title = '拖动可移动位置';
+    el.addEventListener('pointerdown', function (event) {
+      if (event.button !== undefined && event.button !== 0) return;
+      var rect = el.getBoundingClientRect();
+      drag = { startX: event.clientX, startY: event.clientY, left: rect.left, top: rect.top };
+      moved = false;
+      el.classList.add('pa-dragging');
+      try { el.setPointerCapture(event.pointerId); } catch (_) {}
+    });
+    el.addEventListener('pointermove', function (event) {
+      if (!drag) return;
+      var dx = event.clientX - drag.startX;
+      var dy = event.clientY - drag.startY;
+      if (!moved && Math.abs(dx) + Math.abs(dy) < 4) return;
+      moved = true;
+      event.preventDefault();
+      var next = clampPosition(drag.left + dx, drag.top + dy, el);
+      el.style.left = next.left + 'px';
+      el.style.top = next.top + 'px';
+      el.style.bottom = 'auto';
+    });
+    function finish(event) {
+      if (!drag) return;
+      try { el.releasePointerCapture(event.pointerId); } catch (_) {}
+      if (moved) {
+        try { localStorage.setItem(storageKeyOf(part), JSON.stringify({ left: parseInt(el.style.left, 10) || 0, top: parseInt(el.style.top, 10) || 0 })); } catch (_) {}
+        suppressClick = true;
+        setTimeout(function () { suppressClick = false; }, 0);
+      }
+      drag = null;
+      el.classList.remove('pa-dragging');
+    }
+    el.addEventListener('pointerup', finish);
+    el.addEventListener('pointercancel', finish);
+    el.addEventListener('click', function (event) {
+      if (!suppressClick) return;
+      event.preventDefault();
+      event.stopPropagation();
+      suppressClick = false;
+    }, true);
+    window.addEventListener('resize', function () {
+      if (el.style.left || el.style.top) applyPosition(el, { left: parseInt(el.style.left, 10) || 0, top: parseInt(el.style.top, 10) || 0 });
+    });
+  }
+
   function mount() {
     var btn = document.createElement('button');
-    btn.type = 'button'; btn.className = 'pa-btn'; btn.textContent = '批注';
+    btn.type = 'button'; btn.className = 'pa-btn';
+    var btnLabel = document.createElement('span'); btnLabel.className = 'pa-label'; btnLabel.textContent = '批注';
+    btn.appendChild(btnLabel);
     btn.addEventListener('click', function (e) { e.stopPropagation(); setMode(!annotationMode); });
     document.body.appendChild(btn);
     var submit = document.createElement('button');
@@ -215,7 +300,9 @@
     document.body.appendChild(submit);
     countEl = document.createElement('span');
     countEl.className = 'pa-count'; countEl.textContent = '0';
-    document.body.appendChild(countEl);
+    btn.appendChild(countEl);
+    makeMovable(btn, 'button');
+    makeMovable(submit, 'submit');
     loadCount();
   }
 
