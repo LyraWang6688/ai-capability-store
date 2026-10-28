@@ -504,6 +504,7 @@ export function apply(ctx) {
       try {
         ctx.subprocess.spawn({
           argv: ['open', '-na', 'Google Chrome', '--args', '--new-window', previewUrl],
+          cwd: process.cwd(),
           stdio: { stdout: { maxBytes: 4096 }, stderr: { maxBytes: 4096 } },
           graceMs: 5000,
         })
@@ -513,7 +514,7 @@ export function apply(ctx) {
       if (config.split !== false) {
         setTimeout(() => {
           try {
-            ctx.subprocess.spawn({ argv: ['hs', '-c', '_G.splitDSHChrome()'], stdio: { stdout: { maxBytes: 4096 }, stderr: { maxBytes: 4096 } }, graceMs: 3000 })
+            ctx.subprocess.spawn({ argv: ['hs', '-c', '_G.splitDSHChrome()'], cwd: process.cwd(), stdio: { stdout: { maxBytes: 4096 }, stderr: { maxBytes: 4096 } }, graceMs: 3000 })
           } catch { /* Hammerspoon optional */ }
         }, 1200)
       }
