@@ -323,3 +323,18 @@ capabilities:
     permissions: "需要本机 ai-memory 服务在 127.0.0.1:49374 运行且已启用 auth；只调用 memory_query / memory_read_page / memory_status（只读），不写任何记忆页、不改任何桶。Host 路由走 DSH 连接鉴权；客户端只读，不读其它插件 DOM、不改 document.body。"
     commerce: {charge: free}
     notes: "自研、Store-managed。定位：ai-memory 按 workspace/project 分桶，而 hooks（cwd→git remote）、MCP（--no-session-id→default/memories）、其它 harness（目录名）三处推导口径不同，同一仓库的数据会落进不同桶且彼此查不到；本插件把「当前桶」摆在面板顶部，并列出所有桶的页数，让错桶可见而不是静默吞掉查询。实现取舍：不用 ctx.sidebarRight——第三方拿不到（plugin/dsh/README.md §4.1，4 种方式全失败，dsh.client.inject 会让 App 起不来），改用已稳定的 shell.overlay + position:fixed 自绘右侧停靠面板。坐标推导与 hooks 口径完全一致，已用 8 个样本验证：git@github.com:Acme/WidgetR.git / https://…/WidgetR.git / https://…/WidgetR / ssh://git@…/WidgetR.git 四种写法均得 acme-widgetr；真实目录 Agent Context Architecture→lyrawang6688-agent-context-architecture、ai-capability-store→lyrawang6688-ai-capability-store（git_remote），无 remote 的目录回落目录名。Host 半已用 mock 上下文对真实服务实测：/projects 返回 7 个桶；/resolve 正确推导；/rpc memory_status 返回 resolved_by=explicit；/rpc memory_query 返回 hits=0 + raw_hits=2（raw 兜底可用）。未覆盖：Client 半尚未在真实 DSH 界面加载（未装进任何 profile），因此 status 取 limited 而非 available；面板内不做体检式后台任务，全部请求按需触发。"
+
+  screenshot:
+    name: screenshot
+    hosting: store-managed
+    provider: lyrawang
+    type: plugin
+    status: limited
+    provider_path: external-capabilities/providers/lyrawang/README.md
+    version: 0.1.0
+    implementation_path: external-capabilities/plugin/dsh/screenshot
+    auth: "无凭据入仓，不需要任何账号或 API Key。截图只在本机产生与消费，不出本机"
+    capabilities: "DSH 输入框左侧「＋ 截图」按钮：调用 macOS `screencapture -i` 框选区域（空格切换为选窗口，Esc 取消），把 PNG 作为图片附件直接放进草稿，随后照常发送。Host 半注册同源路由 `POST /plugins/screenshot/capture`（DSH 连接鉴权、并发互斥返回 409、用户取消返回 204、临时文件即删、180s 超时）"
+    permissions: "仅 macOS 桌面端。Host 进程需要系统「屏幕录制」权限（DSH Desktop 0.2.1-rc.3 上实测可直接调用 screencapture）。不读取剪贴板、不联网、不留长期文件；只在 mkdtemp 目录写一次临时 PNG 并立即删除"
+    commerce: {charge: free}
+    notes: "自研、Store-managed。定位：豆包工作 / Codex 的「应用截图」是在输入框内直接得到附件；插件层拿不到草稿附件的注册表（attachment id 与上传状态由 composer 客户端自己持有），因此不走 ctx.fileUpload.upload + inputActions.addAttachments 自拼，而是把 PNG 做成 File 后合成一次 ClipboardEvent('paste') 交给 composer 自己的 intake 路径——与用户手动 ⌘V 完全同一条代码；找不到编辑器时退回 input[type=file] + change 事件。Host 侧实测：从 DSH 宿主子进程直接执行 /usr/sbin/screencapture -x 成功产出 2560×1656 PNG，屏幕录制权限已具备。端到端实测（2026-10-28，DSH Desktop 0.2.1-rc.3，macOS 27.0.1）：安装后 client 半在 conversation.input.left 注册为 screenshot（order=4，紧邻 image-ocr），按钮渲染正常；模拟点击按钮 + 拖选区域后图片作为附件出现在草稿（缩略图可见、可随消息发送）；无鉴权请求 Host 路由返回 401，证明路由与连接鉴权均按预期注册。status 取 limited：仅覆盖 macOS 桌面端，且合成 paste 依赖 composer 当前实现（未来结构变化会退回文件 input 通道）。"
