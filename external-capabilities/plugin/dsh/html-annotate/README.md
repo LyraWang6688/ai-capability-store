@@ -20,7 +20,7 @@
 
 ## 使用
 
-插件**不在输入框放按钮**，也不在启动时自动弹窗。批注面板是非模态的：可以最小化后继续在输入框对话，批注 iframe 保持挂载，不会丢未保存内容。页面源码修改后，点面板顶部「刷新」重新加载预览。项目配置 `direct: true` 时，面板直接加载本地页面（不在 DSH 域名下代理），适用于带绝对路径和接口的实际应用本地预览。面板可拖动标题栏移动、拖右下角缩放，点「右半屏」可停靠到右侧一半。
+插件**不再提供 DSH 批注面板**；`open_html_annotate` 总是用 Google Chrome 打开标注页。页面内可连续保存多条批注，最后点「提交批注」一次性发送。
 
 用户对 Agent 说“看一下这个页面”后，Agent 调用 `open_html_annotate` 工具；插件优先从工具上下文取当前会话，只有该会话会弹出，不再使用全局广播。收到请求后启动/连接本地预览并弹出批注面板。随后：
 
@@ -143,7 +143,6 @@ dsh plugin --profile <profile> add /absolute/path/to/html-annotate
 ```json
 {
   "previewUrl": "http://127.0.0.1:3000/workbench/sales-delivery.html",
-  "chrome": true,
   "split": true
 }
 ```
@@ -158,6 +157,11 @@ dsh plugin --profile <profile> add /absolute/path/to/html-annotate
 边界：
 
 - macOS + Google Chrome；分屏依赖本机 Hammerspoon 模块（没有则只打开 Chrome，不报错）；
-- `chrome: false` 或 `browser: "panel"` 保留原 DSH 面板模式；
+- 没有 DSH 面板兜底，所有标注统一走 Google Chrome；
 - Chrome 提交必须走插件预览页（`/plugins/html-annotate/preview?...`），不能直接打开原始 HTML；
 - 最终会话注入仍依赖 DSH 客户端轮询；客户端需在 0.5.0 重新加载。
+
+
+## 0.6.0：Chrome only
+
+面板模式已删除，不再有 `browser: "panel"` 兜底。DSH 客户端只保留一个零 UI 的 pending 轮询器，把 Chrome 提交的批注注入当前会话。

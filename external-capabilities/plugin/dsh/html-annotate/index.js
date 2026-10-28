@@ -161,8 +161,6 @@ async function readPreviewConfig(sessionId) {
           previewUrl,
           autoOpen: data.autoOpen === true,
           previewCommand: data.previewCommand && typeof data.previewCommand === 'object' ? data.previewCommand : null,
-          direct: data.direct === true,
-          chrome: data.chrome === true,
           split: data.split !== false,
           source: file,
         }
@@ -174,7 +172,6 @@ async function readPreviewConfig(sessionId) {
 
 const previewProcesses = new Map()
 const previewTokens = new Map()
-const pendingBySession = new Map()
 // Chrome 顶层批注页没有 DSH 父窗口；这些提交由 client 轮询后注入当前会话。
 const pendingAnnotationsBySession = new Map()
 
@@ -345,30 +342,6 @@ export function apply(ctx) {
     },
   }), 'html-annotate: local preview')
 
-  ctx.effect(() => ctx.webServer.register({
-    kind: 'exact',
-    path: `${ROUTE}/pending`,
-    handler: async (req, res) => {
-      const url = new URL(req.url || '/', 'http://127.0.0.1')
-      const since = Number(url.searchParams.get('since') || 0)
-      const sessionId = String(url.searchParams.get('sessionId') || '')
-      const at = sessionId ? (pendingBySession.get(sessionId) || 0) : 0
-      return json(res, 200, { ok: true, open: at > since, at })
-    },
-  }), 'html-annotate: pending')
-
-  ctx.effect(() => ctx.webServer.register({
-    kind: 'exact',
-    path: `${ROUTE}/pending/ack`,
-    handler: async (req, res) => {
-      try {
-        const body = JSON.parse((await readBody(req)) || '{}')
-        const sessionId = String(body.sessionId || '')
-        if (sessionId) pendingBySession.delete(sessionId)
-      } catch { /* ignore malformed ack */ }
-      return json(res, 200, { ok: true })
-    },
-  }), 'html-annotate: pending ack')
 
   ctx.effect(() => ctx.webServer.register({
     kind: 'exact',
@@ -504,13 +477,12 @@ export function apply(ctx) {
 
   ctx.effect(() => ctx.tools.register({
     name: 'open_html_annotate',
-    description: 'Open the HTML annotation panel for the current project preview. Call this when the user asks to view or annotate a local preview page.',
+    description: 'Open a local HTML page in Google Chrome for annotation. Always launches Chrome; there is no DSH panel fallback. Call this when the user asks to annotate a page.',
     parameters: {
       type: 'object',
       properties: {
         sessionId: { type: 'string', description: 'Optional target DSH session id. Defaults to the current session from the tool context.' },
         url: { type: 'string', description: 'Optional local preview URL. Defaults to the project .dsh/html-annotate.json previewUrl.' },
-        browser: { type: 'string', enum: ['chrome', 'panel'], description: 'chrome = launch Google Chrome and split windows; panel = legacy DSH panel.' },
       },
       additionalProperties: false,
     },
@@ -523,34 +495,29 @@ export function apply(ctx) {
       if (!sessionId) throw new Error('open_html_annotate requires a session id (tool context had none)')
       const config = await readPreviewConfig(sessionId)
       const pageUrl = String((args && args.url) || config.previewUrl || '').trim()
-      const useChrome = String((args && args.browser) || (config.chrome ? 'chrome' : 'panel')) === 'chrome'
-      if (useChrome) {
-        if (!isLocalPreviewUrl(pageUrl)) throw new Error('open_html_annotate: chrome mode needs a local preview URL')
-        await ensurePreview(ctx, sessionId, pageUrl, config)
-        const token = Math.random().toString(36).slice(2) + Date.now().toString(36)
-        previewTokens.set(token, { pageUrl, sessionId, createdAt: Date.now() })
-        const origin = String(process.env.DSH_WEB_URL || 'http://127.0.0.1:64660').replace(/\/$/, '')
-        const previewUrl = `${origin}${ROUTE}/preview?pid=${encodeURIComponent(token)}`
-        try {
-          ctx.subprocess.spawn({
-            argv: ['open', '-na', 'Google Chrome', '--args', '--new-window', previewUrl],
-            stdio: { stdout: { maxBytes: 4096 }, stderr: { maxBytes: 4096 } },
-            graceMs: 5000,
-          })
-        } catch (error) {
-          throw new Error('打开 Google Chrome 失败：' + error.message)
-        }
-        if (config.split !== false) {
-          setTimeout(() => {
-            try {
-              ctx.subprocess.spawn({ argv: ['hs', '-c', '_G.splitDSHChrome()'], stdio: { stdout: { maxBytes: 4096 }, stderr: { maxBytes: 4096 } }, graceMs: 3000 })
-            } catch { /* Hammerspoon optional */ }
-          }, 1200)
-        }
-        return { ok: true, mode: 'chrome', message: '已在 Google Chrome 打开标注页，并请求左右分屏', previewUrl, sessionId }
+      if (!isLocalPreviewUrl(pageUrl)) throw new Error('open_html_annotate: needs a local preview URL')
+      await ensurePreview(ctx, sessionId, pageUrl, config)
+      const token = Math.random().toString(36).slice(2) + Date.now().toString(36)
+      previewTokens.set(token, { pageUrl, sessionId, createdAt: Date.now() })
+      const origin = String(process.env.DSH_WEB_URL || 'http://127.0.0.1:64660').replace(/\/$/, '')
+      const previewUrl = `${origin}${ROUTE}/preview?pid=${encodeURIComponent(token)}`
+      try {
+        ctx.subprocess.spawn({
+          argv: ['open', '-na', 'Google Chrome', '--args', '--new-window', previewUrl],
+          stdio: { stdout: { maxBytes: 4096 }, stderr: { maxBytes: 4096 } },
+          graceMs: 5000,
+        })
+      } catch (error) {
+        throw new Error('打开 Google Chrome 失败：' + error.message)
       }
-      pendingBySession.set(sessionId, Date.now())
-      return { ok: true, mode: 'panel', message: 'HTML annotation panel requested', sessionId }
+      if (config.split !== false) {
+        setTimeout(() => {
+          try {
+            ctx.subprocess.spawn({ argv: ['hs', '-c', '_G.splitDSHChrome()'], stdio: { stdout: { maxBytes: 4096 }, stderr: { maxBytes: 4096 } }, graceMs: 3000 })
+          } catch { /* Hammerspoon optional */ }
+        }, 1200)
+      }
+      return { ok: true, mode: 'chrome', message: '已在 Google Chrome 打开标注页，并请求左右分屏', previewUrl, sessionId }
     },
   }), 'html-annotate: open tool')
 
