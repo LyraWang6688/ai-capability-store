@@ -1,0 +1,19 @@
+{
+  "type": "layered",
+  "title": "Agent Harness 简化架构",
+  "top": { "icon": "user", "title": "用户任务", "sub": "目标、约束、验收标准" },
+  "group": {
+    "icon": "brain",
+    "title": "大语言模型（LLM）",
+    "label": "Harness 运行与控制层",
+    "cards": [
+      { "icon": "book", "en": "Context", "cn": "上下文与记忆" },
+      { "icon": "tools", "en": "Tools", "cn": "工具与执行环境" },
+      { "icon": "loop", "en": "Loop", "cn": "循环与任务编排" },
+      { "icon": "shield", "en": "Guardrails", "cn": "权限与安全边界" },
+      { "icon": "clipboard", "en": "Evaluation", "cn": "测试与结果验证" },
+      { "icon": "database", "en": "State", "cn": "状态与进度持久化" }
+    ]
+  },
+  "bottom": { "icon": "check", "title": "可验证的任务结果", "sub": "代码、报告、数据或业务动作" }
+}

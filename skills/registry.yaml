@@ -216,6 +216,27 @@ skills:
       deterministic standalone HTML/SVG with playback controls or looping GIF.
       New renderer uses Python stdlib for HTML; GIF adds Pillow and a CJK font.
       Legacy bar/line/flow GIF inputs remain compatible. No static-image output.
+  structured-diagram:
+    name: structured-diagram
+    path: skills/structured-diagram
+    scope: shared
+    status: testing
+    version: 0.1.0
+    updated: "2026-10-28"
+    commerce: {charge: free}
+    notes: >
+      Static structure diagrams — layered composition (task → grouped modules →
+      result) and flow overview (ordered steps + loopback) — rendered to PNG, SVG or
+      standalone HTML by a bundled Python renderer that validates the JSON spec and
+      refuses to render an invalid one. No host plugin, no browser, no network.
+      Dynamic process explanations belong to animated-chart-gif; the two
+      descriptions route to each other explicitly.
+      Single source moved into the Store from ~/.agents/skills/structured-diagram
+      (formerly the DSH plugin `diagram-card` / dsh-diagram code blocks, retired
+      2026-10-28); the local Agent Skill entry is now a symlink to this directory.
+      `testing`: Gate 0 passes and the renderer was exercised on the bundled
+      examples; trigger rates and delivery on a host other than DSH are not
+      evaluated yet.
   beijing-theater-calendar:
     name: beijing-theater-calendar
     path: skills/beijing-theater-calendar

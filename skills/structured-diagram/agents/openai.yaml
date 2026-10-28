@@ -1,0 +1,4 @@
+interface:
+  display_name: "结构图解"
+  short_description: "按需生成分层架构与流程概览，内置 PNG、SVG 和 HTML 渲染，无需宿主插件"
+  default_prompt: "Use $structured-diagram to explain these relationships as a layered or flow diagram and render a readable PNG."
