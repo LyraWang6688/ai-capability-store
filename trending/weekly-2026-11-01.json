@@ -1,0 +1,1104 @@
+{
+  "generated_at": "2026-11-01T13:01:07+00:00",
+  "automation": "github-trending-weekly",
+  "window": {
+    "days": 7,
+    "from": "2026-10-26",
+    "to": "2026-11-01"
+  },
+  "days_with_data": 7,
+  "days_missing": [],
+  "trustworthy": true,
+  "note": "window complete",
+  "topics_persistent": [
+    {
+      "topic": "claude-code",
+      "days_present": 7,
+      "persistence": 1.0,
+      "total_repo_sightings": 52,
+      "verdict": "persistent"
+    },
+    {
+      "topic": "ai-agents",
+      "days_present": 7,
+      "persistence": 1.0,
+      "total_repo_sightings": 46,
+      "verdict": "persistent"
+    },
+    {
+      "topic": "codex",
+      "days_present": 7,
+      "persistence": 1.0,
+      "total_repo_sightings": 34,
+      "verdict": "persistent"
+    },
+    {
+      "topic": "ai",
+      "days_present": 7,
+      "persistence": 1.0,
+      "total_repo_sightings": 29,
+      "verdict": "persistent"
+    },
+    {
+      "topic": "agent-skills",
+      "days_present": 7,
+      "persistence": 1.0,
+      "total_repo_sightings": 29,
+      "verdict": "persistent"
+    },
+    {
+      "topic": "typescript",
+      "days_present": 7,
+      "persistence": 1.0,
+      "total_repo_sightings": 25,
+      "verdict": "persistent"
+    },
+    {
+      "topic": "claude",
+      "days_present": 7,
+      "persistence": 1.0,
+      "total_repo_sightings": 20,
+      "verdict": "persistent"
+    },
+    {
+      "topic": "agent",
+      "days_present": 7,
+      "persistence": 1.0,
+      "total_repo_sightings": 19,
+      "verdict": "persistent"
+    },
+    {
+      "topic": "llm",
+      "days_present": 6,
+      "persistence": 0.86,
+      "total_repo_sightings": 22,
+      "verdict": "persistent"
+    },
+    {
+      "topic": "mcp",
+      "days_present": 6,
+      "persistence": 0.86,
+      "total_repo_sightings": 21,
+      "verdict": "persistent"
+    },
+    {
+      "topic": "agentic-ai",
+      "days_present": 6,
+      "persistence": 0.86,
+      "total_repo_sightings": 14,
+      "verdict": "persistent"
+    },
+    {
+      "topic": "cursor",
+      "days_present": 6,
+      "persistence": 0.86,
+      "total_repo_sightings": 14,
+      "verdict": "persistent"
+    },
+    {
+      "topic": "rag",
+      "days_present": 6,
+      "persistence": 0.86,
+      "total_repo_sightings": 12,
+      "verdict": "persistent"
+    },
+    {
+      "topic": "skills",
+      "days_present": 5,
+      "persistence": 0.71,
+      "total_repo_sightings": 18,
+      "verdict": "persistent"
+    },
+    {
+      "topic": "anthropic",
+      "days_present": 5,
+      "persistence": 0.71,
+      "total_repo_sightings": 12,
+      "verdict": "persistent"
+    },
+    {
+      "topic": "open-source",
+      "days_present": 5,
+      "persistence": 0.71,
+      "total_repo_sightings": 12,
+      "verdict": "persistent"
+    },
+    {
+      "topic": "ai-agent",
+      "days_present": 5,
+      "persistence": 0.71,
+      "total_repo_sightings": 11,
+      "verdict": "persistent"
+    },
+    {
+      "topic": "android",
+      "days_present": 5,
+      "persistence": 0.71,
+      "total_repo_sightings": 10,
+      "verdict": "persistent"
+    },
+    {
+      "topic": "agentic-workflow",
+      "days_present": 5,
+      "persistence": 0.71,
+      "total_repo_sightings": 10,
+      "verdict": "persistent"
+    }
+  ],
+  "topics_emerging": [
+    {
+      "topic": "self-hosted",
+      "days_present": 2,
+      "persistence": 0.29,
+      "total_repo_sightings": 4,
+      "verdict": "emerging"
+    },
+    {
+      "topic": "browser-automation",
+      "days_present": 2,
+      "persistence": 0.29,
+      "total_repo_sightings": 4,
+      "verdict": "emerging"
+    },
+    {
+      "topic": "artificial-intelligence",
+      "days_present": 1,
+      "persistence": 0.14,
+      "total_repo_sightings": 2,
+      "verdict": "emerging"
+    },
+    {
+      "topic": "claude-code-plugin",
+      "days_present": 1,
+      "persistence": 0.14,
+      "total_repo_sightings": 2,
+      "verdict": "emerging"
+    },
+    {
+      "topic": "gamedev",
+      "days_present": 1,
+      "persistence": 0.14,
+      "total_repo_sightings": 2,
+      "verdict": "emerging"
+    },
+    {
+      "topic": "accessibility",
+      "days_present": 1,
+      "persistence": 0.14,
+      "total_repo_sightings": 2,
+      "verdict": "emerging"
+    },
+    {
+      "topic": "speech-to-text",
+      "days_present": 1,
+      "persistence": 0.14,
+      "total_repo_sightings": 2,
+      "verdict": "emerging"
+    },
+    {
+      "topic": "machine-learning",
+      "days_present": 1,
+      "persistence": 0.14,
+      "total_repo_sightings": 2,
+      "verdict": "emerging"
+    }
+  ],
+  "topics_all": [
+    {
+      "topic": "claude-code",
+      "days_present": 7,
+      "persistence": 1.0,
+      "total_repo_sightings": 52,
+      "verdict": "persistent"
+    },
+    {
+      "topic": "ai-agents",
+      "days_present": 7,
+      "persistence": 1.0,
+      "total_repo_sightings": 46,
+      "verdict": "persistent"
+    },
+    {
+      "topic": "codex",
+      "days_present": 7,
+      "persistence": 1.0,
+      "total_repo_sightings": 34,
+      "verdict": "persistent"
+    },
+    {
+      "topic": "ai",
+      "days_present": 7,
+      "persistence": 1.0,
+      "total_repo_sightings": 29,
+      "verdict": "persistent"
+    },
+    {
+      "topic": "agent-skills",
+      "days_present": 7,
+      "persistence": 1.0,
+      "total_repo_sightings": 29,
+      "verdict": "persistent"
+    },
+    {
+      "topic": "typescript",
+      "days_present": 7,
+      "persistence": 1.0,
+      "total_repo_sightings": 25,
+      "verdict": "persistent"
+    },
+    {
+      "topic": "claude",
+      "days_present": 7,
+      "persistence": 1.0,
+      "total_repo_sightings": 20,
+      "verdict": "persistent"
+    },
+    {
+      "topic": "agent",
+      "days_present": 7,
+      "persistence": 1.0,
+      "total_repo_sightings": 19,
+      "verdict": "persistent"
+    },
+    {
+      "topic": "llm",
+      "days_present": 6,
+      "persistence": 0.86,
+      "total_repo_sightings": 22,
+      "verdict": "persistent"
+    },
+    {
+      "topic": "mcp",
+      "days_present": 6,
+      "persistence": 0.86,
+      "total_repo_sightings": 21,
+      "verdict": "persistent"
+    },
+    {
+      "topic": "agentic-ai",
+      "days_present": 6,
+      "persistence": 0.86,
+      "total_repo_sightings": 14,
+      "verdict": "persistent"
+    },
+    {
+      "topic": "cursor",
+      "days_present": 6,
+      "persistence": 0.86,
+      "total_repo_sightings": 14,
+      "verdict": "persistent"
+    },
+    {
+      "topic": "rag",
+      "days_present": 6,
+      "persistence": 0.86,
+      "total_repo_sightings": 12,
+      "verdict": "persistent"
+    },
+    {
+      "topic": "skills",
+      "days_present": 5,
+      "persistence": 0.71,
+      "total_repo_sightings": 18,
+      "verdict": "persistent"
+    },
+    {
+      "topic": "anthropic",
+      "days_present": 5,
+      "persistence": 0.71,
+      "total_repo_sightings": 12,
+      "verdict": "persistent"
+    },
+    {
+      "topic": "open-source",
+      "days_present": 5,
+      "persistence": 0.71,
+      "total_repo_sightings": 12,
+      "verdict": "persistent"
+    },
+    {
+      "topic": "ai-agent",
+      "days_present": 5,
+      "persistence": 0.71,
+      "total_repo_sightings": 11,
+      "verdict": "persistent"
+    },
+    {
+      "topic": "android",
+      "days_present": 5,
+      "persistence": 0.71,
+      "total_repo_sightings": 10,
+      "verdict": "persistent"
+    },
+    {
+      "topic": "agentic-workflow",
+      "days_present": 5,
+      "persistence": 0.71,
+      "total_repo_sightings": 10,
+      "verdict": "persistent"
+    },
+    {
+      "topic": "electron",
+      "days_present": 4,
+      "persistence": 0.57,
+      "total_repo_sightings": 8,
+      "verdict": "intermittent"
+    },
+    {
+      "topic": "multi-agent-systems",
+      "days_present": 4,
+      "persistence": 0.57,
+      "total_repo_sightings": 8,
+      "verdict": "intermittent"
+    },
+    {
+      "topic": "chinese",
+      "days_present": 4,
+      "persistence": 0.57,
+      "total_repo_sightings": 8,
+      "verdict": "intermittent"
+    },
+    {
+      "topic": "anti-slop",
+      "days_present": 4,
+      "persistence": 0.57,
+      "total_repo_sightings": 8,
+      "verdict": "intermittent"
+    },
+    {
+      "topic": "macos",
+      "days_present": 3,
+      "persistence": 0.43,
+      "total_repo_sightings": 8,
+      "verdict": "intermittent"
+    },
+    {
+      "topic": "ai-assistant",
+      "days_present": 3,
+      "persistence": 0.43,
+      "total_repo_sightings": 6,
+      "verdict": "intermittent"
+    }
+  ],
+  "repos_sustained": [
+    {
+      "repo": "pbakaus/impeccable",
+      "days_seen": 7,
+      "first_seen": "2026-10-26",
+      "last_seen": "2026-11-01",
+      "stars_now": 98805,
+      "star_delta": 10364,
+      "peak_daily_gain": 2881,
+      "topics": [
+        "agent-skills",
+        "ai",
+        "anti-slop",
+        "design",
+        "slop"
+      ],
+      "desc": "The design language that makes your AI harness better at design.",
+      "class": "resident"
+    },
+    {
+      "repo": "cloudflare/security-audit-skill",
+      "days_seen": 7,
+      "first_seen": "2026-10-26",
+      "last_seen": "2026-11-01",
+      "stars_now": 55849,
+      "star_delta": 8035,
+      "peak_daily_gain": 0,
+      "topics": [],
+      "desc": "A coding-agent skill for multi-phase security audits with independently verified, machine-readable findings",
+      "class": "resident"
+    },
+    {
+      "repo": "TauricResearch/TradingAgents",
+      "days_seen": 7,
+      "first_seen": "2026-10-26",
+      "last_seen": "2026-11-01",
+      "stars_now": 119268,
+      "star_delta": 3993,
+      "peak_daily_gain": 1376,
+      "topics": [
+        "agent",
+        "finance",
+        "llm",
+        "multiagent",
+        "trading"
+      ],
+      "desc": "TradingAgents: Multi-Agents LLM Financial Trading Framework",
+      "class": "resident"
+    },
+    {
+      "repo": "multica-ai/andrej-karpathy-skills",
+      "days_seen": 7,
+      "first_seen": "2026-10-26",
+      "last_seen": "2026-11-01",
+      "stars_now": 227732,
+      "star_delta": 3596,
+      "peak_daily_gain": 457,
+      "topics": [],
+      "desc": "A single CLAUDE.md file to improve Claude Code behavior, derived from Andrej Karpathy's observations on LLM coding pitfalls.",
+      "class": "resident"
+    },
+    {
+      "repo": "AgriciDaniel/claude-seo",
+      "days_seen": 7,
+      "first_seen": "2026-10-26",
+      "last_seen": "2026-11-01",
+      "stars_now": 25267,
+      "star_delta": 3542,
+      "peak_daily_gain": 0,
+      "topics": [
+        "ai",
+        "ai-seo",
+        "claude-code",
+        "claude-code-skill",
+        "marketing-automation",
+        "open-source",
+        "seo"
+      ],
+      "desc": "Universal SEO skill for Claude Code. 26 sub-skills + 19 sub-agents covering technical SEO, E-E-A-T, schema, GEO/AEO, agent readiness (Lighthouse Agentic Browsin",
+      "class": "resident"
+    },
+    {
+      "repo": "JetBrains/thinkrail",
+      "days_seen": 6,
+      "first_seen": "2026-10-26",
+      "last_seen": "2026-11-01",
+      "stars_now": 6879,
+      "star_delta": 4588,
+      "peak_daily_gain": 1173,
+      "topics": [
+        "agent",
+        "agent-skills",
+        "agentic-ai",
+        "agentic-workflow",
+        "ai-coding",
+        "ai-tools",
+        "pi-agent",
+        "pi-agent-extension",
+        "spec-driven",
+        "spec-driven-coding",
+        "spec-driven-development",
+        "vibe-coding",
+        "vibecoding"
+      ],
+      "desc": "Vibe code with pi in a lightweight, real IDE that customises itself around the way you work — The Vibe You Need",
+      "class": "resident"
+    },
+    {
+      "repo": "obra/superpowers",
+      "days_seen": 6,
+      "first_seen": "2026-10-27",
+      "last_seen": "2026-11-01",
+      "stars_now": 310335,
+      "star_delta": 4428,
+      "peak_daily_gain": 1255,
+      "topics": [
+        "ai",
+        "brainstorming",
+        "coding",
+        "obra",
+        "sdlc",
+        "skills",
+        "subagent-driven-development",
+        "superpowers"
+      ],
+      "desc": "An agentic skills framework & software development methodology that works.",
+      "class": "resident"
+    },
+    {
+      "repo": "designfuchen/word-atlas",
+      "days_seen": 6,
+      "first_seen": "2026-10-26",
+      "last_seen": "2026-10-31",
+      "stars_now": 3476,
+      "star_delta": 2224,
+      "peak_daily_gain": 0,
+      "topics": [
+        "chinese",
+        "dataset",
+        "english-learning",
+        "flashcards",
+        "fsrs",
+        "ielts",
+        "language-learning",
+        "pwa",
+        "react",
+        "spaced-repetition",
+        "vocabulary",
+        "webgl"
+      ],
+      "desc": "词光 · 一词一画，点亮雅思 — 7,298 IELTS words, each with an original illustration, UK/US audio, 14,596 example sentences and FSRS review. Free, open source, no login. Data",
+      "class": "resident"
+    },
+    {
+      "repo": "andyhuo520/digital-human-koubo",
+      "days_seen": 6,
+      "first_seen": "2026-10-27",
+      "last_seen": "2026-11-01",
+      "stars_now": 1611,
+      "star_delta": 657,
+      "peak_daily_gain": 0,
+      "topics": [],
+      "desc": "AI digital-human talking-head videos from one photo: Renoise MCP generation + 5 editing styles + 48 creator-grade packaging components. Agent skill for Claude C",
+      "class": "resident"
+    },
+    {
+      "repo": "Nutlope/hallmark",
+      "days_seen": 5,
+      "first_seen": "2026-10-26",
+      "last_seen": "2026-11-01",
+      "stars_now": 44344,
+      "star_delta": 9287,
+      "peak_daily_gain": 2244,
+      "topics": [],
+      "desc": "Anti-AI-slop design skill for Claude Code, Cursor, and Codex.",
+      "class": "resident"
+    },
+    {
+      "repo": "togg53192-cmd/jailbreaks",
+      "days_seen": 5,
+      "first_seen": "2026-10-27",
+      "last_seen": "2026-11-01",
+      "stars_now": 12523,
+      "star_delta": 7663,
+      "peak_daily_gain": 2053,
+      "topics": [],
+      "desc": "LIST OF ALL MY JAILBREAKS",
+      "class": "resident"
+    },
+    {
+      "repo": "HKUDS/DeepTutor",
+      "days_seen": 5,
+      "first_seen": "2026-10-27",
+      "last_seen": "2026-10-31",
+      "stars_now": 52266,
+      "star_delta": 7420,
+      "peak_daily_gain": 2376,
+      "topics": [
+        "ai-agents",
+        "ai-tutor",
+        "clawbot",
+        "cli-tool",
+        "deepresearch",
+        "interactive-learning",
+        "learning",
+        "multi-agent-systems",
+        "rag"
+      ],
+      "desc": "DeepTutor: Lifelong Personalized Tutoring. https://deeptutor.info/.",
+      "class": "resident"
+    },
+    {
+      "repo": "pingdotgg/t3code",
+      "days_seen": 5,
+      "first_seen": "2026-10-26",
+      "last_seen": "2026-11-01",
+      "stars_now": 36546,
+      "star_delta": 6217,
+      "peak_daily_gain": 3100,
+      "topics": [],
+      "desc": "",
+      "class": "resident"
+    },
+    {
+      "repo": "affaan-m/ECC",
+      "days_seen": 5,
+      "first_seen": "2026-10-26",
+      "last_seen": "2026-11-01",
+      "stars_now": 294387,
+      "star_delta": 5158,
+      "peak_daily_gain": 896,
+      "topics": [
+        "ai-agents",
+        "anthropic",
+        "claude",
+        "claude-code",
+        "developer-tools",
+        "llm",
+        "mcp",
+        "productivity"
+      ],
+      "desc": "The agent harness performance optimization system. Skills, instincts, memory, security, and research-first development for Claude Code, Codex, Opencode, Cursor ",
+      "class": "resident"
+    },
+    {
+      "repo": "unclebob/ub-mode",
+      "days_seen": 5,
+      "first_seen": "2026-10-27",
+      "last_seen": "2026-10-31",
+      "stars_now": 5518,
+      "star_delta": 3966,
+      "peak_daily_gain": 0,
+      "topics": [],
+      "desc": "",
+      "class": "resident"
+    }
+  ],
+  "repos_climbing_by_stars": [
+    {
+      "repo": "pbakaus/impeccable",
+      "days_seen": 7,
+      "first_seen": "2026-10-26",
+      "last_seen": "2026-11-01",
+      "stars_now": 98805,
+      "star_delta": 10364,
+      "peak_daily_gain": 2881,
+      "topics": [
+        "agent-skills",
+        "ai",
+        "anti-slop",
+        "design",
+        "slop"
+      ],
+      "desc": "The design language that makes your AI harness better at design.",
+      "class": "resident"
+    },
+    {
+      "repo": "Nutlope/hallmark",
+      "days_seen": 5,
+      "first_seen": "2026-10-26",
+      "last_seen": "2026-11-01",
+      "stars_now": 44344,
+      "star_delta": 9287,
+      "peak_daily_gain": 2244,
+      "topics": [],
+      "desc": "Anti-AI-slop design skill for Claude Code, Cursor, and Codex.",
+      "class": "resident"
+    },
+    {
+      "repo": "cloudflare/security-audit-skill",
+      "days_seen": 7,
+      "first_seen": "2026-10-26",
+      "last_seen": "2026-11-01",
+      "stars_now": 55849,
+      "star_delta": 8035,
+      "peak_daily_gain": 0,
+      "topics": [],
+      "desc": "A coding-agent skill for multi-phase security audits with independently verified, machine-readable findings",
+      "class": "resident"
+    },
+    {
+      "repo": "togg53192-cmd/jailbreaks",
+      "days_seen": 5,
+      "first_seen": "2026-10-27",
+      "last_seen": "2026-11-01",
+      "stars_now": 12523,
+      "star_delta": 7663,
+      "peak_daily_gain": 2053,
+      "topics": [],
+      "desc": "LIST OF ALL MY JAILBREAKS",
+      "class": "resident"
+    },
+    {
+      "repo": "HKUDS/DeepTutor",
+      "days_seen": 5,
+      "first_seen": "2026-10-27",
+      "last_seen": "2026-10-31",
+      "stars_now": 52266,
+      "star_delta": 7420,
+      "peak_daily_gain": 2376,
+      "topics": [
+        "ai-agents",
+        "ai-tutor",
+        "clawbot",
+        "cli-tool",
+        "deepresearch",
+        "interactive-learning",
+        "learning",
+        "multi-agent-systems",
+        "rag"
+      ],
+      "desc": "DeepTutor: Lifelong Personalized Tutoring. https://deeptutor.info/.",
+      "class": "resident"
+    },
+    {
+      "repo": "pingdotgg/t3code",
+      "days_seen": 5,
+      "first_seen": "2026-10-26",
+      "last_seen": "2026-11-01",
+      "stars_now": 36546,
+      "star_delta": 6217,
+      "peak_daily_gain": 3100,
+      "topics": [],
+      "desc": "",
+      "class": "resident"
+    },
+    {
+      "repo": "affaan-m/ECC",
+      "days_seen": 5,
+      "first_seen": "2026-10-26",
+      "last_seen": "2026-11-01",
+      "stars_now": 294387,
+      "star_delta": 5158,
+      "peak_daily_gain": 896,
+      "topics": [
+        "ai-agents",
+        "anthropic",
+        "claude",
+        "claude-code",
+        "developer-tools",
+        "llm",
+        "mcp",
+        "productivity"
+      ],
+      "desc": "The agent harness performance optimization system. Skills, instincts, memory, security, and research-first development for Claude Code, Codex, Opencode, Cursor ",
+      "class": "resident"
+    },
+    {
+      "repo": "JetBrains/thinkrail",
+      "days_seen": 6,
+      "first_seen": "2026-10-26",
+      "last_seen": "2026-11-01",
+      "stars_now": 6879,
+      "star_delta": 4588,
+      "peak_daily_gain": 1173,
+      "topics": [
+        "agent",
+        "agent-skills",
+        "agentic-ai",
+        "agentic-workflow",
+        "ai-coding",
+        "ai-tools",
+        "pi-agent",
+        "pi-agent-extension",
+        "spec-driven",
+        "spec-driven-coding",
+        "spec-driven-development",
+        "vibe-coding",
+        "vibecoding"
+      ],
+      "desc": "Vibe code with pi in a lightweight, real IDE that customises itself around the way you work — The Vibe You Need",
+      "class": "resident"
+    },
+    {
+      "repo": "obra/superpowers",
+      "days_seen": 6,
+      "first_seen": "2026-10-27",
+      "last_seen": "2026-11-01",
+      "stars_now": 310335,
+      "star_delta": 4428,
+      "peak_daily_gain": 1255,
+      "topics": [
+        "ai",
+        "brainstorming",
+        "coding",
+        "obra",
+        "sdlc",
+        "skills",
+        "subagent-driven-development",
+        "superpowers"
+      ],
+      "desc": "An agentic skills framework & software development methodology that works.",
+      "class": "resident"
+    },
+    {
+      "repo": "thedotmack/claude-mem",
+      "days_seen": 4,
+      "first_seen": "2026-10-29",
+      "last_seen": "2026-11-01",
+      "stars_now": 108469,
+      "star_delta": 4263,
+      "peak_daily_gain": 1723,
+      "topics": [
+        "ai",
+        "ai-agents",
+        "ai-memory",
+        "anthropic",
+        "artificial-intelligence",
+        "chromadb",
+        "claude",
+        "claude-agent-sdk",
+        "claude-agents",
+        "claude-code",
+        "claude-code-plugin",
+        "claude-skills",
+        "embeddings",
+        "long-term-memory",
+        "mem0",
+        "memory-engine",
+        "openmemory",
+        "rag",
+        "sqlite",
+        "supermemory"
+      ],
+      "desc": "Persistent Context Across Sessions for Every Agent – Captures everything your agent does during sessions, compresses it with AI, and injects relevant context ba",
+      "class": "recurring"
+    },
+    {
+      "repo": "TauricResearch/TradingAgents",
+      "days_seen": 7,
+      "first_seen": "2026-10-26",
+      "last_seen": "2026-11-01",
+      "stars_now": 119268,
+      "star_delta": 3993,
+      "peak_daily_gain": 1376,
+      "topics": [
+        "agent",
+        "finance",
+        "llm",
+        "multiagent",
+        "trading"
+      ],
+      "desc": "TradingAgents: Multi-Agents LLM Financial Trading Framework",
+      "class": "resident"
+    },
+    {
+      "repo": "unclebob/ub-mode",
+      "days_seen": 5,
+      "first_seen": "2026-10-27",
+      "last_seen": "2026-10-31",
+      "stars_now": 5518,
+      "star_delta": 3966,
+      "peak_daily_gain": 0,
+      "topics": [],
+      "desc": "",
+      "class": "resident"
+    },
+    {
+      "repo": "anhao/ai-pose-gallery-zh",
+      "days_seen": 5,
+      "first_seen": "2026-10-28",
+      "last_seen": "2026-11-01",
+      "stars_now": 4990,
+      "star_delta": 3627,
+      "peak_daily_gain": 0,
+      "topics": [
+        "ai-art",
+        "chinese",
+        "cloudflare-pages",
+        "gallery",
+        "i18n",
+        "pose",
+        "reference-images",
+        "static-site"
+      ],
+      "desc": "中文版 AI 姿势参考图库 · 1439 组 / 2878 张图片 / 完整汉化 · 零依赖静态画廊",
+      "class": "resident"
+    },
+    {
+      "repo": "multica-ai/andrej-karpathy-skills",
+      "days_seen": 7,
+      "first_seen": "2026-10-26",
+      "last_seen": "2026-11-01",
+      "stars_now": 227732,
+      "star_delta": 3596,
+      "peak_daily_gain": 457,
+      "topics": [],
+      "desc": "A single CLAUDE.md file to improve Claude Code behavior, derived from Andrej Karpathy's observations on LLM coding pitfalls.",
+      "class": "resident"
+    },
+    {
+      "repo": "AgriciDaniel/claude-seo",
+      "days_seen": 7,
+      "first_seen": "2026-10-26",
+      "last_seen": "2026-11-01",
+      "stars_now": 25267,
+      "star_delta": 3542,
+      "peak_daily_gain": 0,
+      "topics": [
+        "ai",
+        "ai-seo",
+        "claude-code",
+        "claude-code-skill",
+        "marketing-automation",
+        "open-source",
+        "seo"
+      ],
+      "desc": "Universal SEO skill for Claude Code. 26 sub-skills + 19 sub-agents covering technical SEO, E-E-A-T, schema, GEO/AEO, agent readiness (Lighthouse Agentic Browsin",
+      "class": "resident"
+    }
+  ],
+  "repos_one_day_wonders": [
+    {
+      "repo": "hmjz100/LinkSwift",
+      "days_seen": 1,
+      "first_seen": "2026-10-28",
+      "last_seen": "2026-10-28",
+      "stars_now": 33773,
+      "star_delta": 0,
+      "peak_daily_gain": 3209,
+      "topics": [
+        "123pan",
+        "aliyun-drive",
+        "aliyunpan",
+        "aria2",
+        "baidu",
+        "baidu-netdisk",
+        "baidunetdisk",
+        "baidupan",
+        "baiduyun",
+        "guangya-netdisk",
+        "motrix",
+        "quark-netdisk",
+        "tampermonkey",
+        "tampermonkey-script",
+        "tampermonkey-userscript",
+        "tianyi-netdisk",
+        "uc-netdisk",
+        "userscript",
+        "xunlei-netdisk",
+        "yidong-netdisk"
+      ],
+      "desc": "一个基于 JavaScript 的网盘文件下载地址获取工具。基于【网盘直链下载助手】修改 ，支持 百度网盘 / 阿里云盘 / 中国移动云盘 / 天翼云盘 / 迅雷云盘 / 夸克网盘 / UC网盘 / 123云盘 八大网盘",
+      "class": "one-off"
+    },
+    {
+      "repo": "debpalash/VoiceStudio",
+      "days_seen": 1,
+      "first_seen": "2026-10-26",
+      "last_seen": "2026-10-26",
+      "stars_now": 87925,
+      "star_delta": 0,
+      "peak_daily_gain": 2292,
+      "topics": [
+        "ai",
+        "audiobook",
+        "cuda",
+        "dubbing",
+        "elevenlabs-alternative",
+        "huggingface",
+        "local-first",
+        "mlx",
+        "omnivoice-studio",
+        "speech-to-text",
+        "text-to-speech",
+        "transcription",
+        "translate",
+        "tts",
+        "voice-ai",
+        "voice-cloning",
+        "voice-generation",
+        "voicestudio",
+        "workflow"
+      ],
+      "desc": "VoiceStudio is the open-source, fully-local ElevenLabs alternative — voice cloning, voice design, video dubbing, dictation, transcription & audiobook creation i",
+      "class": "one-off"
+    },
+    {
+      "repo": "Orkas-AI/Orkas",
+      "days_seen": 1,
+      "first_seen": "2026-10-31",
+      "last_seen": "2026-10-31",
+      "stars_now": 5860,
+      "star_delta": 0,
+      "peak_daily_gain": 1004,
+      "topics": [
+        "agent-collaboration",
+        "agent-harness",
+        "agent-orchestration",
+        "agent-team",
+        "agent-workflow",
+        "ai-assistant",
+        "ai-automation",
+        "ai-employee",
+        "ai-productivity",
+        "ai-team",
+        "ai-workflow",
+        "autonomous-agents",
+        "claude-code-gui",
+        "claude-cowork",
+        "desktop-agent",
+        "local-first",
+        "multi-agent",
+        "multi-agent-system",
+        "self-evolving-agents",
+        "task-automation"
+      ],
+      "desc": "Orkas is an open-source (MIT), local-first AI team for your desktop: a Commander turns your goal into to-dos and coordinates 16 built-in specialist agents plus ",
+      "class": "one-off"
+    },
+    {
+      "repo": "pollen-robotics/microduck",
+      "days_seen": 1,
+      "first_seen": "2026-10-26",
+      "last_seen": "2026-10-26",
+      "stars_now": 12122,
+      "star_delta": 0,
+      "peak_daily_gain": 844,
+      "topics": [],
+      "desc": "A Tiny biped duck robot 🦆",
+      "class": "one-off"
+    },
+    {
+      "repo": "Panniantong/Agent-Reach",
+      "days_seen": 1,
+      "first_seen": "2026-10-26",
+      "last_seen": "2026-10-26",
+      "stars_now": 102889,
+      "star_delta": 0,
+      "peak_daily_gain": 723,
+      "topics": [
+        "agent-infrastructure",
+        "ai-agent",
+        "ai-search",
+        "automation",
+        "bilibili",
+        "claude-code",
+        "cli",
+        "cursor",
+        "free-api",
+        "llm-tools",
+        "mcp",
+        "python",
+        "reddit-scraper",
+        "twitter-scraper",
+        "web-scraper",
+        "xiaohongshu",
+        "youtube-transcript"
+      ],
+      "desc": "Give your AI agent eyes to see the entire internet. Read & search Twitter, Reddit, YouTube, GitHub, Bilibili, XiaoHongShu — one CLI, zero API fees.",
+      "class": "one-off"
+    },
+    {
+      "repo": "shiyu-coder/Kronos",
+      "days_seen": 1,
+      "first_seen": "2026-11-01",
+      "last_seen": "2026-11-01",
+      "stars_now": 44929,
+      "star_delta": 0,
+      "peak_daily_gain": 611,
+      "topics": [],
+      "desc": "Kronos: A Foundation Model for the Language of Financial Markets",
+      "class": "one-off"
+    },
+    {
+      "repo": "cjpais/Handy",
+      "days_seen": 1,
+      "first_seen": "2026-11-01",
+      "last_seen": "2026-11-01",
+      "stars_now": 36054,
+      "star_delta": 0,
+      "peak_daily_gain": 611,
+      "topics": [
+        "accessibility",
+        "cross-platform",
+        "speech-to-text",
+        "tauri-v2"
+      ],
+      "desc": "A free, open source, and extensible speech-to-text application that works completely offline.",
+      "class": "one-off"
+    },
+    {
+      "repo": "patchy631/ai-engineering-hub",
+      "days_seen": 1,
+      "first_seen": "2026-11-01",
+      "last_seen": "2026-11-01",
+      "stars_now": 39771,
+      "star_delta": 0,
+      "peak_daily_gain": 573,
+      "topics": [
+        "agents",
+        "ai",
+        "llms",
+        "machine-learning",
+        "mcp",
+        "rag"
+      ],
+      "desc": "In-depth tutorials on LLMs, RAGs and real-world AI agent applications.",
+      "class": "one-off"
+    }
+  ]
+}
