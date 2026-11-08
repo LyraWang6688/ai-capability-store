@@ -99,9 +99,9 @@ npx @lyra_wang/dsh-feishu-remote init
 
 ## 图片消息（0.6.0）
 
-飞书会把图片消息摊平成一行 Markdown：`![Image](img_v3_...)`——那只是 image key，既不是文件也不是 URL，模型拿到它只能回「看不到」。0.6.0 的桥补了两步：
+飞书会把图片消息摊平成一串占位文本——`post` 消息（图文一起发）是 `![Image](img_v3_...)`，`image` 消息（单发一张照片）是 `[Image: img_v3_...]`；两种都只是 image key，既不是文件也不是 URL，模型拿到它只能回「看不到」。0.6.0 的桥补了两步：
 
-1. 识别消息里的 `![Image](img_*)`，用 `lark-cli im +messages-resources-download`（**bot 身份**）把图下载到 `<workdir>/.feishu-images/<message_id>-<n>.png`；
+1. 识别两种占位形状（`image` 类型没有 Markdown，按 `img_v3_...` 裸 key 兜底），用 `lark-cli im +messages-resources-download`（**bot 身份**）把图下载到 `<workdir>/.feishu-images/<message_id>-<n>.png`；
 2. 把任务改写成「图片已保存到 …，回答前先用 `read_image` 工具查看」，再把用户原话接在后面。
 
 下游需要两件事同时成立：执行后端要有 `read_image` 工具（DSH 的 `tool-fs` 配 `attachment-local` 自带，headless profile 也有），模型要能收图（默认 `deepseek-flash` 是图文模型；`deepseek-v4-pro` 纯文本，会退化成占位符）。一条消息最多下载 6 张；某张下载失败时失败原因会写进任务，让模型如实告诉用户，而不是静默丢掉。图片默认保留 7 天（`imageRetentionDays`），桥启动时清理，不会长期堆在磁盘上。
