@@ -7,6 +7,7 @@ import { join } from 'node:path';
 import { LOG_DIR, STATE_PATH, ensureDirs } from './config.mjs';
 import { sendCard, sendText, spawnConsumer } from './feishu.mjs';
 import { buildConfirmCard, buildReplyCard } from './cards.mjs';
+import { buildImagePrompt, downloadMessageImages, extractImageKeys } from './images.mjs';
 
 function audit(level, stage, extra = {}) {
   const day = new Date().toISOString().slice(0, 10);
@@ -46,20 +47,36 @@ function ensureApiKey(cfg) {
 }
 
 /** Parse the NDJSON event stream from `dsh --profile headless --json`. */
-function parseEvents(stdout) {
+export function parseEvents(stdout) {
   let sessionId = null;
   const texts = [];
   let finalText = null;
+  let finalReason = null;
   for (const line of String(stdout || '').split('\n')) {
     const trimmed = line.trim();
     if (!trimmed.startsWith('{')) continue;
     let event;
     try { event = JSON.parse(trimmed); } catch { continue; }
     if (event.type === 'session' && event.sessionId) sessionId = event.sessionId;
-    else if (event.type === 'final' && typeof event.text === 'string') finalText = event.text;
-    else if (event.type === 'text' && typeof event.text === 'string') texts.push(event.text);
+    else if (event.type === 'final') {
+      if (typeof event.text === 'string') finalText = event.text;
+      // dsh 0.2.2+ carries the durable turn reason on the final event.
+      if (event.reason !== undefined) finalReason = event.reason;
+    } else if (event.type === 'text' && typeof event.text === 'string') texts.push(event.text);
   }
-  return { sessionId, reply: finalText ?? texts.join('') };
+  return { sessionId, reply: finalText ?? texts.join(''), reason: finalReason };
+}
+
+/**
+ * A run counts as done only when the process exited 0 AND the final event's
+ * durable reason (when the backend reports one) is `completed`. Older DSH
+ * builds emit no `reason`, so a missing reason keeps the exit-code behaviour.
+ */
+export function isCompleted(result) {
+  if (!result || result.code !== 0) return false;
+  const reason = result.reason;
+  if (!reason || typeof reason !== 'object' || typeof reason.kind !== 'string') return true;
+  return reason.kind === 'completed';
 }
 
 function runAgent(cfg, text, sessionId) {
@@ -125,6 +142,7 @@ async function sendConfirm(cfg, chatId, text, taskId) {
 const HELP = (cfg) => [
   '远程任务用法：',
   '· 直接发一句话 = 在这台电脑上执行（例如：看看桌面有哪些文件）',
+  '· 发图片（截图/照片）= 桥先把图下载到本机，再让 AI 真的看图后回答',
   '· 含高风险词（删除/转账/清空等）= 先回确认，回复「确认」才执行',
   '· 发送「帮助」= 看这段说明；发送「状态」= 看服务信息',
   '· 执行目录：' + cfg.workdir,
@@ -160,9 +178,10 @@ export function startListener(cfg) {
       state.sessions[chatId] = result.sessionId;
       saveState(state);
     }
-    const ok = result.code === 0;
+    const ok = isCompleted(result);
     const body = String(result.reply ?? result.stdout ?? '').trim();
     const detail = (result.stderr || result.stdout || '').trim();
+    const reasonKind = result.reason && typeof result.reason === 'object' ? result.reason.kind : undefined;
     let cardKind;
     let cardText;
     if (ok) {
@@ -171,13 +190,23 @@ export function startListener(cfg) {
     } else if (result.code === 'timeout') {
       cardKind = 'error';
       cardText = `超时（${cfg.timeoutSeconds}s）已中止。\n\n${detail.slice(0, 1200)}`;
+    } else if (result.code === 0) {
+      // Exit 0 but the durable turn did not complete: trust `final.reason`.
+      cardKind = 'error';
+      cardText = `任务没有正常结束（reason: ${reasonKind || 'unknown'}）\n\n${(body || detail).slice(0, 1500)}`;
     } else {
       cardKind = 'error';
       cardText = `执行失败（exit ${result.code}）\n\n${detail.slice(0, 1500)}`;
     }
     const elapsed = ((Date.now() - started) / 1000).toFixed(1);
     await reply(cfg, chatId, cardKind, cardText, `${taskId} · ${elapsed}s`);
-    audit(ok ? 'info' : 'error', 'done', { taskId, code: result.code, ms: Date.now() - started, chars: body.length });
+    audit(ok ? 'info' : 'error', 'done', {
+      taskId,
+      code: result.code,
+      reason: reasonKind,
+      ms: Date.now() - started,
+      chars: body.length,
+    });
   }
 
   async function onMessage(raw) {
@@ -216,6 +245,22 @@ export function startListener(cfg) {
       return;
     }
 
+    // Images: lark-cli flattens a post/image message into Markdown with an
+    // image key, which the agent cannot use. Download the bytes and hand it a
+    // real path, so its `read_image` tool sees the picture instead of a key.
+    let prompt = text;
+    const imageKeys = extractImageKeys(text);
+    if (imageKeys.length > 0) {
+      const saved = await downloadMessageImages(cfg, messageId, imageKeys);
+      prompt = buildImagePrompt(text, saved);
+      audit('info', 'images', {
+        chatId,
+        count: saved.length,
+        downloaded: saved.filter((item) => item.ok).length,
+        paths: saved.filter((item) => item.ok).map((item) => item.path),
+      });
+    }
+
     if (state.pending) {
       if (/^(确认|确定|继续|yes|ok|y)$/i.test(text)) {
         const pending = state.pending;
@@ -239,7 +284,7 @@ export function startListener(cfg) {
 
     if (isHighRisk(cfg, text)) {
       const taskId = newTaskId();
-      state.pending = { text, chatId, taskId, at: Date.now() };
+      state.pending = { text: prompt, chatId, taskId, at: Date.now() };
       saveState(state);
       audit('warn', 'confirm-required', { taskId, text });
       await sendConfirm(cfg, chatId, text, taskId);
@@ -247,7 +292,7 @@ export function startListener(cfg) {
     }
 
     await reply(cfg, chatId, 'ack', '收到，开始执行…');
-    await execute(chatId, text, newTaskId());
+    await execute(chatId, prompt, newTaskId());
   }
 
   /** Handle `card.action.trigger` from the confirmation card. */
