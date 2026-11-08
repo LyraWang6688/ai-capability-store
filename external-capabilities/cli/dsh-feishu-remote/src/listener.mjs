@@ -285,7 +285,7 @@ export function startListener(cfg) {
     // image key, which the agent cannot use. Download the bytes and hand it a
     // real path, so its `read_image` tool sees the picture instead of a key.
     let prompt = text;
-    const imageKeys = extractImageKeys(text);
+    const imageKeys = extractImageKeys(text, messageType);
     meta.images = imageKeys.length;
     if (imageKeys.length > 0) {
       const saved = await downloadMessageImages(cfg, messageId, imageKeys);

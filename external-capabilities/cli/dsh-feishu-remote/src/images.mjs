@@ -17,8 +17,17 @@ import { join } from 'node:path';
 
 import { run } from './feishu.mjs';
 
-/** Markdown image placeholder that lark-cli emits: `![Image](img_v3_...)`. */
+/** Markdown image placeholder that lark-cli emits for `post` messages. */
 const IMAGE_MARKDOWN = /!\[[^\]]*\]\((img_[A-Za-z0-9_-]+)\)/g;
+
+/**
+ * Placeholders of every shape lark-cli renders:
+ *   post  (text + image sent together)  ->  `![Image](img_v3_...)`
+ *   image (a photo sent on its own)     ->  `[Image: img_v3_...]`
+ * Both name the same resource, so both must be stripped before the prompt is
+ * handed to the model.
+ */
+const IMAGE_PLACEHOLDER = /!\[[^\]]*\]\(img_[A-Za-z0-9_-]+\)|\[(?:Image|图片)[:：]\s*img_[A-Za-z0-9_-]+\]/g;
 
 /** Where downloaded images live, relative to the bridge workdir (the dsh cwd). */
 export const IMAGE_DIR = '.feishu-images';
@@ -78,15 +87,24 @@ export function pruneImages(cfg, maxAgeDays = 7) {
   return removed;
 }
 
-/** Image keys referenced by a flattened message, in order, duplicates removed. */
-export function extractImageKeys(text) {
+/**
+ * Image keys referenced by a flattened message, in order, duplicates removed.
+ *
+ * `messageType` decides the fallback: an `image`-type message carries no
+ * Markdown at all, only `[Image: img_v3_...]`, so a bare key scan is the only
+ * way to find it.
+ */
+export function extractImageKeys(text, messageType = '') {
+  const raw = String(text || '');
   const keys = [];
+  const push = (key) => {
+    if (key && !keys.includes(key) && keys.length < MAX_IMAGES) keys.push(key);
+  };
   const re = new RegExp(IMAGE_MARKDOWN.source, 'g');
   let match;
-  while ((match = re.exec(String(text || ''))) !== null) {
-    const key = match[1];
-    if (!keys.includes(key)) keys.push(key);
-    if (keys.length >= MAX_IMAGES) break;
+  while ((match = re.exec(raw)) !== null) push(match[1]);
+  if (keys.length === 0 && (messageType === 'image' || messageType === 'post')) {
+    for (const key of raw.match(/img_v3_[A-Za-z0-9_-]+/g) || []) push(key);
   }
   return keys;
 }
@@ -108,7 +126,7 @@ export function relativeToWorkdir(savedPath, workdir) {
  * model instead of being silently dropped, so it can tell the user the truth.
  */
 export function buildImagePrompt(text, saved) {
-  const stripped = String(text || '').replace(IMAGE_MARKDOWN, '').replace(/[ \t]+\n/g, '\n').trim();
+  const stripped = String(text || '').replace(new RegExp(IMAGE_PLACEHOLDER.source, 'g'), '').replace(/[ \t]+\n/g, '\n').trim();
   const lines = (saved || []).map((item, index) => (
     item.ok
       ? `- 第 ${index + 1} 张：${item.path}（先用 read_image 工具查看）`

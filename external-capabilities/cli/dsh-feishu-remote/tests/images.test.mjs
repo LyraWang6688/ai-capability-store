@@ -32,6 +32,19 @@ test('extractImageKeys ignores ordinary Markdown links and plain text', () => {
   assert.deepEqual(extractImageKeys(undefined), []);
 });
 
+test('extractImageKeys finds the bare key of an `image`-type message', () => {
+  const text = `[Image: ${IMG_A}]`;
+  assert.deepEqual(extractImageKeys(text, 'image'), [IMG_A]);
+  // Without the message type the bare-key fallback stays off: a text message
+  // that merely mentions a key must not trigger a download.
+  assert.deepEqual(extractImageKeys(text), []);
+});
+
+test('extractImageKeys still prefers Markdown keys when both shapes appear', () => {
+  const text = `![Image](${IMG_A})\n[Image: ${IMG_B}]`;
+  assert.deepEqual(extractImageKeys(text, 'post'), [IMG_A]);
+});
+
 test('extractImageKeys stops at the download cap', () => {
   const text = Array.from({ length: 10 }, (_, i) => `![Image](img_v3_cap_${i})`).join('\n');
   assert.equal(extractImageKeys(text).length, 6);
@@ -52,6 +65,15 @@ test('buildImagePrompt replaces the key with a read_image instruction and keeps 
   assert.match(prompt, /\.feishu-images\/om_1-1\.png/);
   assert.match(prompt, /这个是做什么的/);
   assert.doesNotMatch(prompt, /img_v3_02174/);
+});
+
+test('buildImagePrompt strips the `[Image: key]` placeholder too', () => {
+  const prompt = buildImagePrompt(`[Image: ${IMG_A}]\n这个是什么`, [
+    { key: IMG_A, ok: true, path: `${IMAGE_DIR}/om_2-1.png` },
+  ]);
+  assert.match(prompt, /om_2-1\.png/);
+  assert.match(prompt, /这个是什么/);
+  assert.doesNotMatch(prompt, /\[Image:/);
 });
 
 test('buildImagePrompt keeps a failed download visible to the model', () => {
