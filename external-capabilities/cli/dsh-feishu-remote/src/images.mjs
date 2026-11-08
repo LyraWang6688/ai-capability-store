@@ -12,7 +12,7 @@
  * The agent's `read_image` tool commits the bytes to the attachment store, and
  * image-capable models (deepseek-flash) can then actually see it.
  */
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, readdirSync, statSync, unlinkSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { run } from './feishu.mjs';
@@ -25,6 +25,58 @@ export const IMAGE_DIR = '.feishu-images';
 
 /** The most images one message may carry before we stop downloading. */
 const MAX_IMAGES = 6;
+
+/**
+ * Message types the bridge can actually act on. Everything else is rejected
+ * with an explicit reply instead of being forwarded as meaningless text:
+ * lark-cli pre-renders every type to human-readable text, so an audio/file
+ * message would otherwise look like an ordinary task and the model would have
+ * to guess why it has no content.
+ */
+export const SUPPORTED_MESSAGE_TYPES = new Set(['text', 'post', 'image']);
+
+const UNSUPPORTED_LABELS = {
+  file: '文件',
+  audio: '语音',
+  media: '视频',
+  sticker: '表情',
+  share_chat: '群名片',
+  share_user: '个人名片',
+  interactive: '卡片',
+  system: '系统',
+};
+
+/** Friendly Chinese label for an unsupported type; null when it is supported. */
+export function unsupportedMessageLabel(messageType) {
+  const type = String(messageType || '').trim();
+  if (!type || SUPPORTED_MESSAGE_TYPES.has(type)) return null;
+  return UNSUPPORTED_LABELS[type] || `「${type}」`;
+}
+
+/**
+ * Delete downloaded images older than `maxAgeDays`. Returns how many files
+ * were removed; a missing directory is normal, not an error.
+ */
+export function pruneImages(cfg, maxAgeDays = 7) {
+  const days = Number(maxAgeDays);
+  if (!Number.isFinite(days) || days <= 0) return 0;
+  const dir = join(cfg.workdir, IMAGE_DIR);
+  const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
+  let names = [];
+  try { names = readdirSync(dir); } catch { return 0; }
+  let removed = 0;
+  for (const name of names) {
+    const path = join(dir, name);
+    try {
+      const info = statSync(path);
+      if (info.isFile() && info.mtimeMs < cutoff) {
+        unlinkSync(path);
+        removed += 1;
+      }
+    } catch { /* a file removed by someone else is not an error */ }
+  }
+  return removed;
+}
 
 /** Image keys referenced by a flattened message, in order, duplicates removed. */
 export function extractImageKeys(text) {

@@ -6,8 +6,13 @@ import {
   IMAGE_DIR,
   buildImagePrompt,
   extractImageKeys,
+  pruneImages,
   relativeToWorkdir,
+  unsupportedMessageLabel,
 } from '../src/images.mjs';
+import { existsSync, mkdirSync, mkdtempSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 const IMG_A = 'img_v3_02174_491bf662-27ee-4596-a42c-4b5e3e965d6g';
 const IMG_B = 'img_v3_02174_deadbeef-0000-1111-2222-333344445555';
@@ -68,4 +73,45 @@ test('buildImagePrompt works when the message carried no text at all', () => {
 test('the listener module still imports cleanly with the image hook wired in', async () => {
   const mod = await import('../src/listener.mjs');
   assert.equal(typeof mod.startListener, 'function');
+});
+
+test('unsupportedMessageLabel explains the types the bridge cannot act on', () => {
+  assert.equal(unsupportedMessageLabel('text'), null);
+  assert.equal(unsupportedMessageLabel('post'), null);
+  assert.equal(unsupportedMessageLabel('image'), null);
+  assert.equal(unsupportedMessageLabel(''), null);
+  assert.equal(unsupportedMessageLabel(undefined), null);
+  assert.equal(unsupportedMessageLabel('file'), '文件');
+  assert.equal(unsupportedMessageLabel('audio'), '语音');
+  assert.equal(unsupportedMessageLabel('media'), '视频');
+  assert.equal(unsupportedMessageLabel('sticker'), '表情');
+  assert.equal(unsupportedMessageLabel('share_chat'), '群名片');
+  assert.equal(unsupportedMessageLabel('interactive'), '卡片');
+  assert.equal(unsupportedMessageLabel('brand_new_type'), '「brand_new_type」');
+});
+
+test('pruneImages deletes only images older than the retention window', () => {
+  const workdir = mkdtempSync(join(tmpdir(), 'dsh-img-'));
+  const dir = join(workdir, IMAGE_DIR);
+  mkdirSync(dir, { recursive: true });
+  const oldFile = join(dir, 'old.png');
+  const newFile = join(dir, 'new.png');
+  writeFileSync(oldFile, 'x');
+  writeFileSync(newFile, 'y');
+  const longAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+  utimesSync(oldFile, longAgo, longAgo);
+
+  assert.equal(pruneImages({ workdir }, 7), 1);
+  assert.equal(existsSync(oldFile), false);
+  assert.equal(existsSync(newFile), true);
+  assert.equal(pruneImages({ workdir }, 7), 0);
+  rmSync(workdir, { recursive: true, force: true });
+});
+
+test('pruneImages tolerates a missing directory and a disabled window', () => {
+  const workdir = mkdtempSync(join(tmpdir(), 'dsh-img-empty-'));
+  assert.equal(pruneImages({ workdir }, 7), 0);
+  assert.equal(pruneImages({ workdir }, 0), 0);
+  assert.equal(pruneImages({ workdir }, -1), 0);
+  rmSync(workdir, { recursive: true, force: true });
 });
