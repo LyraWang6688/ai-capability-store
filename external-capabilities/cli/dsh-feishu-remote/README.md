@@ -19,6 +19,7 @@
 - **执行后端可替换**：默认 `dsh headless`，也可以指向你自己的 agent / 脚本；
 - **凭据零入库**：复用 lark-cli 的凭据库与系统钥匙串，本项目不存任何 token；
 - **高风险动作先确认**：含「删除/转账/清空」等词的指令，先回确认卡片文案，回复「确认」才执行；
+- **发图片能真的看懂**：飞书里的截图/照片先由桥下载到 `<workdir>/.feishu-images/`，再把本机路径交给 agent 的 `read_image` 工具——图片是图片，不是一串 `img_v3_...`（需要飞书应用具备 `im:resource` 权限）；
 - **审计留痕**：每个任务一行 JSONL（谁、何时、指令、耗时、结果长度）；
 - **回复都是卡片**：任务结果 / 失败 / 高风险确认 / 帮助 / 状态统一用飞书 **Card 2.0** 呈现（客户端需 ≥ 7.20），卡片发送失败时自动降级为文本。高风险确认卡带「确认执行 / 取消」按钮（需开启 `cardActions`），文字回复「确认 / 取消」仍然有效。
 
@@ -37,7 +38,7 @@
    - 开启**机器人**能力；
    - 事件订阅添加 `im.message.receive_v1`（**长连接**模式）；
    - （可选）要在卡片上**点按钮**确认高风险操作，再到「事件与回调 → 回调配置」订阅 `card.action.trigger`，并在配置里设 `cardActions: true`；没订阅时该消费者会被拒绝启动；
-   - 权限：`im:message.p2p_msg:readonly`、`im:message:send_as_bot`、`im:message`；
+   - 权限：`im:message.p2p_msg:readonly`、`im:message:send_as_bot`、`im:message`，**以及 `im:resource`（发图片时下载消息资源要用）**；
    - 发布一个可用版本，并把机器人加进你的私聊。
 4. **执行后端**：默认用 DSH（`dsh headless`）；也可以换成你自己的命令（见配置 `dshCli` / `agentArgs`）。
 5. **模型 API Key**（用 DSH 时）：放在环境变量或系统钥匙串，例如：
@@ -94,6 +95,15 @@ npx @lyra_wang/dsh-feishu-remote init
 | `cardActions` | 是否消费 `card.action.trigger`（卡片按钮回调，默认 `false`；开启前需在开放平台订阅回调） |
 | `extraEnv` | 追加给执行后端的环境变量。**Linux 上通常要把 `PATH` 指到 DSH 用的 node 目录**（见下节） |
 
+## 图片消息（0.6.0）
+
+飞书会把图片消息摊平成一行 Markdown：`![Image](img_v3_...)`——那只是 image key，既不是文件也不是 URL，模型拿到它只能回「看不到」。0.6.0 的桥补了两步：
+
+1. 识别消息里的 `![Image](img_*)`，用 `lark-cli im +messages-resources-download`（**bot 身份**）把图下载到 `<workdir>/.feishu-images/<message_id>-<n>.png`；
+2. 把任务改写成「图片已保存到 …，回答前先用 `read_image` 工具查看」，再把用户原话接在后面。
+
+下游需要两件事同时成立：执行后端要有 `read_image` 工具（DSH 的 `tool-fs` 配 `attachment-local` 自带，headless profile 也有），模型要能收图（默认 `deepseek-flash` 是图文模型；`deepseek-v4-pro` 纯文本，会退化成占位符）。一条消息最多下载 6 张；某张下载失败时失败原因会写进任务，让模型如实告诉用户，而不是静默丢掉。
+
 ## 安全模型
 
 - 只响应**白名单 open_id** + 仅私聊（可配）；
@@ -114,6 +124,8 @@ dsh-feishu-remote doctor
 **电脑睡眠后不响应？** macOS 安装服务时会用 `caffeinate` 包裹进程；把睡眠时间设为"永不"或接电源。
 
 **`doctor` 说执行后端「退出码 0，但没有任何输出」？** 说明 `dsh` 跑在了 Node <24 上（`import.meta.main` 不存在 → 静默退出 0）。把 config 的 `extraEnv.PATH` 指到运行 DSH 的 node 目录即可。
+
+**发了图片，机器人说看不到？** 0.6.0 起桥会自动下载图片并让 agent 用 `read_image` 看。仍看不到时逐项查：① 飞书应用有没有 `im:resource` 权限（下载消息资源必需，bot 身份即可）；② 审计日志里那条任务有没有 `"stage":"images"`，且 `downloaded` 等于 `count`；③ 执行后端的模型是否支持图片输入（默认 `deepseek-flash` 支持，`deepseek-v4-pro` 是纯文本）。图片落在 `<workdir>/.feishu-images/`，长期堆积可自行清理。
 
 **飞书授权到期了怎么办？** 正常情况下 token 每 6 小时自动滚动续期，不需要手动处理。真失效时，在飞书里回复「重新授权」，会收到一张带按钮的卡片，点按钮即可续期。
 
