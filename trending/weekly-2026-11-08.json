@@ -1,0 +1,944 @@
+{
+  "generated_at": "2026-11-08T13:00:39+00:00",
+  "automation": "github-trending-weekly",
+  "window": {
+    "days": 7,
+    "from": "2026-11-02",
+    "to": "2026-11-08"
+  },
+  "days_with_data": 7,
+  "days_missing": [],
+  "trustworthy": true,
+  "note": "window complete",
+  "topics_persistent": [
+    {
+      "topic": "claude-code",
+      "days_present": 7,
+      "persistence": 1.0,
+      "total_repo_sightings": 45,
+      "verdict": "persistent"
+    },
+    {
+      "topic": "ai",
+      "days_present": 7,
+      "persistence": 1.0,
+      "total_repo_sightings": 44,
+      "verdict": "persistent"
+    },
+    {
+      "topic": "ai-agents",
+      "days_present": 7,
+      "persistence": 1.0,
+      "total_repo_sightings": 38,
+      "verdict": "persistent"
+    },
+    {
+      "topic": "agent-skills",
+      "days_present": 7,
+      "persistence": 1.0,
+      "total_repo_sightings": 30,
+      "verdict": "persistent"
+    },
+    {
+      "topic": "mcp",
+      "days_present": 7,
+      "persistence": 1.0,
+      "total_repo_sightings": 22,
+      "verdict": "persistent"
+    },
+    {
+      "topic": "claude",
+      "days_present": 7,
+      "persistence": 1.0,
+      "total_repo_sightings": 22,
+      "verdict": "persistent"
+    },
+    {
+      "topic": "automation",
+      "days_present": 7,
+      "persistence": 1.0,
+      "total_repo_sightings": 21,
+      "verdict": "persistent"
+    },
+    {
+      "topic": "anthropic",
+      "days_present": 7,
+      "persistence": 1.0,
+      "total_repo_sightings": 19,
+      "verdict": "persistent"
+    },
+    {
+      "topic": "codex",
+      "days_present": 6,
+      "persistence": 0.86,
+      "total_repo_sightings": 27,
+      "verdict": "persistent"
+    },
+    {
+      "topic": "python",
+      "days_present": 6,
+      "persistence": 0.86,
+      "total_repo_sightings": 18,
+      "verdict": "persistent"
+    },
+    {
+      "topic": "cli",
+      "days_present": 5,
+      "persistence": 0.71,
+      "total_repo_sightings": 16,
+      "verdict": "persistent"
+    }
+  ],
+  "topics_emerging": [
+    {
+      "topic": "gpu",
+      "days_present": 1,
+      "persistence": 0.14,
+      "total_repo_sightings": 2,
+      "verdict": "emerging"
+    },
+    {
+      "topic": "3d",
+      "days_present": 1,
+      "persistence": 0.14,
+      "total_repo_sightings": 2,
+      "verdict": "emerging"
+    }
+  ],
+  "topics_all": [
+    {
+      "topic": "claude-code",
+      "days_present": 7,
+      "persistence": 1.0,
+      "total_repo_sightings": 45,
+      "verdict": "persistent"
+    },
+    {
+      "topic": "ai",
+      "days_present": 7,
+      "persistence": 1.0,
+      "total_repo_sightings": 44,
+      "verdict": "persistent"
+    },
+    {
+      "topic": "ai-agents",
+      "days_present": 7,
+      "persistence": 1.0,
+      "total_repo_sightings": 38,
+      "verdict": "persistent"
+    },
+    {
+      "topic": "agent-skills",
+      "days_present": 7,
+      "persistence": 1.0,
+      "total_repo_sightings": 30,
+      "verdict": "persistent"
+    },
+    {
+      "topic": "mcp",
+      "days_present": 7,
+      "persistence": 1.0,
+      "total_repo_sightings": 22,
+      "verdict": "persistent"
+    },
+    {
+      "topic": "claude",
+      "days_present": 7,
+      "persistence": 1.0,
+      "total_repo_sightings": 22,
+      "verdict": "persistent"
+    },
+    {
+      "topic": "automation",
+      "days_present": 7,
+      "persistence": 1.0,
+      "total_repo_sightings": 21,
+      "verdict": "persistent"
+    },
+    {
+      "topic": "anthropic",
+      "days_present": 7,
+      "persistence": 1.0,
+      "total_repo_sightings": 19,
+      "verdict": "persistent"
+    },
+    {
+      "topic": "codex",
+      "days_present": 6,
+      "persistence": 0.86,
+      "total_repo_sightings": 27,
+      "verdict": "persistent"
+    },
+    {
+      "topic": "python",
+      "days_present": 6,
+      "persistence": 0.86,
+      "total_repo_sightings": 18,
+      "verdict": "persistent"
+    },
+    {
+      "topic": "cli",
+      "days_present": 5,
+      "persistence": 0.71,
+      "total_repo_sightings": 16,
+      "verdict": "persistent"
+    },
+    {
+      "topic": "llm",
+      "days_present": 4,
+      "persistence": 0.57,
+      "total_repo_sightings": 13,
+      "verdict": "intermittent"
+    },
+    {
+      "topic": "typescript",
+      "days_present": 4,
+      "persistence": 0.57,
+      "total_repo_sightings": 13,
+      "verdict": "intermittent"
+    },
+    {
+      "topic": "claude-skills",
+      "days_present": 4,
+      "persistence": 0.57,
+      "total_repo_sightings": 10,
+      "verdict": "intermittent"
+    },
+    {
+      "topic": "claude-code-plugin",
+      "days_present": 4,
+      "persistence": 0.57,
+      "total_repo_sightings": 9,
+      "verdict": "intermittent"
+    },
+    {
+      "topic": "openai",
+      "days_present": 4,
+      "persistence": 0.57,
+      "total_repo_sightings": 9,
+      "verdict": "intermittent"
+    },
+    {
+      "topic": "agent",
+      "days_present": 4,
+      "persistence": 0.57,
+      "total_repo_sightings": 8,
+      "verdict": "intermittent"
+    },
+    {
+      "topic": "open-source",
+      "days_present": 4,
+      "persistence": 0.57,
+      "total_repo_sightings": 8,
+      "verdict": "intermittent"
+    },
+    {
+      "topic": "self-hosted",
+      "days_present": 4,
+      "persistence": 0.57,
+      "total_repo_sightings": 8,
+      "verdict": "intermittent"
+    },
+    {
+      "topic": "skills",
+      "days_present": 3,
+      "persistence": 0.43,
+      "total_repo_sightings": 7,
+      "verdict": "intermittent"
+    },
+    {
+      "topic": "accessibility",
+      "days_present": 3,
+      "persistence": 0.43,
+      "total_repo_sightings": 6,
+      "verdict": "intermittent"
+    },
+    {
+      "topic": "anti-slop",
+      "days_present": 3,
+      "persistence": 0.43,
+      "total_repo_sightings": 6,
+      "verdict": "intermittent"
+    },
+    {
+      "topic": "macos",
+      "days_present": 3,
+      "persistence": 0.43,
+      "total_repo_sightings": 6,
+      "verdict": "intermittent"
+    },
+    {
+      "topic": "android",
+      "days_present": 3,
+      "persistence": 0.43,
+      "total_repo_sightings": 6,
+      "verdict": "intermittent"
+    },
+    {
+      "topic": "developer-tools",
+      "days_present": 2,
+      "persistence": 0.29,
+      "total_repo_sightings": 5,
+      "verdict": "intermittent"
+    }
+  ],
+  "repos_sustained": [
+    {
+      "repo": "pingdotgg/t3code",
+      "days_seen": 7,
+      "first_seen": "2026-11-02",
+      "last_seen": "2026-11-08",
+      "stars_now": 51793,
+      "star_delta": 12001,
+      "peak_daily_gain": 3216,
+      "topics": [],
+      "desc": "",
+      "class": "resident"
+    },
+    {
+      "repo": "mattpocock/skills",
+      "days_seen": 7,
+      "first_seen": "2026-11-02",
+      "last_seen": "2026-11-08",
+      "stars_now": 318134,
+      "star_delta": 8455,
+      "peak_daily_gain": 2058,
+      "topics": [],
+      "desc": "Skills for Real Engineers. Straight from my .agents directory.",
+      "class": "resident"
+    },
+    {
+      "repo": "D4Vinci/Scrapling",
+      "days_seen": 7,
+      "first_seen": "2026-11-02",
+      "last_seen": "2026-11-08",
+      "stars_now": 99556,
+      "star_delta": 7423,
+      "peak_daily_gain": 2006,
+      "topics": [
+        "ai",
+        "ai-scraping",
+        "automation",
+        "crawler",
+        "crawling",
+        "crawling-python",
+        "data",
+        "data-extraction",
+        "mcp",
+        "mcp-server",
+        "playwright",
+        "python",
+        "scraping",
+        "selectors",
+        "stealth",
+        "web-scraper",
+        "web-scraping",
+        "web-scraping-python",
+        "webscraping",
+        "xpath"
+      ],
+      "desc": "🕷️ The BEST Web Scraping framework that handles everything from a single request to a full-scale crawl! Don't be shy, join here: https://discord.gg/EMgGbDceNQ a",
+      "class": "resident"
+    },
+    {
+      "repo": "Nutlope/hallmark",
+      "days_seen": 7,
+      "first_seen": "2026-11-02",
+      "last_seen": "2026-11-08",
+      "stars_now": 50579,
+      "star_delta": 5082,
+      "peak_daily_gain": 0,
+      "topics": [],
+      "desc": "Anti-AI-slop design skill for Claude Code, Cursor, and Codex.",
+      "class": "resident"
+    },
+    {
+      "repo": "thedotmack/claude-mem",
+      "days_seen": 7,
+      "first_seen": "2026-11-02",
+      "last_seen": "2026-11-08",
+      "stars_now": 114677,
+      "star_delta": 4474,
+      "peak_daily_gain": 1799,
+      "topics": [
+        "ai",
+        "ai-agents",
+        "ai-memory",
+        "anthropic",
+        "artificial-intelligence",
+        "chromadb",
+        "claude",
+        "claude-agent-sdk",
+        "claude-agents",
+        "claude-code",
+        "claude-code-plugin",
+        "claude-skills",
+        "embeddings",
+        "long-term-memory",
+        "mem0",
+        "memory-engine",
+        "openmemory",
+        "rag",
+        "sqlite",
+        "supermemory"
+      ],
+      "desc": "Persistent Context Across Sessions for Every Agent – Captures everything your agent does during sessions, compresses it with AI, and injects relevant context ba",
+      "class": "resident"
+    },
+    {
+      "repo": "anthropics/skills",
+      "days_seen": 7,
+      "first_seen": "2026-11-02",
+      "last_seen": "2026-11-08",
+      "stars_now": 189116,
+      "star_delta": 2534,
+      "peak_daily_gain": 793,
+      "topics": [
+        "agent-skills"
+      ],
+      "desc": "Public repository for Agent Skills",
+      "class": "resident"
+    },
+    {
+      "repo": "max-sixty/worktrunk",
+      "days_seen": 7,
+      "first_seen": "2026-11-02",
+      "last_seen": "2026-11-08",
+      "stars_now": 12025,
+      "star_delta": 2196,
+      "peak_daily_gain": 546,
+      "topics": [
+        "agents",
+        "claude-code",
+        "codex",
+        "developer-tools",
+        "git",
+        "worktrees"
+      ],
+      "desc": "Worktrunk is a CLI for Git worktree management, designed for parallel AI agent workflows",
+      "class": "resident"
+    },
+    {
+      "repo": "jakubkrehel/skills",
+      "days_seen": 7,
+      "first_seen": "2026-11-02",
+      "last_seen": "2026-11-08",
+      "stars_now": 11602,
+      "star_delta": 1364,
+      "peak_daily_gain": 0,
+      "topics": [],
+      "desc": "A collection of agent skills that help you build great interfaces.",
+      "class": "resident"
+    },
+    {
+      "repo": "hyprwm/Hyprland",
+      "days_seen": 7,
+      "first_seen": "2026-11-02",
+      "last_seen": "2026-11-08",
+      "stars_now": 40522,
+      "star_delta": 897,
+      "peak_daily_gain": 508,
+      "topics": [
+        "compositor",
+        "cpp26",
+        "wayland",
+        "wayland-compositor"
+      ],
+      "desc": "Hyprland is an independent, highly customizable, dynamic tiling Wayland compositor that doesn't sacrifice on its looks.",
+      "class": "resident"
+    },
+    {
+      "repo": "pbakaus/impeccable",
+      "days_seen": 6,
+      "first_seen": "2026-11-02",
+      "last_seen": "2026-11-07",
+      "stars_now": 105111,
+      "star_delta": 5135,
+      "peak_daily_gain": 0,
+      "topics": [
+        "agent-skills",
+        "ai",
+        "anti-slop",
+        "design",
+        "slop"
+      ],
+      "desc": "The design vocabulary for your coding agent. Steer with polish and bolder, review with critique and audit, catch AI slop before it ships.",
+      "class": "resident"
+    },
+    {
+      "repo": "obra/superpowers",
+      "days_seen": 6,
+      "first_seen": "2026-11-02",
+      "last_seen": "2026-11-07",
+      "stars_now": 313840,
+      "star_delta": 2901,
+      "peak_daily_gain": 0,
+      "topics": [
+        "ai",
+        "brainstorming",
+        "coding",
+        "obra",
+        "sdlc",
+        "skills",
+        "subagent-driven-development",
+        "superpowers"
+      ],
+      "desc": "An agentic skills framework & software development methodology that works.",
+      "class": "resident"
+    },
+    {
+      "repo": "caru-ini/stack-diagram",
+      "days_seen": 6,
+      "first_seen": "2026-11-02",
+      "last_seen": "2026-11-07",
+      "stars_now": 2018,
+      "star_delta": 1158,
+      "peak_daily_gain": 0,
+      "topics": [
+        "agent-skills",
+        "architecture-diagram",
+        "claude-code",
+        "claude-skills",
+        "codex",
+        "diagram",
+        "system-architecture",
+        "tech-stack"
+      ],
+      "desc": "Agent skill: describe your stack in a sentence, get an architecture diagram with official logos",
+      "class": "resident"
+    },
+    {
+      "repo": "storytold/craft-anything",
+      "days_seen": 5,
+      "first_seen": "2026-11-02",
+      "last_seen": "2026-11-06",
+      "stars_now": 16591,
+      "star_delta": 14256,
+      "peak_daily_gain": 0,
+      "topics": [],
+      "desc": "Craft Anything: understand how any software works, and craft your own.",
+      "class": "resident"
+    },
+    {
+      "repo": "deepseek-ai/dsh-superagent-prototype",
+      "days_seen": 5,
+      "first_seen": "2026-11-02",
+      "last_seen": "2026-11-06",
+      "stars_now": 19992,
+      "star_delta": 8805,
+      "peak_daily_gain": 0,
+      "topics": [],
+      "desc": "Towards a More Autonomous Agent System",
+      "class": "resident"
+    },
+    {
+      "repo": "Donchitos/Claude-Code-Game-Studios",
+      "days_seen": 5,
+      "first_seen": "2026-11-02",
+      "last_seen": "2026-11-08",
+      "stars_now": 36786,
+      "star_delta": 3797,
+      "peak_daily_gain": 1380,
+      "topics": [
+        "ai-agents",
+        "ai-assisted-development",
+        "anthropic",
+        "claude",
+        "claude-code",
+        "game-design",
+        "game-development",
+        "gamedev",
+        "godot",
+        "indie-game-dev",
+        "unity",
+        "unreal-engine"
+      ],
+      "desc": "Turn Claude Code into a full game dev studio — 49 AI agents, 72 workflow skills, and a complete coordination system mirroring real studio hierarchy.",
+      "class": "resident"
+    }
+  ],
+  "repos_climbing_by_stars": [
+    {
+      "repo": "storytold/craft-anything",
+      "days_seen": 5,
+      "first_seen": "2026-11-02",
+      "last_seen": "2026-11-06",
+      "stars_now": 16591,
+      "star_delta": 14256,
+      "peak_daily_gain": 0,
+      "topics": [],
+      "desc": "Craft Anything: understand how any software works, and craft your own.",
+      "class": "resident"
+    },
+    {
+      "repo": "pingdotgg/t3code",
+      "days_seen": 7,
+      "first_seen": "2026-11-02",
+      "last_seen": "2026-11-08",
+      "stars_now": 51793,
+      "star_delta": 12001,
+      "peak_daily_gain": 3216,
+      "topics": [],
+      "desc": "",
+      "class": "resident"
+    },
+    {
+      "repo": "deepseek-ai/dsh-superagent-prototype",
+      "days_seen": 5,
+      "first_seen": "2026-11-02",
+      "last_seen": "2026-11-06",
+      "stars_now": 19992,
+      "star_delta": 8805,
+      "peak_daily_gain": 0,
+      "topics": [],
+      "desc": "Towards a More Autonomous Agent System",
+      "class": "resident"
+    },
+    {
+      "repo": "mattpocock/skills",
+      "days_seen": 7,
+      "first_seen": "2026-11-02",
+      "last_seen": "2026-11-08",
+      "stars_now": 318134,
+      "star_delta": 8455,
+      "peak_daily_gain": 2058,
+      "topics": [],
+      "desc": "Skills for Real Engineers. Straight from my .agents directory.",
+      "class": "resident"
+    },
+    {
+      "repo": "vercel-labs/agent-desktop",
+      "days_seen": 4,
+      "first_seen": "2026-11-02",
+      "last_seen": "2026-11-05",
+      "stars_now": 16128,
+      "star_delta": 8268,
+      "peak_daily_gain": 3792,
+      "topics": [
+        "accessibility",
+        "accessibility-api",
+        "ai-agents",
+        "automation",
+        "cli",
+        "computer-use",
+        "computer-use-agent",
+        "computer-use-agents",
+        "desktop-automation",
+        "macos",
+        "mcp",
+        "rust"
+      ],
+      "desc": "Agent Desktop gives any agent reliable computer use on the desktop. Built with Rust, it sees any app's real UI structure through OS accessibility trees and oper",
+      "class": "recurring"
+    },
+    {
+      "repo": "cloudflare/security-audit-skill",
+      "days_seen": 4,
+      "first_seen": "2026-11-02",
+      "last_seen": "2026-11-07",
+      "stars_now": 64773,
+      "star_delta": 7897,
+      "peak_daily_gain": 2524,
+      "topics": [],
+      "desc": "A coding-agent skill for multi-phase security audits with independently verified, machine-readable findings",
+      "class": "recurring"
+    },
+    {
+      "repo": "D4Vinci/Scrapling",
+      "days_seen": 7,
+      "first_seen": "2026-11-02",
+      "last_seen": "2026-11-08",
+      "stars_now": 99556,
+      "star_delta": 7423,
+      "peak_daily_gain": 2006,
+      "topics": [
+        "ai",
+        "ai-scraping",
+        "automation",
+        "crawler",
+        "crawling",
+        "crawling-python",
+        "data",
+        "data-extraction",
+        "mcp",
+        "mcp-server",
+        "playwright",
+        "python",
+        "scraping",
+        "selectors",
+        "stealth",
+        "web-scraper",
+        "web-scraping",
+        "web-scraping-python",
+        "webscraping",
+        "xpath"
+      ],
+      "desc": "🕷️ The BEST Web Scraping framework that handles everything from a single request to a full-scale crawl! Don't be shy, join here: https://discord.gg/EMgGbDceNQ a",
+      "class": "resident"
+    },
+    {
+      "repo": "NVIDIA/auto-ontology",
+      "days_seen": 4,
+      "first_seen": "2026-11-04",
+      "last_seen": "2026-11-08",
+      "stars_now": 9953,
+      "star_delta": 6314,
+      "peak_daily_gain": 2053,
+      "topics": [],
+      "desc": "Auto Ontology is a Python framework for building semantic, graph-based reasoning layers over data. It enables deterministic query generation, better context ret",
+      "class": "recurring"
+    },
+    {
+      "repo": "pbakaus/impeccable",
+      "days_seen": 6,
+      "first_seen": "2026-11-02",
+      "last_seen": "2026-11-07",
+      "stars_now": 105111,
+      "star_delta": 5135,
+      "peak_daily_gain": 0,
+      "topics": [
+        "agent-skills",
+        "ai",
+        "anti-slop",
+        "design",
+        "slop"
+      ],
+      "desc": "The design vocabulary for your coding agent. Steer with polish and bolder, review with critique and audit, catch AI slop before it ships.",
+      "class": "resident"
+    },
+    {
+      "repo": "milind-soni/OpenMausBot",
+      "days_seen": 4,
+      "first_seen": "2026-11-05",
+      "last_seen": "2026-11-08",
+      "stars_now": 17620,
+      "star_delta": 5095,
+      "peak_daily_gain": 1986,
+      "topics": [
+        "ai-agents",
+        "claude-code",
+        "codex",
+        "computer-use",
+        "docker",
+        "electron",
+        "expo",
+        "grok",
+        "grok-bot",
+        "grok-bot-alternative",
+        "self-hosted",
+        "typescript"
+      ],
+      "desc": "Open-source Grok Bot alternative with a virtual machine that bots can use",
+      "class": "recurring"
+    },
+    {
+      "repo": "Nutlope/hallmark",
+      "days_seen": 7,
+      "first_seen": "2026-11-02",
+      "last_seen": "2026-11-08",
+      "stars_now": 50579,
+      "star_delta": 5082,
+      "peak_daily_gain": 0,
+      "topics": [],
+      "desc": "Anti-AI-slop design skill for Claude Code, Cursor, and Codex.",
+      "class": "resident"
+    },
+    {
+      "repo": "thedotmack/claude-mem",
+      "days_seen": 7,
+      "first_seen": "2026-11-02",
+      "last_seen": "2026-11-08",
+      "stars_now": 114677,
+      "star_delta": 4474,
+      "peak_daily_gain": 1799,
+      "topics": [
+        "ai",
+        "ai-agents",
+        "ai-memory",
+        "anthropic",
+        "artificial-intelligence",
+        "chromadb",
+        "claude",
+        "claude-agent-sdk",
+        "claude-agents",
+        "claude-code",
+        "claude-code-plugin",
+        "claude-skills",
+        "embeddings",
+        "long-term-memory",
+        "mem0",
+        "memory-engine",
+        "openmemory",
+        "rag",
+        "sqlite",
+        "supermemory"
+      ],
+      "desc": "Persistent Context Across Sessions for Every Agent – Captures everything your agent does during sessions, compresses it with AI, and injects relevant context ba",
+      "class": "resident"
+    },
+    {
+      "repo": "Donchitos/Claude-Code-Game-Studios",
+      "days_seen": 5,
+      "first_seen": "2026-11-02",
+      "last_seen": "2026-11-08",
+      "stars_now": 36786,
+      "star_delta": 3797,
+      "peak_daily_gain": 1380,
+      "topics": [
+        "ai-agents",
+        "ai-assisted-development",
+        "anthropic",
+        "claude",
+        "claude-code",
+        "game-design",
+        "game-development",
+        "gamedev",
+        "godot",
+        "indie-game-dev",
+        "unity",
+        "unreal-engine"
+      ],
+      "desc": "Turn Claude Code into a full game dev studio — 49 AI agents, 72 workflow skills, and a complete coordination system mirroring real studio hierarchy.",
+      "class": "resident"
+    },
+    {
+      "repo": "obra/superpowers",
+      "days_seen": 6,
+      "first_seen": "2026-11-02",
+      "last_seen": "2026-11-07",
+      "stars_now": 313840,
+      "star_delta": 2901,
+      "peak_daily_gain": 0,
+      "topics": [
+        "ai",
+        "brainstorming",
+        "coding",
+        "obra",
+        "sdlc",
+        "skills",
+        "subagent-driven-development",
+        "superpowers"
+      ],
+      "desc": "An agentic skills framework & software development methodology that works.",
+      "class": "resident"
+    },
+    {
+      "repo": "anthropics/skills",
+      "days_seen": 7,
+      "first_seen": "2026-11-02",
+      "last_seen": "2026-11-08",
+      "stars_now": 189116,
+      "star_delta": 2534,
+      "peak_daily_gain": 793,
+      "topics": [
+        "agent-skills"
+      ],
+      "desc": "Public repository for Agent Skills",
+      "class": "resident"
+    }
+  ],
+  "repos_one_day_wonders": [
+    {
+      "repo": "anomalyco/hex",
+      "days_seen": 1,
+      "first_seen": "2026-11-03",
+      "last_seen": "2026-11-03",
+      "stars_now": 4224,
+      "star_delta": 0,
+      "peak_daily_gain": 1134,
+      "topics": [
+        "dictation",
+        "linux",
+        "local-first",
+        "macos",
+        "rust",
+        "speech-recognition",
+        "speech-to-text",
+        "voice-control"
+      ],
+      "desc": "Local voice dictation for mac, windows and linux",
+      "class": "one-off"
+    },
+    {
+      "repo": "FlashML-org/FreeToken",
+      "days_seen": 1,
+      "first_seen": "2026-11-02",
+      "last_seen": "2026-11-02",
+      "stars_now": 15740,
+      "star_delta": 0,
+      "peak_daily_gain": 654,
+      "topics": [
+        "deepseek-v4",
+        "edge",
+        "glm",
+        "inference",
+        "minimax",
+        "moe",
+        "qwen",
+        "transformer"
+      ],
+      "desc": "FreeToken brings datacenter-scale model serving to your desktop. Run massive models locally, fast and efficiently.",
+      "class": "one-off"
+    },
+    {
+      "repo": "harry0703/MoneyPrinterTurbo",
+      "days_seen": 1,
+      "first_seen": "2026-11-04",
+      "last_seen": "2026-11-04",
+      "stars_now": 138537,
+      "star_delta": 0,
+      "peak_daily_gain": 615,
+      "topics": [
+        "ai-video-generator",
+        "content-creation",
+        "ffmpeg",
+        "instagram-reels",
+        "llm",
+        "python",
+        "short-video",
+        "subtitles",
+        "text-to-speech",
+        "tiktok",
+        "video-automation",
+        "video-workflow",
+        "workflow-automation",
+        "youtube-shorts"
+      ],
+      "desc": "利用 AI 大模型和自动化工作流，根据主题或关键词一键生成高清短视频。Generate HD short videos from a topic or keyword with an automated AI workflow.",
+      "class": "one-off"
+    },
+    {
+      "repo": "paperclipai/paperclip",
+      "days_seen": 1,
+      "first_seen": "2026-11-02",
+      "last_seen": "2026-11-02",
+      "stars_now": 110094,
+      "star_delta": 0,
+      "peak_daily_gain": 507,
+      "topics": [
+        "acpx",
+        "agent-orchestration",
+        "agent-skills",
+        "agentic-ai",
+        "ai-agents",
+        "ai-engineering",
+        "ai-governance",
+        "ai-tools",
+        "autonomous-agents",
+        "claude",
+        "claude-code",
+        "claude-skills",
+        "codex",
+        "hermes",
+        "llm",
+        "mcp",
+        "multi-agent",
+        "openclaw",
+        "project-management",
+        "workflow-automation"
+      ],
+      "desc": "The open-source app everyone uses to manage agents at work",
+      "class": "one-off"
+    }
+  ]
+}
