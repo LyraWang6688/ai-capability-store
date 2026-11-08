@@ -19,7 +19,8 @@
 - **执行后端可替换**：默认 `dsh headless`，也可以指向你自己的 agent / 脚本；
 - **凭据零入库**：复用 lark-cli 的凭据库与系统钥匙串，本项目不存任何 token；
 - **高风险动作先确认**：含「删除/转账/清空」等词的指令，先回确认卡片文案，回复「确认」才执行；
-- **发图片能真的看懂**：飞书里的截图/照片先由桥下载到 `<workdir>/.feishu-images/`，再把本机路径交给 agent 的 `read_image` 工具——图片是图片，不是一串 `img_v3_...`（需要飞书应用具备 `im:resource` 权限）；
+- **发图片能真的看懂**：飞书里的截图/照片先由桥下载到 `<workdir>/.feishu-images/`，再把本机路径交给 agent 的 `read_image` 工具——图片是图片，不是一串 `img_v3_...`（需要飞书应用具备 `im:resource` 权限；下载的图默认保留 7 天，启动时清理）；
+- **其它媒体明确拒绝**：语音 / 文件 / 视频 / 表情 / 分享卡片先回一句「暂不支持」，不把预渲染的占位文本当成任务转给模型；
 - **审计留痕**：每个任务一行 JSONL（谁、何时、指令、耗时、结果长度）；
 - **回复都是卡片**：任务结果 / 失败 / 高风险确认 / 帮助 / 状态统一用飞书 **Card 2.0** 呈现（客户端需 ≥ 7.20），卡片发送失败时自动降级为文本。高风险确认卡带「确认执行 / 取消」按钮（需开启 `cardActions`），文字回复「确认 / 取消」仍然有效。
 
@@ -93,6 +94,7 @@ npx @lyra_wang/dsh-feishu-remote init
 | `apiKeyEnv` / `keychainService` | 模型 Key 的环境变量名 / 钥匙串条目名（Linux 没有钥匙串，配 `keychainService: ""`） |
 | `allowedChatTypes` | 允许的会话类型（默认仅 `p2p`） |
 | `cardActions` | 是否消费 `card.action.trigger`（卡片按钮回调，默认 `false`；开启前需在开放平台订阅回调） |
+| `imageRetentionDays` | 已下载图片的保留天数（默认 7）；桥启动时删除过期文件，0 或负数表示不清理 |
 | `extraEnv` | 追加给执行后端的环境变量。**Linux 上通常要把 `PATH` 指到 DSH 用的 node 目录**（见下节） |
 
 ## 图片消息（0.6.0）
@@ -102,7 +104,9 @@ npx @lyra_wang/dsh-feishu-remote init
 1. 识别消息里的 `![Image](img_*)`，用 `lark-cli im +messages-resources-download`（**bot 身份**）把图下载到 `<workdir>/.feishu-images/<message_id>-<n>.png`；
 2. 把任务改写成「图片已保存到 …，回答前先用 `read_image` 工具查看」，再把用户原话接在后面。
 
-下游需要两件事同时成立：执行后端要有 `read_image` 工具（DSH 的 `tool-fs` 配 `attachment-local` 自带，headless profile 也有），模型要能收图（默认 `deepseek-flash` 是图文模型；`deepseek-v4-pro` 纯文本，会退化成占位符）。一条消息最多下载 6 张；某张下载失败时失败原因会写进任务，让模型如实告诉用户，而不是静默丢掉。
+下游需要两件事同时成立：执行后端要有 `read_image` 工具（DSH 的 `tool-fs` 配 `attachment-local` 自带，headless profile 也有），模型要能收图（默认 `deepseek-flash` 是图文模型；`deepseek-v4-pro` 纯文本，会退化成占位符）。一条消息最多下载 6 张；某张下载失败时失败原因会写进任务，让模型如实告诉用户，而不是静默丢掉。图片默认保留 7 天（`imageRetentionDays`），桥启动时清理，不会长期堆在磁盘上。
+
+其它消息类型（`message_type` 为 `file` / `audio` / `media` / `sticker` / `share_chat` / `share_user` / `interactive`）会被直接回一句「暂不支持」——lark-cli 会把这些类型也预渲染成文本，不拦截的话模型只会收到一段没有内容的文字，又回到「用户以为发了、AI 说没有」。
 
 ## 安全模型
 

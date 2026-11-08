@@ -7,7 +7,13 @@ import { join } from 'node:path';
 import { LOG_DIR, STATE_PATH, ensureDirs } from './config.mjs';
 import { sendCard, sendText, spawnConsumer } from './feishu.mjs';
 import { buildConfirmCard, buildReplyCard } from './cards.mjs';
-import { buildImagePrompt, downloadMessageImages, extractImageKeys } from './images.mjs';
+import {
+  buildImagePrompt,
+  downloadMessageImages,
+  extractImageKeys,
+  pruneImages,
+  unsupportedMessageLabel,
+} from './images.mjs';
 
 function audit(level, stage, extra = {}) {
   const day = new Date().toISOString().slice(0, 10);
@@ -143,6 +149,7 @@ const HELP = (cfg) => [
   '远程任务用法：',
   '· 直接发一句话 = 在这台电脑上执行（例如：看看桌面有哪些文件）',
   '· 发图片（截图/照片）= 桥先把图下载到本机，再让 AI 真的看图后回答',
+  '· 语音/文件/视频暂不支持，会直接回一句说明；文字和图片是现在的全部输入',
   '· 含高风险词（删除/转账/清空等）= 先回确认，回复「确认」才执行',
   '· 发送「帮助」= 看这段说明；发送「状态」= 看服务信息',
   '· 执行目录：' + cfg.workdir,
@@ -151,6 +158,14 @@ const HELP = (cfg) => [
 /** Start the resident loop. Returns a shutdown function. */
 export function startListener(cfg) {
   ensureDirs();
+  // Downloaded images are a cache, not an archive: drop the expired ones
+  // every time the bridge (re)starts.
+  try {
+    const pruned = pruneImages(cfg, cfg.imageRetentionDays ?? 7);
+    if (pruned > 0) audit('info', 'images-pruned', { pruned, retentionDays: cfg.imageRetentionDays ?? 7 });
+  } catch (error) {
+    audit('warn', 'images-prune', { err: String(error) });
+  }
   const state = loadState();
   const hasKey = ensureApiKey(cfg);
   audit('info', 'listener-start', { pid: process.pid, workdir: cfg.workdir, apiKey: hasKey ? 'present' : 'missing' });
@@ -164,11 +179,19 @@ export function startListener(cfg) {
     return queue;
   };
 
-  async function execute(chatId, text, taskId) {
+  async function execute(chatId, text, taskId, meta = {}) {
     const started = Date.now();
     const reuse = cfg.reuseSession !== false;
     const previous = reuse ? state.sessions[chatId] : null;
-    audit('info', 'start', { taskId, chatId, text, session: previous || 'new' });
+    audit('info', 'start', {
+      taskId,
+      chatId,
+      messageId: meta.messageId,
+      messageType: meta.messageType,
+      images: meta.images,
+      text,
+      session: previous || 'new',
+    });
     let result = await runAgent(cfg, text, previous);
     if (previous && result.code !== 0 && /unknown|not found|不存在|无效/i.test(`${result.stderr} ${result.stdout}`)) {
       audit('warn', 'session-lost', { chatId, session: previous });
@@ -202,6 +225,7 @@ export function startListener(cfg) {
     await reply(cfg, chatId, cardKind, cardText, `${taskId} · ${elapsed}s`);
     audit(ok ? 'info' : 'error', 'done', {
       taskId,
+      messageId: meta.messageId,
       code: result.code,
       reason: reasonKind,
       ms: Date.now() - started,
@@ -226,8 +250,20 @@ export function startListener(cfg) {
     saveState(state);
 
     const chatId = event.chat_id;
+    if (!chatId) return;
+    const messageType = String(event.message_type || event.msg_type || '').trim();
+    const unsupported = unsupportedMessageLabel(messageType);
+    if (unsupported) {
+      // lark-cli pre-renders every type to text, so without this check an
+      // audio/file message would be forwarded as an ordinary task and the
+      // model would have to explain why it has no content.
+      audit('warn', 'unsupported-message', { chatId, messageId, messageType });
+      await reply(cfg, chatId, 'error', `暂不支持${unsupported}消息：目前只能处理文字和图片。`, undefined, '暂不支持');
+      return;
+    }
     const text = String(event.content || '').trim();
-    if (!chatId || !text) return;
+    if (!text) return;
+    const meta = { messageId, messageType: messageType || 'text' };
 
     if (/^(\/help|帮助|help)$/i.test(text)) {
       audit('info', 'help', { chatId });
@@ -250,13 +286,16 @@ export function startListener(cfg) {
     // real path, so its `read_image` tool sees the picture instead of a key.
     let prompt = text;
     const imageKeys = extractImageKeys(text);
+    meta.images = imageKeys.length;
     if (imageKeys.length > 0) {
       const saved = await downloadMessageImages(cfg, messageId, imageKeys);
       prompt = buildImagePrompt(text, saved);
       audit('info', 'images', {
         chatId,
+        messageId,
         count: saved.length,
         downloaded: saved.filter((item) => item.ok).length,
+        keys: saved.map((item) => item.key),
         paths: saved.filter((item) => item.ok).map((item) => item.path),
       });
     }
@@ -268,7 +307,7 @@ export function startListener(cfg) {
         saveState(state);
         audit('info', 'confirmed', { taskId: pending.taskId, text: pending.text });
         await reply(cfg, chatId, 'ack', '已确认，开始执行…');
-        await execute(chatId, pending.text, pending.taskId);
+        await execute(chatId, pending.text, pending.taskId, pending.meta || {});
         return;
       }
       if (/^(取消|放弃|no|cancel|n)$/i.test(text)) {
@@ -284,7 +323,7 @@ export function startListener(cfg) {
 
     if (isHighRisk(cfg, text)) {
       const taskId = newTaskId();
-      state.pending = { text: prompt, chatId, taskId, at: Date.now() };
+      state.pending = { text: prompt, chatId, taskId, at: Date.now(), meta };
       saveState(state);
       audit('warn', 'confirm-required', { taskId, text });
       await sendConfirm(cfg, chatId, text, taskId);
@@ -292,7 +331,7 @@ export function startListener(cfg) {
     }
 
     await reply(cfg, chatId, 'ack', '收到，开始执行…');
-    await execute(chatId, prompt, newTaskId());
+    await execute(chatId, prompt, newTaskId(), meta);
   }
 
   /** Handle `card.action.trigger` from the confirmation card. */
@@ -316,7 +355,7 @@ export function startListener(cfg) {
       saveState(state);
       audit('info', 'card-confirmed', { taskId: pending.taskId });
       await reply(cfg, chatId, 'ack', '已确认，开始执行…');
-      await execute(chatId, pending.text, pending.taskId);
+      await execute(chatId, pending.text, pending.taskId, pending.meta || {});
       return;
     }
     if (value.action === 'cancel') {
