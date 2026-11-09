@@ -85,6 +85,7 @@ Exit code 0 = all checks pass; non-zero = failure.
 """
 
 import datetime
+import json
 import os
 import posixpath
 import re
@@ -1368,6 +1369,64 @@ def validate_automation_entries(reg: dict):
     return collected
 
 
+DSH_PLUGIN_SHELF = "external-capabilities/plugin/dsh"
+DSH_PLUGIN_SCOPE = "@lyra_wang/"
+DSH_PREFIX_RE = re.compile(r"^(?:@[a-z0-9][a-z0-9._-]*/)?dsh-")
+
+
+def expected_dsh_package_name(key: str) -> str:
+    """`session-board` → `@lyra_wang/dsh-session-board`.
+
+    A key that already carries the prefix (`dsh-inbox`) must not produce
+    `dsh-dsh-inbox`: the prefix belongs to the distribution layer, and an asset
+    whose key already has it is naming debt to be fixed, not a second prefix.
+    """
+    stem = key[4:] if key.startswith("dsh-") else key
+    return f"{DSH_PLUGIN_SCOPE}dsh-{stem}"
+
+
+def validate_dsh_plugin_package_names(cap_entries):
+    """DSH 插件的 npm 包名必须带 `dsh-` 前缀，且与 registry 键一一对应。
+
+    为什么这条不能只留在惯例里：包名是分发的**身份**。
+      - 少了 `dsh-`，它在 npm 上和一个普通库长得一样，没人知道它能装进 Harness profile；
+      - 写成别的名字，同一个资产就有两个身份，而 `plugin_manager install_bundle`
+        接受的是包名 —— registry 是身份的唯一来源，包名必须能被它反推出来。
+
+    规则原文：`CONTRIBUTING_AI.md` § Naming Rules → DSH plugin npm packages；
+    发布侧约束：`PUBLISHING.md` § D 前置。
+
+    只查已登记且 `implementation_path` 落在 `external-capabilities/plugin/dsh/`
+    的资产；目录是否已登记、文件是否齐全由别的检查负责，这里只管名字。
+    """
+    shelf = DSH_PLUGIN_SHELF + "/"
+    for key, entry in cap_entries:
+        impl = entry.get("implementation_path")
+        if not isinstance(impl, str) or not impl:
+            continue
+        rel = impl.rstrip("/")
+        if not rel.startswith(shelf):
+            continue
+        pkg_path = os.path.join(ROOT, rel, "package.json")
+        if not os.path.isfile(pkg_path):
+            continue  # 没有 package.json 就没有 npm 身份可分，别的检查会报
+        try:
+            with open(pkg_path, encoding="utf-8") as fh:
+                pkg = json.load(fh)
+        except (OSError, ValueError) as exc:
+            check(f"dsh plugin package.json parses: {rel}", False, str(exc))
+            continue
+        name = pkg.get("name")
+        has_prefix = isinstance(name, str) and bool(DSH_PREFIX_RE.match(name))
+        check(f"dsh plugin npm package is dsh-prefixed: {key}", has_prefix,
+              f"package.json name={name!r} — a DSH plugin package must carry the "
+              f"'dsh-' prefix (CONTRIBUTING_AI.md § Naming Rules)")
+        expected = expected_dsh_package_name(key)
+        check(f"dsh plugin npm package matches registry key: {key}", name == expected,
+              f"package.json name={name!r}, registry key={key!r} expects {expected!r} "
+              f"— one asset, one npm identity")
+
+
 def discover_skill_packages():
     """Find skill packages on disk that contain SKILL.md.
 
@@ -1647,6 +1706,7 @@ def main() -> int:
     # ---- 8/9. Capability schema + provider naming ----
     cap_entries = validate_capability_entries(caps_reg) if caps_ok else []
     if caps_ok:
+        validate_dsh_plugin_package_names(cap_entries)
         allowed_types = set(caps_reg.get("allowed_types") or [])
         allowed_statuses = set(caps_reg.get("allowed_statuses") or [])
         check("capability registry supports 6 types", allowed_types == ALLOWED_CAPABILITY_TYPES,
