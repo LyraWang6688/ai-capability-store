@@ -48,6 +48,12 @@ window.__ModuleLoader__.load({
       .${ROOT}-action[disabled]{opacity:.5;cursor:not-allowed}
       .${ROOT}-hint{color:var(--dsw-alias-label-secondary,#9a9aa2);font-size:11.5px}
       .${ROOT}-error{color:#ff8a8a;font-size:11.5px}
+      .${ROOT}-toast{position:fixed;z-index:2147483001;left:50%;transform:translateX(-50%);bottom:86px;
+        padding:8px 14px;border-radius:999px;background:var(--dsw-alias-bg-overlay,#2b2b2f);
+        border:1px solid var(--dsw-alias-border-l1,#3a3a40);box-shadow:0 10px 30px rgba(0,0,0,.4);
+        font:12px/1.3 -apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif;
+        color:var(--dsw-alias-label-primary,#e6e6e9);pointer-events:none;white-space:nowrap}
+      .${ROOT}-toast[data-error="true"]{color:#ff8a8a}
     `;
 
     function readImageFromDataTransfer(dataTransfer) {
@@ -80,10 +86,21 @@ window.__ModuleLoader__.load({
       const [busy, setBusy] = useState(false);
       const [error, setError] = useState('');
       const [over, setOver] = useState(false);
+      const [toast, setToast] = useState(null);
       const btnRef = useRef(null);
       const panelRef = useRef(null);
       const dropRef = useRef(null);
       const textRef = useRef(null);
+      const toastTimer = useRef(0);
+
+      /** Transient feedback for actions whose only other signal is a closed panel. */
+      const say = (message, isError) => {
+        setToast({ message, isError: isError === true });
+        window.clearTimeout(toastTimer.current);
+        toastTimer.current = window.setTimeout(() => setToast(null), isError ? 5200 : 2200);
+      };
+
+      useEffect(() => () => window.clearTimeout(toastTimer.current), []);
 
       const openPanel = () => {
         const rect = btnRef.current ? btnRef.current.getBoundingClientRect() : null;
@@ -186,16 +203,32 @@ window.__ModuleLoader__.load({
           const span = inputActions.captureInsertion();
           inputActions.insertText(payload, span);
           close();
-        } else if (navigator.clipboard) {
-          navigator.clipboard.writeText(payload);
-          close();
+          say('已插入输入框');
+          return;
         }
+        // No composer insertion API on this page: copy instead, but say so
+        // instead of silently turning "insert" into "copy".
+        if (!navigator.clipboard) {
+          say('当前页面无法插入，也无法访问剪贴板', true);
+          return;
+        }
+        navigator.clipboard.writeText(payload).then(() => {
+          close();
+          say('当前页面无法插入，已复制到剪贴板');
+        }, () => say('复制失败（检查剪贴板权限）', true));
       };
 
       const copy = () => {
         const payload = selectedText() || text;
         if (payload === '') return;
-        if (navigator.clipboard) navigator.clipboard.writeText(payload);
+        if (!navigator.clipboard) {
+          say('复制失败（剪贴板不可用）', true);
+          return;
+        }
+        navigator.clipboard.writeText(payload).then(
+          () => say('已复制到剪贴板'),
+          () => say('复制失败（检查剪贴板权限）', true),
+        );
       };
 
       const button = h('button', {
@@ -287,7 +320,15 @@ window.__ModuleLoader__.load({
         ])
         : null;
 
-      return h(React.Fragment, null, h('style', { key: 'style' }, CSS), button, panel);
+      const toastNode = toast
+        ? h('div', {
+          key: 'toast',
+          className: ROOT + '-toast',
+          'data-error': toast.isError ? 'true' : 'false',
+        }, toast.message)
+        : null;
+
+      return h(React.Fragment, null, h('style', { key: 'style' }, CSS), button, panel, toastNode);
     }
 
     return {

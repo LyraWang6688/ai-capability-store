@@ -145,10 +145,10 @@ capabilities:
     type: plugin
     status: limited
     provider_path: external-capabilities/providers/lyrawang/README.md
-    version: 0.3.1
+    version: 0.3.2
     implementation_path: external-capabilities/plugin/dsh/image-ocr
     auth: "无凭据入仓，不需要任何账号或 API Key。OCR 完全本地（macOS Vision），图片不出本机"
-    capabilities: "DSH 输入框左侧「＋ 识图」按钮：读取剪贴板里的截图，用本地 Vision 引擎识别中英文字，把文字插入草稿（可撤销、不自动发送）。宿主侧注册同源只读路由 `/plugins/image-ocr/ocr`，并带一份 Swift 源码在首次使用时编译缓存"
+    capabilities: "DSH 输入框左侧「＋ 识图」按钮：读取剪贴板里的截图，用本地 Vision 引擎识别中英文字，把文字插入草稿（可撤销、不自动发送）；插入/复制/读剪贴板都有明确反馈（底部提示或面板内状态），剪贴板写入失败会报原因，页面不支持插入时提示「已复制到剪贴板」而不是静默降级。宿主侧注册同源只读路由 `/plugins/image-ocr/ocr`，并带一份 Swift 源码在首次使用时编译缓存"
     permissions: "需要 macOS 13+ 与 Xcode Command Line Tools（xcrun swiftc）。宿主进程读取剪贴板图片；不读屏幕、不联网"
     commerce: {charge: free}
     notes: "自研、Store-managed。0.1.0 首次登记：client 注册在 `conversation.input.left`（order=3，紧邻 feishu-ref 的「＋ 引用」）；插入走 `inputActions.captureInsertion()` + `insertText()`。OCR 引擎编译缓存在仓库外（~/Library/Application Support/dsh-image-ocr/ocr），首次点击可能等 30–60s，apply 时会后台预热。实测：整屏截图 53 行，冷启动 31s（编译+模型初始化），热启动 0.66s；中文长句识别良好，UI 图标会带来少量短符号噪声0.3.1 只改 LICENSE 版权行：统一为 Copyright (c) 2026 Lyra Wang（与仓库根 LICENSE、npm 维护者账号一致）；无代码改动。"
