@@ -1,0 +1,5 @@
+# 会话需求看板：Host 路由（读会话日志 → 需求/任务投影）+ Client 右侧停靠面板。
+# 无配置项：数据全部来自当前 Session 自己的事件日志。
+- insert:
+    - id: dsh-session-board
+      name: "@lyra_wang/dsh-session-board"
