@@ -54,3 +54,7 @@ skills/*/scripts/ui
 
 # 分发产物：skills 打包出来的 tar.gz（package.sh 生成，不入库）。
 skills/*/dist/
+
+# DSH 个性化页面（personalized page）在会话工作区留下的构建产物：由 Creator 生成、
+# 可重新生成，不入库。发布前置要求工作树干净，留着它会让每次发版都卡住。
+.dsh-created-plugins/
