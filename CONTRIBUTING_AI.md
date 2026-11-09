@@ -86,8 +86,11 @@ cordis entry id  dsh-session-board
 - Local installation uses the published npm name. A local path or an `@local/*`
   alias is a development shortcut, never an identity.
 
-> Declared, not enforced: no validator checks this today. The nine plugins under
-> `external-capabilities/plugin/dsh/` all comply.
+> **Enforced.** `scripts/validate_store.py` →
+> `validate_dsh_plugin_package_names` checks both halves for every registered
+> asset under `external-capabilities/plugin/dsh/`: the prefix is present, and the
+> package name is exactly the registry key's identity. CI and the release
+> preflight both run it, so a wrongly named package does not reach `npm publish`.
 
 ## Scope Control
 
