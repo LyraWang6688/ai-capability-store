@@ -320,12 +320,12 @@ window.__ModuleLoader__.load({
           id: PKG,
           kind: KIND,
           priority: 'extension',
-          title: () => '📋 需求',
+          title: () => '📋 需求·自动',
           guide: [
             {
               id: 'board',
               order: 40,
-              title: () => '📋 需求看板',
+              title: () => '📋 需求看板（自动）',
               description: () => '这个会话提了哪些需求、进展如何',
             },
           ],
@@ -339,7 +339,7 @@ window.__ModuleLoader__.load({
         );
         ctx.slots.inject('sidebar.right.pane.tab.title', () =>
           ctx.slots.register({ name: 'sidebar.right.pane.tab.title', key: PKG }, () =>
-            h('span', null, '📋 需求'),
+            h('span', null, '📋 需求·自动'),
           ),
         );
 
