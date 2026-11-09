@@ -323,3 +323,18 @@ capabilities:
     permissions: "仅 macOS 桌面端。Host 进程需要系统「屏幕录制」权限（DSH Desktop 0.2.1-rc.3 上实测可直接调用 screencapture）。不读取剪贴板、不联网、不留长期文件；只在 mkdtemp 目录写一次临时 PNG 并立即删除"
     commerce: {charge: free}
     notes: "自研、Store-managed。定位：豆包工作 / Codex 的「应用截图」是在输入框内直接得到附件；插件层拿不到草稿附件的注册表（attachment id 与上传状态由 composer 客户端自己持有），因此不走 ctx.fileUpload.upload + inputActions.addAttachments 自拼，而是把 PNG 做成 File 后合成一次 ClipboardEvent('paste') 交给 composer 自己的 intake 路径——与用户手动 ⌘V 完全同一条代码；找不到编辑器时退回 input[type=file] + change 事件。Host 侧实测：从 DSH 宿主子进程直接执行 /usr/sbin/screencapture -x 成功产出 2560×1656 PNG，屏幕录制权限已具备。端到端实测（2026-10-28，DSH Desktop 0.2.1-rc.3，macOS 27.0.1）：安装后 client 半在 conversation.input.left 注册为 screenshot（order=4，紧邻 image-ocr），按钮渲染正常；模拟点击按钮 + 拖选区域后图片作为附件出现在草稿（缩略图可见、可随消息发送）；无鉴权请求 Host 路由返回 401，证明路由与连接鉴权均按预期注册。status 取 limited：仅覆盖 macOS 桌面端，且合成 paste 依赖 composer 当前实现（未来结构变化会退回文件 input 通道）。0.2.0 增加快捷键：走 DSH 的 `ctx.shortcuts`（由 `@deepseek-ai/dsh-client-shortcuts` 提供，Web App「设置 → 快捷键」用的同一套），默认 `desktop:macos` = ⌥S，可在设置里改绑；不是 DOM keydown——桌面端原生键盘桥在本地处理器之前派发，所以 Option+S 不会把 `ß` 打进草稿，且弹窗开着也生效。只声明 desktop:macos 默认值：Web 版没有 Host 的 GUI 会话，Web 上该命令显示为「未绑定」。注意：client inspect 的 Service 目录**没有**列出 shortcuts（当时据此误判为「插件层没有快捷键 API」），但服务确实存在，判断 API 是否存在不能只看那一个目录。"
+
+  session-board:
+    name: session-board
+    hosting: store-managed
+    provider: lyrawang
+    type: plugin
+    status: limited
+    provider_path: external-capabilities/providers/lyrawang/README.md
+    version: 0.1.0
+    implementation_path: external-capabilities/plugin/dsh/session-board
+    auth: "无凭据入仓。只读本机 DSH 会话数据与父会话关系，不访问网络；切分缓存写在 <DSH_HOME>/session-board/ 下"
+    capabilities: "DSH 输入框左侧「📋 需求」按钮 + 官方右侧栏里的「📋 需求」tab（注册在 sidebar.right.pane.tab，与其他右侧栏 tab 并列；不做自绘兜底，宿主不提供右侧栏服务时 Client 半不激活）：把会话时间线折叠成需求列表——一条需求一行（目标、状态、消息数、任务数），展开后是该需求派出的子任务（subagent / subagent_fork / spawn_teammate / workflow / ralph / team_task_create / team_task_update / send_message / wait_agent）及各自状态，下面是这条需求里操作者说过的话；面板底部列出该会话派生的子会话。Host 一条同源路由：GET /plugins/session-board/board?session=<id> 读会话事件日志（sessionQuery.readSession + filterSessions）并投影需求/任务/子会话；POST 同路由以 merge / split / reset 修正切分。"
+    permissions: "只读会话。读取 DSH 自身的会话事件日志（user/message、tool/call、tool/result、turn/end）与父会话关系，不改会话、不改任务板、不写任何 DSH 自己的存储；唯一写入是本机切分缓存 <DSH_HOME>/session-board/<session>.json。不联网、不需要任何账号或凭据。Host 路由走 DSH 连接鉴权。"
+    commerce: {charge: free}
+    notes: "自研、Store-managed。定位：会话界面按时间线排，消息一多就看不出「哪几条消息其实是同一件事」，而一个会话里往往既有多轮更正、又有多路子智能体；本插件把时间线折叠成需求列表。判定口径：一条需求 = 一个目标 + 围绕它的全部对话；消息归属看四个信号（更正措辞 / 与近几条消息的字符二元组重合 ≥0.12 / 距上条不到 30 分钟 / 都不中则新开），并且**偏向少切**——多切会让同一条需求裂成几行、状态互相矛盾，少切只是粗。切分结果落盘，不做每次现算，否则条目数会在两次刷新之间漂移；新消息只做增量判断。关键实现发现：注入的 AGENTS.md、技能目录、运行时上下文同样以 user/message 事件到达，必须用 event.data.source.kind === 'user' 过滤，否则一条会话会被判出十几个假需求（本会话实测：一段 6 轮对话里 user/message 事件有 12 条，其中只有 6 条是操作者真说的）。真实数据验证：把会话日志按 zstd 多帧逐帧解码后跑投影，在 5 个真实会话上分别得 1/2/3/4/15 条需求，最大 417 条消息判出 15 条，无异常退出。右侧栏可达性（2026-11-09 实测，client inspect 查 sidebar.right.pane.tab 占位者）：第三方 Client 插件在 package.json 的 dsh.client.inject 声明 @deepseek-ai/dsh-client-ui-sidebar-right、并在 Cordis inject 里声明 slots/sidebarRightTabs/sidebarRight 之后，可以成功注册 tab 体并 openTab——同机一个 @dsh-local/* 本地插件即 active:true 地占着该 slot；仓库 plugin/dsh/README.md §4.1（2026-10）记的「第三方拿不到 sidebarRight」已过期。未覆盖：Client 半尚未在真实 DSH 界面加载（未装进任何 profile），因此 status 取 limited 而非 available；子智能体的「进行中」按会话是否 live 判断，未读子会话自己的事件流。"
