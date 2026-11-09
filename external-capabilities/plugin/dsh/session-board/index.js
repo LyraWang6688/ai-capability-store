@@ -388,6 +388,10 @@ export function mergeReports(rows, reports) {
     if (!report) return { ...row, source: 'log' };
     return {
       ...row,
+      // The row id the caller sees is a board id, which for a claimed row is the
+      // *log* row's number — not the report's id. Carry the report id separately
+      // so tools can resolve an id they were handed back into the stored report.
+      reportId: report.id,
       title: report.goal ? titleOf(report.goal, 60) : row.title,
       autoStatus: row.status,
       status: report.status || row.status,
@@ -403,6 +407,7 @@ export function mergeReports(rows, reports) {
   for (const report of orphans) {
     merged.push({
       id: `r${report.id}`,
+      reportId: report.id,
       title: titleOf(report.goal || '', 60),
       firstSeq: report.anchorSeq || 0,
       messageCount: 0,
@@ -494,6 +499,29 @@ export function apply(ctx) {
       if (event.seq > anchor) anchor = event.seq;
     }
     return anchor;
+  }
+
+  /**
+   * Map an id the caller was handed back to the stored report it came from.
+   *
+   * The board hands out display ids (`r2`); for a row an agent reported into,
+   * that id is the *log* row's number, while the report itself is stored under
+   * its own sequence (`1`). Without this hop, `declare` works and every later
+   * `update` / `add_tasks` silently targets nothing.
+   */
+  async function resolveRequirement(sessionId, requested) {
+    if (!requested) return null;
+    const board = await buildBoard(sessionId);
+    const bare = requested.replace(/^r/i, '');
+    const row = (board.rows || []).find(
+      (item) => String(item.id) === requested || String(item.id) === `r${bare}` || String(item.id) === bare,
+    );
+    if (!row) return null;
+    return {
+      reportId: row.reportId === undefined ? '' : String(row.reportId),
+      anchorSeq: row.firstSeq,
+      goal: row.title,
+    };
   }
 
   /**
@@ -636,7 +664,14 @@ export function apply(ctx) {
           const sessionId = String((args && args.sessionId) || exec?.agent?.id || '').trim();
           if (!sessionId) throw new Error('session_board: no session id in the tool context');
           const action = String((args && args.action) || '');
-          const wanted = normaliseRequirementId(args && args.requirementId);
+          const requested = normaliseRequirementId(args && args.requirementId);
+          const target = action === 'declare' ? null : await resolveRequirement(sessionId, requested);
+          if (action !== 'declare' && !target) {
+            throw new Error(
+              `session_board: requirement ${requested || '(none)'} not found in this session`,
+            );
+          }
+          const wanted = target ? target.reportId : '';
 
           const board = await mutateReports(sessionId, (reports, info) => {
             const next = reports.map((report) => ({ ...report, tasks: (report.tasks || []).slice() }));
@@ -658,8 +693,23 @@ export function apply(ctx) {
               return next;
             }
 
-            const report = next.find((item) => String(item.id) === wanted);
-            if (!report) throw new Error(`session_board: requirement ${wanted || '(none)'} not found in this session`);
+            // A row can carry no report yet (the board derived it from the log
+            // alone). Reporting into it is the point of this tool, so create the
+            // report here, anchored where the row starts.
+            let report = wanted ? next.find((item) => String(item.id) === wanted) : undefined;
+            if (!report) {
+              report = {
+                id: nextId(),
+                anchorSeq: target ? target.anchorSeq : info.anchorSeq,
+                goal: String(args.goal || (target && target.goal) || ''),
+                status: 'active',
+                reason: '',
+                tasks: [],
+                createdAt: Date.now(),
+                updatedAt: Date.now(),
+              };
+              next.push(report);
+            }
 
             if (action === 'update') {
               if (args.goal) report.goal = String(args.goal);
