@@ -295,9 +295,17 @@ export function project(events, requirements) {
       order.push(entry);
     } else if (event.type === 'tool/result') {
       const data = event.data || {};
-      const entry = calls.get(data.callId);
+      // The call id is NOT on the event's own data — it sits on the tool
+      // message's source (`ToolMessageSource.callId`). Reading `data.callId`
+      // matches nothing, so every subtask stayed "running" forever and no
+      // requirement could ever leave 进行中. Keep the fallbacks: the shape has
+      // moved before, and a miss here fails silently.
+      const callId =
+        data.callId || data.message?.source?.callId || data.message?.toolCallId;
+      const entry = calls.get(callId);
       if (!entry) continue;
-      entry.status = data.error ? 'failed' : 'done';
+      const failed = Boolean(data.error) || data.message?.isError === true;
+      entry.status = failed ? 'failed' : 'done';
       entry.error = data.error?.reason || data.error?.code;
       entry.doneAt = event.time;
     }
