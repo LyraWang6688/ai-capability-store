@@ -1,7 +1,7 @@
 {
   "name": "@lyra_wang/dsh-screenshot",
-  "version": "0.1.0",
-  "description": "Composer button: capture a screen region/window with macOS screencapture and drop the image straight into the DSH draft as an attachment.",
+  "version": "0.2.0",
+  "description": "Composer button (and in-window ⌥S): capture a screen region/window with macOS screencapture and drop the image straight into the DSH draft as an attachment.",
   "license": "MIT",
   "type": "module",
   "keywords": [

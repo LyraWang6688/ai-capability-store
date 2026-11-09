@@ -316,10 +316,10 @@ capabilities:
     type: plugin
     status: limited
     provider_path: external-capabilities/providers/lyrawang/README.md
-    version: 0.1.0
+    version: 0.2.0
     implementation_path: external-capabilities/plugin/dsh/screenshot
     auth: "无凭据入仓，不需要任何账号或 API Key。截图只在本机产生与消费，不出本机"
-    capabilities: "DSH 输入框左侧「＋ 截图」按钮：调用 macOS `screencapture -i` 框选区域（空格切换为选窗口，Esc 取消），把 PNG 作为图片附件直接放进草稿，随后照常发送。Host 半注册同源路由 `POST /plugins/screenshot/capture`（DSH 连接鉴权、并发互斥返回 409、用户取消返回 204、临时文件即删、180s 超时）"
+    capabilities: "DSH 输入框左侧「＋ 截图 ⌥S」按钮，或在窗口内按 ⌥S（与点按钮同一条路径）：调用 macOS `screencapture -i` 框选区域（空格切换为选窗口，Esc 取消），把 PNG 作为图片附件直接放进草稿，随后照常发送。Host 半注册同源路由 `POST /plugins/screenshot/capture`（DSH 连接鉴权、并发互斥返回 409、用户取消返回 204、临时文件即删、180s 超时）"
     permissions: "仅 macOS 桌面端。Host 进程需要系统「屏幕录制」权限（DSH Desktop 0.2.1-rc.3 上实测可直接调用 screencapture）。不读取剪贴板、不联网、不留长期文件；只在 mkdtemp 目录写一次临时 PNG 并立即删除"
     commerce: {charge: free}
-    notes: "自研、Store-managed。定位：豆包工作 / Codex 的「应用截图」是在输入框内直接得到附件；插件层拿不到草稿附件的注册表（attachment id 与上传状态由 composer 客户端自己持有），因此不走 ctx.fileUpload.upload + inputActions.addAttachments 自拼，而是把 PNG 做成 File 后合成一次 ClipboardEvent('paste') 交给 composer 自己的 intake 路径——与用户手动 ⌘V 完全同一条代码；找不到编辑器时退回 input[type=file] + change 事件。Host 侧实测：从 DSH 宿主子进程直接执行 /usr/sbin/screencapture -x 成功产出 2560×1656 PNG，屏幕录制权限已具备。端到端实测（2026-10-28，DSH Desktop 0.2.1-rc.3，macOS 27.0.1）：安装后 client 半在 conversation.input.left 注册为 screenshot（order=4，紧邻 image-ocr），按钮渲染正常；模拟点击按钮 + 拖选区域后图片作为附件出现在草稿（缩略图可见、可随消息发送）；无鉴权请求 Host 路由返回 401，证明路由与连接鉴权均按预期注册。status 取 limited：仅覆盖 macOS 桌面端，且合成 paste 依赖 composer 当前实现（未来结构变化会退回文件 input 通道）。"
+    notes: "自研、Store-managed。定位：豆包工作 / Codex 的「应用截图」是在输入框内直接得到附件；插件层拿不到草稿附件的注册表（attachment id 与上传状态由 composer 客户端自己持有），因此不走 ctx.fileUpload.upload + inputActions.addAttachments 自拼，而是把 PNG 做成 File 后合成一次 ClipboardEvent('paste') 交给 composer 自己的 intake 路径——与用户手动 ⌘V 完全同一条代码；找不到编辑器时退回 input[type=file] + change 事件。Host 侧实测：从 DSH 宿主子进程直接执行 /usr/sbin/screencapture -x 成功产出 2560×1656 PNG，屏幕录制权限已具备。端到端实测（2026-10-28，DSH Desktop 0.2.1-rc.3，macOS 27.0.1）：安装后 client 半在 conversation.input.left 注册为 screenshot（order=4，紧邻 image-ocr），按钮渲染正常；模拟点击按钮 + 拖选区域后图片作为附件出现在草稿（缩略图可见、可随消息发送）；无鉴权请求 Host 路由返回 401，证明路由与连接鉴权均按预期注册。status 取 limited：仅覆盖 macOS 桌面端，且合成 paste 依赖 composer 当前实现（未来结构变化会退回文件 input 通道）。0.2.0 增加快捷键：走 DSH 的 `ctx.shortcuts`（由 `@deepseek-ai/dsh-client-shortcuts` 提供，Web App「设置 → 快捷键」用的同一套），默认 `desktop:macos` = ⌥S，可在设置里改绑；不是 DOM keydown——桌面端原生键盘桥在本地处理器之前派发，所以 Option+S 不会把 `ß` 打进草稿，且弹窗开着也生效。只声明 desktop:macos 默认值：Web 版没有 Host 的 GUI 会话，Web 上该命令显示为「未绑定」。注意：client inspect 的 Service 目录**没有**列出 shortcuts（当时据此误判为「插件层没有快捷键 API」），但服务确实存在，判断 API 是否存在不能只看那一个目录。"
