@@ -69,7 +69,10 @@ window.__ModuleLoader__.load({
       if (!sessionId) return;
       try {
         const board = await fetchBoard(sessionId);
-        patch({ board, error: '', loading: false, bus: false });
+        // Record which session this board belongs to: the tab may have been
+        // opened from the guide menu, so the store's copy started empty and the
+        // render guard would otherwise hide a board that just arrived.
+        patch({ board, sessionId, error: '', loading: false, bus: false });
       } catch (error) {
         patch({ error: error?.message || String(error), loading: false, bus: false });
       }
@@ -88,6 +91,16 @@ window.__ModuleLoader__.load({
         patch({ error: error?.message || String(error), bus: false });
       }
     }
+
+    /**
+     * Session id of the conversation the right bar is showing.
+     *
+     * The slot hands a session id to a pane tab, but a tab opened from the guide
+     * menu has never been through our composer button, so the store's copy is
+     * still empty and the board would fetch nothing at all (it rendered
+     * "读取中…" forever). Ask the right bar what it is actually showing.
+     */
+    let mountedSession = () => '';
 
     const STATUS_TEXT = { active: '进行中', done: '已完成', blocked: '受阻', open: '未开始' };
     const TASK_TEXT = { running: '跑着', done: '完成', failed: '失败', pending: '待办' };
@@ -230,7 +243,7 @@ window.__ModuleLoader__.load({
     function Board({ sessionId }) {
       const s = useStore();
       const timer = useRef(0);
-      const sid = sessionId || s.sessionId;
+      const sid = sessionId || mountedSession() || s.sessionId;
 
       useEffect(() => {
         if (!sid) return undefined;
@@ -275,13 +288,19 @@ window.__ModuleLoader__.load({
           { className: 'dsb-meta' },
           board ? `${rows.length} 条需求 · ${board.messages} 条消息 · ${board.tasks} 个任务` : '读取中…',
         ),
-        s.error ? h('div', { className: 'dsb-err' }, s.error) : null,
+        s.error
+          ? h('div', { className: 'dsb-err' }, s.error)
+          : sid
+            ? null
+            : h('div', { className: 'dsb-err' }, '拿不到当前会话的 id——右侧栏没告诉这个 tab 它在显示哪个会话。'),
         h(
           'div',
           { className: 'dsb-list' },
-          rows.length === 0
-            ? h('div', { className: 'dsb-empty' }, '这个会话还没有你说过的话。')
-            : rows.map((row) =>
+          !board
+            ? h('div', { className: 'dsb-wait' }, s.error ? '' : '正在读会话日志…')
+            : rows.length === 0
+              ? h('div', { className: 'dsb-empty' }, '这个会话还没有你说过的话。')
+              : rows.map((row) =>
                 h(Requirement, {
                   key: row.id,
                   row,
@@ -330,6 +349,14 @@ window.__ModuleLoader__.load({
             },
           ],
         });
+
+        mountedSession = () => {
+          try {
+            return String(right.mounted.getSnapshot() || '');
+          } catch {
+            return '';
+          }
+        };
 
         ctx.slots.inject('sidebar.right.pane.tab', () =>
           ctx.slots.register(
