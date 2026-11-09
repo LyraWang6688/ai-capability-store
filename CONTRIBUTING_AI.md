@@ -67,6 +67,28 @@ meeting-analysis
 web-research
 ```
 
+### DSH plugin npm packages
+
+A DSH plugin's **npm package name must carry the `dsh-` prefix**:
+
+```text
+asset name       session-board                  (directory, registry key)
+npm package      @lyra_wang/dsh-session-board    (package.json `name`)
+cordis entry id  dsh-session-board
+```
+
+- The prefix marks a package as **installable into a Harness profile**, not a
+  library someone imports. A DSH plugin without it is indistinguishable from an
+  ordinary npm package at the point of installation.
+- The **asset name stays unprefixed**. The prefix belongs to the distribution
+  layer; putting it in the directory too yields `dsh/dsh-session-board` and makes
+  the two layers read as one.
+- Local installation uses the published npm name. A local path or an `@local/*`
+  alias is a development shortcut, never an identity.
+
+> Declared, not enforced: no validator checks this today. The nine plugins under
+> `external-capabilities/plugin/dsh/` all comply.
+
 ## Scope Control
 
 - Make the smallest coherent change.

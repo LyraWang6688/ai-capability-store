@@ -141,6 +141,12 @@ Only assets a consumer can actually **run on their own machine**:
 A DSH plugin has no `bin` and normally no build step, so preconditions 3 and 4
 below do not apply to that row; preconditions 1, 2, 5 and 6 do.
 
+A DSH plugin's package name must be `@lyra_wang/dsh-<asset-name>`
+(`CONTRIBUTING_AI.md` § Naming Rules → DSH plugin npm packages). Publishing one
+under a second name creates two identities for one asset, and
+`plugin_manager install_bundle` would then accept a name the registry does not
+know.
+
 A hosted service published "for completeness" is worse than unpublished: every
 consumer installs something that cannot start, and the package leaks the shape of
 the deployment.
