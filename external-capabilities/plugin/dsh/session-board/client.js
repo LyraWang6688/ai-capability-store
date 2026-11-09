@@ -89,9 +89,9 @@ window.__ModuleLoader__.load({
       }
     }
 
-    const STATUS_TEXT = { active: '进行中', done: '已完成', blocked: '受阻' };
-    const TASK_TEXT = { running: '跑着', done: '完成', failed: '失败' };
-    const TASK_CLASS = { running: 'active', done: 'done', failed: 'blocked' };
+    const STATUS_TEXT = { active: '进行中', done: '已完成', blocked: '受阻', open: '未开始' };
+    const TASK_TEXT = { running: '跑着', done: '完成', failed: '失败', pending: '待办' };
+    const TASK_CLASS = { running: 'active', done: 'done', failed: 'blocked', pending: 'pending' };
 
     const css = `
       .dsb-btn { display:inline-flex; align-items:center; gap:4px; padding:4px 8px; border-radius:6px; cursor:pointer;
@@ -115,6 +115,9 @@ window.__ModuleLoader__.load({
       .dsb-active { color:#79c0ff; }
       .dsb-done { color:#7ee787; }
       .dsb-blocked { color:#ff7b72; }
+      .dsb-pending { color:#8b949e; }
+      .dsb-src { font-size:9px; opacity:.5; border:1px solid currentColor; border-radius:3px; padding:0 3px; }
+      .dsb-reason { padding:0 10px 6px 32px; font-size:11px; opacity:.75; color:#d2a8ff; line-height:1.4; }
       .dsb-sub { padding:0 10px 8px 26px; display:flex; flex-direction:column; gap:3px; }
       .dsb-task { display:flex; gap:6px; align-items:baseline; opacity:.85; }
       .dsb-msg { opacity:.6; font-size:11px; line-height:1.4; word-break:break-word; }
@@ -158,6 +161,7 @@ window.__ModuleLoader__.load({
           h('span', { className: 'dsb-title' }, row.title || '(空)'),
           h(Pill, { status: row.status }),
         ),
+        row.reason ? h('div', { className: 'dsb-reason' }, `理由：${row.reason}`) : null,
         open
           ? h(
               'div',
@@ -170,10 +174,13 @@ window.__ModuleLoader__.load({
                       { key: index, className: 'dsb-task' },
                       h(
                         'span',
-                        { className: `dsb-pill dsb-${TASK_CLASS[task.status] || 'done'}` },
+                        { className: `dsb-pill dsb-${TASK_CLASS[task.status] || 'pending'}` },
                         TASK_TEXT[task.status] || task.status,
                       ),
                       h('span', null, task.label),
+                      task.source === 'agent'
+                        ? h('span', { className: 'dsb-src', title: '智能体上报' }, '上报')
+                        : null,
                     ),
                   ),
               row.messages.map((message) =>
