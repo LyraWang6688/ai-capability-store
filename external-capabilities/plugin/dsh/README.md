@@ -92,7 +92,7 @@ export function apply(ctx) { /* ... */ }
 
 | 能力 | 用法 | 出处 |
 |---|---|---|
-| 注册 HTTP 路由 | `ctx.webServer.register({ kind: 'exact', path: '/plugins/x/y', handler })` | `feishu-ref` / `image-ocr` / `dsh-inbox` |
+| 注册 HTTP 路由 | `ctx.webServer.register({ kind: 'exact', path: '/plugins/x/y', handler })` | `feishu-ref` / `image-ocr` / `inbox` |
 | 路由鉴权 | `ctx.get('connection').requestRejection({ headers: req.headers })` | 同上（不通过时返回 401/403，直接回给浏览器）|
 | 跑子进程 | `ctx.subprocess.spawn({ argv, cwd, stdio, graceMs })` | `feishu-ref` 跑 `lark-cli` |
 | 生命周期 | `ctx.effect(() => register(), 'label')` | 所有插件 |
