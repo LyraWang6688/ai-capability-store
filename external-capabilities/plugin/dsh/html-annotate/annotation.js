@@ -19,7 +19,7 @@
   }
   if (!file) return;
   if (!/^https?:\/\//.test(file) && !/\.html$/.test(file)) return;
-  var annotationMode = false;
+  var annotationMode = true;
   var currentTarget = null;
   var panel = null;
   var countEl = null;
@@ -145,12 +145,19 @@
     return target;
   }
   function annotationClick(event) {
+    // 普通点击留给页面（链接跳转 / 按钮执行）；只有按住 Option/Alt 点击才加批注。
+    if (!event.altKey) return;
     var target = annotationTarget(event);
     if (!target) return;
     event.preventDefault(); event.stopPropagation();
     openBox(target);
   }
   function annotationMove(event) {
+    // 只在按住 Option/Alt 时高亮可批注元素，平时不干扰页面交互。
+    if (!event.altKey) {
+      if (lastHover) { lastHover.classList.remove('pa-hover'); lastHover = null; }
+      return;
+    }
     var target = annotationTarget(event);
     if (lastHover && lastHover !== target) lastHover.classList.remove('pa-hover');
     lastHover = target;
@@ -160,14 +167,13 @@
     annotationMode = on;
     var btn = document.querySelector('.pa-btn');
     btn.dataset.active = on ? '1' : '0';
+    btn.title = on ? '按住 Option 点击元素加批注；普通点击可正常操作' : '点击开启批注';
     var label = btn.querySelector('.pa-label');
-    if (label) label.textContent = on ? '退出批注' : '批注';
+    if (label) label.textContent = on ? '批注 ⌥' : '批注';
     if (on) {
-      document.body.classList.add('pa-mode');
       document.addEventListener('click', annotationClick, true);
       document.addEventListener('mousemove', annotationMove, true);
     } else {
-      document.body.classList.remove('pa-mode');
       document.removeEventListener('click', annotationClick, true);
       document.removeEventListener('mousemove', annotationMove, true);
       if (lastHover) { lastHover.classList.remove('pa-hover'); lastHover = null; }
@@ -327,6 +333,12 @@ function proxyPreviewLinks() {
   }, true);
 }
 
-if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mount);
-  else mount();
+function bootAnnotation() {
+  mount();
+  setMode(true);
+  proxyPreviewLinks();
+}
+
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bootAnnotation);
+else bootAnnotation();
 })();
