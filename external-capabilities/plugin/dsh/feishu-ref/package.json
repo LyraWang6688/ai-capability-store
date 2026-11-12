@@ -1,7 +1,7 @@
 {
   "name": "@lyra_wang/dsh-feishu-ref",
-  "version": "0.6.0",
-  "description": "Composer + button: search your Feishu docs / group chats, picker grows out of the composer with a bottom search field, inserts the link into the DSH input box.",
+  "version": "0.7.0",
+  "description": "Composer + button: search Feishu docs, drive files, group chats, messages and contacts; picker grows out of the composer with a bottom search field and inserts an agent-readable reference.",
   "license": "MIT",
   "type": "module",
   "keywords": [
