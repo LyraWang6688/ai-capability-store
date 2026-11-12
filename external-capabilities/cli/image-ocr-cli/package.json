@@ -1,0 +1,43 @@
+{
+  "name": "@lyra_wang/image-ocr-cli",
+  "version": "0.1.0",
+  "description": "Offline OCR for macOS (Apple Vision): read text from an image file or the clipboard, as a CLI or a library.",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "image-ocr": "./bin/cli.js"
+  },
+  "exports": {
+    ".": "./index.js"
+  },
+  "files": [
+    "bin",
+    "index.js",
+    "ocr.swift",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "os": [
+    "darwin"
+  ],
+  "keywords": [
+    "ocr",
+    "vision",
+    "macos",
+    "clipboard",
+    "screenshot",
+    "text-recognition",
+    "cli"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/LyraWang6688/ai-capability-store.git",
+    "directory": "external-capabilities/cli/image-ocr-cli"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

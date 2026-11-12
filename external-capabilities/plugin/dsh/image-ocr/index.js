@@ -1,25 +1,28 @@
 /**
  * Host half of the image-ocr bundle.
  *
- * One read-only route: OCR the clipboard image with a locally-compiled Swift
- * helper (macOS Vision framework, offline), then hand the client plain text.
- * Compilation happens once on first use and is cached outside the package.
+ * One read-only route: OCR an image and hand the client plain text.
+ *
+ * The OCR engine itself is NOT part of this package. It lives in
+ * `@lyra_wang/image-ocr-cli`, a separate npm package that also installs the
+ * `image-ocr` command. Two reasons:
+ *
+ *   1. one source of truth — the DSH button and any outside caller (a
+ *      system-wide hotkey, a script) run the same engine instead of a copy;
+ *   2. the engine's compile cache is keyed by the source hash and owned by that
+ *      package, so an upgrade cannot leave one caller running a stale binary.
+ *
+ * This file only wires the engine to the DSH web server (auth, body limits,
+ * temp file, JSON shape).
  */
-import { execFile } from 'node:child_process';
-import { existsSync, mkdirSync, unlinkSync, writeFileSync } from 'node:fs';
-import { homedir, tmpdir } from 'node:os';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { unlinkSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { ensureEngine, runOcr } from '@lyra_wang/image-ocr-cli';
 
 export const inject = ['webServer'];
 
-const HERE = dirname(fileURLToPath(import.meta.url));
-const SOURCE = join(HERE, 'ocr.swift');
-const CACHE_DIR = join(homedir(), 'Library', 'Application Support', 'dsh-image-ocr');
-const BINARY = join(CACHE_DIR, 'ocr');
 const OCR_PATH = '/plugins/image-ocr/ocr';
-
-let enginePromise;
 
 function sendJson(res, status, payload) {
   res.setHeader('content-type', 'application/json; charset=utf-8');
@@ -61,47 +64,8 @@ function connectionRejection(ctx, req) {
   }
 }
 
-function compileEngine() {
-  return new Promise((resolve, reject) => {
-    mkdirSync(CACHE_DIR, { recursive: true });
-    execFile('/usr/bin/xcrun', ['swiftc', '-O', '-o', BINARY, SOURCE], {
-      timeout: 180_000,
-      maxBuffer: 4 * 1024 * 1024,
-    }, (error, _stdout, stderr) => {
-      if (error) {
-        reject(new Error('OCR 引擎编译失败：' + String(stderr || error.message).slice(0, 400)));
-        return;
-      }
-      resolve(BINARY);
-    });
-  });
-}
-
-function ensureEngine() {
-  if (existsSync(BINARY)) return Promise.resolve(BINARY);
-  if (!enginePromise) {
-    enginePromise = compileEngine().catch((error) => {
-      enginePromise = undefined;
-      throw error;
-    });
-  }
-  return enginePromise;
-}
-
-function runOcr(binary, imagePath) {
-  return new Promise((resolve, reject) => {
-    execFile(binary, imagePath ? [imagePath] : ['--clipboard'], { timeout: 120_000, maxBuffer: 8 * 1024 * 1024 }, (error, stdout, stderr) => {
-      if (error) {
-        reject(new Error('OCR 执行失败：' + String(stderr || error.message).slice(0, 300)));
-        return;
-      }
-      resolve(String(stdout || '').replace(/\s+$/g, ''));
-    });
-  });
-}
-
 export function apply(ctx) {
-  // 首次启动后台预热：用户第一次点按钮时通常已编译完成。
+  // Warm the engine at startup: the first click then does not pay the compile.
   ensureEngine().catch((error) => {
     ctx.logger?.warn?.('image-ocr: engine warmup failed: ' + (error instanceof Error ? error.message : String(error)));
   });
@@ -119,9 +83,8 @@ export function apply(ctx) {
     let tempPath;
     try {
       const body = await readJsonBody(req);
-      let binary;
       try {
-        binary = await ensureEngine();
+        await ensureEngine();
       } catch (error) {
         sendJson(res, 503, {
           ok: false,
@@ -138,7 +101,9 @@ export function apply(ctx) {
         tempPath = join(tmpdir(), 'dsh-image-ocr-' + Date.now() + '-' + Math.random().toString(16).slice(2, 8) + '.png');
         writeFileSync(tempPath, buffer);
       }
-      const text = await runOcr(binary, tempPath);
+      // No image in the body = OCR the clipboard, same as the panel's
+      // 「直接读剪贴板」 button.
+      const text = await runOcr({ imagePath: tempPath });
       sendJson(res, 200, { ok: true, text, lines: text === '' ? 0 : text.split('\n').length });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);

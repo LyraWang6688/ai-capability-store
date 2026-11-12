@@ -7,9 +7,12 @@
 ## 原理
 
 - 用 macOS 自带 **Vision** 框架做 OCR（离线、免费、中文支持好）；
-- 插件带一份 `ocr.swift`，首次使用时用 `xcrun swiftc` 编译，缓存到
-  `~/Library/Application Support/dsh-image-ocr/ocr`；
-- 之后每次识别约 **0.6–1 秒**（实测整屏截图 53 行 0.66s）；
+- **引擎不在本包里**：它来自 [`@lyra_wang/image-ocr-cli`](../../../cli/image-ocr-cli/)（同 Store 的
+  [`image-ocr-cli`](../../../cli/image-ocr-cli/) 资产），本插件把它声明为 npm 依赖；
+- 一次编译、两处使用：DSH 的「＋ 识图」按钮和系统级热键（Hammerspoon 等）调的是**同一个引擎**，
+  引擎源码只有一份，不存在两边各拷一份的分叉；
+- 引擎首次使用时用 `xcrun swiftc` 编译（约 30–60 秒），缓存键是 Swift 源码哈希，
+  升级包后一定重新编译；之后每次识别约 **0.6–1 秒**；
 - 宿主侧注册一个同源只读路由 `/plugins/image-ocr/ocr`，复用 DSH 连接鉴权。
 
 ## 使用
@@ -35,10 +38,14 @@
 dsh plugin --profile <profile> add @lyra_wang/dsh-image-ocr
 ```
 
+依赖 `@lyra_wang/image-ocr-cli` 会随插件一起装上，**不需要单独安装**。
+
 前置：macOS 13+ 且装有 Xcode Command Line Tools（`xcrun --find swiftc` 有输出即可）。
 
 ## 边界
 
 - 只处理你粘贴/拖入的图片（以及「直接读剪贴板」时的剪贴板图），不读屏幕、不自动截图；
 - 不联网，图片不出本机；
-- 手写体/低分辨率截图识别率有限，建议放大后再截。
+- 手写体/低分辨率截图识别率有限，建议放大后再截；
+- 想在 DSH 之外识图（系统级热键、脚本），装 `@lyra_wang/image-ocr-cli` 后用 `image-ocr` 命令，
+  见该资产的 README。
