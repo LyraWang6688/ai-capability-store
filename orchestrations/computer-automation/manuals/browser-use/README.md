@@ -6,7 +6,7 @@
 
 | 文档 | 说明 | 状态 | 实测日期 |
 |---|---|---|---|
-| [douyin-latest-posts.md](./douyin-latest-posts.md) | 抖音创作者最新作品列表（含发布时间）抓取 | 未验证 | 2026-11-08 |
+| [douyin-latest-posts.md](./douyin-latest-posts.md) | 抖音作品列表与「喜欢」列表抓取（含发布时间、作者、配乐） | 已验证 | 2026-11-12 |
 
 ## 每篇文档必答（读的人也照这个顺序看）
 
