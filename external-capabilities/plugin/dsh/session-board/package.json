@@ -1,6 +1,6 @@
 {
   "name": "@lyra_wang/dsh-session-board",
-  "version": "0.2.3",
+  "version": "0.3.0",
   "description": "DSH 会话需求看板：按「需求」而不是按消息，列出这个会话里你提过哪些目标、智能体为每条需求拆出了哪些子任务，各自的进展与状态。",
   "license": "MIT",
   "type": "module",

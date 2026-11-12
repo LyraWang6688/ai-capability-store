@@ -102,6 +102,33 @@ window.__ModuleLoader__.load({
      */
     let mountedSession = () => '';
 
+    /**
+     * Auto-open, at most once per Session.
+     *
+     * The board is worth a column only when it has something to show, so the
+     * check has to run *after* reading it — and only once, or every session
+     * switch would steal the right bar back from whatever the operator opened.
+     * The memo lives in localStorage, so restarting the app does not re-open a
+     * session the operator already dismissed.
+     */
+    const AUTO_OPEN_KEY = `${PKG}/auto-opened/`;
+
+    function autoOpened(sessionId) {
+      try {
+        return window.localStorage.getItem(AUTO_OPEN_KEY + sessionId) === '1';
+      } catch {
+        return false;
+      }
+    }
+
+    function markAutoOpened(sessionId) {
+      try {
+        window.localStorage.setItem(AUTO_OPEN_KEY + sessionId, '1');
+      } catch {
+        /* storage unavailable: fall back to only opening it on demand */
+      }
+    }
+
     const STATUS_TEXT = { active: '进行中', done: '已完成', blocked: '受阻', open: '未开始' };
     const TASK_TEXT = { running: '跑着', done: '完成', failed: '失败', pending: '待办' };
     const TASK_CLASS = { running: 'active', done: 'done', failed: 'blocked', pending: 'pending' };
@@ -357,6 +384,61 @@ window.__ModuleLoader__.load({
             return '';
           }
         };
+
+        ctx.effect(() => {
+          let disposed = false;
+          const kind = KIND;
+
+          const considerAutoOpen = async () => {
+            if (disposed) return;
+            const sessionId = mountedSession();
+            if (!sessionId || autoOpened(sessionId)) return;
+            try {
+              const open = right.openTabs?.getSnapshot?.() || [];
+              if (open.some((tab) => tab.sessionId === sessionId && tab.kind === kind)) {
+                markAutoOpened(sessionId);
+                return;
+              }
+            } catch {
+              /* no tab list: fall through and try to open one */
+            }
+            let board;
+            try {
+              board = await fetchBoard(sessionId);
+            } catch {
+              return;
+            }
+            // An empty board is not worth taking the column away from the user.
+            if (disposed || !board || !Array.isArray(board.rows) || board.rows.length === 0) return;
+            if (mountedSession() !== sessionId) return;
+            try {
+              right.openTab(kind);
+              markAutoOpened(sessionId);
+            } catch {
+              /* no docked pane to hold it yet: the guide entry still opens it */
+            }
+          };
+
+          considerAutoOpen();
+          let unsubscribe;
+          try {
+            if (typeof right.mounted.subscribe === 'function') {
+              unsubscribe = right.mounted.subscribe(() => {
+                considerAutoOpen();
+              });
+            }
+          } catch {
+            unsubscribe = undefined;
+          }
+          return () => {
+            disposed = true;
+            try {
+              unsubscribe?.();
+            } catch {
+              /* already gone */
+            }
+          };
+        }, 'dsh-session-board: auto open');
 
         ctx.slots.inject('sidebar.right.pane.tab', () =>
           ctx.slots.register(
