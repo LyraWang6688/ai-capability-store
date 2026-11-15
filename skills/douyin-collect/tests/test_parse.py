@@ -35,6 +35,15 @@ class ParseShareTest(unittest.TestCase):
         )
         self.assertEqual(p["video_id"], "7690930099235592869")
 
+    def test_tokens_after_link_are_dropped(self):
+        p = parse_share(
+            "8.76 复制打开抖音，看看【李飞李飞马上起飞的作品】来不及了，来不及了，可急死我了！"
+            "  https://v.douyin.com/-trwg614xdo/ cnq:/ :8pm k@c.At 05/13",
+            resolve=False,
+        )
+        self.assertEqual(p["author"], "李飞李飞马上起飞")
+        self.assertEqual(p["title"], "来不及了，来不及了，可急死我了")
+
     def test_share_tail_is_stripped(self):
         p = parse_share(
             "【某某的作品】好看的转场 复制此链接，打开Dou音搜索，直接观看视频！"

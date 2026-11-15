@@ -113,6 +113,9 @@ def parse_share(text: str, resolve: bool = True) -> dict:
     title = ""
     if m and "的作品】" in text:
         tail = text.split("的作品】", 1)[1]
+        first_url = URL_RE.search(tail)
+        if first_url:
+            tail = tail[: first_url.start()]
         title = clean_title(tail)
     elif not urls and text:
         title = clean_title(text)
@@ -152,8 +155,12 @@ def iter_rows() -> list[dict]:
         fields, matrix = field_index(payload)
         if not fields:
             break
-        for row in matrix:
-            rows.append(dict(zip(fields, row)))
+        ids = payload.get("data", {}).get("record_id_list", [])
+        for i, row in enumerate(matrix):
+            item = dict(zip(fields, row))
+            if i < len(ids):
+                item["_record_id"] = ids[i]
+            rows.append(item)
         total = payload.get("data", {}).get("total")
         offset += len(matrix)
         if not matrix or (total is not None and offset >= total) or len(matrix) < 200:
@@ -232,7 +239,12 @@ def cmd_check(args) -> int:
     rows = iter_rows()
     dup = dup_of(rows, parsed)
     if dup:
-        print(json.dumps({"exists": True, "record": dup}, ensure_ascii=False, indent=2))
+        rid = dup.get("_record_id")
+        print(json.dumps({
+            "exists": True,
+            "record": dup,
+            "record_url": record_url(rid) if rid else None,
+        }, ensure_ascii=False, indent=2))
         return 10
     print(json.dumps({"exists": False, "parsed": parsed}, ensure_ascii=False, indent=2))
     return 0
