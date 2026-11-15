@@ -1,0 +1,4 @@
+interface:
+  display_name: "Douyin Collector"
+  short_description: "Collect a liked Douyin video into the Feishu '灵感作品' Bitable"
+  default_prompt: "Use $douyin-collect to save this Douyin video into my 灵感作品 table."

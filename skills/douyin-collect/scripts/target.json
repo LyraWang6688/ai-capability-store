@@ -1,0 +1,23 @@
+{
+  "_comment": [
+    "Machine contract for the douyin-collect skill.",
+    "This file is the SINGLE SOURCE OF TRUTH for the target Bitable coordinates",
+    "and field names. Scripts read it; they never hardcode them.",
+    "The Base is a wiki node; base_token below is the resolved bitable token."
+  ],
+  "wiki_url": "https://my.feishu.cn/wiki/GZa0wgZvliUKRpk0ElOcYtMYnCd",
+  "base_token": "E1MIbNda5aaZ92sZeNocCcrInYb",
+  "table_id": "tblDGdt1t6RBOM22",
+  "table_name": "灵感作品",
+  "identity": "user",
+  "fields": {
+    "author": "作者",
+    "title": "作品标题",
+    "url": "参考视频",
+    "note": "创作灵感"
+  },
+  "limits": {
+    "title_max_len": 800,
+    "note_max_len": 1000
+  }
+}

@@ -87,6 +87,19 @@ skills:
       查真实在售标的，过四道筛子（主题匹配 / 流动性 / 规模质量 / 成本），输出可落库的
       结构化候选清单。豆包工作用自带飞书能力直接写入备选池与灵感记录两张表；飞书不可用时输出可粘贴格式。
       刻意不自己抓数据——行情同步由 investdesk-quote-sync 负责，数据查询交给成熟插件。
+  douyin-collect:
+    name: douyin-collect
+    path: skills/douyin-collect
+    scope: project
+    project: douyin-ip
+    status: testing
+    version: 0.1.0
+    updated: "2026-11-16"
+    commerce: {charge: free}
+    notes: >
+      把抖音「分享文案」解析成 作者 / 标题 / 视频ID，查重后写入飞书「抖音IP」Base 的
+      「灵感作品」表。只写这一张表，不改结构、不删改既有记录；同一 video_id 不写第二行。
+      含离线单测（解析与查重，不联网、不写表）。
   repo-hygiene:
     name: repo-hygiene
     path: skills/repo-hygiene
