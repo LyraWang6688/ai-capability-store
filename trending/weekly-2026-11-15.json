@@ -1,0 +1,895 @@
+{
+  "generated_at": "2026-11-15T13:00:12+00:00",
+  "automation": "github-trending-weekly",
+  "window": {
+    "days": 7,
+    "from": "2026-11-09",
+    "to": "2026-11-15"
+  },
+  "days_with_data": 7,
+  "days_missing": [],
+  "trustworthy": true,
+  "note": "window complete",
+  "topics_persistent": [
+    {
+      "topic": "ai-agents",
+      "days_present": 7,
+      "persistence": 1.0,
+      "total_repo_sightings": 36,
+      "verdict": "persistent"
+    },
+    {
+      "topic": "claude-code",
+      "days_present": 7,
+      "persistence": 1.0,
+      "total_repo_sightings": 35,
+      "verdict": "persistent"
+    },
+    {
+      "topic": "mcp",
+      "days_present": 7,
+      "persistence": 1.0,
+      "total_repo_sightings": 32,
+      "verdict": "persistent"
+    },
+    {
+      "topic": "codex",
+      "days_present": 7,
+      "persistence": 1.0,
+      "total_repo_sightings": 30,
+      "verdict": "persistent"
+    },
+    {
+      "topic": "cli",
+      "days_present": 7,
+      "persistence": 1.0,
+      "total_repo_sightings": 20,
+      "verdict": "persistent"
+    },
+    {
+      "topic": "computer-use",
+      "days_present": 7,
+      "persistence": 1.0,
+      "total_repo_sightings": 16,
+      "verdict": "persistent"
+    },
+    {
+      "topic": "llm",
+      "days_present": 6,
+      "persistence": 0.86,
+      "total_repo_sightings": 19,
+      "verdict": "persistent"
+    },
+    {
+      "topic": "agent-skills",
+      "days_present": 6,
+      "persistence": 0.86,
+      "total_repo_sightings": 18,
+      "verdict": "persistent"
+    },
+    {
+      "topic": "typescript",
+      "days_present": 6,
+      "persistence": 0.86,
+      "total_repo_sightings": 17,
+      "verdict": "persistent"
+    },
+    {
+      "topic": "macos",
+      "days_present": 6,
+      "persistence": 0.86,
+      "total_repo_sightings": 17,
+      "verdict": "persistent"
+    },
+    {
+      "topic": "ai",
+      "days_present": 5,
+      "persistence": 0.71,
+      "total_repo_sightings": 17,
+      "verdict": "persistent"
+    },
+    {
+      "topic": "claude",
+      "days_present": 5,
+      "persistence": 0.71,
+      "total_repo_sightings": 14,
+      "verdict": "persistent"
+    },
+    {
+      "topic": "skills",
+      "days_present": 5,
+      "persistence": 0.71,
+      "total_repo_sightings": 12,
+      "verdict": "persistent"
+    },
+    {
+      "topic": "linux",
+      "days_present": 5,
+      "persistence": 0.71,
+      "total_repo_sightings": 11,
+      "verdict": "persistent"
+    },
+    {
+      "topic": "openai",
+      "days_present": 5,
+      "persistence": 0.71,
+      "total_repo_sightings": 10,
+      "verdict": "persistent"
+    }
+  ],
+  "topics_emerging": [
+    {
+      "topic": "multi-agent",
+      "days_present": 2,
+      "persistence": 0.29,
+      "total_repo_sightings": 5,
+      "verdict": "emerging"
+    },
+    {
+      "topic": "collaboration",
+      "days_present": 2,
+      "persistence": 0.29,
+      "total_repo_sightings": 4,
+      "verdict": "emerging"
+    },
+    {
+      "topic": "antigravity",
+      "days_present": 2,
+      "persistence": 0.29,
+      "total_repo_sightings": 4,
+      "verdict": "emerging"
+    },
+    {
+      "topic": "claude-code-plugin",
+      "days_present": 2,
+      "persistence": 0.29,
+      "total_repo_sightings": 4,
+      "verdict": "emerging"
+    },
+    {
+      "topic": "gui",
+      "days_present": 1,
+      "persistence": 0.14,
+      "total_repo_sightings": 2,
+      "verdict": "emerging"
+    },
+    {
+      "topic": "prompt-engineering",
+      "days_present": 1,
+      "persistence": 0.14,
+      "total_repo_sightings": 2,
+      "verdict": "emerging"
+    },
+    {
+      "topic": "ai-agent",
+      "days_present": 1,
+      "persistence": 0.14,
+      "total_repo_sightings": 2,
+      "verdict": "emerging"
+    },
+    {
+      "topic": "ai-coding",
+      "days_present": 1,
+      "persistence": 0.14,
+      "total_repo_sightings": 2,
+      "verdict": "emerging"
+    },
+    {
+      "topic": "agentic-workflow",
+      "days_present": 1,
+      "persistence": 0.14,
+      "total_repo_sightings": 2,
+      "verdict": "emerging"
+    },
+    {
+      "topic": "coding-agents",
+      "days_present": 1,
+      "persistence": 0.14,
+      "total_repo_sightings": 2,
+      "verdict": "emerging"
+    },
+    {
+      "topic": "cursor",
+      "days_present": 1,
+      "persistence": 0.14,
+      "total_repo_sightings": 2,
+      "verdict": "emerging"
+    }
+  ],
+  "topics_all": [
+    {
+      "topic": "ai-agents",
+      "days_present": 7,
+      "persistence": 1.0,
+      "total_repo_sightings": 36,
+      "verdict": "persistent"
+    },
+    {
+      "topic": "claude-code",
+      "days_present": 7,
+      "persistence": 1.0,
+      "total_repo_sightings": 35,
+      "verdict": "persistent"
+    },
+    {
+      "topic": "mcp",
+      "days_present": 7,
+      "persistence": 1.0,
+      "total_repo_sightings": 32,
+      "verdict": "persistent"
+    },
+    {
+      "topic": "codex",
+      "days_present": 7,
+      "persistence": 1.0,
+      "total_repo_sightings": 30,
+      "verdict": "persistent"
+    },
+    {
+      "topic": "cli",
+      "days_present": 7,
+      "persistence": 1.0,
+      "total_repo_sightings": 20,
+      "verdict": "persistent"
+    },
+    {
+      "topic": "computer-use",
+      "days_present": 7,
+      "persistence": 1.0,
+      "total_repo_sightings": 16,
+      "verdict": "persistent"
+    },
+    {
+      "topic": "llm",
+      "days_present": 6,
+      "persistence": 0.86,
+      "total_repo_sightings": 19,
+      "verdict": "persistent"
+    },
+    {
+      "topic": "agent-skills",
+      "days_present": 6,
+      "persistence": 0.86,
+      "total_repo_sightings": 18,
+      "verdict": "persistent"
+    },
+    {
+      "topic": "typescript",
+      "days_present": 6,
+      "persistence": 0.86,
+      "total_repo_sightings": 17,
+      "verdict": "persistent"
+    },
+    {
+      "topic": "macos",
+      "days_present": 6,
+      "persistence": 0.86,
+      "total_repo_sightings": 17,
+      "verdict": "persistent"
+    },
+    {
+      "topic": "ai",
+      "days_present": 5,
+      "persistence": 0.71,
+      "total_repo_sightings": 17,
+      "verdict": "persistent"
+    },
+    {
+      "topic": "claude",
+      "days_present": 5,
+      "persistence": 0.71,
+      "total_repo_sightings": 14,
+      "verdict": "persistent"
+    },
+    {
+      "topic": "skills",
+      "days_present": 5,
+      "persistence": 0.71,
+      "total_repo_sightings": 12,
+      "verdict": "persistent"
+    },
+    {
+      "topic": "linux",
+      "days_present": 5,
+      "persistence": 0.71,
+      "total_repo_sightings": 11,
+      "verdict": "persistent"
+    },
+    {
+      "topic": "openai",
+      "days_present": 5,
+      "persistence": 0.71,
+      "total_repo_sightings": 10,
+      "verdict": "persistent"
+    },
+    {
+      "topic": "automation",
+      "days_present": 4,
+      "persistence": 0.57,
+      "total_repo_sightings": 20,
+      "verdict": "intermittent"
+    },
+    {
+      "topic": "self-hosted",
+      "days_present": 4,
+      "persistence": 0.57,
+      "total_repo_sightings": 18,
+      "verdict": "intermittent"
+    },
+    {
+      "topic": "developer-tools",
+      "days_present": 3,
+      "persistence": 0.43,
+      "total_repo_sightings": 16,
+      "verdict": "intermittent"
+    },
+    {
+      "topic": "python",
+      "days_present": 3,
+      "persistence": 0.43,
+      "total_repo_sightings": 15,
+      "verdict": "intermittent"
+    },
+    {
+      "topic": "open-source",
+      "days_present": 3,
+      "persistence": 0.43,
+      "total_repo_sightings": 13,
+      "verdict": "intermittent"
+    },
+    {
+      "topic": "docker",
+      "days_present": 3,
+      "persistence": 0.43,
+      "total_repo_sightings": 9,
+      "verdict": "intermittent"
+    },
+    {
+      "topic": "rust",
+      "days_present": 3,
+      "persistence": 0.43,
+      "total_repo_sightings": 8,
+      "verdict": "intermittent"
+    },
+    {
+      "topic": "code-review",
+      "days_present": 3,
+      "persistence": 0.43,
+      "total_repo_sightings": 7,
+      "verdict": "intermittent"
+    },
+    {
+      "topic": "metal",
+      "days_present": 3,
+      "persistence": 0.43,
+      "total_repo_sightings": 6,
+      "verdict": "intermittent"
+    },
+    {
+      "topic": "electron",
+      "days_present": 3,
+      "persistence": 0.43,
+      "total_repo_sightings": 6,
+      "verdict": "intermittent"
+    }
+  ],
+  "repos_sustained": [
+    {
+      "repo": "anthropics/skills",
+      "days_seen": 7,
+      "first_seen": "2026-11-09",
+      "last_seen": "2026-11-15",
+      "stars_now": 194978,
+      "star_delta": 4835,
+      "peak_daily_gain": 1676,
+      "topics": [
+        "agent-skills"
+      ],
+      "desc": "Public repository for Agent Skills",
+      "class": "resident"
+    },
+    {
+      "repo": "milind-soni/OpenMausBot",
+      "days_seen": 7,
+      "first_seen": "2026-11-09",
+      "last_seen": "2026-11-15",
+      "stars_now": 23012,
+      "star_delta": 3846,
+      "peak_daily_gain": 1589,
+      "topics": [
+        "ai-agents",
+        "claude-code",
+        "codex",
+        "computer-use",
+        "docker",
+        "electron",
+        "grok",
+        "grok-bot",
+        "grok-bot-alternative",
+        "self-hosted",
+        "typescript"
+      ],
+      "desc": "Open-source Grok Bot alternative with a virtual machine that bots can use",
+      "class": "resident"
+    },
+    {
+      "repo": "vercel-labs/agent-browser",
+      "days_seen": 7,
+      "first_seen": "2026-11-09",
+      "last_seen": "2026-11-15",
+      "stars_now": 51384,
+      "star_delta": 3274,
+      "peak_daily_gain": 914,
+      "topics": [],
+      "desc": "Browser automation CLI for AI agents",
+      "class": "resident"
+    },
+    {
+      "repo": "google-deepmind/mujoco",
+      "days_seen": 7,
+      "first_seen": "2026-11-09",
+      "last_seen": "2026-11-15",
+      "stars_now": 18029,
+      "star_delta": 1319,
+      "peak_daily_gain": 579,
+      "topics": [
+        "mujoco",
+        "physics",
+        "robotics"
+      ],
+      "desc": "Multi-Joint dynamics with Contact. A general purpose physics simulator.",
+      "class": "resident"
+    },
+    {
+      "repo": "mattpocock/skills",
+      "days_seen": 6,
+      "first_seen": "2026-11-09",
+      "last_seen": "2026-11-14",
+      "stars_now": 324134,
+      "star_delta": 5005,
+      "peak_daily_gain": 1223,
+      "topics": [],
+      "desc": "Skills for Real Engineers. Straight from my .agents directory.",
+      "class": "resident"
+    },
+    {
+      "repo": "cloudflare/security-audit-skill",
+      "days_seen": 6,
+      "first_seen": "2026-11-09",
+      "last_seen": "2026-11-14",
+      "stars_now": 72220,
+      "star_delta": 4802,
+      "peak_daily_gain": 0,
+      "topics": [],
+      "desc": "A coding-agent skill for multi-phase security audits with independently verified, machine-readable findings",
+      "class": "resident"
+    },
+    {
+      "repo": "we-promise/sure",
+      "days_seen": 6,
+      "first_seen": "2026-11-10",
+      "last_seen": "2026-11-15",
+      "stars_now": 15520,
+      "star_delta": 4109,
+      "peak_daily_gain": 1079,
+      "topics": [],
+      "desc": "The personal finance app for everyone (by everyone)",
+      "class": "resident"
+    },
+    {
+      "repo": "huamidev/GestaltX",
+      "days_seen": 6,
+      "first_seen": "2026-11-10",
+      "last_seen": "2026-11-15",
+      "stars_now": 7667,
+      "star_delta": 3801,
+      "peak_daily_gain": 0,
+      "topics": [],
+      "desc": "An MobileGestalt editor for iOS 27.x, featuring region-code tweaks, device presets, backups, and support for 7 languages.",
+      "class": "resident"
+    },
+    {
+      "repo": "vercel-labs/agent-desktop",
+      "days_seen": 6,
+      "first_seen": "2026-11-09",
+      "last_seen": "2026-11-14",
+      "stars_now": 23560,
+      "star_delta": 3551,
+      "peak_daily_gain": 0,
+      "topics": [
+        "accessibility",
+        "accessibility-api",
+        "ai-agents",
+        "automation",
+        "cli",
+        "computer-use",
+        "computer-use-agent",
+        "computer-use-agents",
+        "desktop-automation",
+        "macos",
+        "mcp",
+        "rust"
+      ],
+      "desc": "Computer use CLI for AI agents",
+      "class": "resident"
+    },
+    {
+      "repo": "addyosmani/agent-skills",
+      "days_seen": 6,
+      "first_seen": "2026-11-10",
+      "last_seen": "2026-11-15",
+      "stars_now": 117730,
+      "star_delta": 2945,
+      "peak_daily_gain": 788,
+      "topics": [
+        "agent-skills",
+        "antigravity",
+        "claude-code",
+        "codex",
+        "cursor",
+        "skills"
+      ],
+      "desc": "Production-grade engineering skills for AI coding agents.",
+      "class": "resident"
+    },
+    {
+      "repo": "NVIDIA/auto-ontology",
+      "days_seen": 6,
+      "first_seen": "2026-11-09",
+      "last_seen": "2026-11-14",
+      "stars_now": 12705,
+      "star_delta": 1935,
+      "peak_daily_gain": 0,
+      "topics": [],
+      "desc": "Auto Ontology is a Python framework for building semantic, graph-based reasoning layers over data. It enables deterministic query generation, better context ret",
+      "class": "resident"
+    },
+    {
+      "repo": "jhaizhou-ops/S2Arm",
+      "days_seen": 6,
+      "first_seen": "2026-11-09",
+      "last_seen": "2026-11-14",
+      "stars_now": 2919,
+      "star_delta": 1614,
+      "peak_daily_gain": 0,
+      "topics": [
+        "apple-silicon",
+        "arm64",
+        "game-porting",
+        "ios",
+        "ipados",
+        "macos",
+        "metal",
+        "s2arm",
+        "static-recompilation",
+        "switch"
+      ],
+      "desc": "Run your own Switch games natively on iPhone, iPad and Mac: game code rewritten to ARM64, graphics direct to Metal, one app for the whole library. Bring your ow",
+      "class": "resident"
+    },
+    {
+      "repo": "Kianuni/Erosion-CN",
+      "days_seen": 6,
+      "first_seen": "2026-11-10",
+      "last_seen": "2026-11-15",
+      "stars_now": 2101,
+      "star_delta": 1453,
+      "peak_daily_gain": 0,
+      "topics": [],
+      "desc": "iOS / iPadOS 系统配置与 MobileGestalt 研究工具箱（简体中文防白苹果安全加固版）",
+      "class": "resident"
+    },
+    {
+      "repo": "meta/astryx",
+      "days_seen": 5,
+      "first_seen": "2026-11-09",
+      "last_seen": "2026-11-15",
+      "stars_now": 28461,
+      "star_delta": 10146,
+      "peak_daily_gain": 3324,
+      "topics": [],
+      "desc": "An open source design system that's fully customizable and agent ready",
+      "class": "resident"
+    },
+    {
+      "repo": "sherlock-project/sherlock",
+      "days_seen": 5,
+      "first_seen": "2026-11-09",
+      "last_seen": "2026-11-15",
+      "stars_now": 112077,
+      "star_delta": 6187,
+      "peak_daily_gain": 4294,
+      "topics": [
+        "cli",
+        "cti",
+        "cybersecurity",
+        "forensics",
+        "hacktoberfest",
+        "information-gathering",
+        "infosec",
+        "linux",
+        "osint",
+        "pentesting",
+        "python",
+        "python3",
+        "reconnaissance",
+        "redteam",
+        "sherlock",
+        "tools"
+      ],
+      "desc": "Hunt down social media accounts by username across social networks",
+      "class": "resident"
+    }
+  ],
+  "repos_climbing_by_stars": [
+    {
+      "repo": "meta/astryx",
+      "days_seen": 5,
+      "first_seen": "2026-11-09",
+      "last_seen": "2026-11-15",
+      "stars_now": 28461,
+      "star_delta": 10146,
+      "peak_daily_gain": 3324,
+      "topics": [],
+      "desc": "An open source design system that's fully customizable and agent ready",
+      "class": "resident"
+    },
+    {
+      "repo": "sherlock-project/sherlock",
+      "days_seen": 5,
+      "first_seen": "2026-11-09",
+      "last_seen": "2026-11-15",
+      "stars_now": 112077,
+      "star_delta": 6187,
+      "peak_daily_gain": 4294,
+      "topics": [
+        "cli",
+        "cti",
+        "cybersecurity",
+        "forensics",
+        "hacktoberfest",
+        "information-gathering",
+        "infosec",
+        "linux",
+        "osint",
+        "pentesting",
+        "python",
+        "python3",
+        "reconnaissance",
+        "redteam",
+        "sherlock",
+        "tools"
+      ],
+      "desc": "Hunt down social media accounts by username across social networks",
+      "class": "resident"
+    },
+    {
+      "repo": "GoogleChrome/modern-web-guidance-src",
+      "days_seen": 5,
+      "first_seen": "2026-11-11",
+      "last_seen": "2026-11-15",
+      "stars_now": 6551,
+      "star_delta": 5136,
+      "peak_daily_gain": 1875,
+      "topics": [],
+      "desc": "Keep your coding agent up to date with the latest web best practices",
+      "class": "resident"
+    },
+    {
+      "repo": "mattpocock/skills",
+      "days_seen": 6,
+      "first_seen": "2026-11-09",
+      "last_seen": "2026-11-14",
+      "stars_now": 324134,
+      "star_delta": 5005,
+      "peak_daily_gain": 1223,
+      "topics": [],
+      "desc": "Skills for Real Engineers. Straight from my .agents directory.",
+      "class": "resident"
+    },
+    {
+      "repo": "anthropics/skills",
+      "days_seen": 7,
+      "first_seen": "2026-11-09",
+      "last_seen": "2026-11-15",
+      "stars_now": 194978,
+      "star_delta": 4835,
+      "peak_daily_gain": 1676,
+      "topics": [
+        "agent-skills"
+      ],
+      "desc": "Public repository for Agent Skills",
+      "class": "resident"
+    },
+    {
+      "repo": "cloudflare/security-audit-skill",
+      "days_seen": 6,
+      "first_seen": "2026-11-09",
+      "last_seen": "2026-11-14",
+      "stars_now": 72220,
+      "star_delta": 4802,
+      "peak_daily_gain": 0,
+      "topics": [],
+      "desc": "A coding-agent skill for multi-phase security audits with independently verified, machine-readable findings",
+      "class": "resident"
+    },
+    {
+      "repo": "we-promise/sure",
+      "days_seen": 6,
+      "first_seen": "2026-11-10",
+      "last_seen": "2026-11-15",
+      "stars_now": 15520,
+      "star_delta": 4109,
+      "peak_daily_gain": 1079,
+      "topics": [],
+      "desc": "The personal finance app for everyone (by everyone)",
+      "class": "resident"
+    },
+    {
+      "repo": "ZhuLinsen/daily_stock_analysis",
+      "days_seen": 5,
+      "first_seen": "2026-11-09",
+      "last_seen": "2026-11-15",
+      "stars_now": 72372,
+      "star_delta": 3925,
+      "peak_daily_gain": 960,
+      "topics": [
+        "a-stock",
+        "ai-agent",
+        "aigc",
+        "llm",
+        "quant",
+        "quantitative-finance",
+        "quantitative-trading"
+      ],
+      "desc": "LLM 驱动的多市场股票智能分析系统：多源行情、实时新闻、决策看板与自动推送，支持零成本定时运行。 LLM-powered multi-market stock analysis system with multi-source market data, real-time news, decision dashboa",
+      "class": "resident"
+    },
+    {
+      "repo": "milind-soni/OpenMausBot",
+      "days_seen": 7,
+      "first_seen": "2026-11-09",
+      "last_seen": "2026-11-15",
+      "stars_now": 23012,
+      "star_delta": 3846,
+      "peak_daily_gain": 1589,
+      "topics": [
+        "ai-agents",
+        "claude-code",
+        "codex",
+        "computer-use",
+        "docker",
+        "electron",
+        "grok",
+        "grok-bot",
+        "grok-bot-alternative",
+        "self-hosted",
+        "typescript"
+      ],
+      "desc": "Open-source Grok Bot alternative with a virtual machine that bots can use",
+      "class": "resident"
+    },
+    {
+      "repo": "huamidev/GestaltX",
+      "days_seen": 6,
+      "first_seen": "2026-11-10",
+      "last_seen": "2026-11-15",
+      "stars_now": 7667,
+      "star_delta": 3801,
+      "peak_daily_gain": 0,
+      "topics": [],
+      "desc": "An MobileGestalt editor for iOS 27.x, featuring region-code tweaks, device presets, backups, and support for 7 languages.",
+      "class": "resident"
+    },
+    {
+      "repo": "vercel-labs/agent-desktop",
+      "days_seen": 6,
+      "first_seen": "2026-11-09",
+      "last_seen": "2026-11-14",
+      "stars_now": 23560,
+      "star_delta": 3551,
+      "peak_daily_gain": 0,
+      "topics": [
+        "accessibility",
+        "accessibility-api",
+        "ai-agents",
+        "automation",
+        "cli",
+        "computer-use",
+        "computer-use-agent",
+        "computer-use-agents",
+        "desktop-automation",
+        "macos",
+        "mcp",
+        "rust"
+      ],
+      "desc": "Computer use CLI for AI agents",
+      "class": "resident"
+    },
+    {
+      "repo": "NotRexed/Hookshot",
+      "days_seen": 3,
+      "first_seen": "2026-11-09",
+      "last_seen": "2026-11-11",
+      "stars_now": 7078,
+      "star_delta": 3321,
+      "peak_daily_gain": 0,
+      "topics": [],
+      "desc": "A Native Recompilation Of The Legend Of Zelda: Ocarina Of Time Nintendo Switch 2 Remake",
+      "class": "recurring"
+    },
+    {
+      "repo": "vercel-labs/agent-browser",
+      "days_seen": 7,
+      "first_seen": "2026-11-09",
+      "last_seen": "2026-11-15",
+      "stars_now": 51384,
+      "star_delta": 3274,
+      "peak_daily_gain": 914,
+      "topics": [],
+      "desc": "Browser automation CLI for AI agents",
+      "class": "resident"
+    },
+    {
+      "repo": "addyosmani/agent-skills",
+      "days_seen": 6,
+      "first_seen": "2026-11-10",
+      "last_seen": "2026-11-15",
+      "stars_now": 117730,
+      "star_delta": 2945,
+      "peak_daily_gain": 788,
+      "topics": [
+        "agent-skills",
+        "antigravity",
+        "claude-code",
+        "codex",
+        "cursor",
+        "skills"
+      ],
+      "desc": "Production-grade engineering skills for AI coding agents.",
+      "class": "resident"
+    },
+    {
+      "repo": "openai/codex-security",
+      "days_seen": 4,
+      "first_seen": "2026-11-11",
+      "last_seen": "2026-11-14",
+      "stars_now": 13403,
+      "star_delta": 2003,
+      "peak_daily_gain": 754,
+      "topics": [
+        "ai-security",
+        "application-security",
+        "cli",
+        "code-scanning",
+        "codex",
+        "codex-security",
+        "cybersecurity",
+        "devsecops",
+        "nodejs",
+        "npm",
+        "openai",
+        "sdk",
+        "security",
+        "typescript",
+        "vulnerability-scanning"
+      ],
+      "desc": "OpenAI's Codex Security CLI and TypeScript SDK for finding, validating, and fixing security vulnerabilities. npm: https://www.npmjs.com/package/@openai/codex-se",
+      "class": "recurring"
+    }
+  ],
+  "repos_one_day_wonders": [
+    {
+      "repo": "Alishahryar1/free-claude-code",
+      "days_seen": 1,
+      "first_seen": "2026-11-12",
+      "last_seen": "2026-11-12",
+      "stars_now": 68852,
+      "star_delta": 0,
+      "peak_daily_gain": 636,
+      "topics": [],
+      "desc": "Use Claude Code, Codex, Antigravity, VSCode, Pi, and OpenCode (and 6 other harnesses) for free (1.3B+ free tokens) from your terminal, app, IDE, or phone, and n",
+      "class": "one-off"
+    }
+  ]
+}
