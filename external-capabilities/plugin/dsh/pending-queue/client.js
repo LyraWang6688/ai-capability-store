@@ -11,6 +11,12 @@
  * stored here therefore comes back as the same atomic quote block the composer
  * itself inserts, and submit() sends it exactly like typed text (queued while
  * the agent is running).
+ *
+ * Images are the one exception: the composer's attachment pipeline only takes
+ * browser-owned draft ids, which a sidebar panel cannot mint. So an image is
+ * stored on this machine and pushed as "@<path>" plus a line asking the agent
+ * to open it with read_image. The model still sees the picture; it just asks
+ * for it instead of receiving it inline.
  */
 window.__ModuleLoader__.load({
   id: '@lyra_wang/dsh-pending-queue',
@@ -27,6 +33,8 @@ window.__ModuleLoader__.load({
     /** The plugin's own browser routes, registered by the host half. */
     const STATE_URL = '/plugins/pending-queue/state'
     const ACTION_URL = '/plugins/pending-queue/action'
+    const UPLOAD_URL = '/plugins/pending-queue/upload'
+    const ASSET_URL = '/plugins/pending-queue/asset'
     const ROOT = 'dsh-pending-queue'
 
     /**
@@ -49,7 +57,7 @@ window.__ModuleLoader__.load({
       'queue.clearSent': '清空已发送',
       'empty.title': '队列是空的',
       'empty.body': '把脑子里冒出来的想法先记在这里。等手上的活告一段落，再决定推哪一条。',
-      'input.placeholder': '记一条想法…',
+      'input.placeholder': '记一条想法…（可粘贴或拖入图片）',
       'input.hint': 'Cmd/Ctrl + Enter 存下。发送时内容进输入框并直接提交；运行中的会话会把它排进队列。',
       'action.save': '存下',
       'action.send': '发送',
@@ -62,16 +70,19 @@ window.__ModuleLoader__.load({
       'action.cancel': '取消',
       'action.saveEdit': '保存',
       'action.quote': '引用选中',
-      'action.removeQuote': '移除引用',
+      'action.image': '加图片',
+      'action.removeAttachment': '移除',
       'quote.hint': '先在聊天里选中一段文字，再点「引用选中」；推送时它会还原成真正的引用块。',
       'quote.empty': '先在聊天里选中一段文字',
-      'quote.badge': '引用',
+      'image.hint': '图片存在本机，推送时会带上路径并请 agent 用 read_image 查看。',
+      'image.push': '附图：@{path}\n（请用 read_image 查看这张图）',
       'status.sent': '已发送',
       'notice.filled': '已填入输入框',
       'notice.sent': '已推送',
       'error.network': '连不上插件接口',
       'error.noComposer': '这个位置还拿不到会话输入框，换到聊天页面再试',
       'error.push': '内容没能写进输入框（可能正在发送中）',
+      'error.image': '只能粘贴 / 拖入图片（png、jpeg、webp、gif）',
       'error.empty': '先写点什么',
       'time.justNow': '刚刚',
     }
@@ -86,7 +97,7 @@ window.__ModuleLoader__.load({
       'queue.clearSent': 'Clear sent',
       'empty.title': 'Nothing queued',
       'empty.body': 'Jot ideas down here as they arrive. When the current task is finished, decide which one to push.',
-      'input.placeholder': 'Jot one idea…',
+      'input.placeholder': 'Jot one idea… (paste or drop an image)',
       'input.hint': 'Cmd/Ctrl + Enter saves. Sending puts the text in the composer and submits it; a running session queues it.',
       'action.save': 'Save',
       'action.send': 'Send',
@@ -99,16 +110,19 @@ window.__ModuleLoader__.load({
       'action.cancel': 'Cancel',
       'action.saveEdit': 'Save',
       'action.quote': 'Quote selection',
-      'action.removeQuote': 'Remove quote',
+      'action.image': 'Add image',
+      'action.removeAttachment': 'Remove',
       'quote.hint': 'Select text in the chat first, then press Quote selection; pushing rebuilds it as a real quote block.',
       'quote.empty': 'Select text in the chat first',
-      'quote.badge': 'Quote',
+      'image.hint': 'Images stay on this machine; pushing sends the path and asks the agent to open it with read_image.',
+      'image.push': 'Attached image: @{path}\n(open it with read_image)',
       'status.sent': 'Sent',
       'notice.filled': 'Filled into the composer',
       'notice.sent': 'Pushed',
       'error.network': 'Cannot reach the plugin route',
       'error.noComposer': 'The composer is not reachable from here; open the chat view and retry',
       'error.push': 'The text could not enter the composer (it may be sending)',
+      'error.image': 'Paste or drop an image (png, jpeg, webp, gif)',
       'error.empty': 'Write something first',
       'time.justNow': 'just now',
     }
@@ -161,6 +175,29 @@ window.__ModuleLoader__.load({
       return error instanceof Error ? error.message : String(error)
     }
 
+    function assetName(path) {
+      const value = String(path || '')
+      return value.slice(value.lastIndexOf('/') + 1)
+    }
+
+    function assetUrl(sessionId, path) {
+      return ASSET_URL
+        + '?sessionId=' + encodeURIComponent(sessionId || '')
+        + '&name=' + encodeURIComponent(assetName(path))
+    }
+
+    function readFileBase64(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onload = () => {
+          const result = String(reader.result || '')
+          resolve(result.slice(result.indexOf(',') + 1))
+        }
+        reader.onerror = () => reject(reader.error || new Error('read failed'))
+        reader.readAsDataURL(file)
+      })
+    }
+
     async function readJson(response) {
       try {
         return await response.json()
@@ -193,15 +230,11 @@ window.__ModuleLoader__.load({
       return payload.queue || { items: [] }
     }
 
-    /** Rows written by 0.1.x carry a single 'text' field. */
+    /** Rows written by earlier versions carry a single 'text' field. */
     function segmentsOfItem(item) {
       if (item && Array.isArray(item.segments) && item.segments.length > 0) return item.segments
       if (item && typeof item.text === 'string' && item.text.trim() !== '') return [{ type: 'text', text: item.text }]
       return []
-    }
-
-    function hasContent(segments) {
-      return segments.some((segment) => typeof segment.text === 'string' && segment.text.trim() !== '')
     }
 
     /* -------------------------------- artwork -------------------------------- */
@@ -247,12 +280,18 @@ window.__ModuleLoader__.load({
       '.dsh-pending-queue-primary{all:unset;cursor:pointer;flex:none;height:24px;padding:0 10px;border-radius:var(--dsw-radius-sm,8px);',
       '  font-size:12px;background:var(--dsw-alias-brand-primary-new-colorprimary-new-color,#4d8dff);color:#fff}',
       '.dsh-pending-queue-primary[disabled]{opacity:.45;cursor:default}',
-      '.dsh-pending-queue-quotes{display:flex;flex-direction:column;gap:4px;margin:6px 0 0}',
-      '.dsh-pending-queue-quoteChip{display:flex;align-items:flex-start;gap:6px;padding:4px 6px 4px 8px;border-radius:var(--dsw-radius-sm,8px);',
+      '.dsh-pending-queue-chips{display:flex;flex-direction:column;gap:4px;margin:6px 0 0}',
+      '.dsh-pending-queue-chip{display:flex;align-items:flex-start;gap:6px;padding:4px 6px 4px 8px;border-radius:var(--dsw-radius-sm,8px);',
       '  background:var(--dsw-alias-bg-layer-2,#26262a);border-left:2px solid var(--dsw-alias-brand-primary-new-colorprimary-new-color,#4d8dff);',
       '  font-size:12px;line-height:1.45;color:var(--dsw-alias-label-secondary,#b9b9c0)}',
-      '.dsh-pending-queue-quoteChipText{flex:1;min-width:0;white-space:pre-wrap;word-break:break-word;',
+      '.dsh-pending-queue-chipText{flex:1;min-width:0;white-space:pre-wrap;word-break:break-word;',
       '  display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}',
+      '.dsh-pending-queue-thumbs{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 0}',
+      '.dsh-pending-queue-thumb{position:relative;width:64px;height:64px;border-radius:var(--dsw-radius-sm,8px);overflow:hidden;',
+      '  border:0.5px solid var(--dsw-alias-border-l3,#ffffff1a);background:var(--dsw-alias-bg-layer-2,#26262a)}',
+      '.dsh-pending-queue-thumb img{width:100%;height:100%;object-fit:cover;display:block}',
+      '.dsh-pending-queue-thumbX{all:unset;cursor:pointer;position:absolute;top:2px;right:2px;width:16px;height:16px;',
+      '  border-radius:8px;background:#000000a6;color:#fff;font-size:11px;line-height:16px;text-align:center}',
       '.dsh-pending-queue-x{all:unset;cursor:pointer;flex:none;font-size:11px;color:var(--dsw-alias-label-tertiary,#9a9aa2)}',
       '.dsh-pending-queue-x:hover{color:var(--dsw-alias-state-error-primary,#f56c6c)}',
       '.dsh-pending-queue-body{flex:1;min-height:0;overflow:auto;padding:0 10px 16px;overscroll-behavior:contain}',
@@ -268,6 +307,10 @@ window.__ModuleLoader__.load({
       '.dsh-pending-queue-text{white-space:pre-wrap;word-break:break-word;font-size:13px;line-height:1.55}',
       '.dsh-pending-queue-quote{margin:4px 0;padding:2px 0 2px 8px;border-left:2px solid var(--dsw-alias-border-l3,#ffffff2e);',
       '  white-space:pre-wrap;word-break:break-word;color:var(--dsw-alias-label-secondary,#b9b9c0);font-size:12.5px}',
+      '.dsh-pending-queue-image{margin:6px 0;display:flex;align-items:center;gap:8px}',
+      '.dsh-pending-queue-image img{width:72px;height:72px;object-fit:cover;border-radius:var(--dsw-radius-sm,8px);',
+      '  border:0.5px solid var(--dsw-alias-border-l3,#ffffff1a)}',
+      '.dsh-pending-queue-imageName{font-size:11.5px;color:var(--dsw-alias-label-tertiary,#9a9aa2);word-break:break-all}',
       '.dsh-pending-queue-meta{display:flex;align-items:center;gap:6px;margin-top:6px;font-size:11px;',
       '  color:var(--dsw-alias-label-tertiary,#9a9aa2)}',
       '.dsh-pending-queue-badge{flex:none;border:0.5px solid var(--dsw-alias-border-l3,#ffffff1f);border-radius:999px;',
@@ -295,6 +338,7 @@ window.__ModuleLoader__.load({
       const [error, setError] = useState('')
       const [draft, setDraft] = useState('')
       const [quotes, setQuotes] = useState([])
+      const [images, setImages] = useState([])
       const [editing, setEditing] = useState(null)
       const [busy, setBusy] = useState('')
       const [notice, setNotice] = useState('')
@@ -361,11 +405,39 @@ window.__ModuleLoader__.load({
         }, 2200)
       }, [])
 
+      const uploadImage = useCallback(async (file) => {
+        if (!sessionId) return
+        if (!file || !String(file.type || '').startsWith('image/')) {
+          setError(t('error.image'))
+          return
+        }
+        setBusy('upload')
+        try {
+          const data = await readFileBase64(file)
+          const response = await fetch(UPLOAD_URL, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ sessionId, name: file.name, data }),
+          })
+          const payload = await readJson(response)
+          if (!response.ok || payload.ok !== true) throw new Error(payload.message || ('HTTP ' + response.status))
+          if (live.current) {
+            setImages((current) => [...current, payload.file])
+            setError('')
+          }
+        } catch (failure) {
+          if (live.current) setError(messageOf(failure))
+        } finally {
+          if (live.current) setBusy('')
+        }
+      }, [sessionId, t])
+
       const saveDraft = useCallback(async () => {
         const text = draft.trim()
         const segments = []
         if (text !== '') segments.push({ type: 'text', text })
         for (const quote of quotes) segments.push({ type: 'quote', text: quote })
+        for (const image of images) segments.push({ type: 'file', path: image.path, name: image.name })
         if (segments.length === 0) {
           setError(t('error.empty'))
           return
@@ -377,9 +449,10 @@ window.__ModuleLoader__.load({
           if (next) {
             setDraft('')
             setQuotes([])
+            setImages([])
           }
         }
-      }, [draft, quotes, act, t])
+      }, [draft, quotes, images, act, t])
 
       const addQuote = useCallback(() => {
         let live = ''
@@ -399,15 +472,15 @@ window.__ModuleLoader__.load({
 
       /**
        * Replay one row through the composer: leading text replaces the draft,
-       * later text blocks are inserted, quotes are inserted as real quote
-       * nodes. Nothing here writes a session event directly.
+       * later text blocks are inserted, quotes become real quote nodes, and an
+       * image becomes a path line the agent can open with read_image.
        */
       const replay = useCallback((segments, mode) => {
         if (!inputActions || typeof inputActions.setDraft !== 'function') {
           setError(t('error.noComposer'))
           return false
         }
-        const rest = segments.map((segment) => ({ type: segment.type, text: segment.text }))
+        const rest = segments.map((segment) => ({ ...segment }))
         let head = ''
         if (rest.length > 0 && rest[0].type === 'text') head = rest.shift().text
         inputActions.setDraft(head)
@@ -417,13 +490,25 @@ window.__ModuleLoader__.load({
               setError(t('error.noComposer'))
               return false
             }
-            if (!inputActions.insertText(segment.text, inputActions.captureInsertion())) {
+            if (!inputActions.insertText('\n\n' + segment.text, inputActions.captureInsertion())) {
               setError(t('error.push'))
               return false
             }
-          } else if (typeof inputActions.insertQuote !== 'function' || !inputActions.insertQuote(segment.text)) {
-            setError(t('error.push'))
-            return false
+          } else if (segment.type === 'quote') {
+            if (typeof inputActions.insertQuote !== 'function' || !inputActions.insertQuote(segment.text)) {
+              setError(t('error.push'))
+              return false
+            }
+          } else if (segment.type === 'file') {
+            if (typeof inputActions.captureInsertion !== 'function' || typeof inputActions.insertText !== 'function') {
+              setError(t('error.noComposer'))
+              return false
+            }
+            const line = '\n\n' + t('image.push').replace('{path}', segment.path)
+            if (!inputActions.insertText(line, inputActions.captureInsertion())) {
+              setError(t('error.push'))
+              return false
+            }
           }
         }
         if (mode === 'send') {
@@ -438,7 +523,7 @@ window.__ModuleLoader__.load({
 
       const push = useCallback(async (item, mode) => {
         const segments = segmentsOfItem(item)
-        if (!hasContent(segments)) return
+        if (segments.length === 0) return
         setBusy(item.id)
         setError('')
         try {
@@ -455,12 +540,14 @@ window.__ModuleLoader__.load({
       }, [replay, act, flash, t])
 
       const startEdit = useCallback((item) => {
-        setEditing({ id: item.id, segments: segmentsOfItem(item).map((segment) => ({ type: segment.type, text: segment.text })) })
+        setEditing({ id: item.id, segments: segmentsOfItem(item).map((segment) => ({ ...segment })) })
       }, [])
 
       const saveEdit = useCallback(async () => {
         if (editing === null) return
-        const segments = editing.segments.filter((segment) => segment.text.trim() !== '')
+        const segments = editing.segments.filter((segment) => (segment.type === 'file'
+          ? true
+          : String(segment.text || '').trim() !== ''))
         if (segments.length === 0) {
           setError(t('error.empty'))
           return
@@ -484,12 +571,41 @@ window.__ModuleLoader__.load({
         }
       }, [saveDraft])
 
+      const onPaste = useCallback((event) => {
+        const files = event.clipboardData && event.clipboardData.files
+          ? Array.from(event.clipboardData.files)
+          : []
+        const image = files.find((file) => String(file.type || '').startsWith('image/'))
+        if (image === undefined) return
+        event.preventDefault()
+        void uploadImage(image)
+      }, [uploadImage])
+
+      const onDrop = useCallback((event) => {
+        const files = event.dataTransfer && event.dataTransfer.files
+          ? Array.from(event.dataTransfer.files)
+          : []
+        const image = files.find((file) => String(file.type || '').startsWith('image/'))
+        if (image === undefined) return
+        event.preventDefault()
+        void uploadImage(image)
+      }, [uploadImage])
+
       const countLabel = [count(t, 'queue.pending', pending), sent > 0 ? count(t, 'queue.sent', sent) : ''].filter(Boolean).join(' · ')
 
       function renderSegments(segments, keyPrefix) {
-        return segments.map((segment, index) => (segment.type === 'quote'
-          ? h('div', { key: keyPrefix + '-q' + index, className: ROOT + '-quote' }, segment.text)
-          : h('div', { key: keyPrefix + '-t' + index, className: ROOT + '-text' }, segment.text)))
+        return segments.map((segment, index) => {
+          if (segment.type === 'quote') {
+            return h('div', { key: keyPrefix + '-q' + index, className: ROOT + '-quote' }, segment.text)
+          }
+          if (segment.type === 'file') {
+            return h('div', { key: keyPrefix + '-f' + index, className: ROOT + '-image' }, [
+              h('img', { key: 'img', src: assetUrl(sessionId, segment.path), alt: segment.name || '' }),
+              h('span', { key: 'name', className: ROOT + '-imageName' }, segment.name || assetName(segment.path)),
+            ])
+          }
+          return h('div', { key: keyPrefix + '-t' + index, className: ROOT + '-text' }, segment.text)
+        })
       }
 
       function renderRow(item, index) {
@@ -535,18 +651,30 @@ window.__ModuleLoader__.load({
 
         const body = isEditing
           ? h('div', { key: 'editing' }, [
-            ...editing.segments.map((segment, segmentIndex) => (segment.type === 'quote'
-              ? h('div', { key: 'eq' + segmentIndex, className: ROOT + '-quoteChip' }, [
-                h('span', { key: 'txt', className: ROOT + '-quoteChipText' }, segment.text),
-                h('button', {
-                  key: 'x', type: 'button', className: ROOT + '-x', 'aria-label': t('action.removeQuote'),
-                  onClick: () => setEditing((current) => current === null ? current : ({
-                    id: current.id,
-                    segments: current.segments.filter((_, i) => i !== segmentIndex),
-                  })),
-                }, '×'),
-              ])
-              : h('textarea', {
+            ...editing.segments.map((segment, segmentIndex) => {
+              if (segment.type === 'quote' || segment.type === 'file') {
+                return h('div', { key: 'es' + segmentIndex, className: ROOT + '-chip' }, [
+                  segment.type === 'file'
+                    ? h('img', {
+                      key: 'img',
+                      src: assetUrl(sessionId, segment.path),
+                      alt: segment.name || '',
+                      style: { width: '40px', height: '40px', objectFit: 'cover', borderRadius: '6px' },
+                    })
+                    : null,
+                  h('span', { key: 'txt', className: ROOT + '-chipText' }, segment.type === 'file'
+                    ? (segment.name || assetName(segment.path))
+                    : segment.text),
+                  h('button', {
+                    key: 'x', type: 'button', className: ROOT + '-x', 'aria-label': t('action.removeAttachment'),
+                    onClick: () => setEditing((current) => current === null ? current : ({
+                      id: current.id,
+                      segments: current.segments.filter((_, i) => i !== segmentIndex),
+                    })),
+                  }, '×'),
+                ])
+              }
+              return h('textarea', {
                 key: 'et' + segmentIndex,
                 className: ROOT + '-edit',
                 value: segment.text,
@@ -568,7 +696,8 @@ window.__ModuleLoader__.load({
                     setEditing(null)
                   }
                 },
-              }))),
+              })
+            }),
             h('div', { key: 'acts', className: ROOT + '-acts' }, [
               h('button', {
                 key: 'save', type: 'button', className: ROOT + '-act', 'data-tone': 'send', disabled: isBusy,
@@ -606,7 +735,14 @@ window.__ModuleLoader__.load({
             : null,
           h('button', { key: 'refresh', type: 'button', className: ROOT + '-ghost', onClick: () => { void load(true) } }, t('queue.refresh')),
         ]),
-        h('div', { key: 'compose', className: ROOT + '-compose' }, [
+        h('div', {
+          key: 'compose',
+          className: ROOT + '-compose',
+          onDrop,
+          onDragOver: (event) => {
+            if (event.dataTransfer && Array.from(event.dataTransfer.types || []).includes('Files')) event.preventDefault()
+          },
+        }, [
           h('textarea', {
             key: 'input',
             className: ROOT + '-input',
@@ -615,25 +751,41 @@ window.__ModuleLoader__.load({
             rows: 2,
             onChange: (event) => setDraft(event.target.value),
             onKeyDown: onComposeKey,
+            onPaste,
           }),
           quotes.length > 0
-            ? h('div', { key: 'quotes', className: ROOT + '-quotes' }, quotes.map((text, index) => h('div', {
+            ? h('div', { key: 'quotes', className: ROOT + '-chips' }, quotes.map((text, index) => h('div', {
               key: 'qc' + index,
-              className: ROOT + '-quoteChip',
+              className: ROOT + '-chip',
             }, [
-              h('span', { key: 'txt', className: ROOT + '-quoteChipText' }, text),
+              h('span', { key: 'txt', className: ROOT + '-chipText' }, text),
               h('button', {
-                key: 'x', type: 'button', className: ROOT + '-x', 'aria-label': t('action.removeQuote'),
+                key: 'x', type: 'button', className: ROOT + '-x', 'aria-label': t('action.removeAttachment'),
                 onClick: () => setQuotes((current) => current.filter((_, i) => i !== index)),
               }, '×'),
             ])))
             : null,
+          images.length > 0
+            ? h('div', { key: 'images', className: ROOT + '-thumbs' }, images.map((image, index) => h('div', {
+              key: 'im' + index,
+              className: ROOT + '-thumb',
+              title: image.name || assetName(image.path),
+            }, [
+              h('img', { key: 'img', src: assetUrl(sessionId, image.path), alt: image.name || '' }),
+              h('button', {
+                key: 'x', type: 'button', className: ROOT + '-thumbX', 'aria-label': t('action.removeAttachment'),
+                onClick: () => setImages((current) => current.filter((_, i) => i !== index)),
+              }, '×'),
+            ])))
+            : null,
           h('div', { key: 'foot', className: ROOT + '-composeFoot' }, [
-            h('span', { key: 'hint', className: ROOT + '-hint' }, quotes.length > 0 ? t('quote.hint') : t('input.hint')),
+            h('span', { key: 'hint', className: ROOT + '-hint' }, images.length > 0
+              ? t('image.hint')
+              : quotes.length > 0 ? t('quote.hint') : t('input.hint')),
             h('button', { key: 'quote', type: 'button', className: ROOT + '-ghost', onClick: addQuote }, t('action.quote')),
             h('button', {
               key: 'save', type: 'button', className: ROOT + '-primary',
-              disabled: busy === 'add' || (draft.trim() === '' && quotes.length === 0),
+              disabled: busy === 'add' || busy === 'upload' || (draft.trim() === '' && quotes.length === 0 && images.length === 0),
               onClick: () => { void saveDraft() },
             }, t('action.save')),
           ]),

@@ -45,7 +45,15 @@ let routes
 async function call(path, method, url, body) {
   const res = response()
   await routes.get(path)(request(method, url, body), res)
-  return { status: res.out.status, json: res.out.body === '' ? null : JSON.parse(res.out.body) }
+  let json = null
+  if (res.out.body !== '') {
+    try {
+      json = JSON.parse(res.out.body)
+    } catch {
+      json = null
+    }
+  }
+  return { status: res.out.status, json }
 }
 
 const state = () => '/plugins/pending-queue/state'
@@ -57,7 +65,7 @@ test('routes are registered and the queue starts empty', async () => {
   const stub = stubContext()
   apply(stub.ctx)
   routes = stub.routes
-  assert.deepEqual([...routes.keys()].sort(), [action(), state()])
+  assert.deepEqual([...routes.keys()].sort(), [action(), '/plugins/pending-queue/asset', state(), '/plugins/pending-queue/upload']) 
   const reply = await call(state(), 'GET', state() + '?sessionId=' + session)
   assert.equal(reply.status, 200)
   assert.equal(reply.json.ok, true)
@@ -75,7 +83,7 @@ test('adds a text row and persists it to disk', async () => {
   assert.equal(items[0].sentAt, null)
 
   const raw = JSON.parse(await readFile(file, 'utf8'))
-  assert.equal(raw.version, 2)
+  assert.equal(raw.version, 3)
   assert.equal(raw.items[0].segments[0].text, '第一条：\n等上一步做完再发')
 })
 
@@ -166,8 +174,53 @@ test('lifts a 0.1.x text document to the segment shape', async () => {
   // The lift is lazy: the file is rewritten on the next write, not on read.
   await call(action(), 'POST', action(), { sessionId: legacy, action: 'add', text: '新一行' })
   const lifted = JSON.parse(await readFile(join(dir, legacy + '.json'), 'utf8'))
-  assert.equal(lifted.version, 2)
+  assert.equal(lifted.version, 3)
   assert.deepEqual(lifted.items.map((item) => item.segments[0].text), ['老版本的一行', '新一行'])
+})
+
+const PNG = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='
+const upload = () => '/plugins/pending-queue/upload'
+const asset = () => '/plugins/pending-queue/asset'
+
+test('uploads an image, stores it as a file segment and collects it on delete', async () => {
+  const up = await call(upload(), 'POST', upload(), { sessionId: session, name: 'shot.png', data: PNG })
+  assert.equal(up.status, 200)
+  const file = up.json.file
+  assert.match(file.path, /\/assets\/session-test\/img-[a-z0-9-]+\.png$/)
+
+  const reply = await call(action(), 'POST', action(), {
+    sessionId: session,
+    action: 'add',
+    segments: [{ type: 'text', text: '看这张图' }, { type: 'file', path: file.path, name: file.name }],
+  })
+  assert.equal(reply.status, 200)
+  const item = reply.json.queue.items[reply.json.queue.items.length - 1]
+  assert.deepEqual(item.segments.map((s) => s.type), ['text', 'file'])
+  assert.equal(item.segments[1].name, 'shot.png')
+
+  const name = file.path.split('/').pop()
+  const served = await call(asset(), 'GET', asset() + '?sessionId=' + session + '&name=' + name)
+  assert.equal(served.status, 200)
+
+  await call(action(), 'POST', action(), { sessionId: session, action: 'remove', id: item.id })
+  const gone = await call(asset(), 'GET', asset() + '?sessionId=' + session + '&name=' + name)
+  assert.equal(gone.status, 404)
+})
+
+test('rejects an image segment pointing outside the asset directory', async () => {
+  const reply = await call(action(), 'POST', action(), {
+    sessionId: session,
+    action: 'add',
+    segments: [{ type: 'file', path: '/etc/passwd', name: 'passwd' }],
+  })
+  assert.equal(reply.status, 400)
+  assert.match(reply.json.message, /unknown asset/)
+})
+
+test('rejects a non-image upload', async () => {
+  const reply = await call(upload(), 'POST', upload(), { sessionId: session, name: 'x.txt', data: Buffer.from('hello').toString('base64') })
+  assert.equal(reply.status, 400)
+  assert.match(reply.json.message, /unsupported image type/)
 })
 
 test('cleanup', async () => {
