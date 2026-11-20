@@ -346,6 +346,8 @@ window.__ModuleLoader__.load({
       const [notice, setNotice] = useState('')
       const live = useRef(true)
       const fileInput = useRef(null)
+      /** 'compose' or 'edit': which list the file picker feeds. */
+      const pickerTarget = useRef('compose')
 
       /** Restore the unsaved draft once per session. */
       useEffect(() => {
@@ -440,11 +442,12 @@ window.__ModuleLoader__.load({
         }, 2200)
       }, [])
 
-      const uploadImage = useCallback(async (file) => {
-        if (!sessionId) return
+      /** Upload one image and return the stored file, without touching any list. */
+      const uploadFile = useCallback(async (file) => {
+        if (!sessionId) return undefined
         if (!file || !String(file.type || '').startsWith('image/')) {
           setError(t('error.image'))
-          return
+          return undefined
         }
         setBusy('upload')
         try {
@@ -456,18 +459,24 @@ window.__ModuleLoader__.load({
           })
           const payload = await readJson(response)
           if (!response.ok || payload.ok !== true) throw new Error(payload.message || ('HTTP ' + response.status))
-          if (live.current) {
-            const nextImages = [...images, payload.file]
-            setImages(nextImages)
-            persist({ draft, quotes, images: nextImages })
-            setError('')
-          }
+          if (live.current) setError('')
+          return payload.file
         } catch (failure) {
           if (live.current) setError(messageOf(failure))
+          return undefined
         } finally {
           if (live.current) setBusy('')
         }
-      }, [sessionId, t, persist, draft, quotes, images])
+      }, [sessionId, t])
+
+      /** Compose-area upload: adds the image to the pending list. */
+      const uploadImage = useCallback(async (file) => {
+        const stored = await uploadFile(file)
+        if (!stored || !live.current) return
+        const nextImages = [...images, stored]
+        setImages(nextImages)
+        persist({ draft, quotes, images: nextImages })
+      }, [uploadFile, images, draft, quotes, persist])
 
       const saveDraft = useCallback(async () => {
         const text = draft.trim()
@@ -611,27 +620,59 @@ window.__ModuleLoader__.load({
         }
       }, [saveDraft])
 
-      const onPaste = useCallback((event) => {
-        const clipboard = event.clipboardData
-        if (!clipboard) return
-        const files = clipboard.files ? Array.from(clipboard.files) : []
-        let image = files.find((file) => String(file.type || '').startsWith('image/'))
-        if (image === undefined && clipboard.items) {
-          for (const item of Array.from(clipboard.items)) {
-            if (item.kind === 'file' && String(item.type || '').startsWith('image/')) {
-              const file = item.getAsFile()
-              if (file) {
-                image = file
-                break
-              }
-            }
+      /** Pull the first image out of a clipboard or drop payload, either shape. */
+      const imageFrom = useCallback((payload) => {
+        if (!payload) return undefined
+        const files = payload.files ? Array.from(payload.files) : []
+        const direct = files.find((file) => String(file.type || '').startsWith('image/'))
+        if (direct !== undefined) return direct
+        if (!payload.items) return undefined
+        for (const item of Array.from(payload.items)) {
+          if (item.kind === 'file' && String(item.type || '').startsWith('image/')) {
+            const file = item.getAsFile()
+            if (file) return file
           }
         }
+        return undefined
+      }, [])
+
+      /** Edit-mode upload: the image joins the row being edited, not the compose area. */
+      const appendEditingImage = useCallback(async (file) => {
+        const stored = await uploadFile(file)
+        if (!stored || !live.current) return
+        setEditing((current) => current === null ? current : ({
+          id: current.id,
+          segments: [...current.segments, { type: 'file', path: stored.path, name: stored.name }],
+        }))
+      }, [uploadFile])
+
+      const openPicker = useCallback((target) => {
+        pickerTarget.current = target
+        if (fileInput.current) fileInput.current.click()
+      }, [])
+
+      const onPaste = useCallback((event) => {
+        const image = imageFrom(event.clipboardData)
         if (image === undefined) return
         event.preventDefault()
         event.stopPropagation()
         void uploadImage(image)
-      }, [uploadImage])
+      }, [imageFrom, uploadImage])
+
+      const onEditPaste = useCallback((event) => {
+        const image = imageFrom(event.clipboardData)
+        if (image === undefined) return
+        event.preventDefault()
+        event.stopPropagation()
+        void appendEditingImage(image)
+      }, [imageFrom, appendEditingImage])
+
+      const onEditDrop = useCallback((event) => {
+        const image = imageFrom(event.dataTransfer)
+        if (image === undefined) return
+        event.preventDefault()
+        void appendEditingImage(image)
+      }, [imageFrom, appendEditingImage])
 
       const onDrop = useCallback((event) => {
         const files = event.dataTransfer && event.dataTransfer.files
@@ -702,7 +743,7 @@ window.__ModuleLoader__.load({
         }
 
         const body = isEditing
-          ? h('div', { key: 'editing' }, [
+          ? h('div', { key: 'editing', onDrop: onEditDrop }, [
             ...editing.segments.map((segment, segmentIndex) => {
               if (segment.type === 'quote' || segment.type === 'file') {
                 return h('div', { key: 'es' + segmentIndex, className: ROOT + '-chip' }, [
@@ -731,6 +772,7 @@ window.__ModuleLoader__.load({
                 className: ROOT + '-edit',
                 value: segment.text,
                 rows: 2,
+                onPaste: onEditPaste,
                 onChange: (event) => {
                   const value = event.target.value
                   setEditing((current) => current === null ? current : ({
@@ -751,6 +793,10 @@ window.__ModuleLoader__.load({
               })
             }),
             h('div', { key: 'acts', className: ROOT + '-acts' }, [
+              h('button', {
+                key: 'image', type: 'button', className: ROOT + '-act',
+                onClick: () => openPicker('edit'),
+              }, t('action.image')),
               h('button', {
                 key: 'save', type: 'button', className: ROOT + '-act', 'data-tone': 'send', disabled: isBusy,
                 onClick: () => { void saveEdit() },
@@ -855,8 +901,10 @@ window.__ModuleLoader__.load({
               style: { display: 'none' },
               onChange: (event) => {
                 const picked = event.target.files && event.target.files[0]
-                if (picked) void uploadImage(picked)
                 event.target.value = ''
+                if (!picked) return
+                if (pickerTarget.current === 'edit' && editing !== null) void appendEditingImage(picked)
+                else void uploadImage(picked)
               },
             }),
             h('button', { key: 'image', type: 'button', className: ROOT + '-ghost', onClick: () => { if (fileInput.current) fileInput.current.click() } }, t('action.image')),
