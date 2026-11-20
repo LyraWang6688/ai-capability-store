@@ -1,0 +1,5 @@
+# 待发送队列：Host 半只提供本插件自己的 JSON 存储与两条路由，Client 半注册一个右侧栏 tab。
+# 无配置项：队列按会话 id 分文件，写在 <DSH_HOME>/storages/pending-queue/ 下。
+- insert:
+    - id: dsh-pending-queue
+      name: "@lyra_wang/dsh-pending-queue"
