@@ -8,6 +8,10 @@
  * happens in the client half through the composer's own input actions, so a
  * queued row behaves exactly like text the user typed themselves.
  *
+ * A row is a list of segments, not one string. A quote is its own segment so
+ * the client half can rebuild it with inputActions.insertQuote() — a real
+ * quote block, not a literal "> " prefix.
+ *
  * Storage: <DSH_HOME>/storages/pending-queue/<sessionId>.json.
  * DSH_HOME defaults to ~/.dsh.
  */
@@ -31,20 +35,60 @@ const SESSION_ID = /^[A-Za-z0-9._-]{1,128}$/
 /** Bounded so one runaway session cannot grow the document without limit. */
 const MAX_ITEMS = 200
 const MAX_TEXT = 4000
+const MAX_TOTAL = 12000
 
 function nowIso() {
   return new Date().toISOString()
 }
 
-/** One row's text: newlines survive, edges do not. */
+/** One segment's text: newlines survive, edges do not. */
 function textOf(value) {
   if (typeof value !== 'string') return ''
   return value.replace(/\r\n/g, '\n').trim().slice(0, MAX_TEXT)
 }
 
+/**
+ * A row is a list of segments, not one string: a quote travels as its own
+ * segment so the composer can rebuild it as a real quote block instead of a
+ * literal "> " prefix.
+ */
+function segmentsOf(value) {
+  if (!Array.isArray(value)) throw new Error('segments must be an array')
+  const segments = []
+  let total = 0
+  for (const raw of value) {
+    if (raw === null || typeof raw !== 'object') throw new Error('invalid segment')
+    if (raw.type !== 'text' && raw.type !== 'quote') throw new Error('unknown segment type: ' + String(raw.type))
+    const text = textOf(raw.text)
+    if (text === '') continue
+    total += text.length
+    if (total > MAX_TOTAL) throw new Error('this row is too long (max ' + MAX_TOTAL + ' characters)')
+    segments.push({ type: raw.type, text })
+  }
+  if (segments.length === 0) throw new Error('text is required')
+  return segments
+}
+
+/** 'segments' is the shape the panel writes; a bare 'text' stays accepted. */
+function segmentsFromBody(body) {
+  if (body !== null && typeof body === 'object' && Array.isArray(body.segments)) return segmentsOf(body.segments)
+  const text = textOf(body && body.text)
+  if (text === '') throw new Error('text is required')
+  return [{ type: 'text', text }]
+}
+
+/** The flattened form for readers that only want one string. */
+function flattenSegments(segments) {
+  return segments
+    .map((segment) => (segment.type === 'quote'
+      ? segment.text.split('\n').map((line) => '> ' + line).join('\n')
+      : segment.text))
+    .join('\n\n')
+}
+
 function createDoc(sessionId) {
   return {
-    version: 1,
+    version: 2,
     sessionId,
     seq: 1,
     items: [],
@@ -72,7 +116,7 @@ async function readDoc(sessionId) {
   try {
     const raw = await readFile(fileFor(sessionId), 'utf8')
     const parsed = JSON.parse(raw)
-    if (parsed !== null && typeof parsed === 'object' && parsed.version === 1 && Array.isArray(parsed.items)) {
+    if (parsed !== null && typeof parsed === 'object' && (parsed.version === 1 || parsed.version === 2) && Array.isArray(parsed.items)) {
       return normalizeDoc(parsed, sessionId)
     }
     return createDoc(sessionId)
@@ -84,17 +128,27 @@ async function readDoc(sessionId) {
   }
 }
 
-/** Fill fields an older document may lack, so one shape reaches every reader. */
+/** Fill fields an older document may lack, and lift v1 text rows to segments. */
 function normalizeDoc(doc, sessionId) {
+  doc.version = 2
   doc.sessionId = sessionId
   doc.items = doc.items.filter((item) => item && typeof item.id === 'string')
   if (!Number.isInteger(doc.seq) || doc.seq < 1) doc.seq = doc.items.length + 1
   for (const item of doc.items) {
-    if (typeof item.text !== 'string') item.text = ''
+    if (!Array.isArray(item.segments)) {
+      const text = typeof item.text === 'string' ? item.text : ''
+      item.segments = text.trim() === '' ? [] : [{ type: 'text', text }]
+    }
+    item.segments = item.segments.filter((segment) => segment
+      && (segment.type === 'text' || segment.type === 'quote')
+      && typeof segment.text === 'string'
+      && segment.text !== '')
+    delete item.text
     if (typeof item.createdAt !== 'string') item.createdAt = nowIso()
     if (typeof item.updatedAt !== 'string') item.updatedAt = item.createdAt
     if (typeof item.sentAt !== 'string') delete item.sentAt
   }
+  doc.items = doc.items.filter((item) => item.segments.length > 0)
   return doc
 }
 
@@ -134,22 +188,19 @@ function requireItem(doc, id) {
 function applyAction(doc, body) {
   const action = String((body && body.action) || '')
   if (action === 'add') {
-    const text = textOf(body.text)
-    if (text === '') throw new Error('text is required')
+    const segments = segmentsFromBody(body)
     if (doc.items.length >= MAX_ITEMS) {
       throw new Error('this queue already holds ' + MAX_ITEMS + ' rows; send or delete some first')
     }
     const at = nowIso()
     const id = 'q' + doc.seq
     doc.seq += 1
-    doc.items.push({ id, text, createdAt: at, updatedAt: at })
+    doc.items.push({ id, segments, createdAt: at, updatedAt: at })
     return { id }
   }
   if (action === 'update') {
     const item = requireItem(doc, body.id)
-    const text = textOf(body.text)
-    if (text === '') throw new Error('text is required')
-    item.text = text
+    item.segments = segmentsFromBody(body)
     item.updatedAt = nowIso()
     return { id: item.id }
   }
@@ -189,7 +240,8 @@ function viewDoc(doc) {
     updatedAt: doc.updatedAt,
     items: doc.items.map((item) => ({
       id: item.id,
-      text: item.text,
+      segments: item.segments.map((segment) => ({ type: segment.type, text: segment.text })),
+      text: flattenSegments(item.segments),
       createdAt: item.createdAt,
       updatedAt: item.updatedAt,
       sentAt: typeof item.sentAt === 'string' ? item.sentAt : null,

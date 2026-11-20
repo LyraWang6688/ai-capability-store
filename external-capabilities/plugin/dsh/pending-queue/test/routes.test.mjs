@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdtemp, readFile, rm } from 'node:fs/promises'
+import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { Readable } from 'node:stream'
@@ -51,6 +51,7 @@ async function call(path, method, url, body) {
 const state = () => '/plugins/pending-queue/state'
 const action = () => '/plugins/pending-queue/action'
 const session = 'session-test'
+const file = join(home, 'storages', 'pending-queue', session + '.json')
 
 test('routes are registered and the queue starts empty', async () => {
   const stub = stubContext()
@@ -63,26 +64,49 @@ test('routes are registered and the queue starts empty', async () => {
   assert.deepEqual(reply.json.queue.items, [])
 })
 
-test('adds a row and persists it to disk', async () => {
+test('adds a text row and persists it to disk', async () => {
   const reply = await call(action(), 'POST', action(), { sessionId: session, action: 'add', text: '  第一条：\n等上一步做完再发  ' })
   assert.equal(reply.status, 200)
   const items = reply.json.queue.items
   assert.equal(items.length, 1)
   assert.equal(items[0].id, 'q1')
+  assert.deepEqual(items[0].segments, [{ type: 'text', text: '第一条：\n等上一步做完再发' }])
   assert.equal(items[0].text, '第一条：\n等上一步做完再发')
   assert.equal(items[0].sentAt, null)
 
-  const raw = JSON.parse(await readFile(join(home, 'storages', 'pending-queue', session + '.json'), 'utf8'))
-  assert.equal(raw.version, 1)
-  assert.equal(raw.items[0].text, '第一条：\n等上一步做完再发')
+  const raw = JSON.parse(await readFile(file, 'utf8'))
+  assert.equal(raw.version, 2)
+  assert.equal(raw.items[0].segments[0].text, '第一条：\n等上一步做完再发')
+})
+
+test('stores quotes as their own segment', async () => {
+  const reply = await call(action(), 'POST', action(), {
+    sessionId: session,
+    action: 'add',
+    segments: [
+      { type: 'text', text: '这两段说的是同一件事：' },
+      { type: 'quote', text: '原文第一段\n原文第二段' },
+      { type: 'text', text: '所以先合并。' },
+    ],
+  })
+  assert.equal(reply.status, 200)
+  const item = reply.json.queue.items[1]
+  assert.deepEqual(item.segments.map((segment) => segment.type), ['text', 'quote', 'text'])
+  assert.equal(item.segments[1].text, '原文第一段\n原文第二段')
+  assert.equal(item.text, '这两段说的是同一件事：\n\n> 原文第一段\n> 原文第二段\n\n所以先合并。')
 })
 
 test('edit, move, mark sent and clear sent', async () => {
-  await call(action(), 'POST', action(), { sessionId: session, action: 'add', text: '第二条' })
   await call(action(), 'POST', action(), { sessionId: session, action: 'add', text: '第三条' })
 
-  let reply = await call(action(), 'POST', action(), { sessionId: session, action: 'update', id: 'q1', text: '第一条（改）' })
-  assert.equal(reply.json.queue.items[0].text, '第一条（改）')
+  let reply = await call(action(), 'POST', action(), {
+    sessionId: session,
+    action: 'update',
+    id: 'q1',
+    segments: [{ type: 'text', text: '第一条（改）' }, { type: 'quote', text: '引一句' }],
+  })
+  assert.equal(reply.json.queue.items[0].segments.length, 2)
+  assert.equal(reply.json.queue.items[0].segments[1].type, 'quote')
 
   reply = await call(action(), 'POST', action(), { sessionId: session, action: 'move', id: 'q3', direction: 'up' })
   assert.deepEqual(reply.json.queue.items.map((item) => item.id), ['q1', 'q3', 'q2'])
@@ -100,10 +124,17 @@ test('edit, move, mark sent and clear sent', async () => {
   assert.deepEqual(reply.json.queue.items.map((item) => item.id), ['q1'])
 })
 
-test('rejects empty text, unknown items and bad session ids', async () => {
+test('rejects empty text, bad segments, unknown items and bad session ids', async () => {
   let reply = await call(action(), 'POST', action(), { sessionId: session, action: 'add', text: '   ' })
   assert.equal(reply.status, 400)
   assert.match(reply.json.message, /text is required/)
+
+  reply = await call(action(), 'POST', action(), { sessionId: session, action: 'add', segments: [{ type: 'image', text: 'x' }] })
+  assert.equal(reply.status, 400)
+  assert.match(reply.json.message, /unknown segment type/)
+
+  reply = await call(action(), 'POST', action(), { sessionId: session, action: 'add', segments: [{ type: 'text', text: '   ' }] })
+  assert.equal(reply.status, 400)
 
   reply = await call(action(), 'POST', action(), { sessionId: session, action: 'remove', id: 'nope' })
   assert.equal(reply.status, 400)
@@ -114,6 +145,29 @@ test('rejects empty text, unknown items and bad session ids', async () => {
 
   reply = await call(state(), 'GET', state() + '?sessionId=' + encodeURIComponent('../etc'))
   assert.equal(reply.status, 400)
+})
+
+test('lifts a 0.1.x text document to the segment shape', async () => {
+  const legacy = 'legacy-session'
+  const dir = join(home, 'storages', 'pending-queue')
+  await mkdir(dir, { recursive: true })
+  await writeFile(join(dir, legacy + '.json'), JSON.stringify({
+    version: 1,
+    sessionId: legacy,
+    seq: 2,
+    items: [{ id: 'q1', text: '老版本的一行', createdAt: '2026-11-20T00:00:00.000Z', updatedAt: '2026-11-20T00:00:00.000Z' }],
+    updatedAt: '2026-11-20T00:00:00.000Z',
+  }), 'utf8')
+
+  const reply = await call(state(), 'GET', state() + '?sessionId=' + legacy)
+  assert.equal(reply.status, 200)
+  assert.deepEqual(reply.json.queue.items[0].segments, [{ type: 'text', text: '老版本的一行' }])
+
+  // The lift is lazy: the file is rewritten on the next write, not on read.
+  await call(action(), 'POST', action(), { sessionId: legacy, action: 'add', text: '新一行' })
+  const lifted = JSON.parse(await readFile(join(dir, legacy + '.json'), 'utf8'))
+  assert.equal(lifted.version, 2)
+  assert.deepEqual(lifted.items.map((item) => item.segments[0].text), ['老版本的一行', '新一行'])
 })
 
 test('cleanup', async () => {

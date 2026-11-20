@@ -5,11 +5,12 @@
  * (/plugins/pending-queue/*), keyed by the session the tab belongs to, so two
  * conversations never share one queue.
  *
- * Pushing a row into the chat uses the composer's public input actions:
- * setDraft() puts the text in the input box exactly as if it had been typed,
- * and submit() sends it. While the agent is running, submit() queues the
- * message the same way a typed message is queued, so a push never interrupts
- * the current task.
+ * A row is a list of segments. Pushing it into the chat replays those segments
+ * through the composer's public input actions: setDraft() for the leading
+ * text, insertText() for later text blocks, insertQuote() for quotes. A quote
+ * stored here therefore comes back as the same atomic quote block the composer
+ * itself inserts, and submit() sends it exactly like typed text (queued while
+ * the agent is running).
  */
 window.__ModuleLoader__.load({
   id: '@lyra_wang/dsh-pending-queue',
@@ -27,6 +28,14 @@ window.__ModuleLoader__.load({
     const STATE_URL = '/plugins/pending-queue/state'
     const ACTION_URL = '/plugins/pending-queue/action'
     const ROOT = 'dsh-pending-queue'
+
+    /**
+     * The last non-empty chat selection, captured from the moment the plugin
+     * loads. A tab mounts later than the selection it wants to quote, and the
+     * click that opens the panel usually collapses the live selection, so the
+     * value has to live outside the component.
+     */
+    let lastChatSelection = ''
 
     /* --------------------------------- copy --------------------------------- */
 
@@ -52,11 +61,17 @@ window.__ModuleLoader__.load({
       'action.restore': '取回',
       'action.cancel': '取消',
       'action.saveEdit': '保存',
+      'action.quote': '引用选中',
+      'action.removeQuote': '移除引用',
+      'quote.hint': '先在聊天里选中一段文字，再点「引用选中」；推送时它会还原成真正的引用块。',
+      'quote.empty': '先在聊天里选中一段文字',
+      'quote.badge': '引用',
       'status.sent': '已发送',
       'notice.filled': '已填入输入框',
       'notice.sent': '已推送',
       'error.network': '连不上插件接口',
       'error.noComposer': '这个位置还拿不到会话输入框，换到聊天页面再试',
+      'error.push': '内容没能写进输入框（可能正在发送中）',
       'error.empty': '先写点什么',
       'time.justNow': '刚刚',
     }
@@ -83,11 +98,17 @@ window.__ModuleLoader__.load({
       'action.restore': 'Restore',
       'action.cancel': 'Cancel',
       'action.saveEdit': 'Save',
+      'action.quote': 'Quote selection',
+      'action.removeQuote': 'Remove quote',
+      'quote.hint': 'Select text in the chat first, then press Quote selection; pushing rebuilds it as a real quote block.',
+      'quote.empty': 'Select text in the chat first',
+      'quote.badge': 'Quote',
       'status.sent': 'Sent',
       'notice.filled': 'Filled into the composer',
       'notice.sent': 'Pushed',
       'error.network': 'Cannot reach the plugin route',
       'error.noComposer': 'The composer is not reachable from here; open the chat view and retry',
+      'error.push': 'The text could not enter the composer (it may be sending)',
       'error.empty': 'Write something first',
       'time.justNow': 'just now',
     }
@@ -127,7 +148,7 @@ window.__ModuleLoader__.load({
             try {
               return relativeFormatter.format(-value, pair[0])
             } catch {
-              /* fall through to a plain label */
+              /* fall through */
             }
           }
           return String(value) + ' ' + pair[0]
@@ -172,9 +193,19 @@ window.__ModuleLoader__.load({
       return payload.queue || { items: [] }
     }
 
+    /** Rows written by 0.1.x carry a single 'text' field. */
+    function segmentsOfItem(item) {
+      if (item && Array.isArray(item.segments) && item.segments.length > 0) return item.segments
+      if (item && typeof item.text === 'string' && item.text.trim() !== '') return [{ type: 'text', text: item.text }]
+      return []
+    }
+
+    function hasContent(segments) {
+      return segments.some((segment) => typeof segment.text === 'string' && segment.text.trim() !== '')
+    }
+
     /* -------------------------------- artwork -------------------------------- */
 
-    /** One glyph for the guide card and the tab chip. */
     function QueueGlyph(props) {
       const size = props && props.size ? props.size : 16
       return h('svg', {
@@ -216,6 +247,14 @@ window.__ModuleLoader__.load({
       '.dsh-pending-queue-primary{all:unset;cursor:pointer;flex:none;height:24px;padding:0 10px;border-radius:var(--dsw-radius-sm,8px);',
       '  font-size:12px;background:var(--dsw-alias-brand-primary-new-colorprimary-new-color,#4d8dff);color:#fff}',
       '.dsh-pending-queue-primary[disabled]{opacity:.45;cursor:default}',
+      '.dsh-pending-queue-quotes{display:flex;flex-direction:column;gap:4px;margin:6px 0 0}',
+      '.dsh-pending-queue-quoteChip{display:flex;align-items:flex-start;gap:6px;padding:4px 6px 4px 8px;border-radius:var(--dsw-radius-sm,8px);',
+      '  background:var(--dsw-alias-bg-layer-2,#26262a);border-left:2px solid var(--dsw-alias-brand-primary-new-colorprimary-new-color,#4d8dff);',
+      '  font-size:12px;line-height:1.45;color:var(--dsw-alias-label-secondary,#b9b9c0)}',
+      '.dsh-pending-queue-quoteChipText{flex:1;min-width:0;white-space:pre-wrap;word-break:break-word;',
+      '  display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}',
+      '.dsh-pending-queue-x{all:unset;cursor:pointer;flex:none;font-size:11px;color:var(--dsw-alias-label-tertiary,#9a9aa2)}',
+      '.dsh-pending-queue-x:hover{color:var(--dsw-alias-state-error-primary,#f56c6c)}',
       '.dsh-pending-queue-body{flex:1;min-height:0;overflow:auto;padding:0 10px 16px;overscroll-behavior:contain}',
       '.dsh-pending-queue-hintBlock{padding:28px 12px;text-align:center;color:var(--dsw-alias-label-tertiary,#9a9aa2);',
       '  font-size:12.5px;line-height:1.7}',
@@ -226,8 +265,9 @@ window.__ModuleLoader__.load({
       '.dsh-pending-queue-card{position:relative;margin:0 0 10px;padding:10px 12px 8px;border-radius:var(--dsw-radius-md,12px);',
       '  background:var(--dsw-alias-bg-layer-1,#1f1f22);border:0.5px solid var(--dsw-alias-border-l3,#ffffff1a)}',
       '.dsh-pending-queue-card[data-sent="true"]{opacity:.6}',
-      '.dsh-pending-queue-text{white-space:pre-wrap;word-break:break-word;font-size:13px;line-height:1.55;',
-      '  display:-webkit-box;-webkit-line-clamp:6;-webkit-box-orient:vertical;overflow:hidden}',
+      '.dsh-pending-queue-text{white-space:pre-wrap;word-break:break-word;font-size:13px;line-height:1.55}',
+      '.dsh-pending-queue-quote{margin:4px 0;padding:2px 0 2px 8px;border-left:2px solid var(--dsw-alias-border-l3,#ffffff2e);',
+      '  white-space:pre-wrap;word-break:break-word;color:var(--dsw-alias-label-secondary,#b9b9c0);font-size:12.5px}',
       '.dsh-pending-queue-meta{display:flex;align-items:center;gap:6px;margin-top:6px;font-size:11px;',
       '  color:var(--dsw-alias-label-tertiary,#9a9aa2)}',
       '.dsh-pending-queue-badge{flex:none;border:0.5px solid var(--dsw-alias-border-l3,#ffffff1f);border-radius:999px;',
@@ -238,8 +278,8 @@ window.__ModuleLoader__.load({
       '.dsh-pending-queue-act:hover{background:var(--dsw-alias-interactive-bg-hover,#ffffff14);color:var(--dsw-alias-label-primary,#e8e8ea)}',
       '.dsh-pending-queue-act[disabled]{opacity:.4;cursor:default}',
       '.dsh-pending-queue-act[data-tone="send"]{color:var(--dsw-alias-brand-primary-new-colorprimary-new-color,#4d8dff)}',
-      '.dsh-pending-queue-edit{box-sizing:border-box;width:100%;min-height:64px;resize:vertical;border-radius:var(--dsw-radius-sm,8px);',
-      '  border:0.5px solid var(--dsw-alias-border-l3,#ffffff1a);background:transparent;color:inherit;font:inherit;padding:6px 8px}',
+      '.dsh-pending-queue-edit{box-sizing:border-box;width:100%;min-height:52px;resize:vertical;border-radius:var(--dsw-radius-sm,8px);',
+      '  border:0.5px solid var(--dsw-alias-border-l3,#ffffff1a);background:transparent;color:inherit;font:inherit;padding:6px 8px;margin:2px 0}',
       '.dsh-pending-queue-notice{flex:none;margin:0 12px 6px;font-size:11.5px;color:var(--dsw-alias-label-tertiary,#9a9aa2)}',
     ].join('\n')
 
@@ -254,6 +294,7 @@ window.__ModuleLoader__.load({
       const [loading, setLoading] = useState(true)
       const [error, setError] = useState('')
       const [draft, setDraft] = useState('')
+      const [quotes, setQuotes] = useState([])
       const [editing, setEditing] = useState(null)
       const [busy, setBusy] = useState('')
       const [notice, setNotice] = useState('')
@@ -322,34 +363,87 @@ window.__ModuleLoader__.load({
 
       const saveDraft = useCallback(async () => {
         const text = draft.trim()
-        if (text === '') {
+        const segments = []
+        if (text !== '') segments.push({ type: 'text', text })
+        for (const quote of quotes) segments.push({ type: 'quote', text: quote })
+        if (segments.length === 0) {
           setError(t('error.empty'))
           return
         }
         setBusy('add')
-        const next = await act({ action: 'add', text })
+        const next = await act({ action: 'add', segments })
         if (live.current) {
           setBusy('')
-          if (next) setDraft('')
+          if (next) {
+            setDraft('')
+            setQuotes([])
+          }
         }
-      }, [draft, act, t])
+      }, [draft, quotes, act, t])
 
-      /** Push one row into the composer, standing in for the user's own typing. */
-      const push = useCallback(async (item, mode) => {
-        if (!inputActions || typeof inputActions.setDraft !== 'function') {
-          setError(t('error.noComposer'))
+      const addQuote = useCallback(() => {
+        let live = ''
+        try {
+          live = String(window.getSelection() || '')
+        } catch {
+          live = ''
+        }
+        const text = (live.trim() !== '' ? live : lastChatSelection).trim()
+        if (text === '') {
+          setError(t('quote.empty'))
           return
         }
+        setQuotes((current) => [...current, text])
+        setError('')
+      }, [t])
+
+      /**
+       * Replay one row through the composer: leading text replaces the draft,
+       * later text blocks are inserted, quotes are inserted as real quote
+       * nodes. Nothing here writes a session event directly.
+       */
+      const replay = useCallback((segments, mode) => {
+        if (!inputActions || typeof inputActions.setDraft !== 'function') {
+          setError(t('error.noComposer'))
+          return false
+        }
+        const rest = segments.map((segment) => ({ type: segment.type, text: segment.text }))
+        let head = ''
+        if (rest.length > 0 && rest[0].type === 'text') head = rest.shift().text
+        inputActions.setDraft(head)
+        for (const segment of rest) {
+          if (segment.type === 'text') {
+            if (typeof inputActions.captureInsertion !== 'function' || typeof inputActions.insertText !== 'function') {
+              setError(t('error.noComposer'))
+              return false
+            }
+            if (!inputActions.insertText(segment.text, inputActions.captureInsertion())) {
+              setError(t('error.push'))
+              return false
+            }
+          } else if (typeof inputActions.insertQuote !== 'function' || !inputActions.insertQuote(segment.text)) {
+            setError(t('error.push'))
+            return false
+          }
+        }
+        if (mode === 'send') {
+          if (typeof inputActions.submit !== 'function') {
+            setError(t('error.noComposer'))
+            return false
+          }
+          inputActions.submit()
+        }
+        return true
+      }, [inputActions, t])
+
+      const push = useCallback(async (item, mode) => {
+        const segments = segmentsOfItem(item)
+        if (!hasContent(segments)) return
         setBusy(item.id)
         setError('')
         try {
-          inputActions.setDraft(item.text)
+          if (!replay(segments, mode)) return
           if (mode === 'send') {
-            if (typeof inputActions.submit !== 'function') {
-              setError(t('error.noComposer'))
-              return
-            }
-            inputActions.submit()
             flash(t('notice.sent'))
             await act({ action: 'markSent', id: item.id })
           } else {
@@ -358,21 +452,21 @@ window.__ModuleLoader__.load({
         } finally {
           if (live.current) setBusy('')
         }
-      }, [inputActions, act, flash, t])
+      }, [replay, act, flash, t])
 
       const startEdit = useCallback((item) => {
-        setEditing({ id: item.id, text: item.text })
+        setEditing({ id: item.id, segments: segmentsOfItem(item).map((segment) => ({ type: segment.type, text: segment.text })) })
       }, [])
 
       const saveEdit = useCallback(async () => {
         if (editing === null) return
-        const text = editing.text.trim()
-        if (text === '') {
+        const segments = editing.segments.filter((segment) => segment.text.trim() !== '')
+        if (segments.length === 0) {
           setError(t('error.empty'))
           return
         }
         setBusy(editing.id)
-        const next = await act({ action: 'update', id: editing.id, text })
+        const next = await act({ action: 'update', id: editing.id, segments })
         if (live.current) {
           setBusy('')
           if (next) setEditing(null)
@@ -392,25 +486,125 @@ window.__ModuleLoader__.load({
 
       const countLabel = [count(t, 'queue.pending', pending), sent > 0 ? count(t, 'queue.sent', sent) : ''].filter(Boolean).join(' · ')
 
-      const children = [
+      function renderSegments(segments, keyPrefix) {
+        return segments.map((segment, index) => (segment.type === 'quote'
+          ? h('div', { key: keyPrefix + '-q' + index, className: ROOT + '-quote' }, segment.text)
+          : h('div', { key: keyPrefix + '-t' + index, className: ROOT + '-text' }, segment.text)))
+      }
+
+      function renderRow(item, index) {
+        const isEditing = editing !== null && editing.id === item.id
+        const isSent = item.sentAt !== null && item.sentAt !== undefined
+        const isBusy = busy === item.id
+        const segments = segmentsOfItem(item)
+        const actions = []
+        if (!isEditing && !isSent) {
+          actions.push(h('button', {
+            key: 'send', type: 'button', className: ROOT + '-act', 'data-tone': 'send', disabled: isBusy,
+            onClick: () => { void push(item, 'send') },
+          }, t('action.send')))
+          actions.push(h('button', {
+            key: 'fill', type: 'button', className: ROOT + '-act', disabled: isBusy,
+            onClick: () => { void push(item, 'fill') },
+          }, t('action.fill')))
+          actions.push(h('button', {
+            key: 'edit', type: 'button', className: ROOT + '-act',
+            onClick: () => startEdit(item),
+          }, t('action.edit')))
+        }
+        if (isSent) {
+          actions.push(h('button', {
+            key: 'restore', type: 'button', className: ROOT + '-act',
+            onClick: () => { void act({ action: 'restore', id: item.id }) },
+          }, t('action.restore')))
+        }
+        if (!isEditing) {
+          actions.push(h('button', {
+            key: 'up', type: 'button', className: ROOT + '-act', disabled: index === 0, 'aria-label': t('action.up'),
+            onClick: () => { void act({ action: 'move', id: item.id, direction: 'up' }) },
+          }, '↑'))
+          actions.push(h('button', {
+            key: 'down', type: 'button', className: ROOT + '-act', disabled: index === items.length - 1, 'aria-label': t('action.down'),
+            onClick: () => { void act({ action: 'move', id: item.id, direction: 'down' }) },
+          }, '↓'))
+          actions.push(h('button', {
+            key: 'remove', type: 'button', className: ROOT + '-act',
+            onClick: () => { void act({ action: 'remove', id: item.id }) },
+          }, t('action.remove')))
+        }
+
+        const body = isEditing
+          ? h('div', { key: 'editing' }, [
+            ...editing.segments.map((segment, segmentIndex) => (segment.type === 'quote'
+              ? h('div', { key: 'eq' + segmentIndex, className: ROOT + '-quoteChip' }, [
+                h('span', { key: 'txt', className: ROOT + '-quoteChipText' }, segment.text),
+                h('button', {
+                  key: 'x', type: 'button', className: ROOT + '-x', 'aria-label': t('action.removeQuote'),
+                  onClick: () => setEditing((current) => current === null ? current : ({
+                    id: current.id,
+                    segments: current.segments.filter((_, i) => i !== segmentIndex),
+                  })),
+                }, '×'),
+              ])
+              : h('textarea', {
+                key: 'et' + segmentIndex,
+                className: ROOT + '-edit',
+                value: segment.text,
+                rows: 2,
+                onChange: (event) => {
+                  const value = event.target.value
+                  setEditing((current) => current === null ? current : ({
+                    id: current.id,
+                    segments: current.segments.map((entry, i) => (i === segmentIndex ? { type: 'text', text: value } : entry)),
+                  }))
+                },
+                onKeyDown: (event) => {
+                  if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
+                    event.preventDefault()
+                    void saveEdit()
+                  }
+                  if (event.key === 'Escape') {
+                    event.preventDefault()
+                    setEditing(null)
+                  }
+                },
+              }))),
+            h('div', { key: 'acts', className: ROOT + '-acts' }, [
+              h('button', {
+                key: 'save', type: 'button', className: ROOT + '-act', 'data-tone': 'send', disabled: isBusy,
+                onClick: () => { void saveEdit() },
+              }, t('action.saveEdit')),
+              h('button', {
+                key: 'cancel', type: 'button', className: ROOT + '-act',
+                onClick: () => setEditing(null),
+              }, t('action.cancel')),
+            ]),
+          ])
+          : h('div', { key: 'content' }, renderSegments(segments, item.id))
+
+        return h('div', {
+          key: item.id,
+          className: ROOT + '-card',
+          'data-sent': isSent ? 'true' : 'false',
+        }, [
+          body,
+          h('div', { key: 'meta', className: ROOT + '-meta' }, [
+            h('span', { key: 'time' }, relativeTime(item.createdAt, t)),
+            isSent ? h('span', { key: 'sent', className: ROOT + '-badge' }, t('status.sent')) : null,
+          ]),
+          h('div', { key: 'acts', className: ROOT + '-acts' }, actions),
+        ])
+      }
+
+      return h('div', { className: ROOT }, [
         h('style', { key: 'css' }, CSS),
         h('div', { key: 'head', className: ROOT + '-head' }, [
           h('span', { key: 'title', className: ROOT + '-title' }, t('queue.title')),
           h('span', { key: 'counts', className: ROOT + '-counts' }, countLabel),
           sent > 0
-            ? h('button', {
-              key: 'clear',
-              type: 'button',
-              className: ROOT + '-ghost',
-              onClick: () => { void act({ action: 'clearSent' }) },
-            }, t('queue.clearSent'))
+            ? h('button', { key: 'clear', type: 'button', className: ROOT + '-ghost', onClick: () => { void act({ action: 'clearSent' }) } }, t('queue.clearSent'))
             : null,
-          h('button', {
-            key: 'refresh',
-            type: 'button',
-            className: ROOT + '-ghost',
-            onClick: () => { void load(true) },
-          }, t('queue.refresh')),
+          h('button', { key: 'refresh', type: 'button', className: ROOT + '-ghost', onClick: () => { void load(true) } }, t('queue.refresh')),
         ]),
         h('div', { key: 'compose', className: ROOT + '-compose' }, [
           h('textarea', {
@@ -422,13 +616,24 @@ window.__ModuleLoader__.load({
             onChange: (event) => setDraft(event.target.value),
             onKeyDown: onComposeKey,
           }),
+          quotes.length > 0
+            ? h('div', { key: 'quotes', className: ROOT + '-quotes' }, quotes.map((text, index) => h('div', {
+              key: 'qc' + index,
+              className: ROOT + '-quoteChip',
+            }, [
+              h('span', { key: 'txt', className: ROOT + '-quoteChipText' }, text),
+              h('button', {
+                key: 'x', type: 'button', className: ROOT + '-x', 'aria-label': t('action.removeQuote'),
+                onClick: () => setQuotes((current) => current.filter((_, i) => i !== index)),
+              }, '×'),
+            ])))
+            : null,
           h('div', { key: 'foot', className: ROOT + '-composeFoot' }, [
-            h('span', { key: 'hint', className: ROOT + '-hint' }, t('input.hint')),
+            h('span', { key: 'hint', className: ROOT + '-hint' }, quotes.length > 0 ? t('quote.hint') : t('input.hint')),
+            h('button', { key: 'quote', type: 'button', className: ROOT + '-ghost', onClick: addQuote }, t('action.quote')),
             h('button', {
-              key: 'save',
-              type: 'button',
-              className: ROOT + '-primary',
-              disabled: busy === 'add' || draft.trim() === '',
+              key: 'save', type: 'button', className: ROOT + '-primary',
+              disabled: busy === 'add' || (draft.trim() === '' && quotes.length === 0),
               onClick: () => { void saveDraft() },
             }, t('action.save')),
           ]),
@@ -443,121 +648,8 @@ window.__ModuleLoader__.load({
                 h('span', { key: 'title', className: ROOT + '-hintTitle' }, t('empty.title')),
                 h('span', { key: 'body' }, t('empty.body')),
               ])]
-              : items.map((item, index) => renderRow(item, index))),
-      ]
-
-      function renderRow(item, index) {
-        const isEditing = editing !== null && editing.id === item.id
-        const isSent = item.sentAt !== null && item.sentAt !== undefined
-        const isBusy = busy === item.id
-        const actions = []
-        if (!isEditing && !isSent) {
-          actions.push(h('button', {
-            key: 'send',
-            type: 'button',
-            className: ROOT + '-act',
-            'data-tone': 'send',
-            disabled: isBusy,
-            onClick: () => { void push(item, 'send') },
-          }, t('action.send')))
-          actions.push(h('button', {
-            key: 'fill',
-            type: 'button',
-            className: ROOT + '-act',
-            disabled: isBusy,
-            onClick: () => { void push(item, 'fill') },
-          }, t('action.fill')))
-          actions.push(h('button', {
-            key: 'edit',
-            type: 'button',
-            className: ROOT + '-act',
-            onClick: () => startEdit(item),
-          }, t('action.edit')))
-        }
-        if (isSent) {
-          actions.push(h('button', {
-            key: 'restore',
-            type: 'button',
-            className: ROOT + '-act',
-            onClick: () => { void act({ action: 'restore', id: item.id }) },
-          }, t('action.restore')))
-        }
-        if (!isEditing) {
-          actions.push(h('button', {
-            key: 'up',
-            type: 'button',
-            className: ROOT + '-act',
-            disabled: index === 0,
-            'aria-label': t('action.up'),
-            onClick: () => { void act({ action: 'move', id: item.id, direction: 'up' }) },
-          }, '↑'))
-          actions.push(h('button', {
-            key: 'down',
-            type: 'button',
-            className: ROOT + '-act',
-            disabled: index === items.length - 1,
-            'aria-label': t('action.down'),
-            onClick: () => { void act({ action: 'move', id: item.id, direction: 'down' }) },
-          }, '↓'))
-          actions.push(h('button', {
-            key: 'remove',
-            type: 'button',
-            className: ROOT + '-act',
-            onClick: () => { void act({ action: 'remove', id: item.id }) },
-          }, t('action.remove')))
-        }
-
-        return h('div', {
-          key: item.id,
-          className: ROOT + '-card',
-          'data-sent': isSent ? 'true' : 'false',
-        }, [
-          isEditing
-            ? h('div', { key: 'editing' }, [
-              h('textarea', {
-                key: 'ta',
-                className: ROOT + '-edit',
-                value: editing.text,
-                rows: 3,
-                onChange: (event) => setEditing({ id: item.id, text: event.target.value }),
-                onKeyDown: (event) => {
-                  if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
-                    event.preventDefault()
-                    void saveEdit()
-                  }
-                  if (event.key === 'Escape') {
-                    event.preventDefault()
-                    setEditing(null)
-                  }
-                },
-              }),
-              h('div', { key: 'acts', className: ROOT + '-acts' }, [
-                h('button', {
-                  key: 'save',
-                  type: 'button',
-                  className: ROOT + '-act',
-                  'data-tone': 'send',
-                  disabled: isBusy,
-                  onClick: () => { void saveEdit() },
-                }, t('action.saveEdit')),
-                h('button', {
-                  key: 'cancel',
-                  type: 'button',
-                  className: ROOT + '-act',
-                  onClick: () => setEditing(null),
-                }, t('action.cancel')),
-              ]),
-            ])
-            : h('div', { key: 'text', className: ROOT + '-text' }, item.text),
-          h('div', { key: 'meta', className: ROOT + '-meta' }, [
-            h('span', { key: 'time' }, relativeTime(item.createdAt, t)),
-            isSent ? h('span', { key: 'sent', className: ROOT + '-badge' }, t('status.sent')) : null,
-          ]),
-          h('div', { key: 'acts', className: ROOT + '-acts' }, actions),
-        ])
-      }
-
-      return h('div', { className: ROOT }, children)
+              : items.map(renderRow)),
+      ])
     }
 
     /** The tab chip: one glyph and the localized type name. */
@@ -577,6 +669,20 @@ window.__ModuleLoader__.load({
         const tr = ctx.locale.bind(NS)
 
         ctx.effect(() => ctx.locale.register(NS, { zh: ZH, en: EN }), 'pending-queue: dictionaries')
+
+        ctx.effect(() => {
+          if (typeof document === 'undefined') return () => {}
+          const onSelection = () => {
+            try {
+              const text = String(window.getSelection() || '')
+              if (text.trim() !== '') lastChatSelection = text
+            } catch {
+              /* selection API unavailable */
+            }
+          }
+          document.addEventListener('selectionchange', onSelection)
+          return () => document.removeEventListener('selectionchange', onSelection)
+        }, 'pending-queue: selection capture')
 
         const definition = {
           id: PKG,
