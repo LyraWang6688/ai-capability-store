@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Pending queue",
+    "description": "Collect messages you are not ready to send in the right sidebar, then push one into the current session when the previous task is done."
+  }
+}
