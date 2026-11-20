@@ -1,6 +1,6 @@
 {
   "name": "@lyra_wang/dsh-pending-queue",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Right-sidebar draft queue for DeepSeek Harness: jot ideas down, then push one into the session when the previous task is finished.",
   "type": "module",
   "main": "index.js",
