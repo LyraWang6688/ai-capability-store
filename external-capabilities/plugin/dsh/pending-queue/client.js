@@ -36,6 +36,8 @@ window.__ModuleLoader__.load({
     const UPLOAD_URL = '/plugins/pending-queue/upload'
     const ASSET_URL = '/plugins/pending-queue/asset'
     const ROOT = 'dsh-pending-queue'
+    /** Per-session scratch key: unsaved typing survives a tab switch or restart. */
+    const DRAFT_KEY = 'dsh.pending-queue.draft.v1.'
 
     /**
      * The last non-empty chat selection, captured from the moment the plugin
@@ -343,6 +345,39 @@ window.__ModuleLoader__.load({
       const [busy, setBusy] = useState('')
       const [notice, setNotice] = useState('')
       const live = useRef(true)
+      const fileInput = useRef(null)
+
+      /** Restore the unsaved draft once per session. */
+      useEffect(() => {
+        if (!sessionId) return
+        try {
+          const raw = window.localStorage.getItem(DRAFT_KEY + sessionId)
+          if (raw === null) return
+          const parsed = JSON.parse(raw)
+          if (typeof parsed.draft === 'string') setDraft(parsed.draft)
+          if (Array.isArray(parsed.quotes)) setQuotes(parsed.quotes.filter((entry) => typeof entry === 'string'))
+          if (Array.isArray(parsed.images)) setImages(parsed.images.filter((entry) => entry && typeof entry.path === 'string'))
+        } catch {
+          /* a broken scratch value is not worth an error banner */
+        }
+      }, [sessionId])
+
+      /** Write the unsaved draft; called by the edits that change it. */
+      const persist = useCallback((next) => {
+        if (!sessionId) return
+        try {
+          const text = typeof next.draft === 'string' ? next.draft : ''
+          const quotesNext = Array.isArray(next.quotes) ? next.quotes : []
+          const imagesNext = Array.isArray(next.images) ? next.images : []
+          if (text.trim() === '' && quotesNext.length === 0 && imagesNext.length === 0) {
+            window.localStorage.removeItem(DRAFT_KEY + sessionId)
+          } else {
+            window.localStorage.setItem(DRAFT_KEY + sessionId, JSON.stringify({ draft: text, quotes: quotesNext, images: imagesNext }))
+          }
+        } catch {
+          /* storage full or unavailable: the draft simply is not remembered */
+        }
+      }, [sessionId])
 
       useEffect(() => {
         live.current = true
@@ -422,7 +457,9 @@ window.__ModuleLoader__.load({
           const payload = await readJson(response)
           if (!response.ok || payload.ok !== true) throw new Error(payload.message || ('HTTP ' + response.status))
           if (live.current) {
-            setImages((current) => [...current, payload.file])
+            const nextImages = [...images, payload.file]
+            setImages(nextImages)
+            persist({ draft, quotes, images: nextImages })
             setError('')
           }
         } catch (failure) {
@@ -430,7 +467,7 @@ window.__ModuleLoader__.load({
         } finally {
           if (live.current) setBusy('')
         }
-      }, [sessionId, t])
+      }, [sessionId, t, persist, draft, quotes, images])
 
       const saveDraft = useCallback(async () => {
         const text = draft.trim()
@@ -450,9 +487,10 @@ window.__ModuleLoader__.load({
             setDraft('')
             setQuotes([])
             setImages([])
+            persist({ draft: '', quotes: [], images: [] })
           }
         }
-      }, [draft, quotes, images, act, t])
+      }, [draft, quotes, images, act, t, persist])
 
       const addQuote = useCallback(() => {
         let live = ''
@@ -466,9 +504,11 @@ window.__ModuleLoader__.load({
           setError(t('quote.empty'))
           return
         }
-        setQuotes((current) => [...current, text])
+        const nextQuotes = [...quotes, text]
+        setQuotes(nextQuotes)
+        persist({ draft, quotes: nextQuotes, images })
         setError('')
-      }, [t])
+      }, [t, persist, draft, quotes, images])
 
       /**
        * Replay one row through the composer: leading text replaces the draft,
@@ -572,12 +612,24 @@ window.__ModuleLoader__.load({
       }, [saveDraft])
 
       const onPaste = useCallback((event) => {
-        const files = event.clipboardData && event.clipboardData.files
-          ? Array.from(event.clipboardData.files)
-          : []
-        const image = files.find((file) => String(file.type || '').startsWith('image/'))
+        const clipboard = event.clipboardData
+        if (!clipboard) return
+        const files = clipboard.files ? Array.from(clipboard.files) : []
+        let image = files.find((file) => String(file.type || '').startsWith('image/'))
+        if (image === undefined && clipboard.items) {
+          for (const item of Array.from(clipboard.items)) {
+            if (item.kind === 'file' && String(item.type || '').startsWith('image/')) {
+              const file = item.getAsFile()
+              if (file) {
+                image = file
+                break
+              }
+            }
+          }
+        }
         if (image === undefined) return
         event.preventDefault()
+        event.stopPropagation()
         void uploadImage(image)
       }, [uploadImage])
 
@@ -739,6 +791,7 @@ window.__ModuleLoader__.load({
           key: 'compose',
           className: ROOT + '-compose',
           onDrop,
+          onPaste,
           onDragOver: (event) => {
             if (event.dataTransfer && Array.from(event.dataTransfer.types || []).includes('Files')) event.preventDefault()
           },
@@ -749,7 +802,11 @@ window.__ModuleLoader__.load({
             value: draft,
             placeholder: t('input.placeholder'),
             rows: 2,
-            onChange: (event) => setDraft(event.target.value),
+            onChange: (event) => {
+              const value = event.target.value
+              setDraft(value)
+              persist({ draft: value, quotes, images })
+            },
             onKeyDown: onComposeKey,
             onPaste,
           }),
@@ -761,7 +818,11 @@ window.__ModuleLoader__.load({
               h('span', { key: 'txt', className: ROOT + '-chipText' }, text),
               h('button', {
                 key: 'x', type: 'button', className: ROOT + '-x', 'aria-label': t('action.removeAttachment'),
-                onClick: () => setQuotes((current) => current.filter((_, i) => i !== index)),
+                onClick: () => {
+                  const nextQuotes = quotes.filter((_, i) => i !== index)
+                  setQuotes(nextQuotes)
+                  persist({ draft, quotes: nextQuotes, images })
+                },
               }, '×'),
             ])))
             : null,
@@ -774,7 +835,11 @@ window.__ModuleLoader__.load({
               h('img', { key: 'img', src: assetUrl(sessionId, image.path), alt: image.name || '' }),
               h('button', {
                 key: 'x', type: 'button', className: ROOT + '-thumbX', 'aria-label': t('action.removeAttachment'),
-                onClick: () => setImages((current) => current.filter((_, i) => i !== index)),
+                onClick: () => {
+                  const nextImages = images.filter((_, i) => i !== index)
+                  setImages(nextImages)
+                  persist({ draft, quotes, images: nextImages })
+                },
               }, '×'),
             ])))
             : null,
@@ -782,6 +847,19 @@ window.__ModuleLoader__.load({
             h('span', { key: 'hint', className: ROOT + '-hint' }, images.length > 0
               ? t('image.hint')
               : quotes.length > 0 ? t('quote.hint') : t('input.hint')),
+            h('input', {
+              key: 'file',
+              ref: fileInput,
+              type: 'file',
+              accept: 'image/*',
+              style: { display: 'none' },
+              onChange: (event) => {
+                const picked = event.target.files && event.target.files[0]
+                if (picked) void uploadImage(picked)
+                event.target.value = ''
+              },
+            }),
+            h('button', { key: 'image', type: 'button', className: ROOT + '-ghost', onClick: () => { if (fileInput.current) fileInput.current.click() } }, t('action.image')),
             h('button', { key: 'quote', type: 'button', className: ROOT + '-ghost', onClick: addQuote }, t('action.quote')),
             h('button', {
               key: 'save', type: 'button', className: ROOT + '-primary',
