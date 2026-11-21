@@ -120,6 +120,24 @@ function flattenSegments(segments) {
     .join('\n\n')
 }
 
+/**
+ * Rows group by state: still to send first, then sent, then soft-deleted. The
+ * partition is stable, so relative order inside a group never changes on its
+ * own — only the transitions move a row into its bucket.
+ */
+function bucketOf(item) {
+  if (typeof item.deletedAt === 'string') return 2
+  if (typeof item.sentAt === 'string') return 1
+  return 0
+}
+
+function sortItems(doc) {
+  doc.items = doc.items
+    .map((item, index) => ({ item, index }))
+    .sort((left, right) => (bucketOf(left.item) - bucketOf(right.item)) || (left.index - right.index))
+    .map((entry) => entry.item)
+}
+
 function createDoc(sessionId) {
   return {
     version: 3,
@@ -185,6 +203,7 @@ function normalizeDoc(doc, sessionId) {
     if (typeof item.deletedAt !== 'string') delete item.deletedAt
   }
   doc.items = doc.items.filter((item) => item.segments.length > 0)
+  sortItems(doc)
   return doc
 }
 
@@ -201,6 +220,7 @@ function mutateDoc(sessionId, change) {
   return withLock(async () => {
     const doc = await readDoc(sessionId)
     change(doc)
+    sortItems(doc)
     doc.updatedAt = nowIso()
     await writeDoc(doc)
     return doc
