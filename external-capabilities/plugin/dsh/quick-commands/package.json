@@ -1,6 +1,6 @@
 {
   "name": "@lyra_wang/dsh-quick-commands",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Quick commands for DeepSeek Harness: one button next to the composer keeps your reusable snippets, inserts them as editable text, or sends one in a click.",
   "license": "MIT",
   "type": "module",

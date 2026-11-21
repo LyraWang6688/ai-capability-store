@@ -186,9 +186,22 @@ window.__ModuleLoader__.load({
         const node = btnRef.current
         if (!node) return
         const rect = node.getBoundingClientRect()
-        const width = 352
-        const left = Math.max(12, Math.min(rect.left, window.innerWidth - width - 12))
-        setAnchor({ left, bottom: window.innerHeight - rect.top + 8 })
+        const margin = 12
+        const width = Math.min(352, window.innerWidth - margin * 2)
+        const left = Math.max(margin, Math.min(rect.left, window.innerWidth - width - margin))
+        const above = rect.top - margin
+        const below = window.innerHeight - rect.bottom - margin
+        const openUp = above >= 240 || above >= below
+        const room = Math.max(openUp ? above : below, 0)
+        if (room >= 160) {
+          const maxHeight = Math.min(420, room - 8)
+          setAnchor(openUp
+            ? { left, width, maxHeight, bottom: window.innerHeight - rect.top + 8 }
+            : { left, width, maxHeight, top: rect.bottom + 8 })
+          return
+        }
+        // Neither side has room: pin to the viewport and let the list scroll.
+        setAnchor({ left, width, maxHeight: Math.max(160, window.innerHeight - margin * 2), top: margin })
       }, [])
 
       const toggle = useCallback(() => {
@@ -298,7 +311,9 @@ window.__ModuleLoader__.load({
           key: 'panel',
           ref: panelRef,
           className: ROOT + '-panel',
-          style: { left: anchor.left + 'px', bottom: anchor.bottom + 'px' },
+          style: anchor.top !== undefined
+            ? { left: anchor.left + 'px', width: anchor.width + 'px', maxHeight: anchor.maxHeight + 'px', top: anchor.top + 'px' }
+            : { left: anchor.left + 'px', width: anchor.width + 'px', maxHeight: anchor.maxHeight + 'px', bottom: anchor.bottom + 'px' },
         }, [
           h('div', { key: 'head', className: ROOT + '-head' }, [
             h('span', { key: 'title', className: ROOT + '-title' }, t('panel.title')),
