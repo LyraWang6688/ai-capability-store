@@ -188,21 +188,36 @@ window.__ModuleLoader__.load({
         if (!node) return
         const rect = node.getBoundingClientRect()
         const margin = 12
-        const width = Math.min(352, window.innerWidth - margin * 2)
-        const left = Math.max(margin, Math.min(rect.left, window.innerWidth - width - margin))
+        const host = node.parentElement
+        const hostRect = host ? host.getBoundingClientRect() : null
+        const usable = hostRect && hostRect.width > 120 ? Math.max(200, hostRect.width - 16) : 352
+        const width = Math.min(352, Math.max(240, Math.min(window.innerWidth - margin * 2, usable)))
+        const minLeft = Math.max(margin, hostRect ? hostRect.left : margin)
+        const maxLeft = Math.min(window.innerWidth - width - margin, hostRect ? hostRect.right - width : window.innerWidth - width - margin)
+        const left = Math.max(minLeft, Math.min(rect.left, Math.max(minLeft, maxLeft)))
         const above = rect.top - margin
         const below = window.innerHeight - rect.bottom - margin
         const openUp = above >= 240 || above >= below
         const room = Math.max(openUp ? above : below, 0)
+        let next
         if (room >= 160) {
           const maxHeight = Math.min(420, room - 8)
-          setAnchor(openUp
+          next = openUp
             ? { left, width, maxHeight, bottom: window.innerHeight - rect.top + 8 }
-            : { left, width, maxHeight, top: rect.bottom + 8 })
-          return
+            : { left, width, maxHeight, top: rect.bottom + 8 }
+        } else {
+          // Neither side has room: pin to the viewport and let the list scroll.
+          next = { left, width, maxHeight: Math.max(160, window.innerHeight - margin * 2), top: margin }
         }
-        // Neither side has room: pin to the viewport and let the list scroll.
-        setAnchor({ left, width, maxHeight: Math.max(160, window.innerHeight - margin * 2), top: margin })
+        setAnchor((current) => {
+          if (current
+            && current.left === next.left
+            && current.width === next.width
+            && current.maxHeight === next.maxHeight
+            && current.top === next.top
+            && current.bottom === next.bottom) return current
+          return next
+        })
       }, [])
 
       const toggle = useCallback(() => {
@@ -231,13 +246,20 @@ window.__ModuleLoader__.load({
           if (event.key === 'Escape') setOpen(false)
         }
         const onResize = () => place()
+        const onScroll = () => place()
         document.addEventListener('mousedown', onDown)
         document.addEventListener('keydown', onKey)
         window.addEventListener('resize', onResize)
+        window.addEventListener('scroll', onScroll, true)
+        // Sidebars opening or the composer reflowing move the button without a
+        // resize event; re-anchor while the panel is open.
+        const timer = setInterval(() => place(), 400)
         return () => {
+          clearInterval(timer)
           document.removeEventListener('mousedown', onDown)
           document.removeEventListener('keydown', onKey)
           window.removeEventListener('resize', onResize)
+          window.removeEventListener('scroll', onScroll, true)
         }
       }, [open, place])
 
