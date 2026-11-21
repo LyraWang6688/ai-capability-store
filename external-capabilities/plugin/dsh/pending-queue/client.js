@@ -646,6 +646,26 @@ window.__ModuleLoader__.load({
         }))
       }, [uploadFile])
 
+      /** Edit-mode quote: the selection joins the row being edited. */
+      const addEditingQuote = useCallback(() => {
+        let live = ''
+        try {
+          live = String(window.getSelection() || '')
+        } catch {
+          live = ''
+        }
+        const text = (live.trim() !== '' ? live : lastChatSelection).trim()
+        if (text === '') {
+          setError(t('quote.empty'))
+          return
+        }
+        setEditing((current) => current === null ? current : ({
+          id: current.id,
+          segments: [...current.segments, { type: 'quote', text }],
+        }))
+        setError('')
+      }, [t])
+
       const openPicker = useCallback((target) => {
         pickerTarget.current = target
         if (fileInput.current) fileInput.current.click()
@@ -793,6 +813,10 @@ window.__ModuleLoader__.load({
               })
             }),
             h('div', { key: 'acts', className: ROOT + '-acts' }, [
+              h('button', {
+                key: 'quote', type: 'button', className: ROOT + '-act',
+                onClick: addEditingQuote,
+              }, t('action.quote')),
               h('button', {
                 key: 'image', type: 'button', className: ROOT + '-act',
                 onClick: () => openPicker('edit'),
