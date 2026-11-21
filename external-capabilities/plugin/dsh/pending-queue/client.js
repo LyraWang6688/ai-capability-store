@@ -66,6 +66,10 @@ window.__ModuleLoader__.load({
       'action.fill': '填入',
       'action.edit': '编辑',
       'action.remove': '删除',
+      'action.undelete': '恢复',
+      'action.purge': '彻底删除',
+      'queue.deleted': '{n} 条已删除',
+      'queue.clearDeleted': '清空已删除',
       'action.up': '上移',
       'action.down': '下移',
       'action.restore': '取回',
@@ -89,6 +93,7 @@ window.__ModuleLoader__.load({
       'image.hint': '图片存在本机，推送时会带上路径并请 agent 用 read_image 查看。',
       'image.push': '附图：@{path}\n（请用 read_image 查看这张图）',
       'status.sent': '已发送',
+      'status.deleted': '已删除',
       'notice.filled': '已填入输入框',
       'notice.sent': '已推送',
       'error.network': '连不上插件接口',
@@ -116,6 +121,10 @@ window.__ModuleLoader__.load({
       'action.fill': 'Fill',
       'action.edit': 'Edit',
       'action.remove': 'Delete',
+      'action.undelete': 'Restore',
+      'action.purge': 'Delete forever',
+      'queue.deleted': '{n} deleted',
+      'queue.clearDeleted': 'Clear deleted',
       'action.up': 'Move up',
       'action.down': 'Move down',
       'action.restore': 'Restore',
@@ -139,6 +148,7 @@ window.__ModuleLoader__.load({
       'image.hint': 'Images stay on this machine; pushing sends the path and asks the agent to open it with read_image.',
       'image.push': 'Attached image: @{path}\n(open it with read_image)',
       'status.sent': 'Sent',
+      'status.deleted': 'Deleted',
       'notice.filled': 'Filled into the composer',
       'notice.sent': 'Pushed',
       'error.network': 'Cannot reach the plugin route',
@@ -364,6 +374,10 @@ window.__ModuleLoader__.load({
       '.dsh-pending-queue-edit{box-sizing:border-box;width:100%;min-height:52px;resize:vertical;border-radius:var(--dsw-radius-sm,8px);',
       '  border:0.5px solid var(--dsw-alias-border-l3,#ffffff1a);background:transparent;color:inherit;font:inherit;padding:6px 8px;margin:2px 0}',
       '.dsh-pending-queue-notice{flex:none;margin:0 12px 6px;font-size:11.5px;color:var(--dsw-alias-label-tertiary,#9a9aa2)}',
+      '.dsh-pending-queue-card[data-deleted="true"]{opacity:.55}',
+      '.dsh-pending-queue-card[data-deleted="true"] .dsh-pending-queue-text{text-decoration:line-through}',
+      '.dsh-pending-queue-card[data-deleted="true"] .dsh-pending-queue-quote{text-decoration:line-through}',
+      '.dsh-pending-queue-card[data-deleted="true"] .dsh-pending-queue-image img{filter:grayscale(1)}',
       '.dsh-pending-queue-feishu{margin:8px 0 0;border:0.5px solid var(--dsw-alias-border-l3,#ffffff1a);border-radius:var(--dsw-radius-sm,8px);overflow:hidden}',
       '.dsh-pending-queue-feishuInput{box-sizing:border-box;width:100%;border:0;outline:0;background:transparent;color:inherit;font:inherit;padding:8px 10px;border-bottom:0.5px solid var(--dsw-alias-border-l3,#ffffff14)}',
       '.dsh-pending-queue-feishuBody{max-height:220px;overflow:auto}',
@@ -658,8 +672,9 @@ window.__ModuleLoader__.load({
       }, [editing, act, t])
 
       const items = queue && Array.isArray(queue.items) ? queue.items : []
-      const pending = items.filter((item) => item.sentAt === null || item.sentAt === undefined).length
-      const sent = items.length - pending
+      const deleted = items.filter((item) => item.deletedAt !== null && item.deletedAt !== undefined).length
+      const pending = items.filter((item) => !item.deletedAt && (item.sentAt === null || item.sentAt === undefined)).length
+      const sent = items.filter((item) => !item.deletedAt && item.sentAt !== null && item.sentAt !== undefined).length
 
       const onComposeKey = useCallback((event) => {
         if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
@@ -794,7 +809,7 @@ window.__ModuleLoader__.load({
         void uploadImage(image)
       }, [uploadImage])
 
-      const countLabel = [count(t, 'queue.pending', pending), sent > 0 ? count(t, 'queue.sent', sent) : ''].filter(Boolean).join(' · ')
+      const countLabel = [count(t, 'queue.pending', pending), sent > 0 ? count(t, 'queue.sent', sent) : '', deleted > 0 ? count(t, 'queue.deleted', deleted) : ''].filter(Boolean).join(' · ')
 
       function renderSegments(segments, keyPrefix) {
         return segments.map((segment, index) => {
@@ -845,10 +860,21 @@ window.__ModuleLoader__.load({
       function renderRow(item, index) {
         const isEditing = editing !== null && editing.id === item.id
         const isSent = item.sentAt !== null && item.sentAt !== undefined
+        const isDeleted = item.deletedAt !== null && item.deletedAt !== undefined
         const isBusy = busy === item.id
         const segments = segmentsOfItem(item)
         const actions = []
-        if (!isEditing && !isSent) {
+        if (isDeleted) {
+          actions.push(h('button', {
+            key: 'undelete', type: 'button', className: ROOT + '-act',
+            onClick: () => { void act({ action: 'undelete', id: item.id }) },
+          }, t('action.undelete')))
+          actions.push(h('button', {
+            key: 'purge', type: 'button', className: ROOT + '-act',
+            onClick: () => { void act({ action: 'purge', id: item.id }) },
+          }, t('action.purge')))
+        }
+        if (!isDeleted && !isEditing && !isSent) {
           actions.push(h('button', {
             key: 'send', type: 'button', className: ROOT + '-act', 'data-tone': 'send', disabled: isBusy,
             onClick: () => { void push(item, 'send') },
@@ -862,13 +888,13 @@ window.__ModuleLoader__.load({
             onClick: () => startEdit(item),
           }, t('action.edit')))
         }
-        if (isSent) {
+        if (isSent && !isDeleted) {
           actions.push(h('button', {
             key: 'restore', type: 'button', className: ROOT + '-act',
             onClick: () => { void act({ action: 'restore', id: item.id }) },
           }, t('action.restore')))
         }
-        if (!isEditing) {
+        if (!isEditing && !isDeleted) {
           actions.push(h('button', {
             key: 'up', type: 'button', className: ROOT + '-act', disabled: index === 0, 'aria-label': t('action.up'),
             onClick: () => { void act({ action: 'move', id: item.id, direction: 'up' }) },
@@ -958,11 +984,13 @@ window.__ModuleLoader__.load({
           key: item.id,
           className: ROOT + '-card',
           'data-sent': isSent ? 'true' : 'false',
+          'data-deleted': isDeleted ? 'true' : 'false',
         }, [
           body,
           h('div', { key: 'meta', className: ROOT + '-meta' }, [
             h('span', { key: 'time' }, relativeTime(item.createdAt, t)),
             isSent ? h('span', { key: 'sent', className: ROOT + '-badge' }, t('status.sent')) : null,
+            isDeleted ? h('span', { key: 'deleted', className: ROOT + '-badge' }, t('status.deleted')) : null,
           ]),
           h('div', { key: 'acts', className: ROOT + '-acts' }, actions),
         ])
@@ -975,6 +1003,9 @@ window.__ModuleLoader__.load({
           h('span', { key: 'counts', className: ROOT + '-counts' }, countLabel),
           sent > 0
             ? h('button', { key: 'clear', type: 'button', className: ROOT + '-ghost', onClick: () => { void act({ action: 'clearSent' }) } }, t('queue.clearSent'))
+            : null,
+          deleted > 0
+            ? h('button', { key: 'clearDeleted', type: 'button', className: ROOT + '-ghost', onClick: () => { void act({ action: 'clearDeleted' }) } }, t('queue.clearDeleted'))
             : null,
           h('button', { key: 'refresh', type: 'button', className: ROOT + '-ghost', onClick: () => { void load(true) } }, t('queue.refresh')),
         ]),

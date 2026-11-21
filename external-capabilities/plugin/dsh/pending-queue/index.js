@@ -182,6 +182,7 @@ function normalizeDoc(doc, sessionId) {
     if (typeof item.createdAt !== 'string') item.createdAt = nowIso()
     if (typeof item.updatedAt !== 'string') item.updatedAt = item.createdAt
     if (typeof item.sentAt !== 'string') delete item.sentAt
+    if (typeof item.deletedAt !== 'string') delete item.deletedAt
   }
   doc.items = doc.items.filter((item) => item.segments.length > 0)
   return doc
@@ -263,17 +264,31 @@ function applyAction(doc, body) {
   }
   if (action === 'update') {
     const item = requireItem(doc, body.id)
+    if (typeof item.deletedAt === 'string') throw new Error('this row is deleted; restore it first')
     item.segments = segmentsFromBody(body, doc.sessionId)
     item.updatedAt = nowIso()
     return { id: item.id }
   }
   if (action === 'remove') {
     const item = requireItem(doc, body.id)
+    if (typeof item.deletedAt !== 'string') item.deletedAt = nowIso()
+    item.updatedAt = item.deletedAt
+    return { id: item.id }
+  }
+  if (action === 'undelete') {
+    const item = requireItem(doc, body.id)
+    delete item.deletedAt
+    item.updatedAt = nowIso()
+    return { id: item.id }
+  }
+  if (action === 'purge') {
+    const item = requireItem(doc, body.id)
     doc.items = doc.items.filter((entry) => entry.id !== item.id)
     return { id: item.id }
   }
   if (action === 'move') {
     const item = requireItem(doc, body.id)
+    if (typeof item.deletedAt === 'string') throw new Error('this row is deleted; restore it first')
     const direction = body.direction === 'up' ? -1 : body.direction === 'down' ? 1 : 0
     if (direction === 0) throw new Error('direction must be up or down')
     const index = doc.items.indexOf(item)
@@ -294,6 +309,10 @@ function applyAction(doc, body) {
     doc.items = doc.items.filter((item) => typeof item.sentAt !== 'string')
     return {}
   }
+  if (action === 'clearDeleted') {
+    doc.items = doc.items.filter((item) => typeof item.deletedAt !== 'string')
+    return {}
+  }
   throw new Error('unknown action: ' + (action || '(none)'))
 }
 
@@ -310,6 +329,7 @@ function viewDoc(doc) {
       createdAt: item.createdAt,
       updatedAt: item.updatedAt,
       sentAt: typeof item.sentAt === 'string' ? item.sentAt : null,
+      deletedAt: typeof item.deletedAt === 'string' ? item.deletedAt : null,
     })),
   }
 }
