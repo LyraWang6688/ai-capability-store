@@ -1,0 +1,5 @@
+# 常用指令：输入框左侧一个按钮 + 自己的一条宿主路由。
+# 列表是全局的（不分会话），存在 <DSH_HOME>/storages/quick-commands/commands.json。
+- insert:
+    - id: dsh-quick-commands
+      name: "@lyra_wang/dsh-quick-commands"
