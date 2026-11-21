@@ -123,7 +123,7 @@ test('edit, move, mark sent and clear sent', async () => {
   assert.deepEqual(reply.json.queue.items.map((item) => item.id), ['q1', 'q3', 'q2'])
 
   reply = await call(action(), 'POST', action(), { sessionId: session, action: 'markSent', id: 'q3' })
-  assert.equal(typeof reply.json.queue.items[1].sentAt, 'string')
+  assert.equal(typeof reply.json.queue.items.find((entry) => entry.id === 'q3').sentAt, 'string')
 
   reply = await call(action(), 'POST', action(), { sessionId: session, action: 'clearSent' })
   assert.deepEqual(reply.json.queue.items.map((item) => item.id), ['q1', 'q2'])
@@ -143,6 +143,23 @@ test('edit, move, mark sent and clear sent', async () => {
   reply = await call(action(), 'POST', action(), { sessionId: session, action: 'remove', id: 'q2' })
   reply = await call(action(), 'POST', action(), { sessionId: session, action: 'clearDeleted' })
   assert.deepEqual(reply.json.queue.items.map((item) => item.id), ['q1'])
+})
+
+test('sent and deleted rows move to the bottom, restore brings them back', async () => {
+  const wide = 'order-session'
+  const add = (text) => call(action(), 'POST', action(), { sessionId: wide, action: 'add', text })
+  for (const text of ['A', 'B', 'C', 'D']) await add(text)
+  const ids = []
+  for (const item of (await call(state(), 'GET', state() + '?sessionId=' + wide)).json.queue.items) ids.push(item.id)
+
+  let reply = await call(action(), 'POST', action(), { sessionId: wide, action: 'markSent', id: ids[1] })
+  assert.deepEqual(reply.json.queue.items.map((item) => item.segments[0].text), ['A', 'C', 'D', 'B'])
+
+  reply = await call(action(), 'POST', action(), { sessionId: wide, action: 'remove', id: ids[0] })
+  assert.deepEqual(reply.json.queue.items.map((item) => item.segments[0].text), ['C', 'D', 'B', 'A'])
+
+  reply = await call(action(), 'POST', action(), { sessionId: wide, action: 'undelete', id: ids[0] })
+  assert.deepEqual(reply.json.queue.items.map((item) => item.segments[0].text), ['C', 'D', 'A', 'B'])
 })
 
 test('rejects empty text, bad segments, unknown items and bad session ids', async () => {
@@ -207,7 +224,8 @@ test('uploads an image, stores it as a file segment and collects it on delete', 
     segments: [{ type: 'text', text: '看这张图' }, { type: 'file', path: file.path, name: file.name }],
   })
   assert.equal(reply.status, 200)
-  const item = reply.json.queue.items[reply.json.queue.items.length - 1]
+  const item = reply.json.queue.items.find((entry) => entry.segments[0].text === '看这张图')
+  assert.ok(item)
   assert.deepEqual(item.segments.map((s) => s.type), ['text', 'file'])
   assert.equal(item.segments[1].name, 'shot.png')
 
