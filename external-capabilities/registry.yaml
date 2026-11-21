@@ -360,7 +360,7 @@ capabilities:
     type: plugin
     status: available
     provider_path: external-capabilities/providers/lyrawang/README.md
-    version: 0.1.2
+    version: 0.1.3
     implementation_path: external-capabilities/plugin/dsh/quick-commands
     auth: "无凭据入仓。不联网、不需要账号或 API Key；清单写在 <DSH_HOME>/storages/quick-commands/commands.json"
     capabilities: "输入框左侧（conversation.input.left）的「☆ 常用」按钮：弹出全局常用指令面板，可搜索、新建、编辑、删除；点一行把内容插入输入框（可继续编辑再回车），行内「发送」直接把该条发出去。Host 两条同源路由：GET /plugins/quick-commands/state 读清单，POST /plugins/quick-commands/action 执行 add / update / remove。"
