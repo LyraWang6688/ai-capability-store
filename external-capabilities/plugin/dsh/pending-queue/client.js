@@ -73,6 +73,16 @@ window.__ModuleLoader__.load({
       'action.saveEdit': '保存',
       'action.quote': '引用选中',
       'action.image': '加图片',
+      'action.feishu': '飞书引用',
+      'feishu.placeholder': '搜索飞书文档 / 云盘 / 群 / 消息 / 联系人',
+      'feishu.empty': '没有搜到结果',
+      'feishu.loading': '搜索中…',
+      'feishu.unavailable': '飞书引用不可用（需要安装 feishu-ref 插件）',
+      'feishu.meta.docs': '文档',
+      'feishu.meta.files': '云盘',
+      'feishu.meta.chats': '群聊',
+      'feishu.meta.messages': '消息',
+      'feishu.meta.contacts': '联系人',
       'action.removeAttachment': '移除',
       'quote.hint': '先在聊天里选中一段文字，再点「引用选中」；推送时它会还原成真正的引用块。',
       'quote.empty': '先在聊天里选中一段文字',
@@ -113,6 +123,16 @@ window.__ModuleLoader__.load({
       'action.saveEdit': 'Save',
       'action.quote': 'Quote selection',
       'action.image': 'Add image',
+      'action.feishu': 'Feishu ref',
+      'feishu.placeholder': 'Search Feishu docs / drive / chats / messages / people',
+      'feishu.empty': 'No results',
+      'feishu.loading': 'Searching…',
+      'feishu.unavailable': 'Feishu references need the feishu-ref plugin',
+      'feishu.meta.docs': 'Docs',
+      'feishu.meta.files': 'Drive',
+      'feishu.meta.chats': 'Chats',
+      'feishu.meta.messages': 'Messages',
+      'feishu.meta.contacts': 'People',
       'action.removeAttachment': 'Remove',
       'quote.hint': 'Select text in the chat first, then press Quote selection; pushing rebuilds it as a real quote block.',
       'quote.empty': 'Select text in the chat first',
@@ -232,6 +252,24 @@ window.__ModuleLoader__.load({
       return payload.queue || { items: [] }
     }
 
+    /**
+     * The exact text feishu-ref would insert into the composer, so a reference
+     * taken here is identical to one taken from the composer's own panel.
+     */
+    function feishuText(item) {
+      if (!item) return ''
+      if (item.type === 'message') {
+        const label = [item.chatName, item.sender].filter(Boolean).join(' · ') || '飞书消息'
+        const link = item.url ? '[' + label + '](' + item.url + ')' : label
+        return item.messageId ? link + '（message_id: ' + item.messageId + '） ' : link + ' '
+      }
+      if (item.type === 'contact') {
+        const link = item.url ? '[' + item.title + '](' + item.url + ')' : item.title
+        return item.openId ? link + '（open_id: ' + item.openId + '） ' : link + ' '
+      }
+      return '[' + item.title + '](' + item.url + ') '
+    }
+
     /** Rows written by earlier versions carry a single 'text' field. */
     function segmentsOfItem(item) {
       if (item && Array.isArray(item.segments) && item.segments.length > 0) return item.segments
@@ -326,6 +364,15 @@ window.__ModuleLoader__.load({
       '.dsh-pending-queue-edit{box-sizing:border-box;width:100%;min-height:52px;resize:vertical;border-radius:var(--dsw-radius-sm,8px);',
       '  border:0.5px solid var(--dsw-alias-border-l3,#ffffff1a);background:transparent;color:inherit;font:inherit;padding:6px 8px;margin:2px 0}',
       '.dsh-pending-queue-notice{flex:none;margin:0 12px 6px;font-size:11.5px;color:var(--dsw-alias-label-tertiary,#9a9aa2)}',
+      '.dsh-pending-queue-feishu{margin:8px 0 0;border:0.5px solid var(--dsw-alias-border-l3,#ffffff1a);border-radius:var(--dsw-radius-sm,8px);overflow:hidden}',
+      '.dsh-pending-queue-feishuInput{box-sizing:border-box;width:100%;border:0;outline:0;background:transparent;color:inherit;font:inherit;padding:8px 10px;border-bottom:0.5px solid var(--dsw-alias-border-l3,#ffffff14)}',
+      '.dsh-pending-queue-feishuBody{max-height:220px;overflow:auto}',
+      '.dsh-pending-queue-feishuHint{padding:8px 10px;font-size:11.5px;color:var(--dsw-alias-label-tertiary,#9a9aa2)}',
+      '.dsh-pending-queue-feishuGroup{padding:6px 10px 2px;font-size:11px;color:var(--dsw-alias-label-tertiary,#9a9aa2)}',
+      '.dsh-pending-queue-feishuRow{all:unset;box-sizing:border-box;display:flex;flex-direction:column;gap:1px;width:100%;padding:5px 10px;cursor:pointer}',
+      '.dsh-pending-queue-feishuRow:hover{background:var(--dsw-alias-interactive-bg-hover,#ffffff14)}',
+      '.dsh-pending-queue-feishuTitle{font-size:12.5px;color:var(--dsw-alias-label-primary,#e8e8ea);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
+      '.dsh-pending-queue-feishuMeta{font-size:10.5px;color:var(--dsw-alias-label-tertiary,#9a9aa2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
     ].join('\n')
 
     /* -------------------------------- component ------------------------------- */
@@ -341,6 +388,7 @@ window.__ModuleLoader__.load({
       const [draft, setDraft] = useState('')
       const [quotes, setQuotes] = useState([])
       const [images, setImages] = useState([])
+      const [feishu, setFeishu] = useState({ open: false, q: '', loading: false, error: '', result: null })
       const [editing, setEditing] = useState(null)
       const [busy, setBusy] = useState('')
       const [notice, setNotice] = useState('')
@@ -666,6 +714,48 @@ window.__ModuleLoader__.load({
         setError('')
       }, [t])
 
+      /** Debounced search against the feishu-ref plugin's own route. */
+      useEffect(() => {
+        if (!feishu.open) return undefined
+        const query = feishu.q.trim()
+        if (query === '') {
+          setFeishu((current) => ({ ...current, result: null, error: '', loading: false }))
+          return undefined
+        }
+        let cancelled = false
+        const timer = setTimeout(async () => {
+          setFeishu((current) => ({ ...current, loading: true, error: '' }))
+          try {
+            const response = await fetch('/plugins/feishu-ref/search', {
+              method: 'POST',
+              headers: { 'content-type': 'application/json' },
+              body: JSON.stringify({ q: query }),
+            })
+            const payload = await readJson(response)
+            if (!response.ok || payload.ok !== true) throw new Error(payload.message || ('HTTP ' + response.status))
+            if (cancelled || !live.current) return
+            setFeishu((current) => ({ ...current, loading: false, result: payload, error: '' }))
+          } catch {
+            if (cancelled || !live.current) return
+            setFeishu((current) => ({ ...current, loading: false, result: null, error: t('feishu.unavailable') }))
+          }
+        }, 350)
+        return () => {
+          cancelled = true
+          clearTimeout(timer)
+        }
+      }, [feishu.open, feishu.q, t])
+
+      /** Append a Feishu reference as ordinary text, same string the composer inserts. */
+      const pickFeishu = useCallback((item) => {
+        const text = feishuText(item)
+        if (text === '') return
+        const next = draft.trim() === '' ? text : draft.replace(/\s+$/, '') + '\n' + text
+        setDraft(next)
+        persist({ draft: next, quotes, images })
+        setFeishu({ open: false, q: '', loading: false, error: '', result: null })
+      }, [draft, persist, quotes, images])
+
       const openPicker = useCallback((target) => {
         pickerTarget.current = target
         if (fileInput.current) fileInput.current.click()
@@ -719,6 +809,37 @@ window.__ModuleLoader__.load({
           }
           return h('div', { key: keyPrefix + '-t' + index, className: ROOT + '-text' }, segment.text)
         })
+      }
+
+      function renderFeishuResults() {
+        const result = feishu.result
+        if (!result) return h('div', { key: 'hint', className: ROOT + '-feishuHint' }, t('feishu.placeholder'))
+        const groups = [
+          ['docs', result.docs],
+          ['files', result.files],
+          ['chats', result.chats],
+          ['messages', result.messages],
+          ['contacts', result.contacts],
+        ].filter(([, list]) => Array.isArray(list) && list.length > 0)
+        if (groups.length === 0) return h('div', { key: 'empty', className: ROOT + '-feishuHint' }, t('feishu.empty'))
+        const rows = []
+        for (const [key, list] of groups) {
+          rows.push(h('div', { key: 'g' + key, className: ROOT + '-feishuGroup' }, t('feishu.meta.' + key)))
+          for (const item of list.slice(0, 4)) {
+            const label = item.title || item.url || ''
+            rows.push(h('button', {
+              key: key + ':' + (item.url || label),
+              type: 'button',
+              className: ROOT + '-feishuRow',
+              title: feishuText(item),
+              onClick: () => pickFeishu(item),
+            }, [
+              h('span', { key: 't', className: ROOT + '-feishuTitle' }, label),
+              item.url ? h('span', { key: 'u', className: ROOT + '-feishuMeta' }, String(item.url).slice(0, 56)) : null,
+            ]))
+          }
+        }
+        return rows
       }
 
       function renderRow(item, index) {
@@ -913,6 +1034,29 @@ window.__ModuleLoader__.load({
               }, '×'),
             ])))
             : null,
+          feishu.open
+            ? h('div', { key: 'feishu', className: ROOT + '-feishu' }, [
+              h('input', {
+                key: 'q',
+                className: ROOT + '-feishuInput',
+                autoFocus: true,
+                value: feishu.q,
+                placeholder: t('feishu.placeholder'),
+                onChange: (event) => setFeishu((current) => ({ ...current, q: event.target.value })),
+                onKeyDown: (event) => {
+                  if (event.key !== 'Escape') return
+                  event.preventDefault()
+                  setFeishu({ open: false, q: '', loading: false, error: '', result: null })
+                },
+              }),
+              h('div', { key: 'body', className: ROOT + '-feishuBody' },
+                feishu.loading
+                  ? [h('div', { key: 'l', className: ROOT + '-feishuHint' }, t('feishu.loading'))]
+                  : feishu.error !== ''
+                    ? [h('div', { key: 'e', className: ROOT + '-feishuHint' }, feishu.error)]
+                    : renderFeishuResults()),
+            ])
+            : null,
           h('div', { key: 'foot', className: ROOT + '-composeFoot' }, [
             h('span', { key: 'hint', className: ROOT + '-hint' }, images.length > 0
               ? t('image.hint')
@@ -931,6 +1075,12 @@ window.__ModuleLoader__.load({
                 else void uploadImage(picked)
               },
             }),
+            h('button', {
+              key: 'feishu', type: 'button', className: ROOT + '-ghost',
+              onClick: () => setFeishu((current) => ({
+                open: !current.open, q: current.open ? '' : current.q, loading: false, error: '', result: null,
+              })),
+            }, t('action.feishu')),
             h('button', { key: 'image', type: 'button', className: ROOT + '-ghost', onClick: () => { if (fileInput.current) fileInput.current.click() } }, t('action.image')),
             h('button', { key: 'quote', type: 'button', className: ROOT + '-ghost', onClick: addQuote }, t('action.quote')),
             h('button', {
@@ -1012,8 +1162,7 @@ window.__ModuleLoader__.load({
           }, QueueBody)))
           disposers.push(ctx.slots.inject('sidebar.right.pane.tab.title', () => ctx.slots.register({
             name: 'sidebar.right.pane.tab.title',
-            key: PKG,
-            locale: NS,
+            key: PKG,            locale: NS,
           }, QueueTitle)))
 
           return () => {
