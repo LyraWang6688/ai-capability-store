@@ -108,8 +108,9 @@ window.__ModuleLoader__.load({
 
     const CSS = [
       '.dsh-quick-commands-btn{all:unset;box-sizing:border-box;display:inline-flex;align-items:center;gap:4px;height:26px;',
-      '  padding:0 8px;border-radius:var(--dsw-radius-sm,8px);cursor:pointer;font-size:12px;',
+      '  flex:none;white-space:nowrap;padding:0 8px;border-radius:var(--dsw-radius-sm,8px);cursor:pointer;font-size:12px;',
       '  color:var(--dsw-alias-label-secondary,#b9b9c0)}',
+      '.dsh-quick-commands-btn > span{white-space:nowrap}',
       '.dsh-quick-commands-btn:hover{background:var(--dsw-alias-interactive-bg-hover,#ffffff14);color:var(--dsw-alias-label-primary,#e8e8ea)}',
       '.dsh-quick-commands-panel{position:fixed;z-index:60;width:352px;max-height:420px;display:flex;flex-direction:column;',
       '  background:var(--dsw-alias-bg-layer-1,#1f1f22);border:0.5px solid var(--dsw-alias-border-l3,#ffffff1f);',
