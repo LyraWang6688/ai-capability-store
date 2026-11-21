@@ -19,6 +19,10 @@ global:
   - pnpm-lock.yaml
 
 packages:
+  # 常用指令的 Host 路由测试：node --test 跑，不随包发布
+  "@lyra_wang/dsh-quick-commands":
+    - test/**
+
   # 待发送队列的 Host 路由测试：node --test 跑，不随包发布
   "@lyra_wang/dsh-pending-queue":
     - test/**
