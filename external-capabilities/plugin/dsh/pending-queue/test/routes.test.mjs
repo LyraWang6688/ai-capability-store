@@ -129,6 +129,19 @@ test('edit, move, mark sent and clear sent', async () => {
   assert.deepEqual(reply.json.queue.items.map((item) => item.id), ['q1', 'q2'])
 
   reply = await call(action(), 'POST', action(), { sessionId: session, action: 'remove', id: 'q2' })
+  assert.deepEqual(reply.json.queue.items.map((item) => item.id), ['q1', 'q2'])
+  assert.equal(typeof reply.json.queue.items[1].deletedAt, 'string')
+
+  // A deleted row keeps its place but refuses edits until restored.
+  reply = await call(action(), 'POST', action(), { sessionId: session, action: 'update', id: 'q2', text: 'x' })
+  assert.equal(reply.status, 400)
+  assert.match(reply.json.message, /deleted/)
+
+  reply = await call(action(), 'POST', action(), { sessionId: session, action: 'undelete', id: 'q2' })
+  assert.equal(reply.json.queue.items[1].deletedAt, null)
+
+  reply = await call(action(), 'POST', action(), { sessionId: session, action: 'remove', id: 'q2' })
+  reply = await call(action(), 'POST', action(), { sessionId: session, action: 'clearDeleted' })
   assert.deepEqual(reply.json.queue.items.map((item) => item.id), ['q1'])
 })
 
@@ -202,7 +215,12 @@ test('uploads an image, stores it as a file segment and collects it on delete', 
   const served = await call(asset(), 'GET', asset() + '?sessionId=' + session + '&name=' + name)
   assert.equal(served.status, 200)
 
+  // Soft delete keeps the file; purging is what lets the collector drop it.
   await call(action(), 'POST', action(), { sessionId: session, action: 'remove', id: item.id })
+  const kept = await call(asset(), 'GET', asset() + '?sessionId=' + session + '&name=' + name)
+  assert.equal(kept.status, 200)
+
+  await call(action(), 'POST', action(), { sessionId: session, action: 'purge', id: item.id })
   const gone = await call(asset(), 'GET', asset() + '?sessionId=' + session + '&name=' + name)
   assert.equal(gone.status, 404)
 })
