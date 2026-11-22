@@ -162,6 +162,40 @@ test('sent and deleted rows move to the bottom, restore brings them back', async
   assert.deepEqual(reply.json.queue.items.map((item) => item.segments[0].text), ['C', 'D', 'A', 'B'])
 })
 
+test('completed rows leave the queue, drop back on restore, and clear on demand', async () => {
+  const board = 'done-session'
+  for (const text of ['甲', '乙', '丙']) {
+    await call(action(), 'POST', action(), { sessionId: board, action: 'add', text })
+  }
+  let reply = await call(state(), 'GET', state() + '?sessionId=' + board)
+  const ids = reply.json.queue.items.map((item) => item.id)
+
+  reply = await call(action(), 'POST', action(), { sessionId: board, action: 'complete', id: ids[0] })
+  assert.equal(typeof reply.json.queue.items.find((item) => item.id === ids[0]).doneAt, 'string')
+  assert.deepEqual(reply.json.queue.items.map((item) => item.segments[0].text), ['乙', '丙', '甲'])
+
+  reply = await call(action(), 'POST', action(), { sessionId: board, action: 'uncomplete', id: ids[0] })
+  assert.equal(reply.json.queue.items.find((item) => item.id === ids[0]).doneAt, null)
+  assert.deepEqual(reply.json.queue.items.map((item) => item.segments[0].text), ['乙', '丙', '甲'])
+
+  reply = await call(action(), 'POST', action(), { sessionId: board, action: 'complete', id: ids[0] })
+  reply = await call(action(), 'POST', action(), { sessionId: board, action: 'clearDone' })
+  assert.equal(reply.json.queue.items.length, 2)
+})
+
+test('a done row that is deleted comes back as done when restored', async () => {
+  const board = 'done-delete-session'
+  await call(action(), 'POST', action(), { sessionId: board, action: 'add', text: '甲' })
+  let reply = await call(state(), 'GET', state() + '?sessionId=' + board)
+  const id = reply.json.queue.items[0].id
+  await call(action(), 'POST', action(), { sessionId: board, action: 'complete', id })
+  reply = await call(action(), 'POST', action(), { sessionId: board, action: 'remove', id })
+  assert.equal(typeof reply.json.queue.items[0].deletedAt, 'string')
+  reply = await call(action(), 'POST', action(), { sessionId: board, action: 'undelete', id })
+  assert.equal(reply.json.queue.items[0].deletedAt, null)
+  assert.equal(typeof reply.json.queue.items[0].doneAt, 'string')
+})
+
 test('rejects empty text, bad segments, unknown items and bad session ids', async () => {
   let reply = await call(action(), 'POST', action(), { sessionId: session, action: 'add', text: '   ' })
   assert.equal(reply.status, 400)

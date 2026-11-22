@@ -66,6 +66,15 @@ window.__ModuleLoader__.load({
       'action.fill': '填入',
       'action.edit': '编辑',
       'action.remove': '删除',
+      'action.complete': '完成',
+      'action.uncomplete': '恢复',
+      'status.done': '已完成',
+      'queue.done': '{n} 条已完成',
+      'queue.clearDone': '清空已完成',
+      'group.pending': '待发',
+      'group.done': '已完成',
+      'group.sent': '已发送',
+      'group.deleted': '已删除',
       'action.undelete': '恢复',
       'action.purge': '彻底删除',
       'queue.deleted': '{n} 条已删除',
@@ -121,6 +130,15 @@ window.__ModuleLoader__.load({
       'action.fill': 'Fill',
       'action.edit': 'Edit',
       'action.remove': 'Delete',
+      'action.complete': 'Done',
+      'action.uncomplete': 'Restore',
+      'status.done': 'Done',
+      'queue.done': '{n} done',
+      'queue.clearDone': 'Clear done',
+      'group.pending': 'To send',
+      'group.done': 'Done',
+      'group.sent': 'Sent',
+      'group.deleted': 'Deleted',
       'action.undelete': 'Restore',
       'action.purge': 'Delete forever',
       'queue.deleted': '{n} deleted',
@@ -346,6 +364,10 @@ window.__ModuleLoader__.load({
       '.dsh-pending-queue-x{all:unset;cursor:pointer;flex:none;font-size:11px;color:var(--dsw-alias-label-tertiary,#9a9aa2)}',
       '.dsh-pending-queue-x:hover{color:var(--dsw-alias-state-error-primary,#f56c6c)}',
       '.dsh-pending-queue-body{flex:1;min-height:0;overflow:auto;padding:0 10px 16px;overscroll-behavior:contain}',
+      '.dsh-pending-queue-group{display:flex;align-items:center;gap:6px;padding:10px 4px 4px;',
+      '  font-size:11px;color:var(--dsw-alias-label-tertiary,#9a9aa2)}',
+      '.dsh-pending-queue-groupCount{flex:none;border:0.5px solid var(--dsw-alias-border-l3,#ffffff1f);border-radius:999px;',
+      '  padding:0 6px;line-height:15px}',
       '.dsh-pending-queue-hintBlock{padding:28px 12px;text-align:center;color:var(--dsw-alias-label-tertiary,#9a9aa2);',
       '  font-size:12.5px;line-height:1.7}',
       '.dsh-pending-queue-hintTitle{display:block;font-size:13.5px;color:var(--dsw-alias-label-secondary,#b9b9c0);margin-bottom:6px}',
@@ -375,6 +397,9 @@ window.__ModuleLoader__.load({
       '.dsh-pending-queue-edit{box-sizing:border-box;width:100%;min-height:52px;resize:vertical;border-radius:var(--dsw-radius-sm,8px);',
       '  border:0.5px solid var(--dsw-alias-border-l3,#ffffff1a);background:transparent;color:inherit;font:inherit;padding:6px 8px;margin:2px 0}',
       '.dsh-pending-queue-notice{flex:none;margin:0 12px 6px;font-size:11.5px;color:var(--dsw-alias-label-tertiary,#9a9aa2)}',
+      '.dsh-pending-queue-card[data-done="true"]{opacity:.6}',
+      '.dsh-pending-queue-card[data-done="true"] .dsh-pending-queue-text{color:var(--dsw-alias-label-tertiary,#9a9aa2)}',
+      '.dsh-pending-queue-card[data-done="true"] .dsh-pending-queue-image img{filter:grayscale(1)}',
       '.dsh-pending-queue-card[data-deleted="true"]{opacity:.55}',
       '.dsh-pending-queue-card[data-deleted="true"] .dsh-pending-queue-text{text-decoration:line-through}',
       '.dsh-pending-queue-card[data-deleted="true"] .dsh-pending-queue-quote{text-decoration:line-through}',
@@ -673,9 +698,14 @@ window.__ModuleLoader__.load({
       }, [editing, act, t])
 
       const items = queue && Array.isArray(queue.items) ? queue.items : []
-      const deleted = items.filter((item) => item.deletedAt !== null && item.deletedAt !== undefined).length
-      const pending = items.filter((item) => !item.deletedAt && (item.sentAt === null || item.sentAt === undefined)).length
-      const sent = items.filter((item) => !item.deletedAt && item.sentAt !== null && item.sentAt !== undefined).length
+      const isDeletedRow = (item) => item.deletedAt !== null && item.deletedAt !== undefined
+      const isSentRow = (item) => !isDeletedRow(item) && item.sentAt !== null && item.sentAt !== undefined
+      const isDoneRow = (item) => !isDeletedRow(item) && !isSentRow(item) && item.doneAt !== null && item.doneAt !== undefined
+      const isPendingRow = (item) => !isDeletedRow(item) && !isSentRow(item) && !isDoneRow(item)
+      const pending = items.filter(isPendingRow).length
+      const done = items.filter(isDoneRow).length
+      const sent = items.filter(isSentRow).length
+      const deleted = items.filter(isDeletedRow).length
 
       const onComposeKey = useCallback((event) => {
         if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
@@ -810,7 +840,7 @@ window.__ModuleLoader__.load({
         void uploadImage(image)
       }, [uploadImage])
 
-      const countLabel = [count(t, 'queue.pending', pending), sent > 0 ? count(t, 'queue.sent', sent) : '', deleted > 0 ? count(t, 'queue.deleted', deleted) : ''].filter(Boolean).join(' · ')
+      const countLabel = [count(t, 'queue.pending', pending), done > 0 ? count(t, 'queue.done', done) : '', sent > 0 ? count(t, 'queue.sent', sent) : '', deleted > 0 ? count(t, 'queue.deleted', deleted) : ''].filter(Boolean).join(' · ')
 
       function renderSegments(segments, keyPrefix) {
         return segments.map((segment, index) => {
@@ -825,6 +855,27 @@ window.__ModuleLoader__.load({
           }
           return h('div', { key: keyPrefix + '-t' + index, className: ROOT + '-text' }, segment.text)
         })
+      }
+
+      /** Sections by state, in order: to send, done, sent, deleted. */
+      function renderGroups() {
+        const groups = [
+          ['pending', items.filter(isPendingRow)],
+          ['done', items.filter(isDoneRow)],
+          ['sent', items.filter(isSentRow)],
+          ['deleted', items.filter(isDeletedRow)],
+        ].filter(([, list]) => list.length > 0)
+        const nodes = []
+        for (const [key, list] of groups) {
+          nodes.push(h('div', { key: 'g-' + key, className: ROOT + '-group' }, [
+            h('span', { key: 'label', className: ROOT + '-groupLabel' }, t('group.' + key)),
+            h('span', { key: 'count', className: ROOT + '-groupCount' }, String(list.length)),
+          ]))
+          list.forEach((item, index) => {
+            nodes.push(renderRow(item, index, list))
+          })
+        }
+        return nodes
       }
 
       function renderFeishuResults() {
@@ -858,10 +909,11 @@ window.__ModuleLoader__.load({
         return rows
       }
 
-      function renderRow(item, index) {
+      function renderRow(item, index, groupItems) {
         const isEditing = editing !== null && editing.id === item.id
-        const isSent = item.sentAt !== null && item.sentAt !== undefined
-        const isDeleted = item.deletedAt !== null && item.deletedAt !== undefined
+        const isSent = isSentRow(item)
+        const isDeleted = isDeletedRow(item)
+        const isDone = isDoneRow(item)
         const isBusy = busy === item.id
         const segments = segmentsOfItem(item)
         const actions = []
@@ -875,7 +927,19 @@ window.__ModuleLoader__.load({
             onClick: () => { void act({ action: 'purge', id: item.id }) },
           }, t('action.purge')))
         }
-        if (!isDeleted && !isEditing && !isSent) {
+        if (isDone) {
+          actions.push(h('button', {
+            key: 'complete', type: 'button', className: ROOT + '-act', disabled: isBusy,
+            onClick: () => { void act({ action: 'uncomplete', id: item.id }) },
+          }, t('action.uncomplete')))
+        }
+        if (isPendingRow(item) && !isEditing) {
+          actions.push(h('button', {
+            key: 'done', type: 'button', className: ROOT + '-act', disabled: isBusy,
+            onClick: () => { void act({ action: 'complete', id: item.id }) },
+          }, '✓ ' + t('action.complete')))
+        }
+        if (!isDeleted && !isDone && !isEditing && !isSent) {
           actions.push(h('button', {
             key: 'send', type: 'button', className: ROOT + '-act', 'data-tone': 'send', disabled: isBusy,
             onClick: () => { void push(item, 'send') },
@@ -901,7 +965,7 @@ window.__ModuleLoader__.load({
             onClick: () => { void act({ action: 'move', id: item.id, direction: 'up' }) },
           }, '↑'))
           actions.push(h('button', {
-            key: 'down', type: 'button', className: ROOT + '-act', disabled: index === items.length - 1, 'aria-label': t('action.down'),
+            key: 'down', type: 'button', className: ROOT + '-act', disabled: index === groupItems.length - 1, 'aria-label': t('action.down'),
             onClick: () => { void act({ action: 'move', id: item.id, direction: 'down' }) },
           }, '↓'))
           actions.push(h('button', {
@@ -985,12 +1049,14 @@ window.__ModuleLoader__.load({
           key: item.id,
           className: ROOT + '-card',
           'data-sent': isSent ? 'true' : 'false',
+          'data-done': isDone ? 'true' : 'false',
           'data-deleted': isDeleted ? 'true' : 'false',
         }, [
           body,
           h('div', { key: 'meta', className: ROOT + '-meta' }, [
             h('span', { key: 'time' }, relativeTime(item.createdAt, t)),
             isSent ? h('span', { key: 'sent', className: ROOT + '-badge' }, t('status.sent')) : null,
+            isDone ? h('span', { key: 'done', className: ROOT + '-badge' }, '✓ ' + t('status.done')) : null,
             isDeleted ? h('span', { key: 'deleted', className: ROOT + '-badge' }, t('status.deleted')) : null,
           ]),
           h('div', { key: 'acts', className: ROOT + '-acts' }, actions),
@@ -1004,6 +1070,9 @@ window.__ModuleLoader__.load({
           h('span', { key: 'counts', className: ROOT + '-counts' }, countLabel),
           sent > 0
             ? h('button', { key: 'clear', type: 'button', className: ROOT + '-ghost', onClick: () => { void act({ action: 'clearSent' }) } }, t('queue.clearSent'))
+            : null,
+          done > 0
+            ? h('button', { key: 'clearDone', type: 'button', className: ROOT + '-ghost', onClick: () => { void act({ action: 'clearDone' }) } }, t('queue.clearDone'))
             : null,
           deleted > 0
             ? h('button', { key: 'clearDeleted', type: 'button', className: ROOT + '-ghost', onClick: () => { void act({ action: 'clearDeleted' }) } }, t('queue.clearDeleted'))
@@ -1132,7 +1201,7 @@ window.__ModuleLoader__.load({
                 h('span', { key: 'title', className: ROOT + '-hintTitle' }, t('empty.title')),
                 h('span', { key: 'body' }, t('empty.body')),
               ])]
-              : items.map(renderRow)),
+              : renderGroups()),
       ])
     }
 
