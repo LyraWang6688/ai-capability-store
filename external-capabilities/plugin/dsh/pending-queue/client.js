@@ -364,8 +364,10 @@ window.__ModuleLoader__.load({
       '.dsh-pending-queue-x{all:unset;cursor:pointer;flex:none;font-size:11px;color:var(--dsw-alias-label-tertiary,#9a9aa2)}',
       '.dsh-pending-queue-x:hover{color:var(--dsw-alias-state-error-primary,#f56c6c)}',
       '.dsh-pending-queue-body{flex:1;min-height:0;overflow:auto;padding:0 10px 16px;overscroll-behavior:contain}',
-      '.dsh-pending-queue-group{display:flex;align-items:center;gap:6px;padding:10px 4px 4px;',
-      '  font-size:11px;color:var(--dsw-alias-label-tertiary,#9a9aa2)}',
+      '.dsh-pending-queue-group{all:unset;box-sizing:border-box;display:flex;align-items:center;gap:6px;width:100%;',
+      '  padding:10px 4px 4px;cursor:pointer;font-size:11px;color:var(--dsw-alias-label-tertiary,#9a9aa2)}',
+      '.dsh-pending-queue-group:hover{color:var(--dsw-alias-label-secondary,#b9b9c0)}',
+      '.dsh-pending-queue-groupChevron{width:10px;text-align:center;font-size:10px}',
       '.dsh-pending-queue-groupCount{flex:none;border:0.5px solid var(--dsw-alias-border-l3,#ffffff1f);border-radius:999px;',
       '  padding:0 6px;line-height:15px}',
       '.dsh-pending-queue-hintBlock{padding:28px 12px;text-align:center;color:var(--dsw-alias-label-tertiary,#9a9aa2);',
@@ -429,6 +431,8 @@ window.__ModuleLoader__.load({
       const [quotes, setQuotes] = useState([])
       const [images, setImages] = useState([])
       const [feishu, setFeishu] = useState({ open: false, q: '', loading: false, error: '', result: null })
+      /** Terminal groups start folded; the header toggles each one. */
+      const [collapsed, setCollapsed] = useState({ pending: false, done: true, sent: true, deleted: true })
       const [editing, setEditing] = useState(null)
       const [busy, setBusy] = useState('')
       const [notice, setNotice] = useState('')
@@ -857,6 +861,31 @@ window.__ModuleLoader__.load({
         })
       }
 
+      const toggleGroup = useCallback((key) => {
+        setCollapsed((current) => {
+          const next = { ...current, [key]: !current[key] }
+          try {
+            window.localStorage.setItem('dsh.pending-queue.collapsed.v1', JSON.stringify(next))
+          } catch {
+            /* storage unavailable: the fold simply is not remembered */
+          }
+          return next
+        })
+      }, [])
+
+      useEffect(() => {
+        try {
+          const raw = window.localStorage.getItem('dsh.pending-queue.collapsed.v1')
+          if (raw === null) return
+          const parsed = JSON.parse(raw)
+          if (parsed && typeof parsed === 'object') {
+            setCollapsed((current) => ({ ...current, ...parsed }))
+          }
+        } catch {
+          /* a broken value just means default folding */
+        }
+      }, [])
+
       /** Sections by state, in order: to send, done, sent, deleted. */
       function renderGroups() {
         const groups = [
@@ -867,10 +896,19 @@ window.__ModuleLoader__.load({
         ].filter(([, list]) => list.length > 0)
         const nodes = []
         for (const [key, list] of groups) {
-          nodes.push(h('div', { key: 'g-' + key, className: ROOT + '-group' }, [
+          const folded = collapsed[key] === true
+          nodes.push(h('button', {
+            key: 'g-' + key,
+            type: 'button',
+            className: ROOT + '-group',
+            'aria-expanded': folded ? 'false' : 'true',
+            onClick: () => toggleGroup(key),
+          }, [
+            h('span', { key: 'chevron', className: ROOT + '-groupChevron' }, folded ? '▸' : '▾'),
             h('span', { key: 'label', className: ROOT + '-groupLabel' }, t('group.' + key)),
             h('span', { key: 'count', className: ROOT + '-groupCount' }, String(list.length)),
           ]))
+          if (folded) continue
           list.forEach((item, index) => {
             nodes.push(renderRow(item, index, list))
           })
