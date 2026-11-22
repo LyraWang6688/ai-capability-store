@@ -126,8 +126,9 @@ function flattenSegments(segments) {
  * own — only the transitions move a row into its bucket.
  */
 function bucketOf(item) {
-  if (typeof item.deletedAt === 'string') return 2
-  if (typeof item.sentAt === 'string') return 1
+  if (typeof item.deletedAt === 'string') return 3
+  if (typeof item.sentAt === 'string') return 2
+  if (typeof item.doneAt === 'string') return 1
   return 0
 }
 
@@ -201,6 +202,7 @@ function normalizeDoc(doc, sessionId) {
     if (typeof item.updatedAt !== 'string') item.updatedAt = item.createdAt
     if (typeof item.sentAt !== 'string') delete item.sentAt
     if (typeof item.deletedAt !== 'string') delete item.deletedAt
+    if (typeof item.doneAt !== 'string') delete item.doneAt
   }
   doc.items = doc.items.filter((item) => item.segments.length > 0)
   sortItems(doc)
@@ -318,12 +320,36 @@ function applyAction(doc, body) {
     doc.items.splice(target, 0, item)
     return { id: item.id }
   }
-  if (action === 'markSent' || action === 'restore') {
+  if (action === 'markSent') {
     const item = requireItem(doc, body.id)
-    if (action === 'markSent') item.sentAt = nowIso()
-    else delete item.sentAt
+    item.sentAt = nowIso()
+    delete item.doneAt
     item.updatedAt = nowIso()
     return { id: item.id }
+  }
+  if (action === 'restore') {
+    const item = requireItem(doc, body.id)
+    delete item.sentAt
+    item.updatedAt = nowIso()
+    return { id: item.id }
+  }
+  if (action === 'complete') {
+    const item = requireItem(doc, body.id)
+    if (typeof item.deletedAt === 'string') throw new Error('this row is deleted; restore it first')
+    item.doneAt = nowIso()
+    delete item.sentAt
+    item.updatedAt = item.doneAt
+    return { id: item.id }
+  }
+  if (action === 'uncomplete') {
+    const item = requireItem(doc, body.id)
+    delete item.doneAt
+    item.updatedAt = nowIso()
+    return { id: item.id }
+  }
+  if (action === 'clearDone') {
+    doc.items = doc.items.filter((item) => typeof item.doneAt !== 'string')
+    return {}
   }
   if (action === 'clearSent') {
     doc.items = doc.items.filter((item) => typeof item.sentAt !== 'string')
@@ -349,6 +375,7 @@ function viewDoc(doc) {
       createdAt: item.createdAt,
       updatedAt: item.updatedAt,
       sentAt: typeof item.sentAt === 'string' ? item.sentAt : null,
+      doneAt: typeof item.doneAt === 'string' ? item.doneAt : null,
       deletedAt: typeof item.deletedAt === 'string' ? item.deletedAt : null,
     })),
   }
