@@ -276,7 +276,7 @@ test('uploads an image, stores it as a file segment and collects it on delete', 
   const up = await call(upload(), 'POST', upload(), { sessionId: session, name: 'shot.png', data: PNG })
   assert.equal(up.status, 200)
   const file = up.json.file
-  assert.match(file.path, /\/assets\/session-test\/img-[a-z0-9-]+\.png$/)
+  assert.match(file.path, /\/assets\/img-[a-z0-9-]+\.png$/)
 
   const reply = await call(action(), 'POST', action(), {
     sessionId: session,
@@ -317,6 +317,31 @@ test('rejects a non-image upload', async () => {
   const reply = await call(upload(), 'POST', upload(), { sessionId: session, name: 'x.txt', data: Buffer.from('hello').toString('base64') })
   assert.equal(reply.status, 400)
   assert.match(reply.json.message, /unsupported image type/)
+})
+
+test('two sessions in one workspace share the same queue', async () => {
+  const shared = new Map()
+  const workspaceCtx = {
+    effect(fn) { return fn() },
+    webServer: { register({ path, handler }) { shared.set(path, handler); return () => shared.delete(path) } },
+    get(name) {
+      if (name !== 'sessions') return undefined
+      return { get: () => ({ header: { cwd: '/tmp/shared-workspace' } }) }
+    },
+    logger: { warn() {} },
+  }
+  apply(workspaceCtx)
+  const saved = routes
+  routes = shared
+  try {
+    await call(action(), 'POST', action(), { sessionId: 'session-a', action: 'add', text: '同一个项目的一件事' })
+    const fromB = await call(state(), 'GET', state() + '?sessionId=session-b')
+    assert.equal(fromB.status, 200)
+    assert.equal(fromB.json.queue.items.length, 1)
+    assert.match(fromB.json.queue.workspaceKey, /shared-workspace-[0-9a-f]{10}$/)
+  } finally {
+    routes = saved
+  }
 })
 
 test('cleanup', async () => {

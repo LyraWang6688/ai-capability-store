@@ -1,32 +1,34 @@
 /**
  * Host half of the pending-send queue.
  *
- * The panel is a scratchpad for messages the user is not ready to send yet:
- * one JSON document per session under <DSH_HOME>/storages/pending-queue, read
- * and written through this plugin's own browser routes. Nothing here appends a
- * session event, and nothing here sends anything: pushing a row into the chat
- * happens in the client half through the composer's own input actions, so a
- * queued row behaves exactly like text the user typed themselves.
+ * The queue belongs to a workspace, not to one session: every session opened
+ * in the same working directory reads and writes the same document, so an idea
+ * captured in one conversation is still there when the next one starts.
  *
- * A row is a list of segments, not one string. A quote is its own segment so
- * the client half can rebuild it with inputActions.insertQuote() — a real
- * quote block, not a literal "> " prefix. An image is its own segment too, but
- * it is stored as a file on this machine and arrives at the model as a path it
- * can read with read_image: the composer's attachment pipeline only accepts
- * browser-owned draft ids, which a sidebar panel cannot mint.
+ * One JSON document per workspace under <DSH_HOME>/storages/pending-queue,
+ * images under <DSH_HOME>/storages/pending-queue/assets. Nothing here appends a
+ * session event: pushing a row into the chat happens in the client half through
+ * the composer's own input actions.
  *
- * Storage: <DSH_HOME>/storages/pending-queue/<sessionId>.json
- * Assets:  <DSH_HOME>/storages/pending-queue/assets/<sessionId>/<id>.<ext>
- * DSH_HOME defaults to ~/.dsh.
+ * Rows are segment lists (text / quote / image). Quotes are rebuilt with
+ * insertQuote; images travel as a path plus a read_image hint, because the
+ * composer's attachment pipeline only accepts browser-owned draft ids.
+ *
+ * Routes (same-origin, behind DSH connection auth):
+ *   GET  /plugins/pending-queue/state?sessionId=...   -> the workspace queue
+ *   POST /plugins/pending-queue/action                -> add / update / remove / ...
+ *   POST /plugins/pending-queue/upload                -> store one pasted image
+ *   GET  /plugins/pending-queue/asset?name=...        -> serve one stored image
  */
-import { mkdir, readFile, rename, unlink, writeFile } from 'node:fs/promises'
+import { createHash } from 'node:crypto'
+import { mkdir, readdir, readFile, rename, unlink, writeFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { extname, join } from 'node:path'
 
 /** The routes this plugin owns on the browser HTTP carrier. */
 const ROUTE_BASE = '/plugins/pending-queue'
 
-/** One file per session; the id is validated before it reaches a path. */
+/** Queue documents and their images live side by side. */
 const STORE_DIR = join(
   process.env.DSH_HOME || join(homedir(), '.dsh'),
   'storages',
@@ -34,10 +36,11 @@ const STORE_DIR = join(
 )
 const ASSET_DIR = join(STORE_DIR, 'assets')
 
-/** Session ids are opaque but filesystem-safe in every shipped deployment. */
+/** Session ids and workspace keys are opaque but filesystem-safe. */
 const SESSION_ID = /^[A-Za-z0-9._-]{1,128}$/
+const STORE_KEY = /^[A-Za-z0-9._-]{1,160}$/
 
-/** Bounded so one runaway session cannot grow the document without limit. */
+/** Bounded so one runaway workspace cannot grow the document without limit. */
 const MAX_ITEMS = 200
 const MAX_TEXT = 4000
 const MAX_TOTAL = 12000
@@ -62,9 +65,35 @@ function textOf(value) {
   return value.replace(/\r\n/g, '\n').trim().slice(0, MAX_TEXT)
 }
 
-function assetDirFor(sessionId) {
-  if (!SESSION_ID.test(sessionId)) throw new Error('invalid session id')
-  return join(ASSET_DIR, sessionId)
+/**
+ * The workspace a session belongs to: its cwd hashed into a stable, readable
+ * key. A session without a cwd (an unsaved draft) falls back to its own id, so
+ * the queue still works before a workspace is chosen.
+ */
+function workspaceOf(ctx, sessionId) {
+  let cwd = ''
+  try {
+    const sessions = typeof ctx.get === 'function' ? ctx.get('sessions') : undefined
+    const session = sessions && typeof sessions.get === 'function' ? sessions.get(sessionId) : undefined
+    const header = session && session.header
+    if (header && typeof header.cwd === 'string') cwd = header.cwd
+  } catch {
+    cwd = ''
+  }
+  if (cwd === '') return { key: sessionId, cwd: '' }
+  const readable = cwd.replace(/[^A-Za-z0-9._-]+/g, '-').replace(/^-+|-+$/g, '').slice(-48)
+  const digest = createHash('sha1').update(cwd).digest('hex').slice(0, 10)
+  return { key: (readable === '' ? 'workspace' : readable) + '-' + digest, cwd }
+}
+
+function fileFor(key) {
+  if (!STORE_KEY.test(key)) throw new Error('invalid queue key')
+  return join(STORE_DIR, key + '.json')
+}
+
+function assetNameOf(path) {
+  const value = String(path || '')
+  return value.slice(value.lastIndexOf('/') + 1)
 }
 
 /**
@@ -72,9 +101,8 @@ function assetDirFor(sessionId) {
  * own segment so the composer can rebuild it as a real quote block; an image
  * travels as a path inside this plugin's asset directory.
  */
-function segmentsOf(value, sessionId) {
+function segmentsOf(value) {
   if (!Array.isArray(value)) throw new Error('segments must be an array')
-  const dir = assetDirFor(sessionId)
   const segments = []
   let total = 0
   for (const raw of value) {
@@ -89,10 +117,10 @@ function segmentsOf(value, sessionId) {
     }
     if (raw.type === 'file') {
       const path = typeof raw.path === 'string' ? raw.path : ''
-      if (!path.startsWith(dir + '/')) throw new Error('unknown asset: ' + path)
+      if (!path.startsWith(ASSET_DIR + '/')) throw new Error('unknown asset: ' + path)
       const name = typeof raw.name === 'string' ? raw.name.trim().slice(0, 120) : ''
-      if (!ASSET_NAME.test(path.slice(path.lastIndexOf('/') + 1))) throw new Error('invalid asset name')
-      segments.push({ type: 'file', path, name: name || path.slice(path.lastIndexOf('/') + 1) })
+      if (!ASSET_NAME.test(assetNameOf(path))) throw new Error('invalid asset name')
+      segments.push({ type: 'file', path, name: name || assetNameOf(path) })
       continue
     }
     throw new Error('unknown segment type: ' + String(raw.type))
@@ -102,8 +130,8 @@ function segmentsOf(value, sessionId) {
 }
 
 /** 'segments' is the shape the panel writes; a bare 'text' stays accepted. */
-function segmentsFromBody(body, sessionId) {
-  if (body !== null && typeof body === 'object' && Array.isArray(body.segments)) return segmentsOf(body.segments, sessionId)
+function segmentsFromBody(body) {
+  if (body !== null && typeof body === 'object' && Array.isArray(body.segments)) return segmentsOf(body.segments)
   const text = textOf(body && body.text)
   if (text === '') throw new Error('text is required')
   return [{ type: 'text', text }]
@@ -120,10 +148,112 @@ function flattenSegments(segments) {
     .join('\n\n')
 }
 
+function createDoc(key) {
+  return { version: 3, key, seq: 1, items: [], updatedAt: nowIso() }
+}
+
+/* ------------------------------- persistence ------------------------------ */
+
+let queue = Promise.resolve()
+
+/** Serialize read-modify-write cycles so two windows cannot lose one edit. */
+function withLock(task) {
+  const run = queue.then(() => task(), () => task())
+  queue = run.then(() => undefined, () => undefined)
+  return run
+}
+
 /**
- * Rows group by state: still to send first, then sent, then soft-deleted. The
- * partition is stable, so relative order inside a group never changes on its
- * own — only the transitions move a row into its bucket.
+ * Read one workspace document. A legacy per-session document is lifted into the
+ * workspace file the first time the workspace is opened, images included.
+ */
+async function readDoc(ctx, sessionId, key) {
+  const readOne = async (path) => {
+    const raw = await readFile(path, 'utf8')
+    return normalizeDoc(JSON.parse(raw), key)
+  }
+  try {
+    return await readOne(fileFor(key))
+  } catch (error) {
+    if (!(error && error.code === 'ENOENT')) {
+      if (error instanceof SyntaxError) return createDoc(key)
+      throw error
+    }
+  }
+  if (key !== sessionId && SESSION_ID.test(sessionId)) {
+    try {
+      const legacy = await readOne(fileFor(sessionId))
+      const migrated = await liftAssets(legacy, sessionId)
+      await writeDoc(migrated)
+      await unlink(fileFor(sessionId)).catch(() => {})
+      return migrated
+    } catch {
+      /* no legacy document: start empty */
+    }
+  }
+  return createDoc(key)
+}
+
+/** Move per-session image folders into the flat asset directory. */
+async function liftAssets(doc, sessionId) {
+  const legacyDir = join(ASSET_DIR, sessionId)
+  let names = []
+  try {
+    names = await readdir(legacyDir)
+  } catch {
+    return doc
+  }
+  await mkdir(ASSET_DIR, { recursive: true })
+  for (const name of names) {
+    if (!ASSET_NAME.test(name)) continue
+    try {
+      await rename(join(legacyDir, name), join(ASSET_DIR, name))
+    } catch {
+      /* a file another workspace already owns stays */
+    }
+  }
+  const rewrite = (segment) => {
+    if (segment.type !== 'file') return segment
+    return { ...segment, path: join(ASSET_DIR, assetNameOf(segment.path)) }
+  }
+  doc.items = doc.items.map((item) => ({ ...item, segments: item.segments.map(rewrite) }))
+  return doc
+}
+
+/** Fill fields an older document may lack, and lift v1 text rows to segments. */
+function normalizeDoc(doc, key) {
+  doc.version = 3
+  doc.key = key
+  delete doc.sessionId
+  doc.items = Array.isArray(doc.items) ? doc.items.filter((item) => item && typeof item.id === 'string') : []
+  if (!Number.isInteger(doc.seq) || doc.seq < 1) doc.seq = doc.items.length + 1
+  for (const item of doc.items) {
+    if (!Array.isArray(item.segments)) {
+      const text = typeof item.text === 'string' ? item.text : ''
+      item.segments = text.trim() === '' ? [] : [{ type: 'text', text }]
+    }
+    item.segments = item.segments.filter((segment) => segment
+      && (segment.type === 'text' || segment.type === 'quote' || segment.type === 'file')
+      && (segment.type === 'file'
+        ? typeof segment.path === 'string' && segment.path !== ''
+        : typeof segment.text === 'string' && segment.text !== ''))
+    delete item.text
+    if (typeof item.createdAt !== 'string') item.createdAt = nowIso()
+    if (typeof item.updatedAt !== 'string') item.updatedAt = item.createdAt
+    if (typeof item.sentAt !== 'string') delete item.sentAt
+    if (typeof item.doneAt !== 'string') delete item.doneAt
+    if (typeof item.scheduledAt !== 'string') delete item.scheduledAt
+    if (typeof item.deletedAt !== 'string') delete item.deletedAt
+  }
+  doc.items = doc.items.filter((item) => item.segments.length > 0)
+  sortItems(doc)
+  return doc
+}
+
+/**
+ * Rows group by state: still to send first, then scheduled, done, sent and
+ * soft-deleted. The partition is stable, so relative order inside a group never
+ * changes on its own - only the transitions move a row into its bucket.
  */
 function bucketOf(item) {
   if (typeof item.deletedAt === 'string') return 4
@@ -140,89 +270,18 @@ function sortItems(doc) {
     .map((entry) => entry.item)
 }
 
-function createDoc(sessionId) {
-  return {
-    version: 3,
-    sessionId,
-    seq: 1,
-    items: [],
-    updatedAt: nowIso(),
-  }
-}
-
-function fileFor(sessionId) {
-  if (!SESSION_ID.test(sessionId)) throw new Error('invalid session id')
-  return join(STORE_DIR, sessionId + '.json')
-}
-
-/* ------------------------------- persistence ------------------------------ */
-
-let queue = Promise.resolve()
-
-/** Serialize read-modify-write cycles so two windows cannot lose one edit. */
-function withLock(task) {
-  const run = queue.then(() => task(), () => task())
-  queue = run.then(() => undefined, () => undefined)
-  return run
-}
-
-async function readDoc(sessionId) {
-  try {
-    const raw = await readFile(fileFor(sessionId), 'utf8')
-    const parsed = JSON.parse(raw)
-    if (parsed !== null && typeof parsed === 'object' && parsed.version >= 1 && parsed.version <= 3 && Array.isArray(parsed.items)) {
-      return normalizeDoc(parsed, sessionId)
-    }
-    return createDoc(sessionId)
-  } catch (error) {
-    // A missing or unreadable document is an empty queue, not a failure: the
-    // tab must still open in a session that never had one.
-    if (error && (error.code === 'ENOENT' || error instanceof SyntaxError)) return createDoc(sessionId)
-    throw error
-  }
-}
-
-/** Fill fields an older document may lack, and lift v1 text rows to segments. */
-function normalizeDoc(doc, sessionId) {
-  doc.version = 3
-  doc.sessionId = sessionId
-  doc.items = doc.items.filter((item) => item && typeof item.id === 'string')
-  if (!Number.isInteger(doc.seq) || doc.seq < 1) doc.seq = doc.items.length + 1
-  for (const item of doc.items) {
-    if (!Array.isArray(item.segments)) {
-      const text = typeof item.text === 'string' ? item.text : ''
-      item.segments = text.trim() === '' ? [] : [{ type: 'text', text }]
-    }
-    item.segments = item.segments.filter((segment) => segment
-      && (segment.type === 'text' || segment.type === 'quote' || segment.type === 'file')
-      && (segment.type === 'file'
-        ? typeof segment.path === 'string' && segment.path !== ''
-        : typeof segment.text === 'string' && segment.text !== ''))
-    delete item.text
-    if (typeof item.createdAt !== 'string') item.createdAt = nowIso()
-    if (typeof item.updatedAt !== 'string') item.updatedAt = item.createdAt
-    if (typeof item.sentAt !== 'string') delete item.sentAt
-    if (typeof item.deletedAt !== 'string') delete item.deletedAt
-    if (typeof item.doneAt !== 'string') delete item.doneAt
-    if (typeof item.scheduledAt !== 'string') delete item.scheduledAt
-  }
-  doc.items = doc.items.filter((item) => item.segments.length > 0)
-  sortItems(doc)
-  return doc
-}
-
 async function writeDoc(doc) {
   await mkdir(STORE_DIR, { recursive: true })
-  const target = fileFor(doc.sessionId)
+  const target = fileFor(doc.key)
   const temporary = target + '.' + process.pid + '.tmp'
   await writeFile(temporary, JSON.stringify(doc, null, 2) + '\n', 'utf8')
   await rename(temporary, target)
 }
 
 /** Read, apply one change, persist. */
-function mutateDoc(sessionId, change) {
+function mutateDoc(ctx, sessionId, key, change) {
   return withLock(async () => {
-    const doc = await readDoc(sessionId)
+    const doc = await readDoc(ctx, sessionId, key)
     change(doc)
     sortItems(doc)
     doc.updatedAt = nowIso()
@@ -239,21 +298,20 @@ async function collectGarbage(doc) {
       if (segment.type === 'file') referenced.add(segment.path)
     }
   }
-  const dir = assetDirFor(doc.sessionId)
   let names = []
   try {
-    const { readdir } = await import('node:fs/promises')
-    names = await readdir(dir)
+    names = await readdir(ASSET_DIR)
   } catch {
     return
   }
   for (const name of names) {
-    const path = join(dir, name)
+    if (!ASSET_NAME.test(name)) continue
+    const path = join(ASSET_DIR, name)
     if (!referenced.has(path)) {
       try {
         await unlink(path)
       } catch {
-        /* a file another window still references stays */
+        /* a file another workspace still references stays */
       }
     }
   }
@@ -276,7 +334,7 @@ function requireItem(doc, id) {
 function applyAction(doc, body) {
   const action = String((body && body.action) || '')
   if (action === 'add') {
-    const segments = segmentsFromBody(body, doc.sessionId)
+    const segments = segmentsFromBody(body)
     if (doc.items.length >= MAX_ITEMS) {
       throw new Error('this queue already holds ' + MAX_ITEMS + ' rows; send or delete some first')
     }
@@ -289,7 +347,7 @@ function applyAction(doc, body) {
   if (action === 'update') {
     const item = requireItem(doc, body.id)
     if (typeof item.deletedAt === 'string') throw new Error('this row is deleted; restore it first')
-    item.segments = segmentsFromBody(body, doc.sessionId)
+    item.segments = segmentsFromBody(body)
     item.updatedAt = nowIso()
     return { id: item.id }
   }
@@ -326,7 +384,8 @@ function applyAction(doc, body) {
     const item = requireItem(doc, body.id)
     item.sentAt = nowIso()
     delete item.doneAt
-    item.updatedAt = nowIso()
+    delete item.scheduledAt
+    item.updatedAt = item.sentAt
     return { id: item.id }
   }
   if (action === 'restore') {
@@ -340,6 +399,7 @@ function applyAction(doc, body) {
     if (typeof item.deletedAt === 'string') throw new Error('this row is deleted; restore it first')
     item.doneAt = nowIso()
     delete item.sentAt
+    delete item.scheduledAt
     item.updatedAt = item.doneAt
     return { id: item.id }
   }
@@ -348,10 +408,6 @@ function applyAction(doc, body) {
     delete item.doneAt
     item.updatedAt = nowIso()
     return { id: item.id }
-  }
-  if (action === 'clearDone') {
-    doc.items = doc.items.filter((item) => typeof item.doneAt !== 'string')
-    return {}
   }
   if (action === 'schedule') {
     const item = requireItem(doc, body.id)
@@ -368,12 +424,16 @@ function applyAction(doc, body) {
     item.updatedAt = nowIso()
     return { id: item.id }
   }
-  if (action === 'clearScheduled') {
-    doc.items = doc.items.filter((item) => typeof item.scheduledAt !== 'string')
-    return {}
-  }
   if (action === 'clearSent') {
     doc.items = doc.items.filter((item) => typeof item.sentAt !== 'string')
+    return {}
+  }
+  if (action === 'clearDone') {
+    doc.items = doc.items.filter((item) => typeof item.doneAt !== 'string')
+    return {}
+  }
+  if (action === 'clearScheduled') {
+    doc.items = doc.items.filter((item) => typeof item.scheduledAt !== 'string')
     return {}
   }
   if (action === 'clearDeleted') {
@@ -386,6 +446,7 @@ function applyAction(doc, body) {
 /** The compact shape both the browser and the tool result read. */
 function viewDoc(doc) {
   return {
+    workspaceKey: doc.key,
     updatedAt: doc.updatedAt,
     items: doc.items.map((item) => ({
       id: item.id,
@@ -415,17 +476,16 @@ function imageExtension(buffer) {
 }
 
 /** Store one pasted image; the name is generated here, not trusted. */
-async function saveImage(sessionId, name, dataBase64) {
+async function saveImage(name, dataBase64) {
   if (typeof dataBase64 !== 'string' || dataBase64 === '') throw new Error('image data is required')
   const buffer = Buffer.from(dataBase64, 'base64')
   if (buffer.length === 0) throw new Error('empty image')
   if (buffer.length > MAX_IMAGE_BYTES) throw new Error('image is too large (max ' + Math.round(MAX_IMAGE_BYTES / 1024 / 1024) + ' MB)')
   const ext = imageExtension(buffer)
   if (ext === '') throw new Error('unsupported image type (png / jpeg / webp / gif)')
-  const dir = assetDirFor(sessionId)
-  await mkdir(dir, { recursive: true })
+  await mkdir(ASSET_DIR, { recursive: true })
   const fileName = 'img-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8) + ext
-  const path = join(dir, fileName)
+  const path = join(ASSET_DIR, fileName)
   await writeFile(path, buffer)
   return { path, name: typeof name === 'string' && name.trim() !== '' ? name.trim().slice(0, 120) : fileName }
 }
@@ -497,7 +557,8 @@ export function apply(ctx) {
     try {
       const url = new URL(req.url || '/', 'http://127.0.0.1')
       const sessionId = sessionIdOf(url.searchParams.get('sessionId'))
-      const doc = await readDoc(sessionId)
+      const workspace = workspaceOf(ctx, sessionId)
+      const doc = await readDoc(ctx, sessionId, workspace.key)
       sendJson(res, 200, { ok: true, queue: viewDoc(doc) })
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
@@ -519,7 +580,8 @@ export function apply(ctx) {
     try {
       const body = await readJsonBody(req)
       const sessionId = sessionIdOf(body && body.sessionId)
-      const doc = await mutateDoc(sessionId, (current) => applyAction(current, body))
+      const workspace = workspaceOf(ctx, sessionId)
+      const doc = await mutateDoc(ctx, sessionId, workspace.key, (current) => applyAction(current, body))
       await collectGarbage(doc)
       sendJson(res, 200, { ok: true, queue: viewDoc(doc) })
     } catch (error) {
@@ -541,8 +603,8 @@ export function apply(ctx) {
     }
     try {
       const body = await readJsonBody(req)
-      const sessionId = sessionIdOf(body && body.sessionId)
-      const file = await saveImage(sessionId, body && body.name, body && body.data)
+      sessionIdOf(body && body.sessionId)
+      const file = await saveImage(body && body.name, body && body.data)
       sendJson(res, 200, { ok: true, file })
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
@@ -563,10 +625,9 @@ export function apply(ctx) {
     }
     try {
       const url = new URL(req.url || '/', 'http://127.0.0.1')
-      const sessionId = sessionIdOf(url.searchParams.get('sessionId'))
       const name = String(url.searchParams.get('name') || '')
       if (!ASSET_NAME.test(name)) throw new Error('invalid asset name')
-      const bytes = await readFile(join(assetDirFor(sessionId), name))
+      const bytes = await readFile(join(ASSET_DIR, name))
       const type = IMAGE_TYPES[extname(name).toLowerCase()] || 'application/octet-stream'
       res.setHeader('content-type', type)
       res.setHeader('cache-control', 'private, max-age=60')
@@ -577,20 +638,8 @@ export function apply(ctx) {
     }
   }
 
-  ctx.effect(
-    () => ctx.webServer.register({ kind: 'exact', path: ROUTE_BASE + '/state', handler: stateHandler }),
-    'pending-queue: state route',
-  )
-  ctx.effect(
-    () => ctx.webServer.register({ kind: 'exact', path: ROUTE_BASE + '/action', handler: actionHandler }),
-    'pending-queue: action route',
-  )
-  ctx.effect(
-    () => ctx.webServer.register({ kind: 'exact', path: ROUTE_BASE + '/upload', handler: uploadHandler }),
-    'pending-queue: upload route',
-  )
-  ctx.effect(
-    () => ctx.webServer.register({ kind: 'exact', path: ROUTE_BASE + '/asset', handler: assetHandler }),
-    'pending-queue: asset route',
-  )
+  ctx.effect(() => ctx.webServer.register({ kind: 'exact', path: ROUTE_BASE + '/state', handler: stateHandler }), 'pending-queue: state route')
+  ctx.effect(() => ctx.webServer.register({ kind: 'exact', path: ROUTE_BASE + '/action', handler: actionHandler }), 'pending-queue: action route')
+  ctx.effect(() => ctx.webServer.register({ kind: 'exact', path: ROUTE_BASE + '/upload', handler: uploadHandler }), 'pending-queue: upload route')
+  ctx.effect(() => ctx.webServer.register({ kind: 'exact', path: ROUTE_BASE + '/asset', handler: assetHandler }), 'pending-queue: asset route')
 }
