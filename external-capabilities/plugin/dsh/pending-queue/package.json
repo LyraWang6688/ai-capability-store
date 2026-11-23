@@ -1,6 +1,6 @@
 {
   "name": "@lyra_wang/dsh-pending-queue",
-  "version": "0.8.1",
+  "version": "0.9.0",
   "description": "A project-level development board for DeepSeek Harness: keep the things this workspace needs, quote chat text, attach images, and push one into the current session when you are ready.",
   "type": "module",
   "main": "index.js",

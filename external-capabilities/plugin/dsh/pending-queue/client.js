@@ -56,6 +56,10 @@ window.__ModuleLoader__.load({
       'queue.pending': '{n} 条待发',
       'queue.sent': '{n} 条已发',
       'queue.refresh': '刷新',
+      'search.placeholder': '搜索所有条目（含已完成 / 已发送 / 已删除）',
+      'search.clear': '清除',
+      'queue.matches': '{n} 条匹配',
+      'search.empty': '没有匹配的条目',
       'queue.clearSent': '清空已发送',
       'empty.title': '面板是空的',
       'empty.body': '把这个项目里想做的事先记在这里，跨会话都在；挑一条推进当前会话。',
@@ -126,6 +130,10 @@ window.__ModuleLoader__.load({
       'queue.pending': '{n} to send',
       'queue.sent': '{n} sent',
       'queue.refresh': 'Refresh',
+      'search.placeholder': 'Search every row (done / sent / deleted too)',
+      'search.clear': 'Clear',
+      'queue.matches': '{n} matching',
+      'search.empty': 'No matching rows',
       'queue.clearSent': 'Clear sent',
       'empty.title': 'Nothing on the board',
       'empty.body': 'Note what this project needs here — it stays across sessions. Push one row into the current session when you are ready.',
@@ -349,6 +357,10 @@ window.__ModuleLoader__.load({
       '  color:var(--dsw-alias-label-secondary,#b9b9c0)}',
       '.dsh-pending-queue-ghost:hover{background:var(--dsw-alias-interactive-bg-hover,#ffffff14);color:var(--dsw-alias-label-primary,#e8e8ea)}',
       '.dsh-pending-queue-ghost[disabled]{opacity:.45;cursor:default}',
+      '.dsh-pending-queue-search{display:flex;align-items:center;gap:6px;padding:6px 10px 8px}',
+      '.dsh-pending-queue-searchInput{box-sizing:border-box;flex:1;min-width:0;border:0.5px solid var(--dsw-alias-border-l3,#ffffff1f);',
+      '  border-radius:8px;background:transparent;color:inherit;font:inherit;font-size:12px;padding:5px 8px;outline:0}',
+      '.dsh-pending-queue-searchInput:focus{border-color:var(--dsw-alias-brand-primary-new-colorprimary-new-color,#4d8dff)}',
       '.dsh-pending-queue-compose{flex:none;margin:0 10px 10px;padding:8px 10px;border-radius:var(--dsw-radius-md,12px);',
       '  background:var(--dsw-alias-bg-layer-1,#1f1f22);border:0.5px solid var(--dsw-alias-border-l3,#ffffff1a)}',
       '.dsh-pending-queue-compose:focus-within{border-color:var(--dsw-alias-brand-primary-new-colorprimary-new-color,#4d8dff)}',
@@ -447,6 +459,8 @@ window.__ModuleLoader__.load({
       const [feishu, setFeishu] = useState({ open: false, q: '', loading: false, error: '', result: null })
       /** Terminal groups start folded; the header toggles each one. */
       const [collapsed, setCollapsed] = useState({ pending: false, scheduled: true, done: true, sent: true, deleted: true })
+      /** Search runs across every group, folded or not. */
+      const [search, setSearch] = useState('')
       const [editing, setEditing] = useState(null)
       const [busy, setBusy] = useState('')
       const [notice, setNotice] = useState('')
@@ -911,16 +925,21 @@ window.__ModuleLoader__.load({
 
       /** Sections by state, in order: to send, done, sent, deleted. */
       function renderGroups() {
+        const needle = search.trim().toLowerCase()
+        const matching = needle === '' ? items : items.filter((item) => item.text.toLowerCase().includes(needle))
         const groups = [
-          ['pending', items.filter(isPendingRow)],
-          ['scheduled', items.filter(isScheduledRow)],
-          ['done', items.filter(isDoneRow)],
-          ['sent', items.filter(isSentRow)],
-          ['deleted', items.filter(isDeletedRow)],
+          ['pending', matching.filter(isPendingRow)],
+          ['scheduled', matching.filter(isScheduledRow)],
+          ['done', matching.filter(isDoneRow)],
+          ['sent', matching.filter(isSentRow)],
+          ['deleted', matching.filter(isDeletedRow)],
         ].filter(([, list]) => list.length > 0)
         const nodes = []
+        if (needle !== '') {
+          nodes.push(h('div', { key: 'match', className: ROOT + '-counts', style: { padding: '8px 4px 0' } }, count(t, 'queue.matches', matching.length)))
+        }
         for (const [key, list] of groups) {
-          const folded = collapsed[key] === true
+          const folded = needle === '' && collapsed[key] === true
           nodes.push(h('button', {
             key: 'g-' + key,
             type: 'button',
@@ -1156,6 +1175,23 @@ window.__ModuleLoader__.load({
             ? h('button', { key: 'clearDeleted', type: 'button', className: ROOT + '-ghost', onClick: () => { void act({ action: 'clearDeleted' }) } }, t('queue.clearDeleted'))
             : null,
           h('button', { key: 'refresh', type: 'button', className: ROOT + '-ghost', onClick: () => { void load(true) } }, t('queue.refresh')),
+        ]),
+        h('div', { key: 'search', className: ROOT + '-search' }, [
+          h('input', {
+            key: 'input',
+            type: 'search',
+            className: ROOT + '-searchInput',
+            value: search,
+            placeholder: t('search.placeholder'),
+            onChange: (event) => setSearch(event.target.value),
+          }),
+          search === ''
+            ? null
+            : h('button', {
+              key: 'clear', type: 'button', className: ROOT + '-x',
+              'aria-label': t('search.clear'),
+              onClick: () => setSearch(''),
+            }, '×'),
         ]),
         h('div', {
           key: 'compose',
