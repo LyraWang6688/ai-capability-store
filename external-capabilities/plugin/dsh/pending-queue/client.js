@@ -67,6 +67,12 @@ window.__ModuleLoader__.load({
       'action.edit': '编辑',
       'action.remove': '删除',
       'action.complete': '完成',
+      'action.schedule': '排期',
+      'action.unschedule': '取消排期',
+      'status.scheduled': '已排期',
+      'queue.scheduled': '{n} 条已排期',
+      'queue.clearScheduled': '清空排期',
+      'group.scheduled': '排期',
       'action.uncomplete': '恢复',
       'status.done': '已完成',
       'queue.done': '{n} 条已完成',
@@ -131,6 +137,12 @@ window.__ModuleLoader__.load({
       'action.edit': 'Edit',
       'action.remove': 'Delete',
       'action.complete': 'Done',
+      'action.schedule': 'Schedule',
+      'action.unschedule': 'Unschedule',
+      'status.scheduled': 'Scheduled',
+      'queue.scheduled': '{n} scheduled',
+      'queue.clearScheduled': 'Clear scheduled',
+      'group.scheduled': 'Scheduled',
       'action.uncomplete': 'Restore',
       'status.done': 'Done',
       'queue.done': '{n} done',
@@ -399,6 +411,8 @@ window.__ModuleLoader__.load({
       '.dsh-pending-queue-edit{box-sizing:border-box;width:100%;min-height:52px;resize:vertical;border-radius:var(--dsw-radius-sm,8px);',
       '  border:0.5px solid var(--dsw-alias-border-l3,#ffffff1a);background:transparent;color:inherit;font:inherit;padding:6px 8px;margin:2px 0}',
       '.dsh-pending-queue-notice{flex:none;margin:0 12px 6px;font-size:11.5px;color:var(--dsw-alias-label-tertiary,#9a9aa2)}',
+      '.dsh-pending-queue-card[data-scheduled="true"]{opacity:.8}',
+      '.dsh-pending-queue-card[data-scheduled="true"] .dsh-pending-queue-text{color:var(--dsw-alias-label-secondary,#b9b9c0)}',
       '.dsh-pending-queue-card[data-done="true"]{opacity:.6}',
       '.dsh-pending-queue-card[data-done="true"] .dsh-pending-queue-text{color:var(--dsw-alias-label-tertiary,#9a9aa2)}',
       '.dsh-pending-queue-card[data-done="true"] .dsh-pending-queue-image img{filter:grayscale(1)}',
@@ -432,7 +446,7 @@ window.__ModuleLoader__.load({
       const [images, setImages] = useState([])
       const [feishu, setFeishu] = useState({ open: false, q: '', loading: false, error: '', result: null })
       /** Terminal groups start folded; the header toggles each one. */
-      const [collapsed, setCollapsed] = useState({ pending: false, done: true, sent: true, deleted: true })
+      const [collapsed, setCollapsed] = useState({ pending: false, scheduled: true, done: true, sent: true, deleted: true })
       const [editing, setEditing] = useState(null)
       const [busy, setBusy] = useState('')
       const [notice, setNotice] = useState('')
@@ -705,8 +719,11 @@ window.__ModuleLoader__.load({
       const isDeletedRow = (item) => item.deletedAt !== null && item.deletedAt !== undefined
       const isSentRow = (item) => !isDeletedRow(item) && item.sentAt !== null && item.sentAt !== undefined
       const isDoneRow = (item) => !isDeletedRow(item) && !isSentRow(item) && item.doneAt !== null && item.doneAt !== undefined
-      const isPendingRow = (item) => !isDeletedRow(item) && !isSentRow(item) && !isDoneRow(item)
+      const isScheduledRow = (item) => !isDeletedRow(item) && !isSentRow(item) && !isDoneRow(item)
+        && item.scheduledAt !== null && item.scheduledAt !== undefined
+      const isPendingRow = (item) => !isDeletedRow(item) && !isSentRow(item) && !isDoneRow(item) && !isScheduledRow(item)
       const pending = items.filter(isPendingRow).length
+      const scheduled = items.filter(isScheduledRow).length
       const done = items.filter(isDoneRow).length
       const sent = items.filter(isSentRow).length
       const deleted = items.filter(isDeletedRow).length
@@ -844,7 +861,13 @@ window.__ModuleLoader__.load({
         void uploadImage(image)
       }, [uploadImage])
 
-      const countLabel = [count(t, 'queue.pending', pending), done > 0 ? count(t, 'queue.done', done) : '', sent > 0 ? count(t, 'queue.sent', sent) : '', deleted > 0 ? count(t, 'queue.deleted', deleted) : ''].filter(Boolean).join(' · ')
+      const countLabel = [
+        count(t, 'queue.pending', pending),
+        scheduled > 0 ? count(t, 'queue.scheduled', scheduled) : '',
+        done > 0 ? count(t, 'queue.done', done) : '',
+        sent > 0 ? count(t, 'queue.sent', sent) : '',
+        deleted > 0 ? count(t, 'queue.deleted', deleted) : '',
+      ].filter(Boolean).join(' · ')
 
       function renderSegments(segments, keyPrefix) {
         return segments.map((segment, index) => {
@@ -890,6 +913,7 @@ window.__ModuleLoader__.load({
       function renderGroups() {
         const groups = [
           ['pending', items.filter(isPendingRow)],
+          ['scheduled', items.filter(isScheduledRow)],
           ['done', items.filter(isDoneRow)],
           ['sent', items.filter(isSentRow)],
           ['deleted', items.filter(isDeletedRow)],
@@ -952,6 +976,7 @@ window.__ModuleLoader__.load({
         const isSent = isSentRow(item)
         const isDeleted = isDeletedRow(item)
         const isDone = isDoneRow(item)
+        const isScheduled = isScheduledRow(item)
         const isBusy = busy === item.id
         const segments = segmentsOfItem(item)
         const actions = []
@@ -971,13 +996,23 @@ window.__ModuleLoader__.load({
             onClick: () => { void act({ action: 'uncomplete', id: item.id }) },
           }, t('action.uncomplete')))
         }
+        if (isScheduled) {
+          actions.push(h('button', {
+            key: 'unschedule', type: 'button', className: ROOT + '-act', disabled: isBusy,
+            onClick: () => { void act({ action: 'unschedule', id: item.id }) },
+          }, t('action.unschedule')))
+        }
         if (isPendingRow(item) && !isEditing) {
           actions.push(h('button', {
             key: 'done', type: 'button', className: ROOT + '-act', disabled: isBusy,
             onClick: () => { void act({ action: 'complete', id: item.id }) },
           }, '✓ ' + t('action.complete')))
+          actions.push(h('button', {
+            key: 'schedule', type: 'button', className: ROOT + '-act', disabled: isBusy,
+            onClick: () => { void act({ action: 'schedule', id: item.id }) },
+          }, t('action.schedule')))
         }
-        if (!isDeleted && !isDone && !isEditing && !isSent) {
+        if (!isDeleted && !isDone && !isScheduled && !isEditing && !isSent) {
           actions.push(h('button', {
             key: 'send', type: 'button', className: ROOT + '-act', 'data-tone': 'send', disabled: isBusy,
             onClick: () => { void push(item, 'send') },
@@ -1088,6 +1123,7 @@ window.__ModuleLoader__.load({
           className: ROOT + '-card',
           'data-sent': isSent ? 'true' : 'false',
           'data-done': isDone ? 'true' : 'false',
+          'data-scheduled': isScheduled ? 'true' : 'false',
           'data-deleted': isDeleted ? 'true' : 'false',
         }, [
           body,
@@ -1095,6 +1131,7 @@ window.__ModuleLoader__.load({
             h('span', { key: 'time' }, relativeTime(item.createdAt, t)),
             isSent ? h('span', { key: 'sent', className: ROOT + '-badge' }, t('status.sent')) : null,
             isDone ? h('span', { key: 'done', className: ROOT + '-badge' }, '✓ ' + t('status.done')) : null,
+            isScheduled ? h('span', { key: 'scheduled', className: ROOT + '-badge' }, t('status.scheduled')) : null,
             isDeleted ? h('span', { key: 'deleted', className: ROOT + '-badge' }, t('status.deleted')) : null,
           ]),
           h('div', { key: 'acts', className: ROOT + '-acts' }, actions),
@@ -1108,6 +1145,9 @@ window.__ModuleLoader__.load({
           h('span', { key: 'counts', className: ROOT + '-counts' }, countLabel),
           sent > 0
             ? h('button', { key: 'clear', type: 'button', className: ROOT + '-ghost', onClick: () => { void act({ action: 'clearSent' }) } }, t('queue.clearSent'))
+            : null,
+          scheduled > 0
+            ? h('button', { key: 'clearScheduled', type: 'button', className: ROOT + '-ghost', onClick: () => { void act({ action: 'clearScheduled' }) } }, t('queue.clearScheduled'))
             : null,
           done > 0
             ? h('button', { key: 'clearDone', type: 'button', className: ROOT + '-ghost', onClick: () => { void act({ action: 'clearDone' }) } }, t('queue.clearDone'))
