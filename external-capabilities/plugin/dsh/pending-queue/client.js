@@ -50,15 +50,15 @@ window.__ModuleLoader__.load({
     /* --------------------------------- copy --------------------------------- */
 
     const ZH = {
-      'tab.title': '待发送',
-      'tab.description': '先攒着，等上一件事做完再推',
-      'queue.title': '待发送队列',
+      'tab.title': '开发面板',
+      'tab.description': '这个项目的开发面板：先记下，挑一条推进当前会话',
+      'queue.title': '开发面板',
       'queue.pending': '{n} 条待发',
       'queue.sent': '{n} 条已发',
       'queue.refresh': '刷新',
       'queue.clearSent': '清空已发送',
-      'empty.title': '队列是空的',
-      'empty.body': '把脑子里冒出来的想法先记在这里。等手上的活告一段落，再决定推哪一条。',
+      'empty.title': '面板是空的',
+      'empty.body': '把这个项目里想做的事先记在这里，跨会话都在；挑一条推进当前会话。',
       'input.placeholder': '记一条想法…（可粘贴或拖入图片）',
       'input.hint': 'Cmd/Ctrl + Enter 存下。发送时内容进输入框并直接提交；运行中的会话会把它排进队列。',
       'action.save': '存下',
@@ -120,15 +120,15 @@ window.__ModuleLoader__.load({
     }
 
     const EN = {
-      'tab.title': 'Pending',
-      'tab.description': 'Hold ideas, push them when the last task is done',
-      'queue.title': 'Pending queue',
+      'tab.title': 'Dev board',
+      'tab.description': 'This project’s board: note it now, push one into the current session later',
+      'queue.title': 'Dev board',
       'queue.pending': '{n} to send',
       'queue.sent': '{n} sent',
       'queue.refresh': 'Refresh',
       'queue.clearSent': 'Clear sent',
-      'empty.title': 'Nothing queued',
-      'empty.body': 'Jot ideas down here as they arrive. When the current task is finished, decide which one to push.',
+      'empty.title': 'Nothing on the board',
+      'empty.body': 'Note what this project needs here — it stays across sessions. Push one row into the current session when you are ready.',
       'input.placeholder': 'Jot one idea… (paste or drop an image)',
       'input.hint': 'Cmd/Ctrl + Enter saves. Sending puts the text in the composer and submits it; a running session queues it.',
       'action.save': 'Save',

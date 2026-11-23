@@ -1,7 +1,7 @@
 {
   "name": "@lyra_wang/dsh-pending-queue",
-  "version": "0.8.0",
-  "description": "Right-sidebar draft queue for DeepSeek Harness: jot ideas down, quote chat text, attach images, then push one into the session when the previous task is finished.",
+  "version": "0.8.1",
+  "description": "A project-level development board for DeepSeek Harness: keep the things this workspace needs, quote chat text, attach images, and push one into the current session when you are ready.",
   "type": "module",
   "main": "index.js",
   "license": "MIT",
