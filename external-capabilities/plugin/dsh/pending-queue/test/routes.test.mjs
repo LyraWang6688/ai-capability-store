@@ -196,7 +196,7 @@ test('a done row that is deleted comes back as done when restored', async () => 
   assert.equal(typeof reply.json.queue.items[0].doneAt, 'string')
 })
 
-test('shelved rows leave the queue and come back on unshelve', async () => {
+test('scheduled rows leave the queue and come back on unschedule', async () => {
   const board = 'shelf-session'
   for (const text of ['甲', '乙', '丙']) {
     await call(action(), 'POST', action(), { sessionId: board, action: 'add', text })
@@ -204,21 +204,21 @@ test('shelved rows leave the queue and come back on unshelve', async () => {
   let reply = await call(state(), 'GET', state() + '?sessionId=' + board)
   const ids = reply.json.queue.items.map((item) => item.id)
 
-  reply = await call(action(), 'POST', action(), { sessionId: board, action: 'shelve', id: ids[0] })
-  assert.equal(typeof reply.json.queue.items.find((item) => item.id === ids[0]).shelvedAt, 'string')
+  reply = await call(action(), 'POST', action(), { sessionId: board, action: 'schedule', id: ids[0] })
+  assert.equal(typeof reply.json.queue.items.find((item) => item.id === ids[0]).scheduledAt, 'string')
   assert.deepEqual(reply.json.queue.items.map((item) => item.segments[0].text), ['乙', '丙', '甲'])
 
-  reply = await call(action(), 'POST', action(), { sessionId: board, action: 'unshelve', id: ids[0] })
-  assert.equal(reply.json.queue.items.find((item) => item.id === ids[0]).shelvedAt, null)
+  reply = await call(action(), 'POST', action(), { sessionId: board, action: 'unschedule', id: ids[0] })
+  assert.equal(reply.json.queue.items.find((item) => item.id === ids[0]).scheduledAt, null)
   assert.deepEqual(reply.json.queue.items.map((item) => item.segments[0].text), ['乙', '丙', '甲'])
 
-  // A shelved row that is deleted comes back as shelved.
-  await call(action(), 'POST', action(), { sessionId: board, action: 'shelve', id: ids[0] })
+  // A scheduled row that is deleted comes back as scheduled.
+  await call(action(), 'POST', action(), { sessionId: board, action: 'schedule', id: ids[0] })
   await call(action(), 'POST', action(), { sessionId: board, action: 'remove', id: ids[0] })
   reply = await call(action(), 'POST', action(), { sessionId: board, action: 'undelete', id: ids[0] })
-  assert.equal(typeof reply.json.queue.items.find((item) => item.id === ids[0]).shelvedAt, 'string')
+  assert.equal(typeof reply.json.queue.items.find((item) => item.id === ids[0]).scheduledAt, 'string')
 
-  reply = await call(action(), 'POST', action(), { sessionId: board, action: 'clearShelved' })
+  reply = await call(action(), 'POST', action(), { sessionId: board, action: 'clearScheduled' })
   assert.equal(reply.json.queue.items.length, 2)
 })
 

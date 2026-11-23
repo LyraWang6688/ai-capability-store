@@ -129,7 +129,7 @@ function bucketOf(item) {
   if (typeof item.deletedAt === 'string') return 4
   if (typeof item.sentAt === 'string') return 3
   if (typeof item.doneAt === 'string') return 2
-  if (typeof item.shelvedAt === 'string') return 1
+  if (typeof item.scheduledAt === 'string') return 1
   return 0
 }
 
@@ -204,7 +204,7 @@ function normalizeDoc(doc, sessionId) {
     if (typeof item.sentAt !== 'string') delete item.sentAt
     if (typeof item.deletedAt !== 'string') delete item.deletedAt
     if (typeof item.doneAt !== 'string') delete item.doneAt
-    if (typeof item.shelvedAt !== 'string') delete item.shelvedAt
+    if (typeof item.scheduledAt !== 'string') delete item.scheduledAt
   }
   doc.items = doc.items.filter((item) => item.segments.length > 0)
   sortItems(doc)
@@ -353,23 +353,23 @@ function applyAction(doc, body) {
     doc.items = doc.items.filter((item) => typeof item.doneAt !== 'string')
     return {}
   }
-  if (action === 'shelve') {
+  if (action === 'schedule') {
     const item = requireItem(doc, body.id)
     if (typeof item.deletedAt === 'string') throw new Error('this row is deleted; restore it first')
-    item.shelvedAt = nowIso()
+    item.scheduledAt = nowIso()
     delete item.sentAt
     delete item.doneAt
-    item.updatedAt = item.shelvedAt
+    item.updatedAt = item.scheduledAt
     return { id: item.id }
   }
-  if (action === 'unshelve') {
+  if (action === 'unschedule') {
     const item = requireItem(doc, body.id)
-    delete item.shelvedAt
+    delete item.scheduledAt
     item.updatedAt = nowIso()
     return { id: item.id }
   }
-  if (action === 'clearShelved') {
-    doc.items = doc.items.filter((item) => typeof item.shelvedAt !== 'string')
+  if (action === 'clearScheduled') {
+    doc.items = doc.items.filter((item) => typeof item.scheduledAt !== 'string')
     return {}
   }
   if (action === 'clearSent') {
@@ -397,7 +397,7 @@ function viewDoc(doc) {
       updatedAt: item.updatedAt,
       sentAt: typeof item.sentAt === 'string' ? item.sentAt : null,
       doneAt: typeof item.doneAt === 'string' ? item.doneAt : null,
-      shelvedAt: typeof item.shelvedAt === 'string' ? item.shelvedAt : null,
+      scheduledAt: typeof item.scheduledAt === 'string' ? item.scheduledAt : null,
       deletedAt: typeof item.deletedAt === 'string' ? item.deletedAt : null,
     })),
   }
