@@ -88,20 +88,23 @@ window.__ModuleLoader__.load({
       }
     }
 
-    /** The resident composer is the lowest visible editable element. */
-    const quoteStore = { current: null, listeners: new Set() };
-    function setQuote(value) {
-      quoteStore.current = value;
-      for (const listener of quoteStore.listeners) listener();
-    }
-    function useQuote() {
-      const [value, setValue] = React.useState(quoteStore.current);
+    /**
+     * The composer's own input actions (setDraft / insertText / insertQuote) are
+     * only handed to a registration that lives inside the composer slot, while
+     * this toolbar floats in shell.overlay. A hidden component in that slot hands
+     * the actions over here, so "follow up" can ask the composer for a real quote
+     * block instead of typing "> text" by hand.
+     */
+    const composerActions = { current: null };
+    function ComposerBridge(props) {
+      const actions = props.inputActions;
       React.useEffect(() => {
-        const listener = () => setValue(quoteStore.current);
-        quoteStore.listeners.add(listener);
-        return () => quoteStore.listeners.delete(listener);
-      }, []);
-      return value;
+        composerActions.current = actions === undefined ? null : actions;
+        return () => {
+          if (composerActions.current === actions) composerActions.current = null;
+        };
+      }, [actions]);
+      return null;
     }
 
     function findComposer() {
@@ -242,63 +245,7 @@ window.__ModuleLoader__.load({
         if (noteOpen && noteInput.current) noteInput.current.focus();
       }, [noteOpen]);
 
-      const quote = useQuote();
-      // 发送前一刻把引用内容写入草稿：DSH 没有 submit 钩子，只能在回车/点发送时抢先插入。
-      React.useEffect(() => {
-        if (quote === null) return undefined;
-        const flush = () => {
-          const composer = findComposer();
-          if (composer === null) return;
-          const flat = quote.text.replace(/\s+/g, ' ').trim();
-          if (flat === '') return;
-          try {
-            composer.focus();
-            document.execCommand('insertText', false, '> ' + flat + '\n\n');
-          } catch (error) { /* ignored */ }
-          setQuote(null);
-        };
-        const isSubmitButton = (node) => {
-          if (node === null || typeof node.closest !== 'function') return false;
-          const button = node.closest('button');
-          if (button === null) return false;
-          const composer = findComposer();
-          const form = composer === null ? null : composer.closest('form');
-          if (form !== null && form.contains(button) && button.type === 'submit') return true;
-          const label = String(button.getAttribute('aria-label') || '');
-          return /发送|send/i.test(label);
-        };
-        const onKeyDown = (event) => {
-          if (event.key !== 'Enter' || event.shiftKey || event.altKey || event.metaKey || event.ctrlKey) return;
-          const composer = findComposer();
-          if (composer === null) return;
-          if (!composer.contains(event.target) && event.target !== composer) return;
-          flush();
-        };
-        const onPointerDown = (event) => {
-          if (isSubmitButton(event.target)) flush();
-        };
-        document.addEventListener('keydown', onKeyDown, true);
-        document.addEventListener('mousedown', onPointerDown, true);
-        return () => {
-          document.removeEventListener('keydown', onKeyDown, true);
-          document.removeEventListener('mousedown', onPointerDown, true);
-        };
-      }, [quote]);
-
-      // 引用是「会话内」的临时状态：输入框被重建（切会话/换页面）就清掉。
-      // shell.overlay 拿不到 sessionId，所以用输入框节点身份作为会话标志。
-      React.useEffect(() => {
-        const timer = setInterval(() => {
-          const current = quoteStore.current;
-          if (current === null) return;
-          const bound = current.composer;
-          if (bound === undefined || bound === null) return;
-          if (typeof bound.isConnected !== 'boolean') return;
-          if (!bound.isConnected) setQuote(null);        // 旧输入框已卸载 → 换会话了
-        }, 500);
-        return () => clearInterval(timer);
-      }, []);
-      if (selection === null && toast === '' && quote === null) return null;
+      if (selection === null && toast === '') return null;
       const center = selection === null
         ? 0
         : Math.min(Math.max(selection.left + selection.width / 2, 60), window.innerWidth - 60);
@@ -321,7 +268,13 @@ window.__ModuleLoader__.load({
           run: (text) => {
             const flat = String(text).replace(/\s+/g, ' ').trim();
             if (flat === '') return;
-            setQuote({ text: flat, at: Date.now(), composer: findComposer() });
+            // Real quote block through the composer's own input actions - the same
+            // call the "＋ 引用" button makes. No hand-typed "> " prefix.
+            const actions = composerActions.current;
+            if (actions === null || typeof actions.insertQuote !== 'function' || !actions.insertQuote(flat)) {
+              say(t('askFailed'));
+              return;
+            }
             // 追问后把光标移到输入框末尾，用户可以直接开始打字
             const composer = findComposer();
             if (composer !== null) {
@@ -535,7 +488,7 @@ window.__ModuleLoader__.load({
           .dsh-selection-quote-bar{width:3px;height:16px;border-radius:2px;background:#7aa2ff;flex:none}
           .dsh-selection-quote-text{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
           .dsh-selection-quote-close{background:none;border:none;color:inherit;font-size:14px;cursor:pointer;line-height:1;padding:0 2px}`),
-        h(QuoteBar, { key: 'quote-bar' }),
+        null,
         selection !== null && !noteOpen && !rewriteOpen
           ? h('div', {
             key: 'bar',
@@ -653,70 +606,6 @@ window.__ModuleLoader__.load({
       );
     }
 
-    function QuoteBar() {
-      const quote = useQuote();
-      const [pos, setPos] = React.useState(null);
-      // 输入框会随输入行数变高，position:fixed 的坐标必须跟着重算，
-      // 否则引用条会停在旧位置、压住正文。
-      React.useEffect(() => {
-        if (!quote) { setPos(null); return undefined; }
-        let raf = 0;
-        const measure = () => {
-          const node = quote.composer && quote.composer.isConnected ? quote.composer : findComposer();
-          if (node === null) { setPos(null); return; }
-          const rect = node.getBoundingClientRect();
-          setPos({
-            left: Math.max(12, rect.left + 10),
-            width: Math.max(200, rect.width - 20),
-            bottom: Math.max(12, window.innerHeight - rect.top + 8),
-          });
-        };
-        const schedule = () => {
-          if (raf !== 0) return;
-          raf = requestAnimationFrame(() => { raf = 0; measure(); });
-        };
-        measure();
-        const node = quote.composer && quote.composer.isConnected ? quote.composer : findComposer();
-        const observer = typeof ResizeObserver !== 'undefined' && node !== null
-          ? new ResizeObserver(schedule) : null;
-        if (observer !== null) observer.observe(node);
-        window.addEventListener('resize', schedule);
-        window.addEventListener('scroll', schedule, true);
-        const timer = setInterval(measure, 400);
-        return () => {
-          if (raf !== 0) cancelAnimationFrame(raf);
-          if (observer !== null) observer.disconnect();
-          window.removeEventListener('resize', schedule);
-          window.removeEventListener('scroll', schedule, true);
-          clearInterval(timer);
-        };
-      }, [quote]);
-      if (!quote) return null;
-      const preview = quote.text.length > 90 ? quote.text.slice(0, 90) + '…' : quote.text;
-      const style = {
-        position: 'fixed',
-        left: (pos === null ? 12 : pos.left) + 'px',
-        width: (pos === null ? 360 : pos.width) + 'px',
-        bottom: (pos === null ? 120 : pos.bottom) + 'px',
-        zIndex: 9000,
-        visibility: pos === null ? 'hidden' : 'visible',
-      };
-      return h('div', { className: 'dsh-selection-quote', style }, [
-        h('span', { key: 'bar', className: 'dsh-selection-quote-bar' }),
-        h('span', { key: 'text', className: 'dsh-selection-quote-text', title: quote.text }, preview),
-        h('button', {
-          key: 'close',
-          type: 'button',
-          className: 'dsh-selection-quote-close',
-          onClick: () => {
-            setQuote(null);
-            const composer = findComposer();
-            if (composer !== null) { composer.focus(); }
-          },
-        }, '×'),
-      ]);
-    }
-
     return {
       inject: ['slots', 'locale'],
       apply(ctx) {
@@ -731,6 +620,7 @@ window.__ModuleLoader__.load({
           copy: '复制',
           speak: '朗读',
           ask: '追问',
+          askFailed: '引用没插进去，再点一次（输入框可能还没就绪）',
           collect: '收藏',
           deliver: '投递',
           collected: '已收藏到飞书文档',
@@ -773,6 +663,7 @@ window.__ModuleLoader__.load({
           copy: 'Copy',
           speak: 'Read aloud',
           ask: 'Follow up',
+          askFailed: 'The quote did not go in — try again once the composer is ready',
           collect: 'Collect',
           deliver: 'Deliver',
           collected: 'Collected to the Feishu doc',
@@ -834,6 +725,15 @@ window.__ModuleLoader__.load({
           id: 'selection-toolbar',
           order: 900,
         }, () => h(SelectionToolbar, { t: translate })));
+
+        // Hidden bridge: the composer slot is where inputActions (including
+        // insertQuote) are handed out, so park a no-op component there and let
+        // the floating toolbar reach those actions.
+        ctx.slots.inject('conversation.input.left', () => ctx.slots.register({
+          name: 'conversation.input.left',
+          id: 'selection-toolbar-bridge',
+          order: 950,
+        }, (props) => h(ComposerBridge, props)));
         },
     };
   },

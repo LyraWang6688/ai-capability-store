@@ -7,7 +7,7 @@ DSH（DeepSeek Harness）客户端插件：在对话里用鼠标划选文字后�
 | 动作 | 行为 |
 |---|---|
 | 复制 | 把选中文字写入剪贴板 |
-| 追问 | 不直接发送：先浮出引用条（可 ✕ 关闭），回车/点发送时才把 `> 选中文字` 插进草稿一起发出；不弹提示 |
+| 追问 | 选中文字立刻变成输入框里的**真引用块**（与「＋ 引用」同一条 `insertQuote` 链路），光标停在引用后，你直接写问题；不再插 `> 文本` |
 | 收藏 | 选中文字 → 浮出小面板写一句自己的话（**可留空**）→ 把「原文引用 + 备注 + 北京时间」追加到配置的飞书文档末尾；**不留本地副本**，写失败时面板留在原地可直接重试 |
 | 投递 | 按 `context-submit` 规范结构化后写入飞书「投递箱」Base（见 0.4.0 段） |
 | 收录 | 把选中原文投递给会话里的 agent，由 `repo-collector` 技能写「GitHub 优质项目收录」表（插件自己不写表） |
@@ -172,3 +172,17 @@ MIT
 4. 独立的「注释」入口与旧的「不带备注的收藏」一并移除。
 
 > token / 表格都是**使用者自己的**：`docToken` 写自己的文档、`baseToken`+`tableId` 写自己的投递箱，全部在仓库外的 `~/.dsh/selection-toolbar.json`。包内不含任何个人飞书资源，未配置时接口会明确报错，不会写到作者的表或文档里。
+
+## 0.11.0：追问 = 真引用块
+
+旧实现是「假引用」：点追问只在自己状态里记一段文字，等回车/点发送时用 `document.execCommand('insertText', '> ' + 文本)` 往输入框塞一行带 `>` 的纯文本，还额外画一条`dsh-selection-quote`悬空条。
+
+问题：出来的是文本不是引用块，样式与「＋ 引用」不一致，发送后混在正文里；插入时机卡在提交前，容易和发送竞态。
+
+现在：
+
+1. 悬浮工具条在 `shell.overlay`，拿不到 `inputActions`；因此在同一 bundle 里加一个**不可见的桥**注册到 `conversation.input.left`（`ComposerBridge`），把 `props.inputActions` 存进模块级变量。
+2. 点「追问」→ `inputActions.insertQuote(选中文字)`，立刻生成真引用块；随后聚焦输入框、把光标放到末尾，你直接写问题。
+3. 不再有 `execCommand` 兜底、不再有悬空引用条：插入失败时给一句提示（`askFailed`），不伪造引用。
+
+已验证：临时 profile + Playwright 直接调用桥上的 `insertQuote('这是一段被追问的原文')` → 返回 true，输入框里出现真引用节点（`span[data-composer-quote]`，带 `Remove quote` 按钮与 `data-quote-preview`），不是 `> ` 文本。
